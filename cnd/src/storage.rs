@@ -5,7 +5,7 @@ use crate::{
         tables::{Halbit, Hbit, Herc20, Insert, InsertableSwap, IntoInsertable, Swap},
         wrapper_types::custom_sql_types::Text,
         NoHalbitRedeemIdentity, NoHalbitRefundIdentity, NoHbitRedeemIdentity, NoHbitRefundIdentity,
-        NoHerc20RedeemIdentity, NoHerc20RefundIdentity, NoSecretHash, Sqlite,
+        NoHerc20RedeemIdentity, NoHerc20RefundIdentity, NoSecretHash, Sqlite, SwapContextRow,
     },
     halbit, hbit, herc20, http_api, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
@@ -17,9 +17,7 @@ use crate::{
 use anyhow::Context;
 use async_trait::async_trait;
 use bitcoin::Network;
-use diesel::{
-    sql_types, BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl,
-};
+use diesel::{BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 use std::sync::Arc;
 
 /// Load data for a particular swap from the storage layer.
@@ -104,65 +102,6 @@ impl Storage {
             Arc::new(halbit::States::default()),
             Arc::new(hbit::States::default()),
         )
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct SwapContext {
-    pub id: LocalSwapId,
-    pub role: Role,
-    pub alpha: Protocol,
-    pub beta: Protocol,
-}
-
-#[async_trait::async_trait]
-impl Load<SwapContext> for Storage {
-    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<SwapContext> {
-        #[derive(QueryableByName)]
-        struct Result {
-            #[sql_type = "sql_types::Text"]
-            role: Text<Role>,
-            #[sql_type = "sql_types::Text"]
-            alpha_protocol: Text<Protocol>,
-            #[sql_type = "sql_types::Text"]
-            beta_protocol: Text<Protocol>,
-        }
-
-        let Result { role, alpha_protocol, beta_protocol } = self.db.do_in_transaction(|connection| {
-            // Here is how this works:
-            // - COALESCE selects the first non-null value from a list of values
-            // - We use 3 sub-selects to select a static value (i.e. 'halbit', etc) if that particular child table has a row with a foreign key to the parent table
-            // - We do this two times, once where we limit the results to rows that have `ledger` set to `Alpha` and once where `ledger` is set to `Beta`
-            //
-            // The result is a view with 3 columns: `role`, `alpha_protocol` and `beta_protocol` where the `*_protocol` columns have one of the values `halbit`, `herc20` or `hbit`
-            diesel::sql_query(
-                r#"
-                SELECT
-                    role,
-                    COALESCE(
-                       (SELECT 'halbit' from halbits where halbits.swap_id = swaps.id and halbits.side = 'Alpha'),
-                       (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Alpha'),
-                       (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Alpha')
-                    ) as alpha_protocol,
-                    COALESCE(
-                       (SELECT 'halbit' from halbits where halbits.swap_id = swaps.id and halbits.side = 'Beta'),
-                       (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Beta'),
-                       (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Beta')
-                    ) as beta_protocol
-                FROM swaps
-                    where local_swap_id = ?
-            "#,
-            )
-                .bind::<sql_types::Text, _>(Text(swap_id))
-                .get_result(connection)
-        }).await.context(db::Error::SwapNotFound)?;
-
-        Ok(SwapContext {
-            id: swap_id,
-            role: role.0,
-            alpha: alpha_protocol.0,
-            beta: beta_protocol.0,
-        })
     }
 }
 
@@ -358,52 +297,53 @@ impl Load<spawn::Swap<hbit::Params, herc20::Params>> for Storage {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct SwapContext {
+    pub id: LocalSwapId,
+    pub role: Role,
+    pub alpha: Protocol,
+    pub beta: Protocol,
+}
+
+impl From<SwapContextRow> for SwapContext {
+    fn from(row: SwapContextRow) -> Self {
+        SwapContext {
+            id: row.id.0,
+            role: row.role.0,
+            alpha: row.alpha.0,
+            beta: row.beta.0,
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Load<SwapContext> for Storage {
+    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<SwapContext> {
+        let context = self
+            .db
+            .swap_contexts()
+            .await?
+            .into_iter()
+            .find(|context| context.id.0 == swap_id)
+            .map(|context| context.into())
+            .ok_or(db::Error::SwapNotFound)?;
+
+        Ok(context)
+    }
+}
+
 #[async_trait::async_trait]
 impl LoadAll<SwapContext> for Storage {
     async fn load_all(&self) -> anyhow::Result<Vec<SwapContext>> {
-        #[derive(QueryableByName)]
-        struct Result {
-            #[sql_type = "sql_types::Text"]
-            local_swap_id: Text<LocalSwapId>,
-            #[sql_type = "sql_types::Text"]
-            role: Text<Role>,
-            #[sql_type = "sql_types::Text"]
-            alpha_protocol: Text<Protocol>,
-            #[sql_type = "sql_types::Text"]
-            beta_protocol: Text<Protocol>,
-        }
-
-        let swaps = self.db.do_in_transaction(|connection| {
-            diesel::sql_query(
-                r#"
-                    SELECT
-                        local_swap_id,
-                        role,
-                        COALESCE(
-                           (SELECT 'halbit' from halbits where halbits.swap_id = swaps.id and halbits.side = 'Alpha'),
-                           (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Alpha'),
-                           (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Alpha')
-                        ) as alpha_protocol,
-                        COALESCE(
-                           (SELECT 'halbit' from halbits where halbits.swap_id = swaps.id and halbits.side = 'Beta'),
-                           (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Beta'),
-                           (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Beta')
-                        ) as beta_protocol
-                    FROM swaps
-                "#,
-            ).get_results::<Result>(connection)
-        })
+        let contexts = self
+            .db
+            .swap_contexts()
             .await?
             .into_iter()
-            .map(|row| SwapContext {
-                id: row.local_swap_id.0,
-                role: row.role.0,
-                alpha: row.alpha_protocol.0,
-                beta: row.beta_protocol.0,
-            })
+            .map(|context| context.into())
             .collect();
 
-        Ok(swaps)
+        Ok(contexts)
     }
 }
 

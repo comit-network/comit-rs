@@ -25,10 +25,11 @@ pub use self::{
 pub use crate::storage::{ForSwap, Save};
 
 use crate::{
-    db::wrapper_types::custom_sql_types::Text, swap_protocols::rfc003::SwapId, LocalSwapId, Role,
+    db::wrapper_types::custom_sql_types::Text, swap_protocols::rfc003::SwapId, LocalSwapId,
+    Protocol, Role,
 };
 use chrono::NaiveDateTime;
-use diesel::{self, prelude::*, sqlite::SqliteConnection};
+use diesel::{self, prelude::*, sql_types, sqlite::SqliteConnection};
 use libp2p::PeerId;
 use std::{
     ffi::OsStr,
@@ -44,6 +45,18 @@ use tokio::sync::Mutex;
 pub struct Sqlite {
     #[derivative(Debug = "ignore")]
     connection: Arc<Mutex<SqliteConnection>>,
+}
+
+#[derive(Clone, Copy, Debug, QueryableByName)]
+pub struct SwapContextRow {
+    #[sql_type = "sql_types::Text"]
+    pub id: Text<LocalSwapId>,
+    #[sql_type = "sql_types::Text"]
+    pub role: Text<Role>,
+    #[sql_type = "sql_types::Text"]
+    pub alpha: Text<Protocol>,
+    #[sql_type = "sql_types::Text"]
+    pub beta: Text<Protocol>,
 }
 
 impl Sqlite {
@@ -90,6 +103,37 @@ impl Sqlite {
         let result = connection.transaction(|| f(&connection))?;
 
         Ok(result)
+    }
+
+    pub async fn swap_contexts(&self) -> anyhow::Result<Vec<SwapContextRow>> {
+        let contexts = self.do_in_transaction(|connection| {
+            // Here is how this works:
+            // - COALESCE selects the first non-null value from a list of values
+            // - We use 3 sub-selects to select a static value (i.e. 'halbit', etc) if that particular child table has a row with a foreign key to the parent table
+            // - We do this two times, once where we limit the results to rows that have `ledger` set to `Alpha` and once where `ledger` is set to `Beta`
+            //
+            // The result is a view with 4 columns: `id`, `role`, `alpha` and `beta` where the `alpha` and `beta` columns have one of the values `halbit`, `herc20` or `hbit`
+            diesel::sql_query(
+                r#"
+                        SELECT
+                            local_swap_id as id,
+                            role,
+                            COALESCE(
+                               (SELECT 'halbit' from halbits where halbits.swap_id = swaps.id and halbits.side = 'Alpha'),
+                               (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Alpha'),
+                               (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Alpha')
+                            ) as alpha,
+                            COALESCE(
+                               (SELECT 'halbit' from halbits where halbits.swap_id = swaps.id and halbits.side = 'Beta'),
+                               (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Beta'),
+                               (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Beta')
+                            ) as beta
+                        FROM swaps
+                    "#,
+            ).get_results::<SwapContextRow>(connection)
+        }).await?;
+
+        Ok(contexts)
     }
 
     async fn rfc003_role(&self, key: &SwapId) -> anyhow::Result<Role> {

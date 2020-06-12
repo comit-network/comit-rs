@@ -23,7 +23,7 @@ use crate::{
     protocol_spawner::ProtocolSpawner,
     seed::RootSeed,
     spawn::spawn,
-    storage::Storage,
+    storage::{Storage, SwapContext},
     swap_protocols::{
         rfc003::{
             self,
@@ -33,7 +33,7 @@ use crate::{
         },
         HashFunction, SwapProtocol,
     },
-    transaction, Load, LocalSwapId, Protocol, Role, SecretHash, SharedSwapId, SwapContext,
+    transaction, Load, LocalSwapId, Protocol, Role, SecretHash, SharedSwapId,
 };
 use anyhow::Context;
 use async_trait::async_trait;
