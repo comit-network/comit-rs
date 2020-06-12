@@ -20,64 +20,6 @@ describe("Sanity", () => {
     );
 
     it(
-        "empty-swap-list-after-startup",
-        oneActorTest(async ({ alice }) => {
-            const promise = alice.cnd.fetch("/swaps");
-
-            await expect(promise).resolves.toHaveProperty("data.entities", []);
-        })
-    );
-
-    it(
-        "bad-request-for-invalid-swap-combination",
-        oneActorTest(async ({ alice }) => {
-            const promise = alice.cnd.postSwap({
-                alpha_ledger: {
-                    name: "Thomas' wallet",
-                },
-                beta_ledger: {
-                    name: "Higher-Dimension",
-                },
-                alpha_asset: {
-                    name: "AUD",
-                    quantity: "3.5",
-                },
-                beta_asset: {
-                    name: "Espresso",
-                    // @ts-ignore
-                    "double-shot": true,
-                },
-                alpha_ledger_refund_identity: "",
-                beta_ledger_redeem_identity: "",
-                alpha_expiry: 123456789,
-                beta_expiry: 123456789,
-                // @ts-ignore
-                peer: "QmPRNaiDUcJmnuJWUyoADoqvFotwaMRFKV2RyZ7ZVr1fqd",
-            });
-
-            await expect(promise).rejects.toMatchObject({
-                status: 400,
-                title: "Invalid body.",
-            });
-        })
-    );
-
-    it(
-        "returns-invalid-body-for-bad-json",
-        oneActorTest(async ({ alice }) => {
-            const promise = alice.cnd.postSwap({
-                // @ts-ignore
-                garbage: true,
-            });
-
-            await expect(promise).rejects.toMatchObject({
-                status: 400,
-                title: "Invalid body.",
-            });
-        })
-    );
-
-    it(
         "alice-has-empty-peer-list",
         oneActorTest(async ({ alice }) => {
             const promise = alice.cnd.fetch("/peers");
