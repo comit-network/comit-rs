@@ -1,15 +1,8 @@
 use crate::{
     asset,
     asset::ethereum::FromWei,
-    db::Rfc003Swap,
     ethereum::{Address, Bytes, ChainId},
-    identity,
-    swap_protocols::{
-        ledger::{self},
-        rfc003::{Accept, Request, SecretHash, SwapId},
-        HashFunction,
-    },
-    transaction, Role, Timestamp,
+    identity, ledger, transaction, Role, SecretHash, Timestamp,
 };
 use ::bitcoin::{
     hashes::{sha256d, Hash},
@@ -18,7 +11,6 @@ use ::bitcoin::{
 use libp2p::PeerId;
 use quickcheck::{Arbitrary, Gen};
 use std::ops::Deref;
-use uuid::Uuid;
 
 /// Generic newtype that allows us to implement quickcheck::Arbitrary on foreign
 /// types
@@ -49,16 +41,6 @@ macro_rules! impl_arbitrary_for_byte_array {
 impl_arbitrary_for_byte_array!([u8; 16]);
 impl_arbitrary_for_byte_array!([u8; 20]);
 impl_arbitrary_for_byte_array!([u8; 32]);
-
-impl Arbitrary for Quickcheck<SwapId> {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let bytes = *Quickcheck::<[u8; 16]>::arbitrary(g);
-        let uuid = Uuid::from_bytes(bytes);
-        let swap_id = SwapId::from(uuid);
-
-        Quickcheck(swap_id)
-    }
-}
 
 impl Arbitrary for Quickcheck<::bitcoin::Network> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
@@ -142,12 +124,6 @@ impl Arbitrary for Quickcheck<crate::asset::Erc20> {
     }
 }
 
-impl Arbitrary for Quickcheck<HashFunction> {
-    fn arbitrary<G: Gen>(_g: &mut G) -> Self {
-        Quickcheck(HashFunction::Sha256)
-    }
-}
-
 impl Arbitrary for Quickcheck<identity::Bitcoin> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let bytes = *Quickcheck::<[u8; 32]>::arbitrary(g);
@@ -225,49 +201,6 @@ impl Arbitrary for Quickcheck<ledger::Ethereum> {
     }
 }
 
-impl<AL, BL, AA, BA, AI, BI> Arbitrary for Quickcheck<Request<AL, BL, AA, BA, AI, BI>>
-where
-    Quickcheck<AL>: Arbitrary,
-    Quickcheck<BL>: Arbitrary,
-    Quickcheck<AA>: Arbitrary,
-    Quickcheck<BA>: Arbitrary,
-    Quickcheck<AI>: Arbitrary,
-    Quickcheck<BI>: Arbitrary,
-    Request<AL, BL, AA, BA, AI, BI>: Clone + Send + 'static,
-{
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(Request {
-            swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            alpha_ledger: Quickcheck::<AL>::arbitrary(g).0,
-            beta_ledger: Quickcheck::<BL>::arbitrary(g).0,
-            alpha_asset: Quickcheck::<AA>::arbitrary(g).0,
-            beta_asset: Quickcheck::<BA>::arbitrary(g).0,
-            hash_function: *Quickcheck::<HashFunction>::arbitrary(g),
-            alpha_ledger_refund_identity: Quickcheck::<AI>::arbitrary(g).0,
-            beta_ledger_redeem_identity: Quickcheck::<BI>::arbitrary(g).0,
-            alpha_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
-            beta_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
-            secret_hash: *Quickcheck::<SecretHash>::arbitrary(g),
-        })
-    }
-}
-
-impl<AI, BI> Arbitrary for Quickcheck<Accept<AI, BI>>
-where
-    AI: Copy + Clone + Send,
-    BI: Copy + Clone + Send,
-    Quickcheck<AI>: Arbitrary,
-    Quickcheck<BI>: Arbitrary,
-{
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(Accept {
-            swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            alpha_ledger_redeem_identity: *Quickcheck::<AI>::arbitrary(g),
-            beta_ledger_refund_identity: *Quickcheck::<BI>::arbitrary(g),
-        })
-    }
-}
-
 impl Arbitrary for Quickcheck<Role> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let role = match g.next_u32() % 2 {
@@ -291,15 +224,5 @@ impl Arbitrary for Quickcheck<PeerId> {
         let peer_id = PeerId::from_public_key(public_key);
 
         Quickcheck(peer_id)
-    }
-}
-
-impl Arbitrary for Quickcheck<Rfc003Swap> {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(Rfc003Swap {
-            swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            role: *Quickcheck::<Role>::arbitrary(g),
-            counterparty: Quickcheck::<PeerId>::arbitrary(g).0,
-        })
     }
 }
