@@ -14,6 +14,8 @@
 #![forbid(unsafe_code)]
 
 pub mod bitcoin_wallet;
+pub mod bitcoind;
+pub mod jsonrpc;
 pub mod swap;
 
 #[cfg(all(test, feature = "test-docker"))]

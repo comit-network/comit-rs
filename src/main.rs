@@ -14,6 +14,8 @@
 #![forbid(unsafe_code)]
 
 mod bitcoin_wallet;
+mod bitcoind;
+mod jsonrpc;
 mod ongoing_swaps;
 mod publish;
 
