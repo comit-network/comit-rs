@@ -215,8 +215,8 @@ impl Swap<hbit::FinalizedAsRedeemer, herc20::Finalized, Bob> {
     }
 }
 
-#[cfg(all(test, test_docker))]
-mod test {
+#[cfg(all(test, feature = "test-docker"))]
+mod tests {
     use super::*;
     use crate::ledgers::{BitcoinBlockchain, EthereumBlockchain};
     use bitcoin::{secp256k1, Network};
