@@ -17,3 +17,11 @@ reqwest = "0.10.6"
 [dev-dependencies]
 testcontainers = "0.9"
 tokio = { version = "0.2.21", features = ["macros"] }
+
+[features]
+default = ["test-docker"]
+
+# "test-docker" feature is related to test code
+# if it's enabled then tests needing docker will be ran
+test-docker = []
+
