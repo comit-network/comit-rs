@@ -10,8 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 -   Fix windows build.
--   Return an error when creating a halight swap if lnd certificate or macaroon are unavailable instead of failing silently.
--   Only return a single action on the get swaps endpoint. This is now the recommended action available to the user.
 
 ### Changed
 
@@ -19,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--   Support for `herc20-halight`, `halight-herc20`, `hbit-herc20` and `herc20-hbit` swaps.
+-   Support for `herc20-halbit`, `halbit-herc20`, `hbit-herc20` and `herc20-hbit` swaps.
 
 ## [0.7.3] - 2020-04-14
 
