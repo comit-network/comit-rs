@@ -1,31 +1,12 @@
-import { oneActorTest, twoActorTest } from "../src/actor_test";
+import { oneActorTest } from "../src/actor_test";
 import "../src/schema_matcher";
 import * as sirenJsonSchema from "../siren.schema.json";
 import { siren } from "comit-sdk";
 import axios from "axios";
-import { createDefaultSwapRequest } from "../src/utils";
-import { Actor } from "../src/actors/actor";
-import * as swapPropertiesJsonSchema from "../swap.schema.json";
-import { Rfc003Actor } from "../src/actors/rfc003_actor";
 
 // ******************************************** //
 // Siren Schema tests                                 //
 // ******************************************** //
-
-async function assertValidSirenDocument(
-    swapsEntity: siren.Entity,
-    alice: Actor
-) {
-    const selfLink = swapsEntity.links.find((link: siren.Link) =>
-        link.rel.includes("self")
-    ).href;
-
-    const swapResponse = await alice.cnd.fetch(selfLink);
-    const swapEntity = swapResponse.data as siren.Entity;
-
-    expect(swapEntity).toMatchSchema(sirenJsonSchema);
-    expect(swapEntity.properties).toMatchSchema(swapPropertiesJsonSchema);
-}
 
 describe("Siren Schema", () => {
     it(
@@ -83,53 +64,6 @@ describe("Siren Schema", () => {
                 class: ["swaps"],
                 href: "/swaps",
             });
-
-            const rfc003SwapsLink = links.find(
-                (link: siren.Link) =>
-                    link.rel.length === 2 &&
-                    link.rel.includes("collection") &&
-                    link.rel.includes("edit") &&
-                    link.class.length === 2 &&
-                    link.class.includes("swaps") &&
-                    link.class.includes("rfc003")
-            );
-
-            expect(rfc003SwapsLink).toMatchObject({
-                rel: ["collection", "edit"],
-                class: ["swaps", "rfc003"],
-                href: "/swaps/rfc003",
-            });
-        })
-    );
-
-    it(
-        "get-single-swap-is-valid-siren",
-        twoActorTest(async (actors) => {
-            const [alice, bob] = Rfc003Actor.convert([
-                actors.alice,
-                actors.bob,
-            ]);
-            // Alice send swap request to Bob
-            await alice.actor.cnd.postSwap(await createDefaultSwapRequest(bob));
-
-            const aliceSwapEntity = await alice
-                .pollCndUntil("/swaps", (body) => body.entities.length > 0)
-                .then(
-                    (body) =>
-                        body
-                            .entities[0] as siren.EmbeddedRepresentationSubEntity
-                );
-
-            await assertValidSirenDocument(aliceSwapEntity, alice.actor);
-
-            const bobsSwapEntity = await bob
-                .pollCndUntil("/swaps", (body) => body.entities.length > 0)
-                .then(
-                    (body) =>
-                        body
-                            .entities[0] as siren.EmbeddedRepresentationSubEntity
-                );
-            await assertValidSirenDocument(bobsSwapEntity, bob.actor);
         })
     );
 });
