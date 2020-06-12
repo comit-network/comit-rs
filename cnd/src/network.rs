@@ -5,21 +5,16 @@ pub use ::comit::network::*;
 pub use transport::ComitTransport;
 
 use crate::{
-    asset::AssetKind,
     btsieve::{
         bitcoin::{self, BitcoindConnector},
         ethereum::{self, Web3Connector},
     },
-    comit_api::LedgerKind,
     config::Settings,
     db::{ForSwap, Rfc003Swap, Save, Sqlite},
     htlc_location, identity,
     libp2p_comit_ext::{FromHeader, ToHeader},
     network::{Comit, LocalData},
-    protocol_spawner::ProtocolSpawner,
-    seed::RootSeed,
-    spawn::spawn,
-    storage::{Storage, SwapContext},
+    spawn,
     swap_protocols::{
         rfc003::{
             self,
@@ -29,7 +24,8 @@ use crate::{
         },
         HashFunction, SwapProtocol,
     },
-    transaction, Load, LocalSwapId, Protocol, Role, SecretHash, SharedSwapId,
+    transaction, AssetKind, LedgerKind, Load, LocalSwapId, Protocol, ProtocolSpawner, Role,
+    RootSeed, SecretHash, SharedSwapId, Storage, SwapContext,
 };
 use anyhow::Context;
 use async_trait::async_trait;
@@ -837,7 +833,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for C
         let save_and_start_swap = async move {
             let swap = storage.load(local_swap_id).await?;
             save_swap_remote_data(&storage, swap, remote_data).await?;
-            spawn(&spawner, &storage, swap).await?;
+            spawn::spawn(&spawner, &storage, swap).await?;
 
             Ok::<(), anyhow::Error>(())
         };

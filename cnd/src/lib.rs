@@ -65,7 +65,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub use self::{actions::*, facade::Facade, protocol_spawner::*, seed::*, spawn::*, storage::*};
+pub use self::{
+    actions::*, asset::AssetKind, comit_api::LedgerKind, facade::Facade, protocol_spawner::*,
+    seed::*, spawn::*, storage::*,
+};
 // Export comit types so we do not need to worry about where they come from.
 pub use comit::{
     ledger, LocalSwapId, Never, Protocol, RelativeTime, Role, Secret, SecretHash, SharedSwapId,
