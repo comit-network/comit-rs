@@ -29,7 +29,6 @@ use cnd::{
     protocol_spawner::ProtocolSpawner,
     respawn::respawn,
     storage::Storage,
-    swap_protocols::{rfc003, rfc003::SwapCommunicationStates},
     Facade, RootSeed,
 };
 use comit::lnd::LndConnectorParams;
@@ -144,11 +143,6 @@ fn main() -> anyhow::Result<()> {
         ethereum: Arc::clone(&ethereum_connector),
     };
 
-    // RCF003 protocol
-    let rfc003_alpha_ledger_states = Arc::new(rfc003::LedgerStates::default());
-    let rfc003_beta_ledger_states = Arc::new(rfc003::LedgerStates::default());
-    let swap_communication_states = Arc::new(SwapCommunicationStates::default());
-
     let herc20_states = Arc::new(herc20::States::default());
     let halbit_states = Arc::new(halbit::States::default());
     let hbit_states = Arc::new(hbit::States::default());
@@ -176,9 +170,6 @@ fn main() -> anyhow::Result<()> {
         seed,
         Arc::clone(&bitcoin_connector),
         Arc::clone(&ethereum_connector),
-        Arc::clone(&swap_communication_states),
-        Arc::clone(&rfc003_alpha_ledger_states),
-        Arc::clone(&rfc003_beta_ledger_states),
         &database,
         runtime.handle().clone(),
         storage.clone(),
