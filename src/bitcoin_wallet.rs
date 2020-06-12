@@ -108,24 +108,7 @@ mod docker_tests {
         let tc_client = clients::Cli::default();
         let blockchain = BitcoinBlockchain::new(&tc_client).unwrap();
 
-        let bitcoind_client = bitcoind::Client::new(blockchain.node_url.clone());
-
-        // Create some test wallet
-        let test_wallet_name = String::from("testwallet");
-        bitcoind_client
-            .create_wallet(&test_wallet_name, None, None, "".into(), None)
-            .await
-            .unwrap();
-        // Get a test address
-        let test_address = bitcoind_client
-            .get_new_address(&test_wallet_name, None, None)
-            .await
-            .unwrap();
-        // Generate blocks
-        bitcoind_client
-            .generate_to_address(101, test_address, None)
-            .await
-            .unwrap();
+        blockchain.init().await.unwrap();
 
         let seed = Seed::new();
         let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).unwrap();

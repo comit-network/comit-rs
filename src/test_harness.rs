@@ -1,3 +1,4 @@
+use crate::bitcoind;
 use reqwest::Url;
 use testcontainers::{
     clients,
@@ -30,6 +31,25 @@ impl<'c> BitcoinBlockchain<'c> {
             _container: container,
             node_url: url,
         })
+    }
+
+    pub async fn init(&self) -> anyhow::Result<()> {
+        let bitcoind_client = bitcoind::Client::new(self.node_url.clone());
+
+        let test_wallet_name = String::from("testwallet");
+        bitcoind_client
+            .create_wallet(&test_wallet_name, None, None, "".into(), None)
+            .await?;
+
+        let test_address = bitcoind_client
+            .get_new_address(&test_wallet_name, None, None)
+            .await?;
+
+        bitcoind_client
+            .generate_to_address(101, test_address, None)
+            .await?;
+
+        Ok(())
     }
 }
 
