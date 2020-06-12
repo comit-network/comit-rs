@@ -23,14 +23,26 @@ jobs:
           profile: minimal
           override: true
 
-      - name: Cache cargo binaries, registry and target directory
+      - name: Cache cargo registry
         uses: actions/cache@v2
         with:
-          path: |
-            ~/.cargo/bin
-            ~/.cargo/registry
-            target
-          key: ubuntu-rust-${{ steps.toolchain.outputs.rustc-hash }}
+          path: ~/.cargo/registry
+          # The registry cache is useful as long as we need the same dependencies as another job, regardless of the Rust version and operating system.
+          key: cargo-registry-${{ hashFiles('Cargo.lock') }}
+
+      - name: Cache cargo binaries
+        uses: actions/cache@v2
+        with:
+          path: ~/.cargo/bin
+          # The cargo binary cache is useful as long as we use the same Rust version but regardless of our dependencies.
+          key: ubuntu-latest-cargo-binaries-${{ steps.toolchain.outputs.rustc_hash }}
+
+      - name: Cache target directory
+        uses: actions/cache@v2
+        with:
+          path: target
+          # The target directory is only useful with the same Rust version, dependencies and operating system.
+          key: ubuntu-latest-target-${{ steps.toolchain.outputs.rustc_hash }}-${{ hashFiles('Cargo.lock') }}-clippy
 
       - name: Check formatting
         run: make check_format
@@ -57,14 +69,26 @@ jobs:
           profile: minimal
           override: true
 
-      - name: Cache cargo binaries, registry and target directory
+      - name: Cache cargo registry
         uses: actions/cache@v2
         with:
-          path: |
-            ~/.cargo/bin
-            ~/.cargo/registry
-            target
-          key: ubuntu-rust-${{ steps.toolchain.outputs.rustc-hash }}
+          path: ~/.cargo/registry
+          # The registry cache is useful as long as we need the same dependencies as another job, regardless of the Rust version and operating system.
+          key: cargo-registry-${{ hashFiles('Cargo.lock') }}
+
+      - name: Cache cargo binaries
+        uses: actions/cache@v2
+        with:
+          path: ~/.cargo/bin
+          # The cargo binary cache is useful as long as we use the same Rust version and operating system, but regardless of our dependencies.
+          key: ${{ matrix.os }}-cargo-binaries-${{ steps.toolchain.outputs.rustc_hash }}
+
+      - name: Cache target directory
+        uses: actions/cache@v2
+        with:
+          path: target
+          # The target directory is only useful with the same Rust version, dependencies and operating system.
+          key: ${{ matrix.os }}-target-${{ steps.toolchain.outputs.rustc_hash }}-${{ hashFiles('Cargo.lock') }}-build
 
       - name: Build ${{ matrix.os }} binary
         run: make build
