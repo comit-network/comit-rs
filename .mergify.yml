@@ -2,7 +2,7 @@ pull_request_rules:
   - name: comment on broken dependabot PRs, asking for help
     conditions:
       - "author=dependabot-preview[bot]"
-      - "status-failure=ci/circleci: debug-build-test"
+      - "status-failure=build (ubuntu-latest)"
     actions:
       comment:
         message: "The build on this dependency update is broken and needs attention."
@@ -12,7 +12,8 @@ pull_request_rules:
   - name: instruct bors to merge dependabot PRs with passing tests
     conditions:
       - "author=dependabot-preview[bot]"
-      - "status-success=ci/circleci: debug-build-test"
+      - "status-success=static_analysis"
+      - "status-success=build (ubuntu-latest)"
       - "status-success=license/cla"
       - label!=no-mergify
     actions:
@@ -22,13 +23,15 @@ pull_request_rules:
     conditions:
       - "#approved-reviews-by>=2"
       - "#changes-requested-reviews-by=0"
-      - "status-success=ci/circleci: debug-build-test"
+      - "status-success=static_analysis"
+      - "status-success=build (ubuntu-latest)"
       - "status-success=license/cla"
       - -conflict
       - label!=work-in-progress
       - label!=blocked
       - label!=no-mergify
       - head~=^(?!release.*).*$
+      - base=dev
     actions:
       comment:
         message: "bors r+"
@@ -38,11 +41,3 @@ pull_request_rules:
       - head~=^(?!release.*).*$
     actions:
       delete_head_branch:
-  - name: nag if changelog is not updated
-    conditions:
-      - "author!=dependabot-preview[bot]"
-      - "files!=CHANGELOG.md"
-      - review-requested!=''
-    actions:
-      comment:
-        message: "Are you sure the changelog does not need updating?"

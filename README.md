@@ -12,7 +12,7 @@ This repository contains the implementation of the comit-network daemon (`cnd`),
 If you wish to do an atomic swap on your machine or to integrate COMIT into an application (e.g. a DEX) please take a look at the [Getting Started section](https://comit.network/docs/getting-started/create-comit-app/) of the COMIT documentation.
 If you have any questions, feel free to [reach out to the team in our Gitter chat](https://gitter.im/comit-network/community)!
 
-[![CircleCI](https://circleci.com/gh/comit-network/comit-rs.svg?style=svg)](https://circleci.com/gh/comit-network/comit-rs)
+![GitHub Action CI on dev](https://github.com/comit-network/comit-rs/workflows/CI/badge.svg?branch=dev)
 [![Safety Dance](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 [![Bors enabled](https://bors.tech/images/badge_small.svg)](https://app.bors.tech/repositories/20717)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
@@ -49,9 +49,8 @@ Please see `cnd --help` for help with command line options.
 
 1. Install `docker`,
 2. Install `node` (check the version required in api_tests/package.json) & `yarn`,
-3. Install `lnd` v0.9.0-beta (optional) using `make tags=invoicesrpc && make tags=invoicesrpc install`, this is only needed to run lnd e2e tests,
-4. Run `make` in the root folder of the repository, this will install various crates & tools such as clippy.
-   
+3. Run `make` in the root folder of the repository, this will install various crates & tools such as clippy.
+  
 ## Testing
 
 - `make test` is just a wrapper around `cargo test --all`

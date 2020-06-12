@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
-import { Actor } from "./actors/actor";
 import { SwapRequest } from "comit-sdk";
+import { promises as asyncFs } from "fs";
 import * as fs from "fs";
 import { promisify } from "util";
 import { Global } from "@jest/types";
@@ -13,6 +13,7 @@ import {
     EthereumNodeConfig,
     LightningNodeConfig,
 } from "./ledgers";
+import { Rfc003Actor } from "./actors/rfc003_actor";
 
 export interface HarnessGlobal extends Global.Global {
     ledgerConfigs: LedgerConfig;
@@ -21,7 +22,7 @@ export interface HarnessGlobal extends Global.Global {
         bob?: LightningWallet;
     };
     tokenContract: string;
-    parityLockDir: string;
+    gethLockDir: string;
     cargoTargetDir: string;
 
     getDataDir: (program: string) => Promise<string>;
@@ -36,12 +37,9 @@ export interface LedgerConfig {
     bobLnd?: LightningNodeConfig;
 }
 
-export const unlinkAsync = promisify(fs.unlink);
-export const existsAsync = promisify(fs.exists);
+export const existsAsync = (filepath: string) =>
+    asyncFs.access(filepath, fs.constants.F_OK);
 export const openAsync = promisify(fs.open);
-export const mkdirAsync = promisify(fs.mkdir);
-export const writeFileAsync = promisify(fs.writeFile);
-export const readFileAsync = promisify(fs.readFile);
 export const rimrafAsync = promisify(rimraf);
 export const execAsync = promisify(exec);
 
@@ -71,7 +69,7 @@ export const DEFAULT_ALPHA = {
 const DEFAULT_BETA = {
     ledger: {
         name: "ethereum",
-        chain_id: 17,
+        chain_id: 1337,
     },
     asset: {
         name: "ether",
@@ -82,7 +80,7 @@ const DEFAULT_BETA = {
     },
     expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
 };
-export async function createDefaultSwapRequest(counterParty: Actor) {
+export async function createDefaultSwapRequest(counterParty: Rfc003Actor) {
     const swapRequest: SwapRequest = {
         alpha_ledger: {
             name: DEFAULT_ALPHA.ledger.name,
@@ -105,8 +103,8 @@ export async function createDefaultSwapRequest(counterParty: Actor) {
         alpha_expiry: DEFAULT_ALPHA.expiry,
         beta_expiry: DEFAULT_BETA.expiry,
         peer: {
-            peer_id: await counterParty.cnd.getPeerId(),
-            address_hint: await counterParty.cnd
+            peer_id: await counterParty.actor.cnd.getPeerId(),
+            address_hint: await counterParty.actor.cnd
                 .getPeerListenAddresses()
                 .then((addresses) => addresses[0]),
         },
@@ -117,7 +115,11 @@ export async function createDefaultSwapRequest(counterParty: Actor) {
 export async function waitUntilFileExists(filepath: string) {
     let logFileExists = false;
     do {
-        await sleep(500);
-        logFileExists = await existsAsync(filepath);
+        try {
+            await existsAsync(filepath);
+            logFileExists = true;
+        } catch (e) {
+            await sleep(500);
+        }
     } while (!logFileExists);
 }

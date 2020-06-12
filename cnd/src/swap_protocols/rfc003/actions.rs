@@ -2,7 +2,7 @@ pub mod bitcoin;
 pub mod erc20;
 pub mod ether;
 
-use crate::swap_protocols::rfc003::{DeriveIdentities, Secret};
+use crate::swap_protocols::rfc003::{Rfc003DeriveIdentities, Secret};
 use std::marker::PhantomData;
 
 /// Defines the set of actions available in the RFC003 protocol
@@ -37,7 +37,7 @@ pub trait MakeRefundAction {
     fn make_refund_action(
         htlc_params: Self::HtlcParams,
         htlc_location: Self::HtlcLocation,
-        secret_source: &dyn DeriveIdentities,
+        secret_source: &dyn Rfc003DeriveIdentities,
         fund_transaction: &Self::FundTransaction,
     ) -> Self::Output;
 }
@@ -50,7 +50,7 @@ pub trait MakeRedeemAction {
     fn make_redeem_action(
         htlc_params: Self::HtlcParams,
         htlc_location: Self::HtlcLocation,
-        secret_source: &dyn DeriveIdentities,
+        secret_source: &dyn Rfc003DeriveIdentities,
         secret: Secret,
     ) -> Self::Output;
 }

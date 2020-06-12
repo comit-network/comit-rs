@@ -1,10 +1,10 @@
-import { Asset, BigNumber } from "comit-sdk";
 import { HarnessGlobal, sleep } from "../utils";
 import { BitcoinWallet } from "./bitcoin";
 import { EthereumWallet } from "./ethereum";
 import { LightningWallet } from "./lightning";
 import { Logger } from "log4js";
-import { ActorNames } from "../actors/actor";
+import { ActorName } from "../actors/actor";
+import { Asset } from "../asset";
 
 declare var global: HarnessGlobal;
 
@@ -17,7 +17,7 @@ interface AllWallets {
 export interface Wallet {
     MaximumFee: number;
     mint(asset: Asset): Promise<void>;
-    getBalanceByAsset(asset: Asset): Promise<BigNumber>;
+    getBalanceByAsset(asset: Asset): Promise<bigint>;
     getBlockchainTime(): Promise<number>;
 }
 
@@ -51,14 +51,16 @@ export class Wallets {
     public async initializeForLedger<K extends keyof AllWallets>(
         name: K,
         logger: Logger,
-        actor?: ActorNames
+        actor?: ActorName
     ) {
         switch (name) {
             case "ethereum":
-                this.wallets.ethereum = new EthereumWallet(
+                this.wallets.ethereum = await EthereumWallet.new_instance(
+                    global.ledgerConfigs.ethereum.dev_account_key,
                     global.ledgerConfigs.ethereum.rpc_url,
                     logger,
-                    global.parityLockDir
+                    global.gethLockDir,
+                    global.ledgerConfigs.ethereum.chain_id
                 );
                 break;
             case "bitcoin":
@@ -85,29 +87,15 @@ export class Wallets {
                 }
         }
     }
-
-    public async close(): Promise<void[]> {
-        const tasks = [];
-
-        if (this.wallets.lightning) {
-            tasks.push(this.wallets.lightning.close());
-        }
-
-        if (this.wallets.bitcoin) {
-            tasks.push(this.wallets.bitcoin.close());
-        }
-
-        return Promise.all(tasks);
-    }
 }
 
 export async function pollUntilMinted(
     wallet: Wallet,
-    minimumBalance: BigNumber,
+    minimumBalance: BigInt,
     asset: Asset
 ): Promise<void> {
     const currentBalance = await wallet.getBalanceByAsset(asset);
-    if (currentBalance.gte(minimumBalance)) {
+    if (currentBalance >= minimumBalance) {
         return;
     } else {
         await sleep(500);

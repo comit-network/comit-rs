@@ -2,13 +2,12 @@ use crate::{
     http_api::action::ListRequiredFields,
     identity,
     swap_protocols::{
-        ledger::{bitcoin, Ethereum},
+        ledger,
         rfc003::{
             actions::Accept,
             messages::{self, IntoAcceptMessage},
-            DeriveIdentities,
+            Rfc003DeriveIdentities, SwapId,
         },
-        SwapId,
     },
 };
 use serde::Deserialize;
@@ -18,19 +17,7 @@ pub struct OnlyRedeem<I> {
     pub alpha_ledger_redeem_identity: I,
 }
 
-impl ListRequiredFields for Accept<Ethereum, bitcoin::Mainnet> {
-    fn list_required_fields() -> Vec<siren::Field> {
-        ethereum_bitcoin_accept_required_fields()
-    }
-}
-
-impl ListRequiredFields for Accept<Ethereum, bitcoin::Testnet> {
-    fn list_required_fields() -> Vec<siren::Field> {
-        ethereum_bitcoin_accept_required_fields()
-    }
-}
-
-impl ListRequiredFields for Accept<Ethereum, bitcoin::Regtest> {
+impl ListRequiredFields for Accept<ledger::Ethereum, ledger::Bitcoin> {
     fn list_required_fields() -> Vec<siren::Field> {
         ethereum_bitcoin_accept_required_fields()
     }
@@ -50,11 +37,11 @@ impl IntoAcceptMessage<identity::Ethereum, identity::Bitcoin> for OnlyRedeem<ide
     fn into_accept_message(
         self,
         id: SwapId,
-        secret_source: &dyn DeriveIdentities,
+        secret_source: &dyn Rfc003DeriveIdentities,
     ) -> messages::Accept<identity::Ethereum, identity::Bitcoin> {
         let beta_ledger_refund_identity = identity::Bitcoin::from_secret_key(
             &*crate::SECP,
-            &secret_source.derive_refund_identity(),
+            &secret_source.rfc003_derive_refund_identity(),
         );
         messages::Accept {
             swap_id: id,
@@ -69,19 +56,7 @@ pub struct OnlyRefund<I> {
     pub beta_ledger_refund_identity: I,
 }
 
-impl ListRequiredFields for Accept<bitcoin::Mainnet, Ethereum> {
-    fn list_required_fields() -> Vec<siren::Field> {
-        bitcoin_ethereum_accept_required_fields()
-    }
-}
-
-impl ListRequiredFields for Accept<bitcoin::Testnet, Ethereum> {
-    fn list_required_fields() -> Vec<siren::Field> {
-        bitcoin_ethereum_accept_required_fields()
-    }
-}
-
-impl ListRequiredFields for Accept<bitcoin::Regtest, Ethereum> {
+impl ListRequiredFields for Accept<ledger::Bitcoin, ledger::Ethereum> {
     fn list_required_fields() -> Vec<siren::Field> {
         bitcoin_ethereum_accept_required_fields()
     }
@@ -101,11 +76,11 @@ impl IntoAcceptMessage<identity::Bitcoin, identity::Ethereum> for OnlyRefund<ide
     fn into_accept_message(
         self,
         id: SwapId,
-        secret_source: &dyn DeriveIdentities,
+        secret_source: &dyn Rfc003DeriveIdentities,
     ) -> messages::Accept<identity::Bitcoin, identity::Ethereum> {
         let alpha_ledger_redeem_identity = identity::Bitcoin::from_secret_key(
             &*crate::SECP,
-            &secret_source.derive_redeem_identity(),
+            &secret_source.rfc003_derive_redeem_identity(),
         );
         messages::Accept {
             swap_id: id,

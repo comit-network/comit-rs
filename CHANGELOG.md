@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2020-06-12
+
+### Fixed
+
+-   Fix windows build.
+
+### Changed
+
+-   **Breaking Change**: Rename `parity` to `geth` in the configuration file as we are only testing the software with Geth as part of the CI.
+
+### Added
+
+-   Support for `herc20-halbit`, `halbit-herc20`, `hbit-herc20` and `herc20-hbit` swaps.
+
 ## [0.7.3] - 2020-04-14
 
 ### Fixed
@@ -121,13 +135,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   Move config files to standard location based on platform (OSX, Windows, Linux).
 -   Align implementation with RFC-002 to use the decision header instead of status codes.
 
-[Unreleased]: https://github.com/comit-network/comit-rs/compare/0.7.3...HEAD
+[Unreleased]: https://github.com/comit-network/comit-rs/compare/0.8.0...HEAD
+
+[0.8.0]: https://github.com/comit-network/comit-rs/compare/0.7.3...0.8.0
 
 [0.7.3]: https://github.com/comit-network/comit-rs/compare/0.7.2...0.7.3
 
 [0.7.2]: https://github.com/comit-network/comit-rs/compare/0.7.1...0.7.2
 
-[0.7.0]: https://github.com/comit-network/comit-rs/compare/0.7.0...0.7.1
+[0.7.1]: https://github.com/comit-network/comit-rs/compare/0.7.0...0.7.1
 
 [0.7.0]: https://github.com/comit-network/comit-rs/compare/0.6.0...0.7.0
 

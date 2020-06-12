@@ -1,7 +1,8 @@
-use crate::swap_protocols::{NodeLocalSwapId, SwapId};
+use crate::{swap_protocols::rfc003::SwapId, LocalSwapId, Secret};
+use ::bitcoin::secp256k1::SecretKey;
 use pem::{encode, Pem};
 use rand::Rng;
-use sha2::{Digest, Sha256};
+use sha2::{digest::FixedOutput as _, Digest, Sha256};
 use std::{
     ffi::OsStr,
     fmt,
@@ -9,7 +10,6 @@ use std::{
     io::{self, Write},
     path::{Path, PathBuf},
 };
-use thiserror;
 
 /// We create a `RootSeed` either randomly or by reading in the PEM file from
 /// disk.  This `RootSeed` is used to generate a per swap `SwapSeed` which is
@@ -17,28 +17,15 @@ use thiserror;
 /// `RootSeed` and `SwapSeed` are the same underlying type (`Seed`), they exist
 /// solely to allow the compiler to provide us with type safety.
 
-// This will go away once rfc003 is gone.
+// This will go away once rfc003 is gone (because now the swap_id comes from Bob
+// we derive it differently).
 #[ambassador::delegatable_trait]
-pub trait DeriveSwapSeed {
-    fn derive_swap_seed(&self, id: SwapId) -> SwapSeed;
+pub trait Rfc003DeriveSwapSeed {
+    fn rfc003_derive_swap_seed(&self, id: SwapId) -> SwapSeed;
 }
 
-impl DeriveSwapSeed for RootSeed {
-    fn derive_swap_seed(&self, id: SwapId) -> SwapSeed {
-        let data = self.sha256_with_seed(&[b"SWAP", id.0.as_bytes()]);
-        SwapSeed(Seed(data))
-    }
-}
-
-// This exists because its safer than the above trait now that the swap_id comes
-// from Bob.  We do not want to derive the seed using information from Bob.
-#[ambassador::delegatable_trait]
-pub trait DeriveSwapSeedFromNodeLocal {
-    fn derive_swap_seed_from_node_local(&self, id: NodeLocalSwapId) -> SwapSeed;
-}
-
-impl DeriveSwapSeedFromNodeLocal for RootSeed {
-    fn derive_swap_seed_from_node_local(&self, id: NodeLocalSwapId) -> SwapSeed {
+impl Rfc003DeriveSwapSeed for RootSeed {
+    fn rfc003_derive_swap_seed(&self, id: SwapId) -> SwapSeed {
         let data = self.sha256_with_seed(&[b"SWAP", id.0.as_bytes()]);
         SwapSeed(Seed(data))
     }
@@ -64,12 +51,12 @@ impl fmt::Display for Seed {
 impl Seed {
     fn sha256_with_seed(&self, slices: &[&[u8]]) -> [u8; SEED_LENGTH] {
         let mut sha = Sha256::new();
-        sha.input(&self.0);
+        sha.update(&self.0);
         for slice in slices {
-            sha.input(slice);
+            sha.update(slice);
         }
 
-        sha.result().into()
+        sha.finalize_fixed().into()
     }
 }
 
@@ -81,33 +68,6 @@ impl From<[u8; SEED_LENGTH]> for Seed {
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct RootSeed(Seed);
-
-impl fmt::Debug for RootSeed {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
-
-impl fmt::Display for RootSeed {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub struct SwapSeed(Seed);
-
-impl fmt::Debug for SwapSeed {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
-
-impl fmt::Display for SwapSeed {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
 
 impl RootSeed {
     pub fn sha256_with_seed(&self, slices: &[&[u8]]) -> [u8; SEED_LENGTH] {
@@ -153,6 +113,11 @@ impl RootSeed {
         tracing::info!("No seed file found, creating at: {}", path.display());
 
         Ok(random_seed)
+    }
+
+    pub fn derive_swap_seed(&self, swap_id: LocalSwapId) -> SwapSeed {
+        let data = self.sha256_with_seed(&[b"SWAP", swap_id.as_bytes()]);
+        SwapSeed(Seed(data))
     }
 
     fn from_file<D>(seed_file: D) -> Result<RootSeed, Error>
@@ -203,9 +168,53 @@ impl RootSeed {
     }
 }
 
+impl fmt::Debug for RootSeed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
+impl fmt::Display for RootSeed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub struct SwapSeed(Seed);
+
 impl SwapSeed {
     pub fn sha256_with_seed(&self, slices: &[&[u8]]) -> [u8; SEED_LENGTH] {
         self.0.sha256_with_seed(slices)
+    }
+
+    /// Only Alice derives the secret, Bob learns the secret from Alice.
+    pub fn derive_secret(&self) -> Secret {
+        self.sha256_with_seed(&[b"SECRET"]).into()
+    }
+
+    /// Used to derive the transient redeem identity for hbit swaps.
+    pub fn derive_transient_redeem_identity(&self) -> SecretKey {
+        SecretKey::from_slice(self.sha256_with_seed(&[b"REDEEM"]).as_ref())
+            .expect("The probability of this happening is < 1 in 2^120")
+    }
+
+    /// Used to derive the transient refund identity for hbit swaps.
+    pub fn derive_transient_refund_identity(&self) -> SecretKey {
+        SecretKey::from_slice(self.sha256_with_seed(&[b"REFUND"]).as_ref())
+            .expect("The probability of this happening is < 1 in 2^120")
+    }
+}
+
+impl fmt::Debug for SwapSeed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
+impl fmt::Display for SwapSeed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -255,7 +264,6 @@ impl From<[u8; SEED_LENGTH]> for RootSeed {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pem;
     use rand::rngs::OsRng;
 
     #[test]

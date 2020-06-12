@@ -1,8 +1,10 @@
 use crate::{
     db,
-    http_api::routes::{
-        rfc003::handlers::{post_swap::UnsupportedSwap, InvalidAction, InvalidActionInvocation},
-        LndActionError,
+    http_api::{
+        routes::rfc003::handlers::{
+            post_swap::UnsupportedSwap, InvalidAction, InvalidActionInvocation,
+        },
+        ActionNotFound,
     },
 };
 use http_api_problem::HttpApiProblem;
@@ -32,7 +34,13 @@ pub struct UnexpectedQueryParameters {
     pub parameters: &'static [&'static str],
 }
 
-// tracing trippers clippy warning, issue reported: https://github.com/tokio-rs/tracing/issues/553
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+#[error("{ledger:?} is not properly configured, swap involving this ledger are not available.")]
+pub struct LedgerNotConfigured {
+    pub ledger: &'static str,
+}
+
+// tracing triggers clippy warning, issue reported: https://github.com/tokio-rs/tracing/issues/553
 #[allow(clippy::cognitive_complexity)]
 pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
     let e = match e.downcast::<HttpApiProblem>() {
@@ -41,6 +49,7 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
     };
 
     if let Some(db::Error::SwapNotFound) = e.downcast_ref::<db::Error>() {
+        tracing::error!("swap was not found");
         return HttpApiProblem::new("Swap not found.").set_status(StatusCode::NOT_FOUND);
     }
 
@@ -103,8 +112,16 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
             .set_detail("The requested combination of ledgers and assets is not supported.");
     }
 
-    if e.is::<LndActionError>() {
+    if e.is::<ActionNotFound>() {
         return HttpApiProblem::new("Action not found.").set_status(StatusCode::NOT_FOUND);
+    }
+
+    if let Some(err) = e.downcast_ref::<LedgerNotConfigured>() {
+        tracing::warn!("{}", e);
+
+        return HttpApiProblem::new(format!("{} is not configured.", err.ledger))
+            .set_status(StatusCode::BAD_REQUEST)
+            .set_detail(format!("{} ledger is not properly configured, swap involving this ledger are not available.", err.ledger));
     }
 
     tracing::error!("internal error occurred: {:#}", e);

@@ -1,7 +1,7 @@
 import { ChildProcess, spawn } from "child_process";
-import * as fs from "fs";
 import * as path from "path";
-import { existsAsync, writeFileAsync } from "../utils";
+import { promises as asyncFs } from "fs";
+import { existsAsync } from "../utils";
 import getPort from "get-port";
 import { Logger } from "log4js";
 import waitForLogMessage from "../wait_for_log_message";
@@ -42,7 +42,7 @@ export class BitcoindInstance implements LedgerInstance {
     ) {}
 
     public async start() {
-        const bin = await this.findBinary("0.17.0");
+        const bin = await this.findBinary("0.20.0");
 
         this.logger.info("Using binary", bin);
 
@@ -64,7 +64,7 @@ export class BitcoindInstance implements LedgerInstance {
 
         await waitForLogMessage(this.logPath(), "init message: Done loading");
 
-        const result = fs.readFileSync(
+        const result = await asyncFs.readFile(
             path.join(this.dataDir, "regtest", ".cookie"),
             "utf8"
         );
@@ -75,7 +75,7 @@ export class BitcoindInstance implements LedgerInstance {
 
         this.logger.info("bitcoind started with PID", this.process.pid);
 
-        await writeFileAsync(this.pidFile, this.process.pid, {
+        await asyncFs.writeFile(this.pidFile, this.process.pid.toString(), {
             encoding: "utf-8",
         });
     }
@@ -116,8 +116,11 @@ export class BitcoindInstance implements LedgerInstance {
         // This path depends on the directory structure inside the archive
         const binaryPath = cacheDir(`bitcoin-${version}`, "bin", "bitcoind");
 
-        if (await existsAsync(binaryPath)) {
+        try {
+            await existsAsync(binaryPath);
             return binaryPath;
+        } catch (e) {
+            // Continue and download the file
         }
 
         const url = downloadUrlFor(version);
@@ -161,13 +164,14 @@ rest=1
 acceptnonstdtxn=0
 zmqpubrawblock=tcp://127.0.0.1:${this.zmqPubRawBlockPort}
 zmqpubrawtx=tcp://127.0.0.1:${this.zmqPubRawTxPort}
+fallbackfee=0.0002
 
 [regtest]
 bind=0.0.0.0:${this.p2pPort}
 rpcbind=0.0.0.0:${this.rpcPort}
 `;
         const config = path.join(dataDir, "bitcoin.conf");
-        await writeFileAsync(config, output);
+        await asyncFs.writeFile(config, output);
     }
 }
 

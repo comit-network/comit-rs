@@ -1,6 +1,5 @@
 import { pollUntilMinted, Wallet } from "./index";
 import { Asset } from "../asset";
-import BigNumber from "bignumber.js";
 import { BitcoinWallet } from "./bitcoin";
 import { sleep } from "../utils";
 import { LightningWallet as LightningWalletSdk, Outpoint } from "comit-sdk";
@@ -41,12 +40,10 @@ export class LightningWallet implements Wallet {
             );
         }
 
-        const startingBalance = new BigNumber(
-            await this.getBalanceByAsset(asset)
-        );
+        const startingBalance = await this.getBalanceByAsset(asset);
         this.logger.debug("starting: ", startingBalance.toString());
 
-        const minimumExpectedBalance = new BigNumber(asset.quantity);
+        const minimumExpectedBalance = BigInt(asset.quantity);
         this.logger.debug("min expected: ", minimumExpectedBalance.toString());
 
         await this.bitcoinWallet.mintToAddress(
@@ -56,7 +53,7 @@ export class LightningWallet implements Wallet {
 
         await pollUntilMinted(
             this,
-            startingBalance.plus(minimumExpectedBalance),
+            startingBalance + minimumExpectedBalance,
             asset
         );
     }
@@ -65,18 +62,20 @@ export class LightningWallet implements Wallet {
         return this.inner.newAddress(AddressType.NESTED_PUBKEY_HASH);
     }
 
-    public async getBalanceByAsset(asset: Asset): Promise<BigNumber> {
+    public async getBalanceByAsset(asset: Asset): Promise<bigint> {
         if (asset.name !== "bitcoin") {
             throw new Error(
-                `Cannot read balance for asset ${asset.name} with LightningdWallet`
+                `Cannot read balance for asset ${asset.name} with LightningWallet`
             );
         }
 
-        const walletBalance = await this.inner.confirmedWalletBalance();
-        const channelBalance = await this.inner.confirmedChannelBalance();
-        return new BigNumber(walletBalance ? walletBalance : 0).plus(
-            channelBalance ? channelBalance : 0
-        );
+        const walletBalance = await this.inner
+            .confirmedWalletBalance()
+            .then((balance) => BigInt(balance ? balance : 0));
+        const channelBalance = await this.inner
+            .confirmedChannelBalance()
+            .then((balance) => BigInt(balance ? balance : 0));
+        return walletBalance + channelBalance;
     }
 
     // This function does not have its place on a Wallet
@@ -141,19 +140,6 @@ export class LightningWallet implements Wallet {
         return this.inner.addInvoice(sats);
     }
 
-    /**
-     * Pay a payment-request
-     *
-     * @param request A BOLT11-encoded payment request
-     */
-    public async pay(request: string) {
-        return this.inner.sendPaymentWithRequest(request);
-    }
-
-    public async lookupInvoice(secretHash: string) {
-        return this.inner.lookupInvoice(secretHash);
-    }
-
     private async pollUntilChannelIsOpen(outpoint: Outpoint): Promise<void> {
         const { txId, vout } = outpoint;
         const channels = await this.getChannels();
@@ -168,9 +154,5 @@ export class LightningWallet implements Wallet {
         }
         await sleep(500);
         return this.pollUntilChannelIsOpen(outpoint);
-    }
-
-    public async close(): Promise<void> {
-        return this.bitcoinWallet.close();
     }
 }

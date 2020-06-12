@@ -1,13 +1,22 @@
+pub mod halbit;
+pub mod halbit_herc20;
+pub mod hbit;
+pub mod hbit_herc20;
+pub mod herc20;
+pub mod herc20_halbit;
+pub mod herc20_hbit;
 pub mod route_factory;
 pub mod routes;
 #[macro_use]
 pub mod impl_serialize_http;
 pub mod action;
 mod problem;
+mod protocol;
 mod swap_resource;
 
 pub use self::{
     problem::*,
+    protocol::{AliceSwap, BobSwap},
     swap_resource::{OnFail, SwapParameters, SwapResource, SwapStatus},
 };
 use crate::swap_protocols::actions::lnd::Chain;
@@ -15,19 +24,15 @@ use crate::swap_protocols::actions::lnd::Chain;
 pub const PATH: &str = "swaps";
 
 use crate::{
-    asset, htlc_location, identity,
-    network::DialInformation,
-    swap_protocols::{
-        ledger::{self, bitcoin::Network, ethereum::ChainId, Bitcoin},
-        Role, SwapId, SwapProtocol,
-    },
-    transaction,
+    asset,
+    ethereum::ChainId,
+    htlc_location, identity,
+    swap_protocols::{ledger, rfc003::SwapId, SwapProtocol},
+    transaction, Role,
 };
 use libp2p::{Multiaddr, PeerId};
 use serde::{
-    de::{self, Error as _, MapAccess},
-    ser::SerializeStruct,
-    Deserialize, Deserializer, Serialize, Serializer,
+    de::Error as _, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer,
 };
 use std::{
     convert::{TryFrom, TryInto},
@@ -97,29 +102,6 @@ impl<'de> Deserialize<'de> for Http<asset::Bitcoin> {
     }
 }
 
-impl Serialize for Http<asset::Lightning> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.0.as_sat().to_string())
-    }
-}
-
-impl<'de> Deserialize<'de> for Http<asset::Lightning> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let value = String::deserialize(deserializer)?;
-        let value =
-            u64::from_str(value.as_str()).map_err(<D as Deserializer<'de>>::Error::custom)?;
-        let amount = asset::Lightning::from_sat(value);
-
-        Ok(Http(amount))
-    }
-}
-
 impl Serialize for Http<transaction::Bitcoin> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -184,6 +166,43 @@ impl Serialize for Http<PeerId> {
     }
 }
 
+impl Serialize for Http<ledger::Bitcoin> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let str = match self {
+            Http(ledger::Bitcoin::Mainnet) => "mainnet",
+            Http(ledger::Bitcoin::Testnet) => "testnet",
+            Http(ledger::Bitcoin::Regtest) => "regtest",
+        };
+
+        serializer.serialize_str(str)
+    }
+}
+
+impl<'de> Deserialize<'de> for Http<ledger::Bitcoin> {
+    fn deserialize<D>(deserializer: D) -> Result<Http<ledger::Bitcoin>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let network = match String::deserialize(deserializer)?.as_str() {
+            "mainnet" => ledger::Bitcoin::Mainnet,
+            "testnet" => ledger::Bitcoin::Testnet,
+            "regtest" => ledger::Bitcoin::Regtest,
+
+            network => {
+                return Err(<D as Deserializer<'de>>::Error::custom(format!(
+                    "not regtest: {}",
+                    network
+                )))
+            }
+        };
+
+        Ok(Http(network))
+    }
+}
+
 impl Serialize for Http<bitcoin::Network> {
     fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
     where
@@ -230,68 +249,53 @@ impl<'de> Deserialize<'de> for Http<PeerId> {
     }
 }
 
-impl<'de> Deserialize<'de> for DialInformation {
-    fn deserialize<D>(deserializer: D) -> Result<DialInformation, D::Error>
+impl<'de> Deserialize<'de> for Http<bitcoin::Address> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        struct Visitor;
+        let address = String::deserialize(deserializer)?;
+        let address = bitcoin::Address::from_str(address.as_str())
+            .map_err(<D as Deserializer<'de>>::Error::custom)?;
 
-        impl<'de> de::Visitor<'de> for Visitor {
-            type Value = DialInformation;
+        Ok(Http(address))
+    }
+}
 
-            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                formatter.write_str("a peer id or a dial information struct")
-            }
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(untagged)]
+pub enum DialInformation {
+    JustPeerId(Http<PeerId>),
+    WithAddressHint {
+        peer_id: Http<PeerId>,
+        address_hint: Multiaddr,
+    },
+}
 
-            fn visit_str<E>(self, value: &str) -> Result<DialInformation, E>
-            where
-                E: de::Error,
-            {
-                let peer_id = value.parse().map_err(E::custom)?;
-                Ok(DialInformation {
-                    peer_id,
-                    address_hint: None,
-                })
-            }
-
-            fn visit_map<M>(self, mut map: M) -> Result<DialInformation, M::Error>
-            where
-                M: MapAccess<'de>,
-            {
-                let mut peer_id = None;
-                let mut address_hint = None;
-                while let Some(key) = map.next_key::<String>()? {
-                    match key.as_str() {
-                        "peer_id" => {
-                            if peer_id.is_some() {
-                                return Err(de::Error::duplicate_field("peer_id"));
-                            }
-                            peer_id = Some(map.next_value::<Http<PeerId>>()?)
-                        }
-                        "address_hint" => {
-                            if address_hint.is_some() {
-                                return Err(de::Error::duplicate_field("address_hint"));
-                            }
-                            address_hint = Some(map.next_value::<Multiaddr>()?)
-                        }
-                        _ => {
-                            return Err(de::Error::unknown_field(key.as_str(), &[
-                                "peer_id",
-                                "address_hint",
-                            ]));
-                        }
-                    }
-                }
-                let peer_id = peer_id.ok_or_else(|| de::Error::missing_field("peer_id"))?;
-                Ok(DialInformation {
-                    peer_id: peer_id.0,
-                    address_hint,
-                })
-            }
+impl From<DialInformation> for PeerId {
+    fn from(dial_information: DialInformation) -> Self {
+        match dial_information {
+            DialInformation::JustPeerId(inner) => inner.0,
+            DialInformation::WithAddressHint { peer_id, .. } => peer_id.0,
         }
+    }
+}
 
-        deserializer.deserialize_any(Visitor)
+impl From<DialInformation> for comit::network::DialInformation {
+    fn from(dial_information: DialInformation) -> Self {
+        match dial_information {
+            DialInformation::JustPeerId(inner) => Self {
+                peer_id: inner.0,
+                address_hint: None,
+            },
+            DialInformation::WithAddressHint {
+                peer_id,
+                address_hint,
+            } => Self {
+                peer_id: peer_id.0,
+                address_hint: Some(address_hint),
+            },
+        }
     }
 }
 
@@ -303,9 +307,7 @@ impl<'de> Deserialize<'de> for DialInformation {
 #[serde(try_from = "HttpLedgerParams")]
 #[serde(into = "HttpLedgerParams")]
 pub enum HttpLedger {
-    BitcoinMainnet(ledger::bitcoin::Mainnet),
-    BitcoinTestnet(ledger::bitcoin::Testnet),
-    BitcoinRegtest(ledger::bitcoin::Regtest),
+    Bitcoin(ledger::Bitcoin),
     Ethereum(ledger::Ethereum),
 }
 
@@ -339,14 +341,6 @@ pub enum HttpLedgerParams {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct BitcoinLedgerParams {
     network: Http<bitcoin::Network>,
-}
-
-impl<B: Bitcoin + Network> From<B> for BitcoinLedgerParams {
-    fn from(_: B) -> Self {
-        BitcoinLedgerParams {
-            network: Http(B::network()),
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
@@ -390,11 +384,7 @@ impl TryFrom<HttpLedgerParams> for HttpLedger {
 
     fn try_from(params: HttpLedgerParams) -> Result<Self, Self::Error> {
         Ok(match params {
-            HttpLedgerParams::Bitcoin(BitcoinLedgerParams { network }) => match *network {
-                bitcoin::Network::Bitcoin => HttpLedger::BitcoinMainnet(ledger::bitcoin::Mainnet),
-                bitcoin::Network::Testnet => HttpLedger::BitcoinTestnet(ledger::bitcoin::Testnet),
-                bitcoin::Network::Regtest => HttpLedger::BitcoinRegtest(ledger::bitcoin::Regtest),
-            },
+            HttpLedgerParams::Bitcoin(params) => HttpLedger::Bitcoin(params.into()),
             HttpLedgerParams::Ethereum(params) => HttpLedger::Ethereum(params.try_into()?),
         })
     }
@@ -403,10 +393,8 @@ impl TryFrom<HttpLedgerParams> for HttpLedger {
 impl From<HttpLedger> for HttpLedgerParams {
     fn from(ledger: HttpLedger) -> Self {
         match ledger {
-            HttpLedger::BitcoinMainnet(ledger) => HttpLedgerParams::Bitcoin(ledger.into()),
-            HttpLedger::BitcoinTestnet(ledger) => HttpLedgerParams::Bitcoin(ledger.into()),
-            HttpLedger::BitcoinRegtest(ledger) => HttpLedgerParams::Bitcoin(ledger.into()),
             HttpLedger::Ethereum(ledger) => HttpLedgerParams::Ethereum(ledger.into()),
+            HttpLedger::Bitcoin(ledger) => HttpLedgerParams::Bitcoin(ledger.into()),
         }
     }
 }
@@ -436,6 +424,20 @@ impl From<ledger::Ethereum> for EthereumLedgerParams {
 
         Self {
             chain_id: Some(chain_id),
+        }
+    }
+}
+
+impl From<BitcoinLedgerParams> for ledger::Bitcoin {
+    fn from(params: BitcoinLedgerParams) -> Self {
+        params.network.0.into()
+    }
+}
+
+impl From<ledger::Bitcoin> for BitcoinLedgerParams {
+    fn from(bitcoin: ledger::Bitcoin) -> Self {
+        Self {
+            network: Http(bitcoin.into()),
         }
     }
 }
@@ -504,21 +506,9 @@ impl From<asset::Erc20> for Erc20AssetParams {
     }
 }
 
-impl From<ledger::bitcoin::Mainnet> for HttpLedger {
-    fn from(ledger: ledger::bitcoin::Mainnet) -> Self {
-        HttpLedger::BitcoinMainnet(ledger)
-    }
-}
-
-impl From<ledger::bitcoin::Testnet> for HttpLedger {
-    fn from(ledger: ledger::bitcoin::Testnet) -> Self {
-        HttpLedger::BitcoinTestnet(ledger)
-    }
-}
-
-impl From<ledger::bitcoin::Regtest> for HttpLedger {
-    fn from(ledger: ledger::bitcoin::Regtest) -> Self {
-        HttpLedger::BitcoinRegtest(ledger)
+impl From<ledger::Bitcoin> for HttpLedger {
+    fn from(ledger: ledger::Bitcoin) -> Self {
+        HttpLedger::Bitcoin(ledger)
     }
 }
 
@@ -546,17 +536,22 @@ impl From<asset::Erc20> for HttpAsset {
     }
 }
 
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+#[error("action not found")]
+pub struct ActionNotFound;
+
 #[cfg(test)]
 mod tests {
     use crate::{
         asset,
         asset::ethereum::FromWei,
         bitcoin::PublicKey,
-        ethereum::{Address, Hash, U256},
+        ethereum::{Address, ChainId, Hash, U256},
         http_api::{Http, HttpAsset, HttpLedger},
         swap_protocols::{
-            ledger::{bitcoin, ethereum, Ethereum},
-            HashFunction, SwapId, SwapProtocol,
+            ledger::{self},
+            rfc003::SwapId,
+            HashFunction, SwapProtocol,
         },
         transaction,
     };
@@ -597,9 +592,9 @@ mod tests {
     #[test]
     fn bitcoin_http_ledger_regtest_serializes_correctly_to_json() {
         let input = &[
-            HttpLedger::from(bitcoin::Mainnet),
-            HttpLedger::from(bitcoin::Testnet),
-            HttpLedger::from(bitcoin::Regtest),
+            HttpLedger::from(ledger::Bitcoin::Mainnet),
+            HttpLedger::from(ledger::Bitcoin::Testnet),
+            HttpLedger::from(ledger::Bitcoin::Regtest),
         ];
 
         let expected = &[
@@ -620,15 +615,15 @@ mod tests {
     #[test]
     fn ethereum_http_ledger_regtest_serializes_correctly_to_json() {
         let input = &[
-            HttpLedger::from(Ethereum::new(ethereum::ChainId::from(1))),
-            HttpLedger::from(Ethereum::new(ethereum::ChainId::from(3))),
-            HttpLedger::from(Ethereum::new(ethereum::ChainId::from(17))),
+            HttpLedger::from(ledger::Ethereum::new(ChainId::from(1))),
+            HttpLedger::from(ledger::Ethereum::new(ChainId::from(3))),
+            HttpLedger::from(ledger::Ethereum::new(ChainId::from(1337))),
         ];
 
         let expected = &[
             r#"{"name":"ethereum","chain_id":1}"#,
             r#"{"name":"ethereum","chain_id":3}"#,
-            r#"{"name":"ethereum","chain_id":17}"#,
+            r#"{"name":"ethereum","chain_id":1337}"#,
         ];
 
         let actual = input

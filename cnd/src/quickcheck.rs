@@ -1,23 +1,20 @@
 use crate::{
     asset,
     asset::ethereum::FromWei,
-    db::Swap,
-    ethereum::{Address, Bytes},
+    db::Rfc003Swap,
+    ethereum::{Address, Bytes, ChainId},
     identity,
     swap_protocols::{
-        ledger,
-        ledger::{bitcoin, ethereum::ChainId},
-        rfc003::{Accept, Request, SecretHash},
-        HashFunction, Role, SwapId,
+        ledger::{self},
+        rfc003::{Accept, Request, SecretHash, SwapId},
+        HashFunction,
     },
-    timestamp::Timestamp,
-    transaction,
+    transaction, Role, Timestamp,
 };
 use ::bitcoin::{
     hashes::{sha256d, Hash},
     secp256k1,
 };
-use impl_template::impl_template;
 use libp2p::PeerId;
 use quickcheck::{Arbitrary, Gen};
 use std::ops::Deref;
@@ -206,10 +203,16 @@ impl Arbitrary for Quickcheck<SecretHash> {
     }
 }
 
-#[impl_template]
-impl Arbitrary for Quickcheck<((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest))> {
-    fn arbitrary<G: Gen>(_g: &mut G) -> Self {
-        Quickcheck(__TYPE0__)
+impl Arbitrary for Quickcheck<ledger::Bitcoin> {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        let ledger = match g.next_u32() % 3 {
+            0 => ledger::Bitcoin::Mainnet,
+            1 => ledger::Bitcoin::Testnet,
+            2 => ledger::Bitcoin::Regtest,
+            _ => unreachable!(),
+        };
+
+        Quickcheck(ledger)
     }
 }
 
@@ -291,9 +294,9 @@ impl Arbitrary for Quickcheck<PeerId> {
     }
 }
 
-impl Arbitrary for Quickcheck<Swap> {
+impl Arbitrary for Quickcheck<Rfc003Swap> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(Swap {
+        Quickcheck(Rfc003Swap {
             swap_id: *Quickcheck::<SwapId>::arbitrary(g),
             role: *Quickcheck::<Role>::arbitrary(g),
             counterparty: Quickcheck::<PeerId>::arbitrary(g).0,

@@ -1,19 +1,17 @@
 use crate::{
     asset,
+    ethereum::ChainId,
     http_api::{problem, Http, MissingQueryParameters, UnexpectedQueryParameters},
     identity,
     swap_protocols::{
         actions::{
-            bitcoin::{SendToAddress, SpendOutput},
+            bitcoin::{self, SendToAddress, SpendOutput},
             ethereum, lnd,
             lnd::Chain,
         },
-        ledger,
         rfc003::{Secret, SecretHash},
-        SwapId,
     },
-    timestamp::Timestamp,
-    transaction,
+    transaction, LocalSwapId, RelativeTime, Timestamp,
 };
 use anyhow::Context;
 use blockchain_contracts::bitcoin::witness;
@@ -22,8 +20,16 @@ use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 use warp::http::StatusCode;
 
+pub mod rfc003 {
+    use crate::swap_protocols::rfc003::SwapId;
+
+    pub trait ToSirenAction {
+        fn to_siren_action(&self, id: &SwapId) -> siren::Action;
+    }
+}
+
 pub trait ToSirenAction {
-    fn to_siren_action(&self, id: &SwapId) -> siren::Action;
+    fn to_siren_action(&self, id: &LocalSwapId) -> siren::Action;
 }
 
 pub trait ListRequiredFields {
@@ -59,31 +65,31 @@ pub enum ActionResponseBody {
         data: crate::ethereum::Bytes,
         amount: asset::Ether,
         gas_limit: crate::ethereum::U256,
-        chain_id: ledger::ethereum::ChainId,
+        chain_id: ChainId,
     },
     EthereumCallContract {
         contract_address: identity::Ethereum,
         #[serde(skip_serializing_if = "Option::is_none")]
         data: Option<crate::ethereum::Bytes>,
         gas_limit: crate::ethereum::U256,
-        chain_id: ledger::ethereum::ChainId,
+        chain_id: ChainId,
         #[serde(skip_serializing_if = "Option::is_none")]
         min_block_timestamp: Option<Timestamp>,
     },
     LndAddHoldInvoice {
-        amount: Http<asset::Lightning>,
+        amount: Http<asset::Bitcoin>,
         secret_hash: SecretHash,
-        expiry: u32,
-        cltv_expiry: u32,
+        expiry: RelativeTime,
+        cltv_expiry: RelativeTime,
         chain: Http<Chain>,
         network: Http<bitcoin::Network>,
         self_public_key: identity::Lightning,
     },
     LndSendPayment {
         to_public_key: identity::Lightning,
-        amount: Http<asset::Lightning>,
+        amount: Http<asset::Bitcoin>,
         secret_hash: SecretHash,
-        final_cltv_delta: u32,
+        final_cltv_delta: RelativeTime,
         chain: Http<Chain>,
         network: Http<bitcoin::Network>,
         self_public_key: identity::Lightning,
@@ -98,7 +104,7 @@ pub enum ActionResponseBody {
 }
 
 impl ActionResponseBody {
-    fn bitcoin_broadcast_signed_transaction(
+    pub fn bitcoin_broadcast_signed_transaction(
         transaction: &transaction::Bitcoin,
         network: bitcoin::Network,
     ) -> Self {
@@ -112,7 +118,7 @@ impl ActionResponseBody {
         };
 
         ActionResponseBody::BitcoinBroadcastSignedTransaction {
-            hex: bitcoin::consensus::encode::serialize_hex(transaction),
+            hex: ::bitcoin::consensus::encode::serialize_hex(transaction),
             network: Http(network),
             min_median_block_time,
         }
@@ -141,7 +147,7 @@ impl IntoResponsePayload for SendToAddress {
     }
 }
 
-impl From<SendToAddress> for ActionResponseBody {
+impl From<bitcoin::SendToAddress> for ActionResponseBody {
     fn from(action: SendToAddress) -> Self {
         let SendToAddress {
             to,
@@ -153,6 +159,17 @@ impl From<SendToAddress> for ActionResponseBody {
             amount: amount.as_sat().to_string(),
             network: Http(network),
         }
+    }
+}
+
+impl From<bitcoin::BroadcastSignedTransaction> for ActionResponseBody {
+    fn from(
+        bitcoin::BroadcastSignedTransaction {
+            transaction,
+            network,
+        }: bitcoin::BroadcastSignedTransaction,
+    ) -> Self {
+        Self::bitcoin_broadcast_signed_transaction(&transaction, network)
     }
 }
 
@@ -257,6 +274,12 @@ impl From<ethereum::CallContract> for ActionResponseBody {
             chain_id,
             min_block_timestamp,
         }
+    }
+}
+
+impl From<comit::Never> for ActionResponseBody {
+    fn from(_: comit::Never) -> Self {
+        unreachable!("impl should be removed once ! type is stabilised")
     }
 }
 
@@ -418,8 +441,7 @@ impl IntoResponsePayload for Infallible {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{ethereum::U256, identity, swap_protocols::ledger::ethereum::ChainId};
-    use bitcoin::Address as BitcoinAddress;
+    use crate::{bitcoin::Address as BitcoinAddress, ethereum::U256, identity};
     use std::str::FromStr;
 
     #[test]
@@ -470,17 +492,17 @@ mod test {
 
         let input = &[
             ActionResponseBody::from(SendToAddress {
-                to: to.clone(),
+                to: to.clone().into(),
                 amount,
                 network: bitcoin::Network::Bitcoin,
             }),
             ActionResponseBody::from(SendToAddress {
-                to: to.clone(),
+                to: to.clone().into(),
                 amount,
                 network: bitcoin::Network::Testnet,
             }),
             ActionResponseBody::from(SendToAddress {
-                to,
+                to: to.into(),
                 amount,
                 network: bitcoin::Network::Regtest,
             }),

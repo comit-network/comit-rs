@@ -1,12 +1,10 @@
-#![allow(clippy::type_repetition_in_bounds)]
 use crate::{
     db::{DetermineTypes, LoadAcceptedSwap, Retrieve},
     init_swap::init_accepted_swap,
-    swap_protocols::Facade,
+    swap_protocols::Rfc003Facade,
 };
 
-#[allow(clippy::cognitive_complexity)]
-pub async fn load_swaps_from_database(facade: Facade) -> anyhow::Result<()> {
+pub async fn load_swaps_from_database(facade: Rfc003Facade) -> anyhow::Result<()> {
     tracing::debug!("loading swaps from database ...");
 
     for swap in Retrieve::all(&facade).await?.iter() {
@@ -15,7 +13,7 @@ pub async fn load_swaps_from_database(facade: Facade) -> anyhow::Result<()> {
 
         let types = DetermineTypes::determine_types(&facade, &swap_id).await?;
 
-        with_swap_types!(types, {
+        rfc003_with_swap_types!(types, {
             let accepted =
                 LoadAcceptedSwap::<AL, BL, AA, BA, AI, BI>::load_accepted_swap(&facade, &swap_id)
                     .await;

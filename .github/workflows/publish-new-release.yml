@@ -94,11 +94,23 @@ jobs:
 
           echo "::set-output name=version::$VERSION"
 
+      - name: Build docker image as ${{ steps.extract-version.outputs.version }} and latest
+        run: |
+          VERSION="${{ steps.extract-version.outputs.version }}"
+          docker build . -t comitnetwork/cnd:$VERSION -t comitnetwork/cnd:latest
+
+      - name: Test docker image by starting it and curling the cnd API
+        run: |
+          VERSION="${{ steps.extract-version.outputs.version }}"
+          echo "::starting docker-container comitnetwork/cnd:$VERSION"
+          docker run --publish 8000:8000 --detach --name cnd_container comitnetwork/cnd:$VERSION
+          curl --fail localhost:8000/
+          echo "::cnd API curled successfully"
+          docker stop cnd_container
+
       - name: Publish docker image as ${{ steps.extract-version.outputs.version }} and latest
         run: |
           VERSION="${{ steps.extract-version.outputs.version }}"
-
-          docker build . -t comitnetwork/cnd:$VERSION -t comitnetwork/cnd:latest
           docker push comitnetwork/cnd:$VERSION
           docker push comitnetwork/cnd:latest
 
@@ -106,7 +118,7 @@ jobs:
   release:
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/') # only merged release branches must trigger this
     name: Create GitHub release
-    needs: build_binary
+    needs: [build_binary, create_docker_image]
     runs-on: ubuntu-latest
     steps:
       - name: Extract version from branch name

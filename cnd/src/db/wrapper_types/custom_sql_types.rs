@@ -1,4 +1,4 @@
-use crate::timestamp::Timestamp;
+use crate::{RelativeTime, Timestamp};
 use diesel::{
     backend::Backend,
     deserialize::{self, FromSql},
@@ -93,5 +93,11 @@ impl From<U32> for u32 {
 impl From<U32> for Timestamp {
     fn from(value: U32) -> Timestamp {
         Timestamp::from(value.0)
+    }
+}
+
+impl From<U32> for RelativeTime {
+    fn from(value: U32) -> RelativeTime {
+        RelativeTime::from(value.0)
     }
 }

@@ -1,10 +1,15 @@
-/// A suite of tests that ensures the serialization format of the types we use
-/// to interact with the database. Changing the format needs to be a conscious
-/// activity that involves migration scripts to migrate old data. These tests
-/// make sure we don't change the format accidentally!
+//! A suite of tests that ensures the serialization format of the types we use
+//! to interact with the database. Changing the format needs to be a conscious
+//! activity that involves migration scripts to migrate old data. These tests
+//! make sure we don't change the format accidentally!
+
 use crate::{
     db::wrapper_types::{Erc20Amount, Ether, EthereumAddress, Satoshis},
-    swap_protocols::{rfc003::SecretHash, HashFunction, SwapId},
+    swap_protocols::{
+        rfc003::{SecretHash, SwapId},
+        HashFunction,
+    },
+    Protocol,
 };
 use std::{fmt, str::FromStr};
 
@@ -58,6 +63,14 @@ fn secrethash() {
     roundtrip_test::<SecretHash>(
         "68917b35bacf71dbadf37628b3b7f290f6d88877d7b2269008d893ae7bd4f9ee",
     );
+}
+
+#[test]
+fn protocol() {
+    roundtrip_test::<Protocol>("halbit");
+    roundtrip_test::<Protocol>("hbit");
+    roundtrip_test::<Protocol>("herc20");
+    assert_num_variants::<Protocol>(3)
 }
 
 /// Given a string representation of a value T, this function will assert

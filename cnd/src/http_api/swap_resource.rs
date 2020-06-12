@@ -1,16 +1,18 @@
 #![allow(clippy::type_repetition_in_bounds)]
 
 use crate::{
-    db::{Swap, SwapTypes},
+    db::{Rfc003Swap, SwapTypes},
     http_api::{
-        action::ToSirenAction,
-        route_factory::swap_path,
+        action::rfc003::ToSirenAction,
+        route_factory,
         routes::rfc003::{LedgerState, SwapCommunication, SwapState},
         Http, HttpAsset, HttpLedger,
     },
-    seed::DeriveSwapSeed,
+    seed::Rfc003DeriveSwapSeed,
     swap_protocols::{
-        actions::Actions, rfc003, state::Get, Facade, HashFunction, SwapId, SwapProtocol,
+        actions::Actions,
+        rfc003::{self, state::Get, SwapId},
+        HashFunction, Rfc003Facade, SwapProtocol,
     },
 };
 use anyhow::anyhow;
@@ -80,15 +82,15 @@ pub enum OnFail {
 // `with_swap_types!` macro and can be iteratively improved
 #[allow(clippy::cognitive_complexity)]
 pub async fn build_rfc003_siren_entity(
-    dependencies: &Facade,
-    swap: Swap,
+    dependencies: &Rfc003Facade,
+    swap: Rfc003Swap,
     types: SwapTypes,
     include_state: IncludeState,
     on_fail: OnFail,
 ) -> anyhow::Result<siren::Entity> {
     let id = swap.swap_id;
 
-    with_swap_types!(types, {
+    rfc003_with_swap_types!(types, {
         let swap_has_failed = dependencies.swap_error_states.has_failed(&id).await;
 
         if swap_has_failed && on_fail == OnFail::Error {
@@ -102,12 +104,12 @@ pub async fn build_rfc003_siren_entity(
             .await?
             .ok_or_else(|| anyhow::anyhow!("swap communication state not found for {}", id))?;
         let alpha_ledger_state: rfc003::LedgerState<AA, AH, AT> = dependencies
-            .alpha_ledger_state
+            .alpha_ledger_states
             .get(&id)
             .await?
             .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", id))?;
         let beta_ledger_state: rfc003::LedgerState<BA, BH, BT> = dependencies
-            .beta_ledger_state
+            .beta_ledger_states
             .get(&id)
             .await?
             .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;
@@ -117,7 +119,7 @@ pub async fn build_rfc003_siren_entity(
         let beta_ledger = LedgerState::from(beta_ledger_state.clone());
         let parameters = SwapParameters::from(swap_communication.request().clone());
 
-        let secret_source = dependencies.derive_swap_seed(id);
+        let secret_source = dependencies.rfc003_derive_swap_seed(id);
 
         let actions = {
             let state = RoleState::new(
@@ -154,15 +156,14 @@ pub async fn build_rfc003_siren_entity(
 
         let entity = siren::Entity::default()
             .with_class_member("swap")
-            .with_properties(swap)
-            .map_err(|e| {
-                tracing::error!("failed to set properties of entity: {:?}", e);
-                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
-            })?
-            .with_link(siren::NavigationalLink::new(&["self"], swap_path(id)))
+            .with_properties(swap)?
+            .with_link(siren::NavigationalLink::new(
+                &["self"],
+                route_factory::rfc003_swap_path(id),
+            ))
             .with_link(
                 siren::NavigationalLink::new(
-                    &["describedBy"],
+                    &["describedby"],
                     "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.adoc",
                 )
                 .with_type("text/html")

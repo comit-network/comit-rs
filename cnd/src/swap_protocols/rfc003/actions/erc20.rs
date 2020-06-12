@@ -1,13 +1,13 @@
 use crate::{
     asset,
-    ethereum::Bytes,
+    ethereum::{Bytes, ChainId},
     htlc_location, identity,
     swap_protocols::{
         actions::ethereum::{CallContract, DeployContract},
-        ledger::{ethereum::ChainId, Ethereum},
+        ledger::Ethereum,
         rfc003::{create_swap::HtlcParams, Secret},
     },
-    timestamp::Timestamp,
+    Timestamp,
 };
 use blockchain_contracts::ethereum::rfc003::erc20_htlc::Erc20Htlc;
 

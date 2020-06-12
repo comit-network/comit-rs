@@ -1,4 +1,5 @@
-import { mkdirAsync, rimrafAsync } from "../utils";
+import { rimrafAsync } from "../utils";
+import { promises as asyncFs } from "fs";
 import path from "path";
 import killNodes from "./kill_nodes";
 
@@ -10,11 +11,11 @@ export default async (config: any) => {
 
     // make sure we have a clean log dir
     await rimrafAsync(logDir);
-    await mkdirAsync(logDir, { recursive: true });
+    await asyncFs.mkdir(logDir, { recursive: true });
 
     // make sure we don't have any left-over processes
     await killNodes(locksDir);
-    await mkdirAsync(locksDir, { recursive: true });
+    await asyncFs.mkdir(locksDir, { recursive: true });
 
     process.on("SIGINT", () => {
         process.stderr.write("SIGINT caught, cleaning up environment ...\n");

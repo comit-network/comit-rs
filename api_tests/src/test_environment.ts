@@ -1,12 +1,6 @@
 import { Config } from "@jest/types";
-import {
-    execAsync,
-    existsAsync,
-    HarnessGlobal,
-    mkdirAsync,
-    readFileAsync,
-    writeFileAsync,
-} from "./utils";
+import { execAsync, existsAsync, HarnessGlobal } from "./utils";
+import { promises as asyncFs } from "fs";
 import NodeEnvironment from "jest-environment-node";
 import path from "path";
 import { LightningWallet } from "./wallets/lightning";
@@ -20,8 +14,9 @@ import ledgerLock from "./ledgers/ledger_lock";
 import BitcoinMinerInstance from "./ledgers/bitcoin_miner_instance";
 import { EthereumWallet } from "./wallets/ethereum";
 import { LedgerInstance, LightningNodeConfig } from "./ledgers";
-import { ParityInstance } from "./ledgers/parity_instance";
+import { GethInstance } from "./ledgers/geth_instance";
 import { LndInstance } from "./ledgers/lnd_instance";
+import BitcoinRpcClient from "bitcoin-core";
 
 export default class TestEnvironment extends NodeEnvironment {
     private readonly testSuite: string;
@@ -86,7 +81,7 @@ export default class TestEnvironment extends NodeEnvironment {
         });
 
         const testLogDir = path.join(this.logDir, "tests", this.testSuite);
-        await mkdirAsync(testLogDir, { recursive: true });
+        await asyncFs.mkdir(testLogDir, { recursive: true });
 
         this.global.getLogFile = (pathElements) =>
             path.join(testLogDir, ...pathElements);
@@ -99,11 +94,11 @@ export default class TestEnvironment extends NodeEnvironment {
 
         this.global.getDataDir = async (program) => {
             const dir = path.join(this.logDir, program);
-            await mkdirAsync(dir, { recursive: true });
+            await asyncFs.mkdir(dir, { recursive: true });
 
             return dir;
         };
-        this.global.parityLockDir = await this.getLockDirectory("parity");
+        this.global.gethLockDir = await this.getLockDirectory("geth");
 
         this.logger.info("Starting up test environment");
 
@@ -113,19 +108,7 @@ export default class TestEnvironment extends NodeEnvironment {
     async teardown() {
         await super.teardown();
 
-        await this.cleanupAll();
-
         loggerShutdown();
-    }
-
-    async cleanupAll() {
-        const tasks = [];
-
-        for (const [, wallet] of Object.entries(this.global.lndWallets)) {
-            tasks.push(wallet.close());
-        }
-
-        await Promise.all(tasks);
     }
 
     /**
@@ -170,14 +153,31 @@ export default class TestEnvironment extends NodeEnvironment {
         const config = await this.startLedger(
             lockDir,
             bitcoind,
-            async (bitcoind) => bitcoind.config
+            async (bitcoind) => {
+                const config = bitcoind.config;
+                const rpcClient = new BitcoinRpcClient({
+                    network: config.network,
+                    port: config.rpcPort,
+                    host: config.host,
+                    username: config.username,
+                    password: config.password,
+                });
+
+                const name = "miner";
+                await rpcClient.createWallet(name);
+
+                this.logger.info(`Created miner wallet with name ${name}`);
+
+                return { ...bitcoind.config, minerWallet: name };
+            }
         );
 
         const minerPidFile = path.join(lockDir, "miner.pid");
 
-        const minerAlreadyRunning = await existsAsync(minerPidFile);
-
-        if (!minerAlreadyRunning) {
+        try {
+            await existsAsync(minerPidFile);
+        } catch (e) {
+            // miner is not running
             const tsNode = path.join(this.nodeModulesBinDir, "ts-node");
             const minerProgram = path.join(this.srcDir, "bitcoin_miner.ts");
 
@@ -201,38 +201,38 @@ export default class TestEnvironment extends NodeEnvironment {
      * Once this function returns, the necessary configuration values have been set inside the test environment.
      */
     private async startEthereum() {
-        const lockDir = await this.getLockDirectory("parity");
+        const lockDir = await this.getLockDirectory("geth");
         const release = await ledgerLock(lockDir);
 
-        const parity = await ParityInstance.new(
-            await this.global.getDataDir("parity"),
-            path.join(lockDir, "parity.pid"),
+        const geth = await GethInstance.new(
+            await this.global.getDataDir("geth"),
+            path.join(lockDir, "geth.pid"),
             this.logger
         );
-        const config = await this.startLedger(
-            lockDir,
-            parity,
-            async (parity) => {
-                const rpcUrl = parity.rpcUrl;
+        const config = await this.startLedger(lockDir, geth, async (geth) => {
+            const rpcUrl = geth.rpcUrl;
+            const devAccountKey = geth.devAccountKey();
+            const erc20Wallet = await EthereumWallet.new_instance(
+                devAccountKey,
+                rpcUrl,
+                this.logger,
+                lockDir,
+                geth.CHAIN_ID
+            );
+            const erc20TokenContract = await erc20Wallet.deployErc20TokenContract();
 
-                const erc20Wallet = new EthereumWallet(
-                    rpcUrl,
-                    this.logger,
-                    lockDir
-                );
-                const erc20TokenContract = await erc20Wallet.deployErc20TokenContract();
+            this.logger.info(
+                "ERC20 token contract deployed at",
+                erc20TokenContract
+            );
 
-                this.logger.info(
-                    "ERC20 token contract deployed at",
-                    erc20TokenContract
-                );
-
-                return {
-                    rpc_url: rpcUrl,
-                    tokenContract: erc20TokenContract,
-                };
-            }
-        );
+            return {
+                rpc_url: rpcUrl,
+                tokenContract: erc20TokenContract,
+                dev_account_key: devAccountKey,
+                chain_id: geth.CHAIN_ID,
+            };
+        });
 
         this.global.ledgerConfigs.ethereum = config;
         this.global.tokenContract = config.tokenContract;
@@ -350,26 +350,27 @@ export default class TestEnvironment extends NodeEnvironment {
         const configFile = path.join(lockDir, "config.json");
 
         this.logger.info("Checking for config file ", configFile);
-        const configFileExists = await existsAsync(configFile);
 
-        if (configFileExists) {
+        try {
+            await existsAsync(configFile);
+
             this.logger.info(
                 "Found config file, we'll be using that configuration instead of starting another instance"
             );
 
-            const config = await readFileAsync(configFile, {
+            const config = await asyncFs.readFile(configFile, {
                 encoding: "utf-8",
             });
 
             return JSON.parse(config);
-        } else {
+        } catch (e) {
             this.logger.info("No config file found, starting ledger");
 
             await instance.start();
 
             const config = await makeConfig(instance);
 
-            await writeFileAsync(configFile, JSON.stringify(config), {
+            await asyncFs.writeFile(configFile, JSON.stringify(config), {
                 encoding: "utf-8",
             });
 
@@ -382,7 +383,7 @@ export default class TestEnvironment extends NodeEnvironment {
     private async getLockDirectory(process: string): Promise<string> {
         const dir = path.join(this.locksDir, process);
 
-        await mkdirAsync(dir, {
+        await asyncFs.mkdir(dir, {
             recursive: true,
         });
 

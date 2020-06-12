@@ -1,7 +1,7 @@
 import { threeActorTest } from "../src/actor_test";
 import { createDefaultSwapRequest } from "../src/utils";
-import { expect } from "chai";
 import { SwapDetails } from "comit-sdk";
+import { Rfc003Actor } from "../src/actors/rfc003_actor";
 
 interface MatchInterface {
     id: string;
@@ -23,14 +23,19 @@ function toMatch(swapDetail: SwapDetails): MatchInterface {
 describe("Multiple peers tests", () => {
     it(
         "alice-sends-swap-request-to-bob-and-charlie",
-        threeActorTest(async ({ alice, bob, charlie }) => {
+        threeActorTest(async (actors) => {
+            const [alice, bob, charlie] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+                actors.charlie,
+            ]);
             // Alice send swap request to Bob
-            const aliceToBobSwapUrl = await alice.cnd.postSwap(
+            const aliceToBobSwapUrl = await alice.actor.cnd.postSwap(
                 await createDefaultSwapRequest(bob)
             );
 
             // Alice send swap request to Charlie
-            const aliceToCharlieSwapUrl = await alice.cnd.postSwap(
+            const aliceToCharlieSwapUrl = await alice.actor.cnd.postSwap(
                 await createDefaultSwapRequest(charlie)
             );
 
@@ -51,24 +56,21 @@ describe("Multiple peers tests", () => {
                 aliceToCharlieSwapUrl
             );
 
-            expect(
-                bobSwapDetails.properties,
-                "[Bob] should have same id as Alice"
-            ).to.have.property("id", aliceToBobSwapDetails.properties.id);
-            expect(
-                charlieSwapDetails.properties,
-                "[Charlie] should have same id as Alice"
-            ).to.have.property("id", aliceToCharlieSwapDetails.properties.id);
+            expect(bobSwapDetails.properties).toHaveProperty(
+                "id",
+                aliceToBobSwapDetails.properties.id
+            );
+            expect(charlieSwapDetails.properties).toHaveProperty(
+                "id",
+                aliceToCharlieSwapDetails.properties.id
+            );
 
-            expect(
-                [
-                    aliceToBobSwapDetails,
-                    aliceToCharlieSwapDetails,
-                ].map((swapDetail) => toMatch(swapDetail))
-            ).to.have.deep.members([
-                toMatch(bobSwapDetails),
-                toMatch(charlieSwapDetails),
-            ]);
+            expect(toMatch(aliceToBobSwapDetails)).toMatchObject(
+                toMatch(bobSwapDetails)
+            );
+            expect(toMatch(aliceToCharlieSwapDetails)).toMatchObject(
+                toMatch(charlieSwapDetails)
+            );
         })
     );
 });

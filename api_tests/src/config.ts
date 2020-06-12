@@ -6,7 +6,8 @@ import {
     BitcoinNodeConfig,
     EthereumNodeConfig,
 } from "./ledgers";
-import { ActorNames } from "./actors/actor";
+import { ActorName } from "./actors/actor";
+import { Logger } from "log4js";
 
 export interface CndConfigFile {
     http_api: HttpApi;
@@ -22,14 +23,20 @@ export interface HttpApi {
 export class E2ETestActorConfig {
     public readonly data: string;
 
-    public static async for(name: ActorNames) {
-        return new E2ETestActorConfig(await getPort(), await getPort(), name);
+    public static async for(name: ActorName, logger: Logger) {
+        return new E2ETestActorConfig(
+            await getPort(),
+            await getPort(),
+            name,
+            logger
+        );
     }
 
     constructor(
         public readonly httpApiPort: number,
         public readonly comitPort: number,
-        public readonly name: ActorNames
+        public readonly name: ActorName,
+        private readonly logger: Logger
     ) {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;
@@ -88,7 +95,7 @@ export class E2ETestActorConfig {
             }
             case "charlie":
                 {
-                    console.warn(
+                    this.logger.warn(
                         "generating lnd config for charlie is not supported at this stage"
                     );
                 }
@@ -105,13 +112,13 @@ interface LedgerConnectors {
     lightning?: LightningConnector;
 }
 
-interface Parity {
+interface Geth {
     node_url: string;
 }
 
 interface EthereumConnector {
     chain_id: number;
-    parity: Parity;
+    geth: Geth;
 }
 
 interface Bitcoind {
@@ -144,8 +151,8 @@ function bitcoinConnector(nodeConfig: BitcoinNodeConfig): BitcoinConnector {
 
 function ethereumConnector(nodeConfig: EthereumNodeConfig): EthereumConnector {
     return {
-        chain_id: 17,
-        parity: {
+        chain_id: nodeConfig.chain_id,
+        geth: {
             node_url: nodeConfig.rpc_url,
         },
     };

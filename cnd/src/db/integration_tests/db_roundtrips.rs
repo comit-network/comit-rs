@@ -3,38 +3,36 @@ use crate::{
     db::{
         load_swaps::LoadAcceptedSwap,
         swap_types::{DetermineTypes, SwapTypes},
-        AssetKind, BitcoinLedgerKind, LedgerKind, Retrieve, Save, Sqlite, Swap,
+        AssetKind, LedgerKind, Retrieve, Rfc003Swap, Save, Sqlite,
     },
     identity,
     quickcheck::Quickcheck,
     swap_protocols::{
-        ledger::Ethereum,
+        ledger::{self, Ethereum},
         rfc003::{Accept, Request},
     },
 };
-use std::path::Path;
 
-use crate::swap_protocols::ledger::bitcoin::{Mainnet, Regtest, Testnet};
 macro_rules! db_roundtrip_test {
     ($alpha_ledger:ident, $beta_ledger:ident, $alpha_asset:ident, $beta_asset:ident, $alpha_identity:ident, $beta_identity:ident, $expected_swap_types_fn:expr) => {
         paste::item! {
             #[test]
             #[allow(non_snake_case, clippy::redundant_closure_call)]
             fn [<roundtrip_test_ $alpha_ledger _ $beta_ledger _ $alpha_asset _ $beta_asset>]() {
-                fn prop(swap: Quickcheck<Swap>,
+                fn prop(swap: Quickcheck<Rfc003Swap>,
                         request: Quickcheck<Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset, $alpha_identity, $beta_identity>>,
                         accept: Quickcheck<Accept<$alpha_identity, $beta_identity>>,
                 ) -> anyhow::Result<bool> {
 
                     // unpack the swap from the generic newtype
-                    let Swap { swap_id, role, counterparty } = swap.0;
+                    let Rfc003Swap { swap_id, role, counterparty } = swap.0;
 
                     // construct the expected swap types from the function we get passed in order to enrich it with the role
                     let expected_swap_types = ($expected_swap_types_fn)(role);
 
-                    let db = Sqlite::new(&Path::new(":memory:"))?;
+                    let db = Sqlite::test();
 
-                    let saved_swap = Swap {
+                    let saved_swap = Rfc003Swap {
                         swap_id,
                         role,
                         counterparty
@@ -71,7 +69,7 @@ macro_rules! db_roundtrip_test {
                 }
 
                 quickcheck::quickcheck(prop as fn(
-                    Quickcheck<Swap>,
+                    Quickcheck<Rfc003Swap>,
                     Quickcheck<Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset, $alpha_identity, $beta_identity>>,
                     Quickcheck<Accept<$alpha_identity, $beta_identity>>,
                 ) -> anyhow::Result<bool>);
@@ -82,9 +80,10 @@ macro_rules! db_roundtrip_test {
 
 // do_roundtrip_test! does not seem to like being called with `::` in an ident.
 use identity::{Bitcoin as BitcoinIdentity, Ethereum as EthereumIdentity};
+use ledger::Bitcoin as BitcoinLedger;
 
 db_roundtrip_test!(
-    Mainnet,
+    BitcoinLedger,
     Ethereum,
     BitcoinAsset,
     Ether,
@@ -92,7 +91,7 @@ db_roundtrip_test!(
     EthereumIdentity,
     |role| {
         SwapTypes {
-            alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
+            alpha_ledger: LedgerKind::Bitcoin,
             beta_ledger: LedgerKind::Ethereum,
             alpha_asset: AssetKind::Bitcoin,
             beta_asset: AssetKind::Ether,
@@ -102,43 +101,7 @@ db_roundtrip_test!(
 );
 
 db_roundtrip_test!(
-    Testnet,
-    Ethereum,
-    BitcoinAsset,
-    Ether,
-    BitcoinIdentity,
-    EthereumIdentity,
-    |role| {
-        SwapTypes {
-            alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Testnet),
-            beta_ledger: LedgerKind::Ethereum,
-            alpha_asset: AssetKind::Bitcoin,
-            beta_asset: AssetKind::Ether,
-            role,
-        }
-    }
-);
-
-db_roundtrip_test!(
-    Regtest,
-    Ethereum,
-    BitcoinAsset,
-    Ether,
-    BitcoinIdentity,
-    EthereumIdentity,
-    |role| {
-        SwapTypes {
-            alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Regtest),
-            beta_ledger: LedgerKind::Ethereum,
-            alpha_asset: AssetKind::Bitcoin,
-            beta_asset: AssetKind::Ether,
-            role,
-        }
-    }
-);
-
-db_roundtrip_test!(
-    Mainnet,
+    BitcoinLedger,
     Ethereum,
     BitcoinAsset,
     Erc20,
@@ -146,7 +109,7 @@ db_roundtrip_test!(
     EthereumIdentity,
     |role| {
         SwapTypes {
-            alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
+            alpha_ledger: LedgerKind::Bitcoin,
             beta_ledger: LedgerKind::Ethereum,
             alpha_asset: AssetKind::Bitcoin,
             beta_asset: AssetKind::Erc20,
@@ -157,7 +120,7 @@ db_roundtrip_test!(
 
 db_roundtrip_test!(
     Ethereum,
-    Mainnet,
+    BitcoinLedger,
     Ether,
     BitcoinAsset,
     EthereumIdentity,
@@ -165,16 +128,17 @@ db_roundtrip_test!(
     |role| {
         SwapTypes {
             alpha_ledger: LedgerKind::Ethereum,
-            beta_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
+            beta_ledger: LedgerKind::Bitcoin,
             alpha_asset: AssetKind::Ether,
             beta_asset: AssetKind::Bitcoin,
             role,
         }
     }
 );
+
 db_roundtrip_test!(
     Ethereum,
-    Mainnet,
+    BitcoinLedger,
     Erc20,
     BitcoinAsset,
     EthereumIdentity,
@@ -182,7 +146,7 @@ db_roundtrip_test!(
     |role| {
         SwapTypes {
             alpha_ledger: LedgerKind::Ethereum,
-            beta_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
+            beta_ledger: LedgerKind::Bitcoin,
             alpha_asset: AssetKind::Erc20,
             beta_asset: AssetKind::Bitcoin,
             role,

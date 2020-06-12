@@ -1,6 +1,6 @@
 use crate::config::{
     default_lnd_cert_path, default_lnd_readonly_macaroon_path, file, Bitcoin, Bitcoind, Data,
-    Ethereum, File, Lightning, Lnd, Network, Parity,
+    Ethereum, File, Geth, Lightning, Lnd, Network,
 };
 use anyhow::Context;
 use log::LevelFilter;
@@ -54,18 +54,18 @@ fn derive_url_ethereum(ethereum: Option<file::Ethereum>) -> Ethereum {
     match ethereum {
         None => Ethereum::default(),
         Some(ethereum) => {
-            let node_url = match ethereum.parity {
+            let node_url = match ethereum.geth {
                 None => {
                     // default is always localhost:8545
                     "http://localhost:8545"
                         .parse()
                         .expect("to be valid static string")
                 }
-                Some(parity) => parity.node_url,
+                Some(geth) => geth.node_url,
             };
             Ethereum {
                 chain_id: ethereum.chain_id,
-                parity: Parity { node_url },
+                geth: Geth { node_url },
             }
         }
     }
@@ -200,7 +200,7 @@ impl Settings {
             data: {
                 let default_data_dir =
                     crate::data_dir().context("unable to determine default data path")?;
-                data.unwrap_or_else(|| Data {
+                data.unwrap_or(Data {
                     dir: default_data_dir,
                 })
             },
@@ -244,7 +244,7 @@ impl Settings {
 mod tests {
 
     use super::*;
-    use crate::{config::file, swap_protocols::ledger::ethereum};
+    use crate::{config::file, ethereum::ChainId};
     use spectral::prelude::*;
     use std::net::IpAddr;
 
@@ -380,8 +380,8 @@ mod tests {
             .is_ok()
             .map(|settings| &settings.ethereum)
             .is_equal_to(Ethereum {
-                chain_id: ethereum::ChainId::regtest(),
-                parity: Parity {
+                chain_id: ChainId::regtest(),
+                geth: Geth {
                     node_url: "http://localhost:8545".parse().unwrap(),
                 },
             })
@@ -390,15 +390,15 @@ mod tests {
     #[test]
     fn ethereum_defaults_chain_id_only() {
         let defaults = vec![
-            (ethereum::ChainId::mainnet(), "http://localhost:8545"),
-            (ethereum::ChainId::ropsten(), "http://localhost:8545"),
-            (ethereum::ChainId::regtest(), "http://localhost:8545"),
+            (ChainId::mainnet(), "http://localhost:8545"),
+            (ChainId::ropsten(), "http://localhost:8545"),
+            (ChainId::regtest(), "http://localhost:8545"),
         ];
 
         for (chain_id, url) in defaults {
             let ethereum = Some(file::Ethereum {
                 chain_id,
-                parity: None,
+                geth: None,
             });
             let config_file = File {
                 ethereum,
@@ -412,7 +412,7 @@ mod tests {
                 .map(|settings| &settings.ethereum)
                 .is_equal_to(Ethereum {
                     chain_id,
-                    parity: Parity {
+                    geth: Geth {
                         node_url: url.parse().unwrap(),
                     },
                 })

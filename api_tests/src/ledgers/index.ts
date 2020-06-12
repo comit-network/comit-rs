@@ -1,5 +1,7 @@
+import { BitcoinNetwork as Network } from "comit-sdk";
+
 export interface BitcoinNodeConfig {
-    network: string;
+    network: Network;
     username: string;
     password: string;
     host: string;
@@ -7,6 +9,7 @@ export interface BitcoinNodeConfig {
     rpcUrl: string;
     p2pPort: number;
     dataDir: string;
+    minerWallet?: string;
 }
 
 export interface LightningNodeConfig {
@@ -21,6 +24,8 @@ export interface LightningNodeConfig {
 export interface EthereumNodeConfig {
     rpc_url: string;
     tokenContract: string;
+    dev_account_key: string;
+    chain_id: number;
 }
 
 export interface LedgerInstance {

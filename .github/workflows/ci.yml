@@ -2,32 +2,35 @@ name: CI
 
 on:
   push:
-    branches-ignore:
-      - 'staging.tmp'
-      - 'trying.tmp'
+    branches:
+      - 'staging'
+      - 'trying'
+      - 'master'
+      - 'dev'
+  pull_request:
 
 jobs:
   static_analysis:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
 
-      - name: Extract toolchain version from rust-toolchain
-        run: echo "::set-env name=RUST_TOOLCHAIN::$(cat rust-toolchain)"
-
-      - name: Install ${{ env.RUST_TOOLCHAIN }} toolchain
+      - name: Install Rust
+        id: toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
           override: true
 
-      - name: Cache ~/.cargo/bin directory
-        uses: actions/cache@v1
+      - name: Cache cargo binaries, registry and target directory
+        uses: actions/cache@v2
         with:
-          path: ~/.cargo/bin
-          key: ubuntu-rust-${{ env.RUST_TOOLCHAIN }}-cargo-bin-directory
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+            target
+          key: ubuntu-rust-${{ steps.toolchain.outputs.rustc-hash }}
 
       - name: Check formatting
         run: make check_format
@@ -38,87 +41,95 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            e2e: true
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
 
-      - name: Extract toolchain version from rust-toolchain
-        run: echo "::set-env name=RUST_TOOLCHAIN::$(cat rust-toolchain)"
-
-      - name: Install ${{ env.RUST_TOOLCHAIN }} toolchain
+      - name: Install Rust
         uses: actions-rs/toolchain@v1
+        id: toolchain
         with:
           profile: minimal
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
           override: true
 
-      - name: Cache target directory
-        uses: actions/cache@v1
+      - name: Cache cargo binaries, registry and target directory
+        uses: actions/cache@v2
         with:
-          path: target
-          key: ${{ matrix.os }}-rust-${{ env.RUST_TOOLCHAIN }}-target-directory-${{ hashFiles('Cargo.lock') }}
-
-      - name: Cache ~/.cargo/registry directory
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/registry
-          key: ${{ matrix.os }}-rust-${{ env.RUST_TOOLCHAIN }}-cargo-registry-directory-${{ hashFiles('Cargo.lock') }}
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+            target
+          key: ubuntu-rust-${{ steps.toolchain.outputs.rustc-hash }}
 
       - name: Build ${{ matrix.os }} binary
         run: make build
 
+      - name: Build docs
+        run: make doc
+
       # Ignore tests on macos due to missing docker
       - name: Run unit tests
-        if: matrix.os != 'macos-latest'
+        if: matrix.os == 'ubuntu-latest'
         run: make test
 
       - name: Upload cnd-${{ matrix.os }} archive that contains the cnd binary
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v1
         with:
           name: cnd-${{ matrix.os }}
           path: target/debug/cnd
 
-  e2e_test:
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    needs: build
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v1
-
-      - name: Download cnd-${{ matrix.os }} archive and extract cnd binary
-        uses: actions/download-artifact@v1
-        with:
-          name: cnd-${{ matrix.os }}
-          path: target/debug/
-
-      - name: Fix missing executable permission
-        run: |
-          chmod a+x target/debug/cnd
-
+      ## Run e2e tests
       - name: Install NodeJS 12.x
+        if: matrix.e2e
         uses: actions/setup-node@v1
         with:
           node-version: '12.x'
 
-      - name: Install Go 1.13.3.
-        uses: actions/setup-go@v1
+      - name: Cache node_modules directory
+        if: matrix.e2e
+        uses: actions/cache@v2
         with:
-          go-version: '1.13.3'
-
-      - name: Install LND v0.9.1-beta
-        run: |
-          go get -d github.com/lightningnetwork/lnd
-          cd ~/go/src/github.com/lightningnetwork/lnd
-          git checkout v0.9.1-beta
-          make tags=invoicesrpc
-          make tags=invoicesrpc install
+          path: api_tests/node_modules
+          key: ${{ matrix.os }}-node-modules-directory-${{ hashFiles('api_tests/package.json') }}
 
       - name: Run e2e tests
+        if: matrix.e2e
         run: |
-          export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$HOME/go/bin:$PATH
-          make ci_gha
+          export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH
+          cd api_tests
+          yarn install
+          yarn ci
+
+      - name: Upload bitcoind log
+        if: matrix.e2e && failure()
+        uses: actions/upload-artifact@v2-preview
+        with:
+          name: e2e-logs-bitcoind.log
+          path: api_tests/log/bitcoind/regtest/debug.log
+
+      - name: Upload parity log
+        if: matrix.e2e && failure()
+        uses: actions/upload-artifact@v2-preview
+        with:
+          name: e2e-logs-parity.log
+          path: api_tests/log/parity/parity.log
+
+      - name: Upload lnd logs
+        if: matrix.e2e && failure()
+        uses: actions/upload-artifact@v2-preview
+        with:
+          name: e2e-logs-lnd
+          path: api_tests/log/lnd-*/logs/bitcoin/regtest/lnd.log
+
+      - name: Upload e2e logs
+        if: matrix.e2e && failure()
+        uses: actions/upload-artifact@v2-preview
+        with:
+          name: e2e-test-logs
+          path: api_tests/log/tests/

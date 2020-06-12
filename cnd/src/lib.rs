@@ -18,7 +18,6 @@
 // an enum created by `strum_discriminants`.
 #[macro_use]
 extern crate strum_macros;
-
 #[macro_use]
 extern crate diesel;
 #[macro_use]
@@ -28,30 +27,37 @@ extern crate diesel_migrations;
 pub mod libp2p_comit_ext;
 #[macro_use]
 pub mod db;
-
-pub mod asset;
-pub mod bitcoin;
-pub mod btsieve;
-pub mod comit_api;
-pub mod config;
-pub mod ethereum;
-pub mod http_api;
-pub mod init_swap;
-pub mod lightning;
-pub mod lnd;
-pub mod load_swaps;
 #[macro_use]
 pub mod network;
 #[cfg(test)]
+pub mod proptest;
+#[cfg(test)]
 pub mod quickcheck;
 #[macro_use]
-pub mod seed;
-pub mod file_lock;
-pub mod jsonrpc;
+mod seed;
 #[cfg(test)]
 pub mod spectral_ext;
+#[macro_use]
+pub mod with_swap_types;
+
+mod actions;
+pub mod comit_api;
+pub mod config;
+pub mod connectors;
+mod facade;
+pub mod file_lock;
+pub mod halbit;
+pub mod hbit;
+pub mod herc20;
+pub mod http_api;
+pub mod init_swap;
+pub mod load_swaps;
+pub mod protocol_spawner;
+pub mod respawn;
+pub mod spawn;
+pub mod storage;
 pub mod swap_protocols;
-pub mod timestamp;
+mod tracing_ext;
 
 use anyhow::Context;
 use std::{
@@ -59,28 +65,15 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// Define domain specific terms using identity module so that we can refer to
-/// things in an ergonomic fashion e.g., `identity::Bitcoin`.
-pub mod identity {
-    pub use crate::{
-        bitcoin::PublicKey as Bitcoin, ethereum::Address as Ethereum,
-        lightning::PublicKey as Lightning,
-    };
-}
-
-/// Define domain specific terms using transaction module so that we can refer
-/// to things in an ergonomic fashion e.g., `transaction::Ethereum`.
-pub mod transaction {
-    pub use crate::ethereum::Transaction as Ethereum;
-    pub use bitcoin::Transaction as Bitcoin;
-}
-
-/// Define domain specific terms using htlc_location module so that we can refer
-/// to things in an ergonomic fashion e.g., `htlc_location::Bitcoin`.
-pub mod htlc_location {
-    pub use crate::ethereum::Address as Ethereum;
-    pub use bitcoin::OutPoint as Bitcoin;
-}
+pub use self::{
+    actions::*, asset::AssetKind, comit_api::LedgerKind, facade::Facade, protocol_spawner::*,
+    seed::*, spawn::*, storage::*, swap_protocols::state,
+};
+// Export comit types so we do not need to worry about where they come from.
+pub use comit::{
+    ledger, LocalSwapId, Never, Protocol, RelativeTime, Role, Secret, SecretHash, SharedSwapId,
+    Side, Timestamp,
+};
 
 lazy_static::lazy_static! {
     pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =
@@ -109,18 +102,18 @@ pub fn data_dir() -> Option<PathBuf> {
         .map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
 }
 
-/// Returns `/Users/[username]/Library/Application Support/Lnd/`.
-/// exists.
-#[cfg(target_os = "macos")]
+/// Returns `/Users/[username]/Library/Application Support/Lnd/` for macos.
+/// Returns `%LOCALAPPDATA%/Lnd for windows.
+/// Returns `~/.lnd` if $HOME exists for linux.
 pub fn lnd_default_dir() -> Option<PathBuf> {
-    directories::ProjectDirs::from("", "", "Lnd")
-        .map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
-}
-
-/// Returns `~/.lnd` if $HOME exists.
-#[cfg(target_os = "linux")]
-pub fn lnd_default_dir() -> Option<PathBuf> {
-    directories::UserDirs::new().map(|d| d.home_dir().to_path_buf().join(".lnd"))
+    if cfg!(target_os = "macos") || cfg!(target_os = "windows") {
+        directories::ProjectDirs::from("", "", "Lnd")
+            .map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
+    } else if cfg!(target_os = "linux") {
+        directories::UserDirs::new().map(|d| d.home_dir().to_path_buf().join(".lnd"))
+    } else {
+        None
+    }
 }
 
 /// Returns the directory used by lnd.
@@ -131,4 +124,61 @@ pub fn lnd_dir() -> Option<PathBuf> {
     lnd_default_dir()
 }
 
-pub type Never = std::convert::Infallible;
+pub mod htlc_location {
+    pub use comit::htlc_location::*;
+}
+
+pub mod identity {
+    pub use comit::identity::*;
+}
+
+pub mod transaction {
+    pub use comit::transaction::*;
+}
+
+pub mod asset {
+    pub use comit::asset::*;
+    use derivative::Derivative;
+
+    #[derive(Clone, Derivative, PartialEq)]
+    #[derivative(Debug = "transparent")]
+    pub enum AssetKind {
+        Bitcoin(Bitcoin),
+        Ether(Ether),
+        Erc20(Erc20),
+    }
+
+    impl From<Bitcoin> for AssetKind {
+        fn from(amount: Bitcoin) -> Self {
+            AssetKind::Bitcoin(amount)
+        }
+    }
+
+    impl From<Ether> for AssetKind {
+        fn from(quantity: Ether) -> Self {
+            AssetKind::Ether(quantity)
+        }
+    }
+
+    impl From<Erc20> for AssetKind {
+        fn from(quantity: Erc20) -> Self {
+            AssetKind::Erc20(quantity)
+        }
+    }
+}
+
+pub mod ethereum {
+    pub use comit::ethereum::*;
+}
+
+pub mod bitcoin {
+    pub use comit::bitcoin::{Address, PublicKey};
+}
+
+pub mod lightning {
+    pub use comit::lightning::PublicKey;
+}
+
+pub mod btsieve {
+    pub use comit::btsieve::*;
+}

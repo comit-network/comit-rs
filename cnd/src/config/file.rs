@@ -1,6 +1,6 @@
 use crate::{
-    config::{Bitcoind, Data, Network, Parity},
-    swap_protocols::ledger::ethereum,
+    config::{Bitcoind, Data, Geth, Network},
+    ethereum::ChainId,
 };
 use config as config_rs;
 use log::LevelFilter;
@@ -36,8 +36,8 @@ pub struct Bitcoin {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Ethereum {
-    pub chain_id: ethereum::ChainId,
-    pub parity: Option<Parity>,
+    pub chain_id: ChainId,
+    pub geth: Option<Geth>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -150,10 +150,7 @@ pub enum None {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        config::{Bitcoind, Parity, Settings},
-        swap_protocols::ledger::ethereum,
-    };
+    use crate::config::{Bitcoind, Geth, Settings};
     use reqwest::Url;
     use spectral::prelude::*;
     use std::{
@@ -229,9 +226,9 @@ network = "regtest"
 node_url = "http://localhost:18443/"
 
 [ethereum]
-chain_id = 17
+chain_id = 1337
 
-[ethereum.parity]
+[ethereum.geth]
 node_url = "http://localhost:8545/"
 
 [lightning]
@@ -264,8 +261,8 @@ dir = "/foo/bar"
                 }),
             }),
             ethereum: Some(Ethereum {
-                chain_id: ethereum::ChainId::regtest(),
-                parity: Some(Parity {
+                chain_id: ChainId::regtest(),
+                geth: Some(Geth {
                     node_url: "http://localhost:8545".parse().unwrap(),
                 }),
             }),
@@ -353,38 +350,38 @@ dir = "/foo/bar"
     fn ethereum_deserializes_correctly() {
         let file_contents = vec![
             r#"
-            chain_id = 17
-            [parity]
+            chain_id = 1337
+            [geth]
             node_url = "http://example.com:8545"
             "#,
             r#"
             chain_id = 3
-            [parity]
+            [geth]
             node_url = "http://example.com:8545"
             "#,
             r#"
             chain_id = 1
-            [parity]
+            [geth]
             node_url = "http://example.com:8545"
             "#,
         ];
 
         let expected = vec![
             Ethereum {
-                chain_id: ethereum::ChainId::regtest(),
-                parity: Some(Parity {
+                chain_id: ChainId::regtest(),
+                geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
                 }),
             },
             Ethereum {
-                chain_id: ethereum::ChainId::ropsten(),
-                parity: Some(Parity {
+                chain_id: ChainId::ropsten(),
+                geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
                 }),
             },
             Ethereum {
-                chain_id: ethereum::ChainId::mainnet(),
-                parity: Some(Parity {
+                chain_id: ChainId::mainnet(),
+                geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
                 }),
             },

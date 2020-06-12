@@ -1,36 +1,39 @@
-import { expect } from "chai";
 import {
-    BigNumber,
     Cnd,
-    ComitClient,
-    Entity,
-    HanEthereumEtherHalightLightningBitcoinRequestBody,
-    LedgerAction,
     Swap,
-    SwapDetails,
-    Transaction,
-    TransactionStatus,
     Wallets as SdkWallets,
+    Step,
+    LedgerParameters,
 } from "comit-sdk";
+import {
+    HalbitHerc20Payload,
+    Herc20HalbitPayload,
+    HbitHerc20Payload,
+    Herc20HbitPayload,
+    EscrowStatus,
+    LedgerState,
+    SwapResponse,
+    SwapStatus,
+} from "../payload";
 import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../config";
-import "../setup_chai";
-import { Asset, AssetKind, toKey, toKind } from "../asset";
+import {
+    Asset,
+    assetAsKey,
+    AssetKind,
+    defaultAssetValue,
+    toKey,
+    toKind,
+} from "../asset";
 import { CndInstance } from "../cnd/cnd_instance";
 import { Ledger, LedgerKind } from "../ledgers/ledger";
 import { LedgerConfig, sleep } from "../utils";
-import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
-import { sha256 } from "js-sha256";
-import { InvoiceState } from "@radar/lnrpc";
-import {
-    defaultAssetDescription,
-    defaultExpiryTimes,
-    defaultLedgerDescriptionForLedger,
-    defaultLedgerKindForAsset,
-} from "./defaults";
+import { Wallets } from "../wallets";
+import { defaultLedgerDescriptionForLedger } from "./defaults";
+import pTimeout from "p-timeout";
 
-export type ActorNames = "alice" | "bob" | "charlie";
+export type ActorName = "alice" | "bob" | "charlie";
 
 export class Actor {
     public static defaultActionConfig = {
@@ -39,13 +42,13 @@ export class Actor {
     };
 
     public static async newInstance(
-        name: ActorNames,
+        name: ActorName,
         ledgerConfig: LedgerConfig,
         cargoTargetDirectory: string,
         cndLogFile: string,
         logger: Logger
     ) {
-        const actorConfig = await E2ETestActorConfig.for(name);
+        const actorConfig = await E2ETestActorConfig.for(name, logger);
         const cndConfigFile = actorConfig.generateCndConfigFile(ledgerConfig);
 
         const cndInstance = new CndInstance(
@@ -68,23 +71,22 @@ export class Actor {
     public actors: Actors;
     public wallets: Wallets;
 
-    private comitClient: ComitClient;
     readonly cnd: Cnd;
-    private swap: Swap;
+    public swap: Swap;
 
-    private alphaLedger: Ledger;
-    private alphaAsset: Asset;
+    public alphaLedger: Ledger;
+    public alphaAsset: Asset;
 
-    private betaLedger: Ledger;
-    private betaAsset: Asset;
+    public betaLedger: Ledger;
+    public betaAsset: Asset;
 
-    private readonly startingBalances: Map<string, BigNumber>;
-    private readonly expectedBalanceChanges: Map<string, BigNumber>;
+    public readonly startingBalances: Map<assetAsKey, bigint>;
+    public readonly expectedBalanceChanges: Map<assetAsKey, bigint>;
 
     constructor(
         public readonly logger: Logger,
-        private readonly cndInstance: CndInstance,
-        private readonly name: ActorNames
+        public readonly cndInstance: CndInstance,
+        public readonly name: ActorName
     ) {
         this.wallets = new Wallets({});
         const socket = cndInstance.getConfigFile().http_api.socket;
@@ -94,174 +96,167 @@ export class Actor {
         this.expectedBalanceChanges = new Map();
     }
 
-    public async sendRequest(
-        maybeAlpha?: AssetKind | { ledger: LedgerKind; asset: AssetKind },
-        maybeBeta?: AssetKind | { ledger: LedgerKind; asset: AssetKind }
-    ) {
-        this.logger.info("Sending swap request");
+    /**
+     * Interactions with cnd REST API
+     */
 
-        // By default, we will send the swap request to bob
-        const to = this.actors.bob;
-
-        let alphaAssetKind: AssetKind;
-        let alphaLedgerKind: LedgerKind;
-        if (!maybeAlpha) {
-            alphaAssetKind = this.defaultAlphaAssetKind();
-            alphaLedgerKind = this.defaultAlphaLedgerKind();
-        } else if (typeof maybeAlpha === "string") {
-            alphaAssetKind = maybeAlpha;
-            alphaLedgerKind = defaultLedgerKindForAsset(alphaAssetKind);
-        } else {
-            alphaAssetKind = maybeAlpha.asset;
-            alphaLedgerKind = maybeAlpha.ledger;
-        }
-
-        this.alphaLedger = defaultLedgerDescriptionForLedger(alphaLedgerKind);
-        this.alphaAsset = defaultAssetDescription(
-            alphaAssetKind,
-            alphaLedgerKind
-        );
-        to.alphaLedger = this.alphaLedger;
-        to.alphaAsset = this.alphaAsset;
-
-        this.logger.debug(
-            "Derived Alpha Ledger %o from %s",
-            this.alphaLedger,
-            alphaLedgerKind
-        );
-        this.logger.debug(
-            "Derived Alpha Asset %o from %s",
-            this.alphaAsset,
-            alphaAssetKind
-        );
-
-        let betaAssetKind;
-        let betaLedgerKind;
-        if (!maybeBeta) {
-            betaAssetKind = this.defaultBetaAssetKind();
-            betaLedgerKind = this.defaultBetaLedgerKind();
-        } else if (typeof maybeBeta === "string") {
-            betaAssetKind = maybeBeta;
-            betaLedgerKind = defaultLedgerKindForAsset(betaAssetKind);
-        } else {
-            betaAssetKind = maybeBeta.asset;
-            betaLedgerKind = maybeBeta.ledger;
-        }
-
-        this.betaLedger = defaultLedgerDescriptionForLedger(betaLedgerKind);
-        this.betaAsset = defaultAssetDescription(betaAssetKind, betaLedgerKind);
-        to.betaLedger = this.betaLedger;
-        to.betaAsset = this.betaAsset;
-
-        this.logger.debug(
-            "Derived Beta Ledger %o from %s",
-            this.betaLedger,
-            betaLedgerKind
-        );
-        this.logger.debug(
-            "Derived Beta Asset %o from %s",
-            this.betaAsset,
-            betaAssetKind
-        );
-
-        const listPromises: Promise<void>[] = [
-            this.initializeDependencies(),
-            to.initializeDependencies(),
-        ];
-        await Promise.all(listPromises);
-
-        await this.setStartingBalance([
-            this.alphaAsset,
-            {
-                name: this.betaAsset.name,
-                ledger: this.betaLedger.name,
-                quantity: "0",
-            },
-        ]);
-        await to.setStartingBalance([
-            {
-                name: to.alphaAsset.name,
-                ledger: this.alphaLedger.name,
-                quantity: "0",
-            },
-            to.betaAsset,
-        ]);
-
-        this.expectedBalanceChanges.set(
-            toKey(this.betaAsset),
-            new BigNumber(this.betaAsset.quantity)
-        );
-        to.expectedBalanceChanges.set(
-            toKey(this.alphaAsset),
-            new BigNumber(to.alphaAsset.quantity)
-        );
-
-        const isLightning =
-            this.alphaLedger.name === "lightning" ||
-            this.betaLedger.name === "lightning";
-
-        if (isLightning) {
-            this.logger.debug("Using lightning routes on cnd REST API");
-            return;
-        }
-
-        const comitClient: ComitClient = this.getComitClient();
-
-        const payload = {
-            alpha_ledger: this.alphaLedger,
-            beta_ledger: this.betaLedger,
-            alpha_asset: this.alphaAsset,
-            beta_asset: this.betaAsset,
-            peer: {
-                peer_id: await to.cnd.getPeerId(),
-                address_hint: await to.cnd
-                    .getPeerListenAddresses()
-                    .then((addresses) => addresses[0]),
-            },
-            ...(await this.additionalIdentities(alphaAssetKind, betaAssetKind)),
-            ...defaultExpiryTimes(),
-        };
-
-        this.swap = await comitClient.sendSwap(payload);
-        to.swap = new Swap(to.cnd, this.swap.self, {
-            bitcoin: to.wallets.bitcoin.inner,
-            ethereum: to.wallets.ethereum.inner,
-        });
-        this.logger.debug("Created new swap at %s", this.swap.self);
-
-        return this.swap;
-    }
-
-    public async accept() {
-        if (!this.swap) {
-            throw new Error("Cannot accept non-existent swap");
-        }
-
-        await this.swap.accept(Actor.defaultActionConfig);
-    }
-
-    public async createSwap(
-        createSwapPayload: HanEthereumEtherHalightLightningBitcoinRequestBody
-    ) {
+    /**
+     * Create a herc20<->halbit Swap
+     * @param create
+     */
+    public async createHerc20HalbitSwap(create: Herc20HalbitPayload) {
         this.alphaLedger = {
             name: LedgerKind.Ethereum,
-            chain_id: createSwapPayload.alpha.chain_id,
+            chain_id: create.alpha.chain_id,
         };
         this.betaLedger = {
             name: LedgerKind.Lightning,
-            network: createSwapPayload.beta.network,
+            network: create.beta.network,
         };
         this.alphaAsset = {
-            name: AssetKind.Ether,
-            quantity: createSwapPayload.alpha.amount,
+            name: AssetKind.Erc20,
+            quantity: create.alpha.amount,
             ledger: LedgerKind.Ethereum,
+            tokenContract: create.alpha.token_contract,
         };
         this.betaAsset = {
             name: AssetKind.Bitcoin,
-            quantity: createSwapPayload.beta.amount,
+            quantity: create.beta.amount,
             ledger: LedgerKind.Lightning,
         };
 
+        await this.setStartingBalances();
+
+        const location = await this.createHerc20Halbit(create);
+
+        this.swap = new Swap(
+            this.cnd,
+            location,
+            new SdkWallets({
+                ethereum: this.wallets.ethereum.inner,
+                lightning: this.wallets.lightning.inner,
+            })
+        );
+    }
+
+    /**
+     * Create a halbit<->herc20 Swap
+     * @param create
+     */
+    public async createHalbitHerc20Swap(create: HalbitHerc20Payload) {
+        this.alphaLedger = {
+            name: LedgerKind.Lightning,
+            network: create.alpha.network,
+        };
+        this.betaLedger = {
+            name: LedgerKind.Ethereum,
+            chain_id: create.beta.chain_id,
+        };
+        this.alphaAsset = {
+            name: AssetKind.Bitcoin,
+            quantity: create.alpha.amount,
+            ledger: LedgerKind.Lightning,
+        };
+        this.betaAsset = {
+            name: AssetKind.Erc20,
+            quantity: create.beta.amount,
+            ledger: LedgerKind.Ethereum,
+            tokenContract: create.beta.token_contract,
+        };
+
+        await this.setStartingBalances();
+
+        const location = await this.createHalbitHerc20(create);
+
+        this.swap = new Swap(
+            this.cnd,
+            location,
+            new SdkWallets({
+                ethereum: this.wallets.ethereum.inner,
+                lightning: this.wallets.lightning.inner,
+            })
+        );
+    }
+
+    /**
+     * Create a herc20-hbit Swap
+     * @param create
+     */
+    public async createHerc20HbitSwap(create: Herc20HbitPayload) {
+        this.alphaLedger = {
+            name: LedgerKind.Ethereum,
+            chain_id: create.alpha.chain_id,
+        };
+        this.betaLedger = {
+            name: LedgerKind.Bitcoin,
+            network: create.beta.network,
+        };
+        this.alphaAsset = {
+            name: AssetKind.Erc20,
+            quantity: create.alpha.amount,
+            ledger: LedgerKind.Ethereum,
+            tokenContract: create.alpha.token_contract,
+        };
+        this.betaAsset = {
+            name: AssetKind.Bitcoin,
+            quantity: create.beta.amount,
+            ledger: LedgerKind.Bitcoin,
+        };
+
+        await this.setStartingBalances();
+
+        const location = await this.createHerc20Hbit(create);
+
+        this.swap = new Swap(
+            this.cnd,
+            location,
+            new SdkWallets({
+                ethereum: this.wallets.ethereum.inner,
+                bitcoin: this.wallets.bitcoin.inner,
+            })
+        );
+    }
+
+    /**
+     * Create a hbit-herc20 Swap
+     * @param create
+     */
+    public async createHbitHerc20Swap(create: HbitHerc20Payload) {
+        this.alphaLedger = {
+            name: LedgerKind.Bitcoin,
+            network: create.alpha.network,
+        };
+        this.betaLedger = {
+            name: LedgerKind.Ethereum,
+            chain_id: create.beta.chain_id,
+        };
+        this.alphaAsset = {
+            name: AssetKind.Bitcoin,
+            quantity: create.alpha.amount,
+            ledger: LedgerKind.Bitcoin,
+        };
+        this.betaAsset = {
+            name: AssetKind.Erc20,
+            quantity: create.beta.amount,
+            ledger: LedgerKind.Ethereum,
+            tokenContract: create.beta.token_contract,
+        };
+
+        await this.setStartingBalances();
+
+        const location = await this.createHbitHerc20(create);
+
+        this.swap = new Swap(
+            this.cnd,
+            location,
+            new SdkWallets({
+                bitcoin: this.wallets.bitcoin.inner,
+                ethereum: this.wallets.ethereum.inner,
+            })
+        );
+    }
+
+    private async setStartingBalances() {
         switch (this.name) {
             case "alice": {
                 // Alice purchases beta asset with alpha asset
@@ -274,7 +269,7 @@ export class Actor {
                 ]);
                 this.expectedBalanceChanges.set(
                     toKey(this.betaAsset),
-                    new BigNumber(this.betaAsset.quantity)
+                    BigInt(this.betaAsset.quantity)
                 );
                 break;
             }
@@ -289,7 +284,7 @@ export class Actor {
                 ]);
                 this.expectedBalanceChanges.set(
                     toKey(this.alphaAsset),
-                    new BigNumber(this.alphaAsset.quantity)
+                    BigInt(this.alphaAsset.quantity)
                 );
                 break;
             }
@@ -299,46 +294,152 @@ export class Actor {
                 );
             }
         }
+    }
 
-        const location = await this.cnd.createHanEthereumEtherHalightLightningBitcoin(
-            createSwapPayload
+    public cndHttpApiUrl() {
+        const socket = this.cndInstance.getConfigFile().http_api.socket;
+        return `http://${socket}`;
+    }
+
+    public async pollCndUntil(
+        location: string,
+        predicate: (body: SwapResponse) => boolean
+    ): Promise<SwapResponse> {
+        const response = await this.cnd.fetch<SwapResponse>(location);
+
+        expect(response.status).toEqual(200);
+
+        if (predicate(response.data)) {
+            return response.data;
+        } else {
+            await sleep(500);
+
+            return this.pollCndUntil(location, predicate);
+        }
+    }
+
+    public async pollSwapResponse(
+        swapUrl: string,
+        iteration: number = 0
+    ): Promise<SwapResponse> {
+        if (iteration > 5) {
+            throw new Error(`Could not retrieve Swap ${swapUrl}`);
+        }
+        iteration++;
+
+        try {
+            return this.cnd
+                .fetch<SwapResponse>(swapUrl)
+                .then((response) => response.data);
+        } catch (error) {
+            await sleep(1000);
+            return this.pollSwapResponse(swapUrl, iteration);
+        }
+    }
+
+    public async assertAndExecuteNextAction(expectedActionName: string) {
+        if (!this.swap) {
+            throw new Error("Cannot do anything on non-existent swap");
+        }
+
+        const { action, transaction } = await pTimeout(
+            (async () => {
+                while (true) {
+                    const action = await this.swap.nextAction();
+
+                    if (action && action.name === expectedActionName) {
+                        const transaction = await action.execute();
+                        return { action, transaction };
+                    }
+
+                    await sleep(
+                        Actor.defaultActionConfig.tryIntervalSecs * 1000
+                    );
+                }
+            })(),
+            Actor.defaultActionConfig.maxTimeoutSecs * 1000
         );
 
-        this.swap = new Swap(
-            this.cnd,
-            location,
-            new SdkWallets({
-                ethereum: this.wallets.ethereum.inner,
-                lightning: this.wallets.lightning.inner,
-            })
+        this.logger.debug(
+            "%s done on swap %s in %s",
+            action.name,
+            this.swap.self,
+            transaction
+        );
+        switch (action.name) {
+            case "deploy":
+                await this.assertDeployed();
+                break;
+            case "fund":
+                await this.assertFunded();
+                break;
+            case "redeem":
+                await this.assertRedeemed();
+                break;
+            case "refund":
+                await this.assertRefunded();
+        }
+    }
+
+    public async getSwapResponse(): Promise<SwapResponse> {
+        return this.cnd
+            .fetch<SwapResponse>(this.swap.self)
+            .then((response) => response.data);
+    }
+
+    public async cryptoRole(): Promise<"Alice" | "Bob"> {
+        return this.getSwapResponse().then(
+            (swapResponse) => swapResponse.properties.role
         );
     }
 
-    public async deploy() {
-        if (!this.swap) {
-            throw new Error("Cannot deploy htlc for nonexistent swap");
-        }
+    /**
+     * Assertions against cnd API Only
+     */
 
-        const transaction = await this.swap.deploy(Actor.defaultActionConfig);
-        let transactionId;
-        if (transaction instanceof Transaction) {
-            const status = await transaction.status(1);
-            transactionId = transaction.id;
-            if (status === TransactionStatus.Failed) {
-                throw new Error(`Transaction ${transactionId} failed`);
-            }
-        } else {
-            transactionId = transaction;
-        }
+    public async assertAlphaDeployed() {
+        await this.assertLedgerStatus("alpha", EscrowStatus.Deployed);
+        await this.assertLedgerEventPresence("alpha", Step.Deploy);
+    }
 
-        this.logger.debug(
-            "Deployed htlc for swap %s in %s",
-            this.swap.self,
-            transactionId
-        );
+    public async assertBetaDeployed() {
+        await this.assertLedgerStatus("beta", EscrowStatus.Deployed);
+        await this.assertLedgerEventPresence("beta", Step.Deploy);
+    }
 
-        const entity = await this.swap.fetchDetails();
-        switch (entity.properties.role) {
+    public async assertAlphaFunded(): Promise<void> {
+        await this.assertLedgerStatus("alpha", EscrowStatus.Funded);
+        await this.assertLedgerEventPresence("alpha", Step.Fund);
+    }
+
+    public async assertBetaFunded() {
+        await this.assertLedgerStatus("beta", EscrowStatus.Funded);
+        await this.assertLedgerEventPresence("beta", Step.Fund);
+    }
+
+    public async assertAlphaRedeemed() {
+        await this.assertLedgerStatus("alpha", EscrowStatus.Redeemed);
+        await this.assertLedgerEventPresence("alpha", Step.Redeem);
+    }
+
+    public async assertBetaRedeemed() {
+        await this.assertLedgerStatus("beta", EscrowStatus.Redeemed);
+        await this.assertLedgerEventPresence("beta", Step.Redeem);
+    }
+
+    public async assertAlphaRefunded() {
+        await this.assertLedgerStatus("alpha", EscrowStatus.Refunded);
+        await this.assertLedgerEventPresence("alpha", Step.Refund);
+    }
+
+    public async assertBetaRefunded() {
+        await this.assertLedgerStatus("beta", EscrowStatus.Refunded);
+        await this.assertLedgerEventPresence("beta", Step.Refund);
+    }
+
+    private async assertDeployed() {
+        const role = await this.cryptoRole();
+        switch (role) {
             case "Alice":
                 await this.actors.alice.assertAlphaDeployed();
                 if (this.actors.bob.cndInstance.isRunning()) {
@@ -354,35 +455,8 @@ export class Actor {
         }
     }
 
-    public async init() {
-        if (!this.swap) {
-            throw new Error("Cannot init nonexistent swap");
-        }
-
-        const response = await this.swap.tryExecuteSirenAction<LedgerAction>(
-            "init",
-            {
-                maxTimeoutSecs: 30,
-                tryIntervalSecs: 1,
-            }
-        );
-        await this.swap.doLedgerAction(response.data);
-    }
-
-    public async fund() {
-        if (!this.swap) {
-            throw new Error("Cannot fund nonexistent swap");
-        }
-
-        const txid = await this.swap.fund(Actor.defaultActionConfig);
-
-        if (txid instanceof Transaction) {
-            await txid.status(1);
-        }
-
-        this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
-
-        const role = await this.whoAmI();
+    private async assertFunded() {
+        const role = await this.cryptoRole();
         switch (role) {
             case "Alice":
                 await this.actors.alice.assertAlphaFunded();
@@ -399,119 +473,8 @@ export class Actor {
         }
     }
 
-    public async fundLowGas(hexGasLimit: string) {
-        const response = await this.swap.tryExecuteSirenAction<LedgerAction>(
-            "fund",
-            {
-                maxTimeoutSecs: 10,
-                tryIntervalSecs: 1,
-            }
-        );
-        response.data.payload.gas_limit = hexGasLimit;
-        const transaction = await this.swap.doLedgerAction(response.data);
-        if (transaction instanceof Transaction) {
-            const status = await transaction.status(1);
-            if (status !== TransactionStatus.Failed) {
-                throw new Error(
-                    "Deploy with low gas transaction was successful."
-                );
-            }
-        } else {
-            throw new Error(
-                "Internal error: Transaction class expected for Ethereum."
-            );
-        }
-    }
-
-    public async overfund() {
-        const response = await this.swap.tryExecuteSirenAction<LedgerAction>(
-            "fund",
-            {
-                maxTimeoutSecs: 10,
-                tryIntervalSecs: 1,
-            }
-        );
-        const amount = response.data.payload.amount;
-        const overfundAmount = amount * 1.01;
-
-        response.data.payload.amount = overfundAmount;
-
-        const txid = await this.swap.doLedgerAction(response.data);
-        this.logger.debug(
-            "Overfunded swap %s in %s with %d instead of %d",
-            this.swap.self,
-            txid,
-            overfundAmount,
-            amount
-        );
-    }
-
-    public async underfund() {
-        const response = await this.swap.tryExecuteSirenAction<LedgerAction>(
-            "fund",
-            {
-                maxTimeoutSecs: 10,
-                tryIntervalSecs: 1,
-            }
-        );
-        const amount = response.data.payload.amount;
-        const underfundAmount = amount * 0.01;
-
-        response.data.payload.amount = underfundAmount;
-
-        const txid = await this.swap.doLedgerAction(response.data);
-        this.logger.debug(
-            "Underfunded swap %s in %s with %d instead of %d",
-            this.swap.self,
-            txid,
-            underfundAmount,
-            amount
-        );
-    }
-
-    public async refund() {
-        if (!this.swap) {
-            throw new Error("Cannot refund non-existent swap");
-        }
-
-        const role = await this.whoAmI();
-        switch (role) {
-            case "Alice":
-                await this.waitForAlphaExpiry();
-                break;
-            case "Bob":
-                await this.waitForBetaExpiry();
-                break;
-        }
-
-        const txid = await this.swap.refund(Actor.defaultActionConfig);
-        this.logger.debug("Refunded swap %s in %s", this.swap.self, txid);
-
-        switch (role) {
-            case "Alice":
-                await this.actors.alice.assertAlphaRefunded();
-                if (this.actors.bob.cndInstance.isRunning()) {
-                    await this.actors.bob.assertAlphaRefunded();
-                }
-                break;
-            case "Bob":
-                if (this.actors.alice.cndInstance.isRunning()) {
-                    await this.actors.alice.assertBetaRefunded();
-                }
-                await this.actors.bob.assertBetaRefunded();
-                break;
-        }
-    }
-
-    public async redeem() {
-        if (!this.swap) {
-            throw new Error("Cannot redeem non-existent swap");
-        }
-
-        const txid = await this.swap.redeem(Actor.defaultActionConfig);
-        this.logger.debug("Redeemed swap %s in %s", this.swap.self, txid);
-
-        const role = await this.whoAmI();
+    private async assertRedeemed() {
+        const role = await this.cryptoRole();
         switch (role) {
             case "Alice":
                 await this.actors.alice.assertBetaRedeemed();
@@ -528,27 +491,78 @@ export class Actor {
         }
     }
 
-    public async redeemWithHighFee() {
-        // Hack the bitcoin fee per WU returned by the wallet
-        this.wallets.bitcoin.inner.getFee = () => "100000000";
+    private async assertRefunded() {
+        const role = await this.cryptoRole();
+        switch (role) {
+            case "Alice":
+                await this.actors.alice.assertAlphaRefunded();
+                if (this.actors.bob.cndInstance.isRunning()) {
+                    await this.actors.bob.assertAlphaRefunded();
+                }
+                break;
+            case "Bob":
+                if (this.actors.alice.cndInstance.isRunning()) {
+                    await this.actors.alice.assertBetaRefunded();
+                }
+                await this.actors.bob.assertBetaRefunded();
+                break;
+        }
+    }
 
-        return this.swap.tryExecuteSirenAction<LedgerAction>("redeem", {
-            maxTimeoutSecs: 10,
-            tryIntervalSecs: 1,
+    private async assertLedgerStatus(
+        ledgerRel: "alpha" | "beta",
+        status: EscrowStatus
+    ): Promise<void> {
+        await this.pollCndUntil(this.swap.self, (swapResponse) => {
+            for (const entity of swapResponse.entities) {
+                const ledgerState = entity as LedgerState;
+                if (
+                    ledgerState.class.includes("state") &&
+                    ledgerState.rel.includes(ledgerRel)
+                ) {
+                    return ledgerState.properties.status === status;
+                }
+            }
         });
     }
 
-    public async currentSwapIsAccepted() {
-        let swapEntity;
+    private async assertLedgerEventPresence(
+        ledgerRel: "alpha" | "beta",
+        step: Step
+    ): Promise<void> {
+        await this.pollCndUntil(this.swap.self, (swapResponse) => {
+            let protocol;
+            for (const entity of swapResponse.entities) {
+                const ledgerParameters = entity as LedgerParameters;
+                if (
+                    ledgerParameters.class.includes("parameters") &&
+                    ledgerParameters.rel.includes(ledgerRel)
+                ) {
+                    protocol = ledgerParameters.properties.protocol;
+                    break;
+                }
+            }
 
-        do {
-            swapEntity = await this.swap.fetchDetails();
+            // No events are set for halbit
+            if (protocol === "halbit") {
+                return true;
+            }
 
-            await sleep(200);
-        } while (
-            swapEntity.properties.state.communication.status !== "ACCEPTED"
-        );
+            for (const entity of swapResponse.entities) {
+                const ledgerState = entity as LedgerState;
+                if (
+                    ledgerState.class.includes("state") &&
+                    ledgerState.rel.includes(ledgerRel)
+                ) {
+                    return !!ledgerState.properties.events[step];
+                }
+            }
+        });
     }
+
+    /**
+     * Assertions against Ledgers
+     */
 
     public async assertSwapped() {
         this.logger.debug("Checking if cnd reports status 'SWAPPED'");
@@ -556,40 +570,40 @@ export class Actor {
         while (true) {
             await sleep(200);
             const entity = await this.swap.fetchDetails();
-            if (entity.properties.status === "SWAPPED") {
+            if (entity.properties.status === SwapStatus.Swapped) {
                 break;
             }
         }
 
-        await this.assertBalances();
+        await this.assertBalancesAfterSwap();
     }
 
-    public async assertBalances() {
+    public async assertBalancesAfterSwap() {
         for (const [
-            assetKey,
+            assetAsKey,
             expectedBalanceChange,
         ] of this.expectedBalanceChanges.entries()) {
             this.logger.debug(
                 "Checking that %s balance changed by %d",
-                assetKey,
+                assetAsKey,
                 expectedBalanceChange
             );
 
-            const { asset, ledger } = toKind(assetKey);
+            const { asset, ledger } = toKind(assetAsKey);
 
             const wallet = this.wallets[ledger];
-            const expectedBalance = new BigNumber(
-                this.startingBalances.get(assetKey)
-            ).plus(expectedBalanceChange);
-            const maximumFee = wallet.MaximumFee;
+            const expectedBalance =
+                this.startingBalances.get(assetAsKey) + expectedBalanceChange;
+            const maximumFee = BigInt(wallet.MaximumFee);
 
-            const balanceInclFees = expectedBalance.minus(maximumFee);
+            const balanceInclFees = expectedBalance - maximumFee;
 
             const currentWalletBalance = await wallet.getBalanceByAsset(
-                defaultAssetDescription(asset, ledger)
+                defaultAssetValue(asset, ledger)
             );
-
-            expect(currentWalletBalance).to.be.bignumber.gte(balanceInclFees);
+            expect(currentWalletBalance).toBeGreaterThanOrEqual(
+                balanceInclFees
+            );
 
             this.logger.debug(
                 "Balance check was positive, current balance is %d",
@@ -598,80 +612,34 @@ export class Actor {
         }
     }
 
-    public async assertRefunded() {
+    public async assertBalancesAfterRefund() {
         this.logger.debug("Checking if swap @ %s was refunded", this.swap.self);
 
         for (const [assetKey] of this.startingBalances.entries()) {
             const { asset, ledger } = toKind(assetKey);
 
             const wallet = this.wallets[ledger];
-            const maximumFee = wallet.MaximumFee;
+            const maximumFee = BigInt(wallet.MaximumFee);
 
             this.logger.debug(
                 "Checking that %s balance changed by max %d (MaximumFee)",
                 assetKey,
                 maximumFee
             );
-            const expectedBalance = new BigNumber(
-                this.startingBalances.get(assetKey)
-            );
+            const expectedBalance = this.startingBalances.get(assetKey);
             const currentWalletBalance = await wallet.getBalanceByAsset(
-                defaultAssetDescription(asset, ledger)
+                defaultAssetValue(asset, ledger)
             );
-            const balanceInclFees = expectedBalance.minus(maximumFee);
-            expect(currentWalletBalance).to.be.bignumber.gte(balanceInclFees);
+            const balanceInclFees = expectedBalance - maximumFee;
+            expect(currentWalletBalance).toBeGreaterThanOrEqual(
+                balanceInclFees
+            );
         }
     }
 
-    public async assertAlphaDeployed() {
-        await this.assertLedgerState("alpha_ledger", "DEPLOYED");
-    }
-
-    public async assertBetaDeployed() {
-        await this.assertLedgerState("beta_ledger", "DEPLOYED");
-    }
-
-    public async assertAlphaFunded() {
-        await this.assertLedgerState("alpha_ledger", "FUNDED");
-    }
-
-    public async assertBetaFunded() {
-        await this.assertLedgerState("beta_ledger", "FUNDED");
-    }
-
-    public async assertAlphaRedeemed() {
-        await this.assertLedgerState("alpha_ledger", "REDEEMED");
-    }
-
-    public async assertBetaRedeemed() {
-        await this.assertLedgerState("beta_ledger", "REDEEMED");
-    }
-
-    public async assertAlphaRefunded() {
-        await this.assertLedgerState("alpha_ledger", "REFUNDED");
-    }
-
-    public async assertBetaRefunded() {
-        await this.assertLedgerState("beta_ledger", "REFUNDED");
-    }
-
-    public async assertAlphaIncorrectlyFunded() {
-        await this.assertLedgerState("alpha_ledger", "INCORRECTLY_FUNDED");
-    }
-
-    public async assertBetaIncorrectlyFunded() {
-        await this.assertLedgerState("beta_ledger", "INCORRECTLY_FUNDED");
-    }
-
-    public async assertAlphaNotDeployed() {
-        await sleep(3000); // It is meaningless to assert before cnd processes a new block
-        await this.assertLedgerState("alpha_ledger", "NOT_DEPLOYED");
-    }
-
-    public async assertBetaNotDeployed() {
-        await sleep(3000); // It is meaningless to assert before cnd processes a new block
-        await this.assertLedgerState("beta_ledger", "NOT_DEPLOYED");
-    }
+    /**
+     * Manage cnd instance
+     */
 
     public async start() {
         await this.cndInstance.start();
@@ -682,197 +650,79 @@ export class Actor {
         this.cndInstance.stop();
     }
 
-    public async restart() {
-        await this.stop();
-        await this.start();
-    }
-
     public async dumpState() {
         this.logger.debug("dumping current state");
 
         if (this.swap) {
-            const swapDetails = await this.swap.fetchDetails();
+            const swapResponse = await this.getSwapResponse();
 
-            this.logger.debug("swap status: %s", swapDetails.properties.status);
-            this.logger.debug("swap details: ", JSON.stringify(swapDetails));
+            this.logger.debug(
+                "swap status: %s",
+                swapResponse.properties.status
+            );
+            this.logger.debug("swap details: ", JSON.stringify(swapResponse));
 
             this.logger.debug(
                 "alpha ledger wallet balance %d",
-                await this.alphaLedgerWallet().getBalanceByAsset(
-                    this.alphaAsset
-                )
+                await this.alphaLedgerWallet.getBalanceByAsset(this.alphaAsset)
             );
             this.logger.debug(
                 "beta ledger wallet balance %d",
-                await this.betaLedgerWallet().getBalanceByAsset(this.betaAsset)
+                await this.betaLedgerWallet.getBalanceByAsset(this.betaAsset)
             );
         }
     }
 
-    public async whoAmI() {
-        const entity = await this.swap.fetchDetails();
-        return entity.properties.role;
-    }
-
-    public getName() {
-        return this.name;
-    }
-
-    private async waitForAlphaExpiry() {
-        const swapDetails = await this.swap.fetchDetails();
-
-        const expiry = swapDetails.properties.state.communication.alpha_expiry;
-        const wallet = this.alphaLedgerWallet();
-
-        await this.waitForExpiry(wallet, expiry);
-    }
-
-    private async waitForBetaExpiry() {
-        const swapDetails = await this.swap.fetchDetails();
-
-        const expiry = swapDetails.properties.state.communication.beta_expiry;
-        const wallet = this.betaLedgerWallet();
-
-        await this.waitForExpiry(wallet, expiry);
-    }
-
-    private alphaLedgerWallet() {
-        return this.wallets.getWalletForLedger(this.alphaLedger.name);
-    }
-
-    private betaLedgerWallet() {
-        return this.wallets.getWalletForLedger(this.betaLedger.name);
-    }
-
-    private async waitForExpiry(wallet: Wallet, expiry: number) {
-        let currentBlockchainTime = await wallet.getBlockchainTime();
-
-        this.logger.debug(
-            `Current blockchain time is ${currentBlockchainTime}`
+    public async createHerc20Halbit(
+        body: Herc20HalbitPayload
+    ): Promise<string> {
+        // @ts-ignore
+        const response = await this.cnd.client.post(
+            "swaps/herc20/halbit",
+            body
         );
 
-        let diff = expiry - currentBlockchainTime;
-
-        if (diff > 0) {
-            this.logger.debug(`Waiting for blockchain time to pass ${expiry}`);
-
-            while (diff > 0) {
-                await sleep(1000);
-
-                currentBlockchainTime = await wallet.getBlockchainTime();
-                diff = expiry - currentBlockchainTime;
-
-                this.logger.debug(
-                    `Current blockchain time is ${currentBlockchainTime}`
-                );
-            }
-        }
+        return response.headers.location;
     }
 
-    private async assertLedgerState(
-        ledger: "alpha_ledger" | "beta_ledger",
-        status:
-            | "NOT_DEPLOYED"
-            | "DEPLOYED"
-            | "FUNDED"
-            | "REDEEMED"
-            | "REFUNDED"
-            | "INCORRECTLY_FUNDED"
-    ) {
-        if (
-            ledger === "alpha_ledger" &&
-            this.alphaLedger.name === LedgerKind.Lightning
-        ) {
-            return;
-        }
-
-        if (
-            ledger === "beta_ledger" &&
-            this.betaLedger.name === LedgerKind.Lightning
-        ) {
-            return;
-        }
-
-        this.logger.debug(
-            "Waiting for cnd to see %s in state %s for swap @ %s",
-            ledger,
-            status,
-            this.swap.self
+    public async createHalbitHerc20(
+        body: HalbitHerc20Payload
+    ): Promise<string> {
+        // @ts-ignore
+        const response = await this.cnd.client.post(
+            "swaps/halbit/herc20",
+            body
         );
 
-        let swapEntity;
-
-        do {
-            swapEntity = await this.swap.fetchDetails();
-
-            await sleep(200);
-        } while (swapEntity.properties.state[ledger].status !== status);
-
-        this.logger.debug(
-            "cnd saw %s in state %s for swap @ %s",
-            ledger,
-            status,
-            this.swap.self
-        );
+        return response.headers.location;
     }
 
-    private async additionalIdentities(
-        alphaAsset: AssetKind,
-        betaAsset: AssetKind
-    ) {
-        if (alphaAsset === "bitcoin" && betaAsset === "ether") {
-            return {
-                beta_ledger_redeem_identity: this.wallets.ethereum.account(),
-            };
-        }
+    public async createHerc20Hbit(body: Herc20HbitPayload): Promise<string> {
+        // @ts-ignore
+        const response = await this.cnd.client.post("swaps/herc20/hbit", body);
 
-        return {};
+        return response.headers.location;
     }
 
-    private async initializeDependencies() {
-        const lightningNeeded =
-            this.alphaLedger.name === "lightning" ||
-            this.betaLedger.name === "lightning";
+    public async createHbitHerc20(body: HbitHerc20Payload): Promise<string> {
+        // @ts-ignore
+        const response = await this.cnd.client.post("swaps/hbit/herc20", body);
 
-        const walletPromises: Promise<void>[] = [];
-        for (const ledgerName of [
-            this.alphaLedger.name,
-            this.betaLedger.name,
-        ]) {
-            walletPromises.push(
-                this.wallets.initializeForLedger(
-                    ledgerName,
-                    this.logger,
-                    this.name
-                )
-            );
-        }
-
-        await Promise.all(walletPromises);
-
-        if (!lightningNeeded) {
-            this.comitClient = new ComitClient(this.cnd)
-                .withBitcoinWallet(
-                    this.wallets.getWalletForLedger("bitcoin").inner
-                )
-                .withEthereumWallet(
-                    this.wallets.getWalletForLedger("ethereum").inner
-                );
-        }
+        return response.headers.location;
     }
 
-    private getComitClient(): ComitClient {
-        if (!this.comitClient) {
-            throw new Error("ComitClient is not initialised");
-        }
+    /**
+     * Wallet Management
+     */
 
-        return this.comitClient;
-    }
-
-    private async setStartingBalance(assets: Asset[]) {
+    /**
+     * Mine and set starting balances
+     * @param assets
+     */
+    public async setStartingBalance(assets: Asset[]) {
         for (const asset of assets) {
             if (parseFloat(asset.quantity) === 0) {
-                this.startingBalances.set(toKey(asset), new BigNumber(0));
+                this.startingBalances.set(toKey(asset), BigInt(0));
                 continue;
             }
 
@@ -892,191 +742,18 @@ export class Actor {
                 asset.name,
                 balance.toString()
             );
-            this.startingBalances.set(toKey(asset), balance);
-        }
-    }
-
-    private defaultAlphaAssetKind() {
-        const defaultAlphaAssetKind = AssetKind.Bitcoin;
-        this.logger.info(
-            "AssetKind for alpha asset not specified, defaulting to %s",
-            defaultAlphaAssetKind
-        );
-
-        return defaultAlphaAssetKind;
-    }
-
-    private defaultAlphaLedgerKind() {
-        const defaultAlphaLedgerKind = LedgerKind.Bitcoin;
-        this.logger.info(
-            "LedgerKind for alpha ledger not specified, defaulting to %s",
-            defaultAlphaLedgerKind
-        );
-
-        return defaultAlphaLedgerKind;
-    }
-
-    private defaultBetaAssetKind() {
-        const defaultBetaAssetKind = AssetKind.Ether;
-        this.logger.info(
-            "AssetKind for beta asset not specified, defaulting to %s",
-            defaultBetaAssetKind
-        );
-
-        return defaultBetaAssetKind;
-    }
-
-    private defaultBetaLedgerKind() {
-        const defaultBetaLedgerKind = LedgerKind.Ethereum;
-        this.logger.info(
-            "LedgerKind for beta ledger not specified, defaulting to %s",
-            defaultBetaLedgerKind
-        );
-
-        return defaultBetaLedgerKind;
-    }
-
-    public cndHttpApiUrl() {
-        const socket = this.cndInstance.getConfigFile().http_api.socket;
-        return `http://${socket}`;
-    }
-
-    public async pollCndUntil(
-        location: string,
-        predicate: (body: Entity) => boolean
-    ): Promise<Entity> {
-        const response = await this.cnd.fetch(location);
-
-        expect(response).to.have.status(200);
-
-        if (predicate(response.data)) {
-            return response.data;
-        } else {
-            await sleep(500);
-
-            return this.pollCndUntil(location, predicate);
-        }
-    }
-
-    public async pollSwapDetails(
-        swapUrl: string,
-        iteration: number = 0
-    ): Promise<SwapDetails> {
-        if (iteration > 5) {
-            throw new Error(`Could not retrieve Swap ${swapUrl}`);
-        }
-        iteration++;
-
-        try {
-            return (await this.cnd.fetch<SwapDetails>(swapUrl)).data;
-        } catch (error) {
-            await sleep(1000);
-            return this.pollSwapDetails(swapUrl, iteration);
-        }
-    }
-
-    /// This is to be removed once cnd supports lightning
-    public lnCreateSha256Secret(): { secret: string; secretHash: string } {
-        const secretBuf = Buffer.alloc(32);
-        for (let i = 0; i < secretBuf.length; i++) {
-            secretBuf[i] = Math.floor(Math.random() * 255);
-        }
-
-        const secretHash = sha256(secretBuf);
-        const secret = secretBuf.toString("hex");
-        this.logger.debug(`LN: secret: ${secret}, secretHash: ${secretHash}`);
-        return { secret, secretHash };
-    }
-
-    public async lnCreateHoldInvoice(
-        sats: string,
-        secretHash: string,
-        expiry: number,
-        cltvExpiry: number
-    ): Promise<void> {
-        this.logger.debug("LN: Create Hold Invoice", sats, secretHash, expiry);
-        const resp = await this.wallets.lightning.inner.addHoldInvoice(
-            sats,
-            secretHash,
-            expiry,
-            cltvExpiry
-        );
-        this.logger.debug("LN: Create Hold Response:", resp);
-    }
-
-    public async lnSendPayment(
-        to: Actor,
-        satAmount: string,
-        secretHash: string,
-        finalCltvDelta: number
-    ) {
-        const toPubkey = await to.wallets.lightning.inner.getPubkey();
-        this.logger.debug(
-            "LN: Send Payment -",
-            "to:",
-            toPubkey,
-            "; amt:",
-            satAmount,
-            "; hash:",
-            secretHash,
-            "; finalCltvDelta: ",
-            finalCltvDelta
-        );
-        const resp = await this.wallets.lightning.inner.sendPayment(
-            toPubkey,
-            satAmount,
-            secretHash,
-            finalCltvDelta
-        );
-        this.logger.debug("LN: Send Payment Response:", resp);
-        return resp;
-    }
-
-    /** Settles the invoice once it is `accepted`.
-     *
-     * When the other party sends the payment, the invoice status changes
-     * from `open` to `accepted`. Hence, we check first if the invoice is accepted
-     * with `lnAssertInvoiceAccepted`. If it throws, then we sleep 100ms and recursively
-     * call `lnSettleInvoice` (this function).
-     * If `lnAssertInvoiceAccepted` does not throw then it means the payment has been received
-     * and we proceed with the settlement.
-     */
-    public async lnSettleInvoice(secret: string, secretHash: string) {
-        try {
-            await this.lnAssertInvoiceAccepted(secretHash);
-            this.logger.debug("LN: Settle Invoice", secret, secretHash);
-            await this.wallets.lightning.inner.settleInvoice(secret);
-        } catch {
-            await sleep(100);
-            await this.lnSettleInvoice(secret, secretHash);
-        }
-    }
-
-    public async lnCreateInvoice(sats: string) {
-        this.logger.debug(`Creating invoice for ${sats} sats`);
-        return this.wallets.lightning.addInvoice(sats);
-    }
-
-    public async lnPayInvoiceWithRequest(request: string): Promise<void> {
-        this.logger.debug(`Paying invoice with request ${request}`);
-        await this.wallets.lightning.pay(request);
-    }
-
-    public async lnAssertInvoiceSettled(secretHash: string) {
-        const resp = await this.wallets.lightning.lookupInvoice(secretHash);
-        if (resp.state !== InvoiceState.SETTLED) {
-            throw new Error(
-                `Invoice ${secretHash} is not settled, status is ${resp.state}`
+            this.startingBalances.set(
+                toKey(asset),
+                BigInt(balance.toString(10))
             );
         }
     }
 
-    public async lnAssertInvoiceAccepted(secretHash: string) {
-        const resp = await this.wallets.lightning.lookupInvoice(secretHash);
-        if (resp.state !== InvoiceState.ACCEPTED) {
-            throw new Error(
-                `Invoice ${secretHash} is not accepted, status is ${resp.state}`
-            );
-        }
+    get alphaLedgerWallet() {
+        return this.wallets.getWalletForLedger(this.alphaLedger.name);
+    }
+
+    get betaLedgerWallet() {
+        return this.wallets.getWalletForLedger(this.betaLedger.name);
     }
 }

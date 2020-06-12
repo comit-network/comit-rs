@@ -10,7 +10,7 @@ use crate::{
             },
             alice,
             create_swap::HtlcParams,
-            DeriveSecret, LedgerState, SwapCommunication,
+            LedgerState, Rfc003DeriveSecret, SwapCommunication,
         },
     },
     transaction,
@@ -83,7 +83,7 @@ where
                 HtlcParams::new_beta_params(request, response),
                 htlc_location.clone(),
                 &self.secret_source, // Derive identities with this.
-                self.secret_source.derive_secret(), // The secret used by Alice.
+                self.secret_source.rfc003_derive_secret(), // The secret used by Alice.
             )));
         }
         actions

@@ -1,2 +1,6 @@
-status = ["ci/circleci: debug-build-test"]
+status = [
+    "static_analysis",
+    "build (ubuntu-latest)",
+]
 pr_status = ["license/cla"]
+block_labels = ["no-mergify"]

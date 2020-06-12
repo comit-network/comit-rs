@@ -1,5 +1,6 @@
-import { twoActorTest } from "../src/actor_test";
+import { oneActorTest, twoActorTest } from "../src/actor_test";
 import SwapFactory from "../src/actors/swap_factory";
+import { HalbitHerc20Payload, Herc20HalbitPayload } from "../src/payload";
 
 // ******************************************** //
 // Lightning routes                               //
@@ -7,75 +8,80 @@ import SwapFactory from "../src/actors/swap_factory";
 
 describe("Lightning routes tests", () => {
     it(
-        "create-han-ethereum-ether-halight-lightning-bitcoin-returns-201",
+        "create-herc20-halbit-returns-bad-request",
         twoActorTest(async ({ alice, bob }) => {
-            const bodies = (await SwapFactory.newSwap(alice, bob, true))
-                .hanEthereumEtherHalightLightningBitcoin;
+            const bodies = (await SwapFactory.newSwap(alice, bob)).herc20Halbit;
 
-            const aliceSwapLocation = await alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
-                bodies.alice
-            );
-            const bobSwapLocation = await bob.cnd.createHanEthereumEtherHalightLightningBitcoin(
-                bodies.bob
-            );
+            const expectedProblem = {
+                status: 400,
+                title: "lightning is not configured.",
+                detail:
+                    "lightning ledger is not properly configured, swap involving this ledger are not available.",
+            };
 
-            expect(bobSwapLocation).toBeTruthy();
-            expect(aliceSwapLocation).toBeTruthy();
+            await expect(
+                alice.createHerc20Halbit(bodies.alice)
+            ).rejects.toMatchObject(expectedProblem);
+            await expect(
+                bob.createHerc20Halbit(bodies.bob)
+            ).rejects.toMatchObject(expectedProblem);
         })
     );
 
     it(
-        "create-herc20-ethereum-erc20-halight-lightning-bitcoin-returns-400",
+        "create-halbit-herc20-returns-bad-request",
         twoActorTest(async ({ alice, bob }) => {
-            const bodies = (await SwapFactory.newSwap(alice, bob, true))
-                .herc20EthereumErc20HalightLightningBitcoin;
+            const bodies = (await SwapFactory.newSwap(alice, bob)).halbitHerc20;
+
+            const expectedProblem = {
+                status: 400,
+                title: "lightning is not configured.",
+                detail:
+                    "lightning ledger is not properly configured, swap involving this ledger are not available.",
+            };
+
             await expect(
-                alice.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
-                    bodies.alice
-                )
-            ).rejects.toThrow("Route not yet supported.");
+                alice.createHalbitHerc20(bodies.alice)
+            ).rejects.toMatchObject(expectedProblem);
             await expect(
-                bob.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
-                    bodies.bob
-                )
-            ).rejects.toThrow("Route not yet supported.");
+                bob.createHalbitHerc20(bodies.bob)
+            ).rejects.toMatchObject(expectedProblem);
         })
     );
 
     it(
-        "create-halight-lightning-bitcoin-han-ethereum-ether-returns-400",
-        twoActorTest(async ({ alice, bob }) => {
-            const bodies = (await SwapFactory.newSwap(alice, bob, true))
-                .halightLightningBitcoinHanEthereumEther;
+        "create-herc20-halbit-returns-invalid-body",
+        twoActorTest(async ({ alice }) => {
             await expect(
-                alice.cnd.createHalightLightningBitcoinHanEthereumEther(
-                    bodies.alice
-                )
-            ).rejects.toThrow("Route not yet supported.");
-            await expect(
-                bob.cnd.createHalightLightningBitcoinHanEthereumEther(
-                    bodies.bob
-                )
-            ).rejects.toThrow("Route not yet supported.");
+                alice.createHerc20Halbit({} as Herc20HalbitPayload)
+            ).rejects.toThrow("Invalid body.");
         })
     );
 
     it(
-        "create-halight-lightning-bitcoin-herc20-ethereum-erc20-returns-400",
-        twoActorTest(async ({ alice, bob }) => {
-            const bodies = (await SwapFactory.newSwap(alice, bob, true))
-                .halightLightningBitcoinHerc20EthereumErc20;
+        "create-halbit-herc20-returns-invalid-body",
+        twoActorTest(async ({ alice }) => {
+            await expect(
+                alice.createHalbitHerc20({} as HalbitHerc20Payload)
+            ).rejects.toThrow("Invalid body.");
+        })
+    );
 
-            await expect(
-                alice.cnd.createHalightLightningBitcoinHerc20EthereumErc20(
-                    bodies.alice
-                )
-            ).rejects.toThrow("Route not yet supported.");
-            await expect(
-                bob.cnd.createHalightLightningBitcoinHerc20EthereumErc20(
-                    bodies.bob
-                )
-            ).rejects.toThrow("Route not yet supported.");
+    it(
+        "get-swap-with-non-existent-id-yields-swap-not-found",
+        oneActorTest(async ({ alice }) => {
+            try {
+                await alice.cnd.fetch(
+                    "/swaps/deadbeef-dead-beef-dead-deadbeefdead"
+                );
+            } catch (error) {
+                const expectedProblem = {
+                    status: 404,
+                    title: "Swap not found.",
+                };
+
+                expect(error).toMatchObject(expectedProblem);
+            }
         })
     );
 });

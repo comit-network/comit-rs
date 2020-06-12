@@ -37,9 +37,12 @@ For changes related to our implementation, please [create a feature request](/is
 
 ## Pull Requests
 
-If you wish to directly contribute to the code, please make pull requests against `master`.
+If you wish to directly contribute to the code, please make pull requests against the `dev` branch as this repository uses the [GitFlow branching model](https://datasift.github.io/gitflow/IntroducingGitFlow.html).
 Refer to [GitHub documentation](https://help.github.com/articles/about-pull-requests/) on using the Pull Request feature.
 You can also find more details in the [Open Source Guides](https://opensource.guide/how-to-contribute/#opening-a-pull-request).
+
+Note that we are using [bors](https://github.com/apps/bors) for handling PR merges into `dev`.
+You don't have to keep your PR branch up to date with `dev` unless `bors` reports that changes are required on your PR.
 
 **Before** committing, always run `make format` or your change will be rejected by the CI.
 
@@ -52,7 +55,7 @@ Please be sure to double check your commit history and try to keep it clean, esp
 New code needs to be accompanied by **new tests**. Please use existing tests as example.
 We are using Continuous Integration and having tests will not only ensure that your code is correct but also that no-one else is breaking it unintentionally.
 
-Finally, do not forget to update the [changelog](./CHANGELOG.md)
+Finally, do not forget to update the [changelog](./CHANGELOG.md).
 
 ## Public Key
 Public Key for [security@coblox.tech](mailto:security@coblox.tech)

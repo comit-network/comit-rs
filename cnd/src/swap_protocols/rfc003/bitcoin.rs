@@ -13,11 +13,8 @@ use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 
 pub use self::htlc_events::*;
 
-impl<B> From<HtlcParams<B, asset::Bitcoin, identity::Bitcoin>> for BitcoinHtlc
-where
-    B: ledger::Bitcoin,
-{
-    fn from(htlc_params: HtlcParams<B, asset::Bitcoin, identity::Bitcoin>) -> Self {
+impl From<HtlcParams<ledger::Bitcoin, asset::Bitcoin, identity::Bitcoin>> for BitcoinHtlc {
+    fn from(htlc_params: HtlcParams<ledger::Bitcoin, asset::Bitcoin, identity::Bitcoin>) -> Self {
         let refund_public_key = ::bitcoin::PublicKey::from(htlc_params.refund_identity);
         let redeem_public_key = ::bitcoin::PublicKey::from(htlc_params.redeem_identity);
 
@@ -33,11 +30,8 @@ where
     }
 }
 
-impl<B> HtlcParams<B, asset::Bitcoin, identity::Bitcoin>
-where
-    B: ledger::Bitcoin + ledger::bitcoin::Network,
-{
+impl HtlcParams<ledger::Bitcoin, asset::Bitcoin, identity::Bitcoin> {
     pub fn compute_address(&self) -> Address {
-        BitcoinHtlc::from(*self).compute_address(B::network())
+        BitcoinHtlc::from(*self).compute_address(self.ledger.into())
     }
 }

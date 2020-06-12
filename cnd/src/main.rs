@@ -19,25 +19,26 @@ use cnd::{
         bitcoin::{self, BitcoindConnector},
         ethereum::{self, Web3Connector},
     },
-    config::{self, validation::validate_blockchain_config, Settings},
+    config::{self, validation::validate_connection_to_network, Settings},
+    connectors::Connectors,
     db::Sqlite,
     file_lock::TryLockExclusive,
+    halbit, hbit, herc20,
     http_api::route_factory,
-    jsonrpc,
-    lnd::LndConnectorParams,
     load_swaps,
-    network::Swarm,
-    seed::RootSeed,
-    swap_protocols::{
-        halight::InvoiceStates, Facade, Facade2, LedgerStates, SwapCommunicationStates,
-        SwapErrorStates,
-    },
+    network::{Swarm, SwarmWorker},
+    protocol_spawner::ProtocolSpawner,
+    respawn::respawn,
+    storage::Storage,
+    swap_protocols::{rfc003, rfc003::SwapCommunicationStates, Rfc003Facade, SwapErrorStates},
+    Facade, RootSeed,
 };
-
+use comit::lnd::LndConnectorParams;
 use rand::rngs::OsRng;
 use std::{process, sync::Arc};
 use structopt::StructOpt;
 use tokio::{net::TcpListener, runtime};
+
 mod cli;
 mod trace;
 
@@ -57,6 +58,16 @@ fn main() -> anyhow::Result<()> {
     }
 
     crate::trace::init_tracing(settings.logging.level)?;
+    std::panic::set_hook(Box::new(|panic_info| {
+        tracing::error!(
+            "thread panicked at {}: {}",
+            panic_info.location().expect("location is always present"),
+            panic_info
+                .payload()
+                .downcast_ref::<String>()
+                .unwrap_or(&String::from("no panic message"))
+        )
+    }));
 
     let database = Sqlite::new_in_dir(&settings.data.dir)?;
 
@@ -75,14 +86,14 @@ fn main() -> anyhow::Result<()> {
         let connector = BitcoindConnector::new(bitcoind.node_url.clone(), *network)?;
 
         runtime.block_on(async {
-            validate_blockchain_config(&connector, *network)
-                .await
-                .or_else::<anyhow::Error, _>(|e| {
-                    let conn_error = e.downcast::<reqwest::Error>()?;
-                    tracing::warn!("Could not validate Bitcoin node config: {}", conn_error);
-
+            match validate_connection_to_network(&connector, *network).await {
+                Ok(Err(network_mismatch)) => Err(network_mismatch),
+                Ok(Ok(())) => Ok(()),
+                Err(e) => {
+                    tracing::warn!("Could not validate Bitcoin node config: {}", e);
                     Ok(())
-                })
+                }
+            }
         })?;
 
         const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
@@ -91,18 +102,18 @@ fn main() -> anyhow::Result<()> {
     };
 
     let ethereum_connector = {
-        let config::Ethereum { parity, chain_id } = &settings.ethereum;
-        let connector = Web3Connector::new(parity.node_url.clone());
+        let config::Ethereum { geth, chain_id } = &settings.ethereum;
+        let connector = Web3Connector::new(geth.node_url.clone());
 
         runtime.block_on(async {
-            validate_blockchain_config(&connector, *chain_id)
-                .await
-                .or_else::<anyhow::Error, _>(|e| {
-                    let conn_error = e.downcast::<jsonrpc::Error>()?;
-                    tracing::warn!("Could not validate Ethereum node config: {}", conn_error);
-
+            match validate_connection_to_network(&connector, *chain_id).await {
+                Ok(Err(network_mismatch)) => Err(network_mismatch),
+                Ok(Ok(())) => Ok(()),
+                Err(e) => {
+                    tracing::warn!("Could not validate Ethereum node config: {}", e);
                     Ok(())
-                })
+                }
+            }
         })?;
 
         const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
@@ -115,59 +126,104 @@ fn main() -> anyhow::Result<()> {
         ))
     };
 
-    let lnd_connector_params = LndConnectorParams {
-        lnd_url: settings.lightning.lnd.rest_api_url.clone(),
-        retry_interval_ms: 100,
-        certificate_path: settings.lightning.lnd.cert_path.clone(),
-        macaroon_path: settings.lightning.lnd.readonly_macaroon_path.clone(),
+    let lnd_connector_params = LndConnectorParams::new(
+        settings.lightning.lnd.rest_api_url.clone(),
+        100,
+        settings.lightning.lnd.cert_path.clone(),
+        settings.lightning.lnd.readonly_macaroon_path.clone(),
+    )
+    .map_err(|err| {
+        tracing::warn!(
+            "Could not read initialise lnd configuration, halbit will not be available: {:?}",
+            err
+        );
+    })
+    .ok();
+
+    let connectors = Connectors {
+        bitcoin: Arc::clone(&bitcoin_connector),
+        ethereum: Arc::clone(&ethereum_connector),
     };
 
-    // Han protocol
-    let alpha_ledger_state = Arc::new(LedgerStates::default());
-    let beta_ledger_state = Arc::new(LedgerStates::default());
+    // RCF003 protocol
+    let rfc003_alpha_ledger_states = Arc::new(rfc003::LedgerStates::default());
+    let rfc003_beta_ledger_states = Arc::new(rfc003::LedgerStates::default());
     let swap_communication_states = Arc::new(SwapCommunicationStates::default());
 
-    // HALight
-    let invoice_states = Arc::new(InvoiceStates::default());
+    let herc20_states = Arc::new(herc20::States::default());
+    let halbit_states = Arc::new(halbit::States::default());
+    let hbit_states = Arc::new(hbit::States::default());
 
     let swap_error_states = Arc::new(SwapErrorStates::default());
+
+    let storage = Storage::new(
+        database.clone(),
+        seed,
+        herc20_states.clone(),
+        halbit_states.clone(),
+        hbit_states.clone(),
+    );
+
+    let protocol_spawner = ProtocolSpawner::new(
+        Arc::clone(&ethereum_connector),
+        Arc::clone(&bitcoin_connector),
+        lnd_connector_params,
+        runtime.handle().clone(),
+        Arc::clone(&herc20_states),
+        Arc::clone(&halbit_states),
+        Arc::clone(&hbit_states),
+    );
 
     let swarm = Swarm::new(
         &settings,
         seed,
-        &mut runtime,
         Arc::clone(&bitcoin_connector),
         Arc::clone(&ethereum_connector),
-        lnd_connector_params,
         Arc::clone(&swap_communication_states),
-        Arc::clone(&alpha_ledger_state),
-        Arc::clone(&beta_ledger_state),
-        Arc::clone(&invoice_states),
+        Arc::clone(&rfc003_alpha_ledger_states),
+        Arc::clone(&rfc003_beta_ledger_states),
         &database,
+        runtime.handle().clone(),
+        storage.clone(),
+        protocol_spawner.clone(),
     )?;
 
-    let facade2 = Facade2 {
-        swarm: swarm.clone(),
-        alpha_ledger_state: Arc::clone(&alpha_ledger_state),
-        beta_ledger_state: Arc::clone(&invoice_states),
-    };
-
-    let deps = Facade {
+    // RCF003 protocol
+    let rfc003_facade = Rfc003Facade {
         bitcoin_connector,
-        ethereum_connector,
-        alpha_ledger_state,
-        beta_ledger_state,
+        ethereum_connector: Arc::clone(&ethereum_connector),
+        alpha_ledger_states: Arc::clone(&rfc003_alpha_ledger_states),
+        beta_ledger_states: Arc::clone(&&rfc003_beta_ledger_states),
         swap_communication_states,
         swap_error_states,
         seed,
         db: database,
-        swarm,
+        swarm: swarm.clone(),
     };
 
-    runtime.block_on(load_swaps::load_swaps_from_database(deps.clone()))?;
+    // split protocols
+    let facade = Facade {
+        swarm: swarm.clone(),
+        storage: storage.clone(),
+        connectors,
+    };
 
-    let http_server_future = spawn_warp_instance(settings, deps, facade2);
-    runtime.block_on(http_server_future)?;
+    let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;
+    runtime.block_on(load_swaps::load_swaps_from_database(rfc003_facade.clone()))?;
+    match runtime.block_on(respawn(storage, protocol_spawner)) {
+        Ok(()) => {}
+        Err(e) => tracing::warn!("failed to respawn swaps: {:?}", e),
+    };
+
+    runtime.spawn(make_http_api_worker(
+        settings,
+        rfc003_facade,
+        facade,
+        http_api_listener,
+    ));
+    runtime.spawn(make_network_api_worker(swarm));
+
+    ::std::thread::park();
 
     Ok(())
 }
@@ -183,24 +239,48 @@ fn version() {
     println!("{} {} ({})", name, version, short);
 }
 
-async fn spawn_warp_instance(
-    settings: Settings,
-    dependencies: Facade,
-    facade2: Facade2,
-) -> anyhow::Result<()> {
-    let routes = route_factory::create(
-        dependencies,
-        facade2,
-        &settings.http_api.cors.allowed_origins,
-    );
-
+/// Binds to the socket for the HTTP API specified in the settings
+///
+/// Fails if we cannot bind to the socket.
+/// We do this ourselves so we can shut down if this fails and don't just panic
+/// some worker thread in tokio.
+async fn bind_http_api_socket(settings: &Settings) -> anyhow::Result<tokio::net::TcpListener> {
     let listen_addr = settings.http_api.socket;
     let listener = TcpListener::bind(listen_addr).await?;
 
-    tracing::info!("Starting HTTP server on {} ...", listen_addr);
-    warp::serve(routes).serve_incoming(listener).await;
+    Ok(listener)
+}
 
-    Ok(())
+/// Construct the worker that is going to process HTTP API requests.
+async fn make_http_api_worker(
+    settings: Settings,
+    rfc003_facade: Rfc003Facade,
+    facade: Facade,
+    incoming_requests: tokio::net::TcpListener,
+) {
+    let routes = route_factory::create(
+        rfc003_facade,
+        facade,
+        &settings.http_api.cors.allowed_origins,
+    );
+
+    match incoming_requests.local_addr() {
+        Ok(socket) => {
+            tracing::info!("Starting HTTP server on {} ...", socket);
+            warp::serve(routes).serve_incoming(incoming_requests).await;
+        }
+        Err(e) => {
+            tracing::error!("Cannot start HTTP server because {:?}", e);
+        }
+    }
+}
+
+/// Construct the worker that is going to process network (i.e. COMIT)
+/// communication.
+async fn make_network_api_worker(swarm: Swarm) {
+    let worker = SwarmWorker { swarm };
+
+    worker.await
 }
 
 #[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file

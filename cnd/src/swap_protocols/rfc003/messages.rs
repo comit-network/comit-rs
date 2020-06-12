@@ -1,9 +1,9 @@
 use crate::{
     swap_protocols::{
-        rfc003::{DeriveIdentities, SecretHash},
-        HashFunction, SwapId,
+        rfc003::{Rfc003DeriveIdentities, SecretHash, SwapId},
+        HashFunction,
     },
-    timestamp::Timestamp,
+    Timestamp,
 };
 use serde::{Deserialize, Serialize};
 
@@ -91,7 +91,7 @@ pub trait IntoAcceptMessage<AI, BI> {
     fn into_accept_message(
         self,
         id: SwapId,
-        secret_source: &dyn DeriveIdentities,
+        secret_source: &dyn Rfc003DeriveIdentities,
     ) -> Accept<AI, BI>;
 }
 
