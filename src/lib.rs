@@ -1,6 +1,6 @@
 pub mod swap;
 
-#[cfg(all(test, test_docker))]
+#[cfg(all(test, feature = "test-docker"))]
 pub mod ledgers {
     use reqwest::Url;
     use testcontainers::{
