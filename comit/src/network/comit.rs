@@ -1,16 +1,4 @@
-use crate::{
-    identity,
-    network::{
-        oneshot_behaviour,
-        protocols::{
-            announce,
-            announce::{behaviour::Announce, protocol::ReplySubstream, SwapDigest},
-            bitcoin_identity, ethereum_identity, finalize, lightning_identity, secret_hash,
-        },
-        DialInformation, Identities,
-    },
-    LocalSwapId, SecretHash, SharedSwapId, Timestamp,
-};
+use crate::{identity, network::*, LocalSwapId, SecretHash, SharedSwapId, Timestamp};
 use libp2p::{
     swarm::{
         NegotiatedSubstream, NetworkBehaviour, NetworkBehaviourAction,

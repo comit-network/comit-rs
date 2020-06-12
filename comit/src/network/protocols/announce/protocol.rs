@@ -1,4 +1,4 @@
-use crate::{network::protocols::announce::SwapDigest, SharedSwapId};
+use crate::{network::SwapDigest, SharedSwapId};
 use futures::prelude::*;
 use libp2p::core::upgrade::{self, InboundUpgrade, OutboundUpgrade, UpgradeInfo};
 use serde::Deserialize;

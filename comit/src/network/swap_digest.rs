@@ -1,4 +1,4 @@
-use crate::{asset, identity, network::protocols::announce::SwapDigest, RelativeTime, Timestamp};
+use crate::{asset, identity, network::SwapDigest, RelativeTime, Timestamp};
 use digest::Digest;
 
 /// This represents the information that we use to create a swap digest for

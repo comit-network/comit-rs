@@ -1,7 +1,4 @@
-use crate::{
-    network::{comit::LocalData, ReplySubstream, SwapDigest},
-    LocalSwapId, Role, SharedSwapId, Timestamp,
-};
+use crate::{network::*, LocalSwapId, Role, SharedSwapId, Timestamp};
 use libp2p::{swarm::NegotiatedSubstream, PeerId};
 use std::collections::HashMap;
 

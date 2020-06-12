@@ -12,7 +12,10 @@ use std::fmt;
 
 pub use self::{
     comit::*,
-    protocols::announce::{protocol::ReplySubstream, SwapDigest},
+    protocols::{
+        announce::{behaviour::*, handler::*, protocol::*, *},
+        *,
+    },
     swap_digest::*,
 };
 
