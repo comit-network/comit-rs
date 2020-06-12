@@ -5,6 +5,7 @@ use ::bitcoin::secp256k1;
 use ::bitcoin::secp256k1::constants::SECRET_KEY_SIZE;
 use ::bitcoin::Address;
 use ::bitcoin::Network;
+use bitcoin::PrivateKey;
 use rand::prelude::*;
 use reqwest::Url;
 
@@ -25,6 +26,8 @@ impl Seed {
 }
 
 struct Wallet {
+    /// The wallet is named `nectar_x` with `x` being the first 4 byte of the public key hash
+    name: String,
     bitcoind_client: bitcoind::Client,
     private_key: ::bitcoin::PrivateKey,
 }
@@ -39,7 +42,10 @@ impl Wallet {
 
         let bitcoind_client = bitcoind::Client::new(url);
 
+        let name = Wallet::gen_name(private_key);
+
         Ok(Wallet {
+            name,
             bitcoind_client,
             private_key,
         })
@@ -48,13 +54,13 @@ impl Wallet {
     pub async fn init(&self) -> anyhow::Result<()> {
         // TODO: Probably need to protect the wallet with a passphrase
         self.bitcoind_client
-            .create_wallet(&self.name(), None, Some(true), "".into(), None)
+            .create_wallet(&self.name, None, Some(true), "".into(), None)
             .await?;
 
         let wif = self.private_key.to_wif();
 
         self.bitcoind_client
-            .set_hd_seed(&self.name(), Some(true), Some(wif))
+            .set_hd_seed(&self.name, Some(true), Some(wif))
             .await?;
 
         Ok(())
@@ -62,15 +68,13 @@ impl Wallet {
 
     pub async fn new_address(&self) -> anyhow::Result<Address> {
         self.bitcoind_client
-            .get_new_address(&self.name(), None, Some("bech32".into()))
+            .get_new_address(&self.name, None, Some("bech32".into()))
             .await
     }
 
-    /// The wallet is named `nectar_x` with `x` being the first 4 byte of the public key hash
-    //TODO: It's actually used often so better generate it in the constructor
-    fn name(&self) -> String {
+    fn gen_name(private_key: PrivateKey) -> String {
         let mut hash_engine = PubkeyHash::engine();
-        self.private_key
+        private_key
             .public_key(&crate::SECP)
             .write_into(&mut hash_engine);
 
