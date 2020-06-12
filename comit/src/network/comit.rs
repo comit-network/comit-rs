@@ -1,16 +1,4 @@
-use crate::{
-    identity,
-    network::{
-        oneshot_behaviour,
-        protocols::{
-            announce,
-            announce::{behaviour::Announce, protocol::ReplySubstream, SwapDigest},
-            bitcoin_identity, ethereum_identity, finalize, lightning_identity, secret_hash,
-        },
-        DialInformation, Identities,
-    },
-    LocalSwapId, SecretHash, SharedSwapId, Timestamp,
-};
+use crate::{identity, network::*, LocalSwapId, SecretHash, SharedSwapId, Timestamp};
 use libp2p::{
     swarm::{
         NegotiatedSubstream, NetworkBehaviour, NetworkBehaviourAction,
@@ -617,10 +605,9 @@ impl Set<SecretHash> for RemoteData {
 mod tests {
     use super::*;
     use crate::{
-        asset::ethereum::FromWei,
-        network::{test_swarm, DialInformation},
+        asset::{self, ethereum::FromWei},
+        network::{test_swarm, DialInformation, Herc20Halbit},
     };
-    use comit::{asset, network::Herc20Halbit};
     use digest::Digest;
     use futures::future;
     use std::str::FromStr;

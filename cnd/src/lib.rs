@@ -56,7 +56,6 @@ pub mod protocol_spawner;
 pub mod respawn;
 pub mod spawn;
 pub mod storage;
-mod swap_id;
 pub mod swap_protocols;
 mod tracing_ext;
 
@@ -67,10 +66,14 @@ use std::{
 };
 
 pub use self::{
-    actions::*, facade::Facade, protocol_spawner::*, seed::*, spawn::*, storage::*, swap_id::*,
+    actions::*, asset::AssetKind, comit_api::LedgerKind, facade::Facade, protocol_spawner::*,
+    seed::*, spawn::*, storage::*,
 };
 // Export comit types so we do not need to worry about where they come from.
-pub use comit::{ledger, Never, Protocol, RelativeTime, Role, Secret, SecretHash, Side, Timestamp};
+pub use comit::{
+    ledger, LocalSwapId, Never, Protocol, RelativeTime, Role, Secret, SecretHash, SharedSwapId,
+    Side, Timestamp,
+};
 
 lazy_static::lazy_static! {
     pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =

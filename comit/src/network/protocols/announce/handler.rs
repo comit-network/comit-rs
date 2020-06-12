@@ -1,6 +1,4 @@
-use crate::network::protocols::announce::protocol::{
-    self, Confirmed, InboundConfig, OutboundConfig, ReplySubstream,
-};
+use crate::network::*;
 use libp2p::{
     core::upgrade::{InboundUpgrade, OutboundUpgrade},
     swarm::{

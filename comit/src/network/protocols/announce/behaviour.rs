@@ -1,11 +1,4 @@
-use crate::{
-    network::protocols::announce::{
-        handler::{self, Handler, HandlerEvent},
-        protocol::{OutboundConfig, ReplySubstream},
-        SwapDigest,
-    },
-    DialInformation, SharedSwapId,
-};
+use crate::{network::*, DialInformation, SharedSwapId};
 use libp2p::{
     core::{connection::ConnectionId, ConnectedPoint, Multiaddr, PeerId},
     swarm::{

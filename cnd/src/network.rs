@@ -1,29 +1,20 @@
-mod comit;
-#[cfg(test)]
-pub mod test_swarm;
 pub mod transport;
 
-pub use self::comit::*;
 // Export comit network types while maintaining the module abstraction.
 pub use ::comit::network::*;
 pub use transport::ComitTransport;
 
 use crate::{
-    asset::AssetKind,
     btsieve::{
         bitcoin::{self, BitcoindConnector},
         ethereum::{self, Web3Connector},
     },
-    comit_api::LedgerKind,
     config::Settings,
     db::{ForSwap, Rfc003Swap, Save, Sqlite},
     htlc_location, identity,
     libp2p_comit_ext::{FromHeader, ToHeader},
-    network::comit::{Comit, LocalData},
-    protocol_spawner::ProtocolSpawner,
-    seed::RootSeed,
-    spawn::spawn,
-    storage::{Storage, SwapContext},
+    network::{Comit, LocalData},
+    spawn,
     swap_protocols::{
         rfc003::{
             self,
@@ -33,7 +24,8 @@ use crate::{
         },
         HashFunction, SwapProtocol,
     },
-    transaction, Load, LocalSwapId, Protocol, Role, SecretHash, SharedSwapId,
+    transaction, AssetKind, LedgerKind, Load, LocalSwapId, Protocol, ProtocolSpawner, Role,
+    RootSeed, SecretHash, SharedSwapId, Storage, SwapContext,
 };
 use anyhow::Context;
 use async_trait::async_trait;
@@ -332,15 +324,6 @@ impl ComitNode {
         }
         Ok(())
     }
-}
-
-/// All possible identities to be sent to the remote node for any protocol
-/// combination.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Identities {
-    pub ethereum_identity: Option<identity::Ethereum>,
-    pub lightning_identity: Option<identity::Lightning>,
-    pub bitcoin_identity: Option<identity::Bitcoin>,
 }
 
 async fn handle_request(
@@ -850,7 +833,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for C
         let save_and_start_swap = async move {
             let swap = storage.load(local_swap_id).await?;
             save_swap_remote_data(&storage, swap, remote_data).await?;
-            spawn(&spawner, &storage, swap).await?;
+            spawn::spawn(&spawner, &storage, swap).await?;
 
             Ok::<(), anyhow::Error>(())
         };
