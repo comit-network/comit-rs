@@ -429,7 +429,7 @@ dependencies = [
 [[package]]
 name = "cnd"
 version = "0.7.3"
-source = "git+https://github.com/comit-network/comit-rs?branch=nectar#f31a1a0e12c783ad0057b1c06b32abdec645398d"
+source = "git+https://github.com/comit-network/comit-rs?branch=nectar-stable#f31a1a0e12c783ad0057b1c06b32abdec645398d"
 dependencies = [
  "ambassador",
  "anyhow",
@@ -503,7 +503,7 @@ dependencies = [
 [[package]]
 name = "comit"
 version = "0.1.0"
-source = "git+https://github.com/comit-network/comit-rs?branch=nectar#f31a1a0e12c783ad0057b1c06b32abdec645398d"
+source = "git+https://github.com/comit-network/comit-rs?branch=nectar-stable#f31a1a0e12c783ad0057b1c06b32abdec645398d"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -745,7 +745,7 @@ dependencies = [
 [[package]]
 name = "digest"
 version = "0.1.0"
-source = "git+https://github.com/comit-network/comit-rs?branch=nectar#f31a1a0e12c783ad0057b1c06b32abdec645398d"
+source = "git+https://github.com/comit-network/comit-rs?branch=nectar-stable#f31a1a0e12c783ad0057b1c06b32abdec645398d"
 dependencies = [
  "digest-macro-derive",
  "hex 0.4.2",
@@ -763,7 +763,7 @@ dependencies = [
 [[package]]
 name = "digest-macro-derive"
 version = "0.1.0"
-source = "git+https://github.com/comit-network/comit-rs?branch=nectar#f31a1a0e12c783ad0057b1c06b32abdec645398d"
+source = "git+https://github.com/comit-network/comit-rs?branch=nectar-stable#f31a1a0e12c783ad0057b1c06b32abdec645398d"
 dependencies = [
  "hex 0.4.2",
  "proc-macro2 1.0.18",
@@ -1540,7 +1540,7 @@ dependencies = [
 [[package]]
 name = "libp2p-comit"
 version = "0.1.0"
-source = "git+https://github.com/comit-network/comit-rs?branch=nectar#f31a1a0e12c783ad0057b1c06b32abdec645398d"
+source = "git+https://github.com/comit-network/comit-rs?branch=nectar-stable#f31a1a0e12c783ad0057b1c06b32abdec645398d"
 dependencies = [
  "bytes",
  "derivative 2.1.1",
