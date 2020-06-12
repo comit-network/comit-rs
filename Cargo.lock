@@ -1574,6 +1574,8 @@ dependencies = [
  "chrono",
  "comit",
  "futures",
+ "lazy_static",
+ "rand 0.6.5",
  "reqwest",
  "testcontainers",
  "tokio",

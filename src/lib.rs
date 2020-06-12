@@ -13,6 +13,7 @@
 #![allow(dead_code)] // To be removed further down the line
 #![forbid(unsafe_code)]
 
+pub mod bitcoin_wallet;
 pub mod swap;
 
 #[cfg(all(test, feature = "test-docker"))]

@@ -13,6 +13,7 @@
 #![allow(dead_code)] // To be removed further down the line
 #![forbid(unsafe_code)]
 
+mod bitcoin_wallet;
 mod ongoing_swaps;
 mod publish;
 
