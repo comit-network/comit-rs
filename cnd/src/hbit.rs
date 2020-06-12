@@ -1,6 +1,6 @@
 use crate::{
     btsieve::{BlockByHash, LatestBlock},
-    swap_protocols::{state, state::Update},
+    state::{self, Update},
     tracing_ext::InstrumentProtocol,
     LocalSwapId, Role, Side,
 };

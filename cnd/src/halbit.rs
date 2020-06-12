@@ -1,6 +1,6 @@
 use crate::{
     identity,
-    swap_protocols::{state, state::Update},
+    state::{self, Update},
     tracing_ext::InstrumentProtocol,
     LocalSwapId, Protocol, RelativeTime, Role, Side,
 };

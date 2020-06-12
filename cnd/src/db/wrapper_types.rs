@@ -1,4 +1,4 @@
-use crate::{asset, identity, swap_protocols::ledger};
+use crate::{asset, identity, ledger};
 use std::{fmt, str::FromStr};
 
 pub mod custom_sql_types;

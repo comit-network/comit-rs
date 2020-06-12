@@ -13,18 +13,11 @@
 )]
 #![forbid(unsafe_code)]
 
-// Cannot do `#[strum_discriminants(derive(strum_macros::EnumString))]` at the
-// moment. Hence we need to `#[macro_use]` in order to derive strum macros on
-// an enum created by `strum_discriminants`.
-#[macro_use]
-extern crate strum_macros;
 #[macro_use]
 extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
 
-#[macro_use]
-pub mod libp2p_comit_ext;
 #[macro_use]
 pub mod db;
 #[macro_use]
@@ -41,7 +34,6 @@ pub mod spectral_ext;
 pub mod with_swap_types;
 
 mod actions;
-pub mod comit_api;
 pub mod config;
 pub mod connectors;
 mod facade;
@@ -64,8 +56,8 @@ use std::{
 };
 
 pub use self::{
-    actions::*, asset::AssetKind, comit_api::LedgerKind, facade::Facade, protocol_spawner::*,
-    seed::*, spawn::*, storage::*, swap_protocols::state,
+    actions::*, asset::AssetKind, facade::Facade, protocol_spawner::*, seed::*, spawn::*,
+    storage::*, swap_protocols::state,
 };
 // Export comit types so we do not need to worry about where they come from.
 pub use comit::{
