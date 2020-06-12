@@ -9,8 +9,7 @@ anyhow = "1"
 async-trait = "0.1"
 bitcoin = "0.23.0"
 chrono = "0.4"
-cnd = { git = "https://github.com/comit-network/comit-rs", package = "cnd", branch = "nectar-stable" }
-comit = { git = "https://github.com/comit-network/comit-rs", package = "comit", branch = "nectar-stable" }
+comit = { git = "https://github.com/comit-network/comit-rs", package = "comit", branch = "nectar" }
 futures = "0.3.5"
 reqwest = "0.10.6"
 

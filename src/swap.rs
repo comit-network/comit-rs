@@ -6,15 +6,84 @@ use comit::{
 };
 
 pub mod hbit {
-    use bitcoin::secp256k1::Secp256k1;
+    use bitcoin::secp256k1::{Secp256k1, SecretKey};
     use bitcoin::*;
-    use comit::{actions, identity, SecretHash};
+    use chrono::NaiveDateTime;
+    use comit::{actions, asset, identity, SecretHash, Timestamp};
 
-    pub use cnd::{
-        hbit::State,
-        http_api::hbit::{FinalizedAsFunder, FinalizedAsRedeemer},
+    pub use comit::{
+        btsieve::{BlockByHash, LatestBlock},
+        hbit::*,
+        htlc_location, transaction,
     };
-    pub use comit::hbit::*;
+
+    // TODO: Find a better name
+    #[derive(Clone, Debug)]
+    pub struct SwapDetailsFunder {
+        pub network: bitcoin::Network,
+        pub asset: asset::Bitcoin,
+        pub transient_redeem_identity: identity::Bitcoin,
+        pub transient_refund_identity: SecretKey,
+        pub final_refund_identity: Address,
+        pub expiry: Timestamp,
+    }
+
+    // TODO: Find a better name
+    #[derive(Clone, Debug)]
+    pub struct SwapDetailsRedeemer {
+        pub network: bitcoin::Network,
+        pub asset: asset::Bitcoin,
+        pub transient_redeem_identity: SecretKey,
+        pub transient_refund_identity: identity::Bitcoin,
+        pub final_redeem_identity: Address,
+        pub expiry: Timestamp,
+    }
+
+    impl SwapDetailsFunder {
+        pub fn build_htlc_params_funder<C>(
+            &self,
+            secp: &Secp256k1<C>,
+            secret_hash: SecretHash,
+        ) -> Params
+        where
+            C: secp256k1::Signing,
+        {
+            let transient_refund_sk = self.transient_refund_identity;
+            let refund_identity = identity::Bitcoin::from_secret_key(&secp, &transient_refund_sk);
+
+            Params {
+                network: self.network,
+                asset: self.asset,
+                redeem_identity: self.transient_redeem_identity,
+                refund_identity,
+                expiry: self.expiry,
+                secret_hash,
+            }
+        }
+    }
+
+    impl SwapDetailsRedeemer {
+        pub fn build_htlc_params_redeemer<C>(
+            &self,
+            secp: &Secp256k1<C>,
+            secret_hash: SecretHash,
+        ) -> Params
+        where
+            C: secp256k1::Signing,
+        {
+            let transient_redeem_sk = self.transient_redeem_identity;
+            let redeem_identity = identity::Bitcoin::from_secret_key(&secp, &transient_redeem_sk);
+
+            Params {
+                network: self.network,
+                asset: self.asset,
+                redeem_identity,
+                refund_identity: self.transient_refund_identity,
+                expiry: self.expiry,
+                secret_hash,
+            }
+        }
+    }
 
     #[async_trait::async_trait]
     pub trait EnsureFund {
@@ -37,54 +106,61 @@ pub mod hbit {
         ) -> anyhow::Result<Refunded>;
     }
 
-    pub fn build_htlc_params_funder<C>(
-        secp: &Secp256k1<C>,
-        hbit: FinalizedAsFunder,
-        secret_hash: SecretHash,
-    ) -> Params
-    where
-        C: secp256k1::Signing,
-    {
-        let transient_refund_sk = hbit.transient_refund_identity;
-        let refund_identity = identity::Bitcoin::from_secret_key(&secp, &transient_refund_sk);
-
-        Params {
-            network: hbit.network.into(),
-            asset: hbit.asset,
-            redeem_identity: hbit.transient_redeem_identity,
-            refund_identity,
-            expiry: hbit.expiry,
-            secret_hash,
-        }
+    #[derive(Debug, Clone, Copy)]
+    pub struct CorrectlyFunded {
+        pub asset: asset::Bitcoin,
+        pub location: htlc_location::Bitcoin,
     }
 
-    pub fn build_htlc_params_redeemer<C>(
-        secp: &Secp256k1<C>,
-        hbit: FinalizedAsRedeemer,
-        secret_hash: SecretHash,
-    ) -> Params
+    pub async fn watch_for_funded<C>(
+        connector: &C,
+        params: &Params,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<CorrectlyFunded>
     where
-        C: secp256k1::Signing,
+        C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
     {
-        let transient_redeem_sk = hbit.transient_redeem_identity;
-        let redeem_identity = identity::Bitcoin::from_secret_key(&secp, &transient_redeem_sk);
-
-        Params {
-            network: hbit.network.into(),
-            asset: hbit.asset,
-            redeem_identity,
-            refund_identity: hbit.transient_refund_identity,
-            expiry: hbit.expiry,
-            secret_hash,
+        match comit::hbit::watch_for_funded(connector, params, start_of_swap).await? {
+            Funded::Correctly {
+                asset, location, ..
+            } => Ok(CorrectlyFunded { asset, location }),
+            Funded::Incorrectly { .. } => anyhow::bail!("Bitcoin HTLC incorrectly funded"),
         }
     }
 }
-
 pub mod herc20 {
-    use comit::SecretHash;
+    use chrono::NaiveDateTime;
+    pub use comit::{
+        actions::ethereum::*,
+        asset,
+        btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
+        ethereum::ChainId,
+        ethereum::{Block, Hash},
+        herc20::*,
+        identity, transaction, SecretHash, Timestamp,
+    };
 
-    pub use cnd::{herc20::State, http_api::herc20::Finalized};
-    pub use comit::{actions::ethereum::*, herc20::*};
+    #[derive(Debug, Clone)]
+    pub struct SwapDetails {
+        pub asset: asset::Erc20,
+        pub redeem_identity: identity::Ethereum,
+        pub refund_identity: identity::Ethereum,
+        pub expiry: Timestamp,
+        pub chain_id: ChainId,
+    }
+
+    impl SwapDetails {
+        pub fn build_htlc_params(&self, secret_hash: SecretHash) -> Params {
+            Params {
+                asset: self.asset.clone(),
+                redeem_identity: self.redeem_identity,
+                refund_identity: self.refund_identity,
+                expiry: self.expiry,
+                secret_hash,
+                chain_id: self.chain_id,
+            }
+        }
+    }
 
     #[async_trait::async_trait]
     pub trait EnsureDeploy {
@@ -106,14 +182,30 @@ pub mod herc20 {
         async fn ensure_fund(&self, action: CallContract) -> anyhow::Result<Refunded>;
     }
 
-    pub fn build_htlc_params(herc20: Finalized, secret_hash: SecretHash) -> Params {
-        Params {
-            asset: herc20.asset,
-            redeem_identity: herc20.redeem_identity,
-            refund_identity: herc20.refund_identity,
-            expiry: herc20.expiry,
-            secret_hash,
-            chain_id: herc20.chain_id,
+    #[derive(Debug, Clone)]
+    pub struct CorrectlyFunded {
+        pub transaction: transaction::Ethereum,
+        pub asset: asset::Erc20,
+    }
+
+    pub async fn watch_for_funded<C>(
+        connector: &C,
+        params: Params,
+        start_of_swap: NaiveDateTime,
+        deployed: Deployed,
+    ) -> anyhow::Result<CorrectlyFunded>
+    where
+        C: LatestBlock<Block = Block>
+            + BlockByHash<Block = Block, BlockHash = Hash>
+            + ReceiptByHash,
+    {
+        match comit::herc20::watch_for_funded(connector, params, start_of_swap, deployed).await? {
+            comit::herc20::Funded::Correctly { transaction, asset } => {
+                Ok(CorrectlyFunded { transaction, asset })
+            }
+            comit::herc20::Funded::Incorrectly { .. } => {
+                anyhow::bail!("Ethereum HTLC incorrectly funded")
+            }
         }
     }
 }
@@ -146,10 +238,10 @@ pub trait CallContract {
     fn call_contract(&self, action: actions::ethereum::CallContract) -> anyhow::Result<()>;
 }
 
-impl Swap<hbit::FinalizedAsRedeemer, herc20::Finalized, Bob> {
+impl Swap<hbit::SwapDetailsRedeemer, herc20::SwapDetails, Bob> {
     pub fn new(
-        alpha_params: hbit::FinalizedAsRedeemer,
-        beta_params: herc20::Finalized,
+        alpha_params: hbit::SwapDetailsRedeemer,
+        beta_params: herc20::SwapDetails,
         bob: Bob,
         created_at: NaiveDateTime,
     ) -> Self {
@@ -191,11 +283,14 @@ impl Swap<hbit::FinalizedAsRedeemer, herc20::Finalized, Bob> {
 
         let secret_hash = self.role.secret_hash;
 
-        let alpha_params = hbit::build_htlc_params_redeemer(&secp, self.alpha.clone(), secret_hash);
-        let beta_params = herc20::build_htlc_params(self.beta.clone(), secret_hash);
+        let alpha_params = self.alpha.build_htlc_params_redeemer(&secp, secret_hash);
+        let beta_params = self.beta.build_htlc_params(secret_hash);
 
-        let _alpha_funded =
-            hbit::watch_for_funded(&alpha_connector, &alpha_params, self.created_at).await?;
+        let hbit::CorrectlyFunded {
+            asset: fund_amount,
+            location: fund_location,
+            ..
+        } = hbit::watch_for_funded(&alpha_connector, &alpha_params, self.created_at).await?;
 
         let deploy_action = beta_params.build_deploy_action();
         let beta_deployed = beta_wallet.ensure_deploy(deploy_action).await?;
@@ -210,7 +305,14 @@ impl Swap<hbit::FinalizedAsRedeemer, herc20::Finalized, Bob> {
             herc20::watch_for_redeemed(&beta_connector, self.created_at, beta_deployed.clone())
                 .await?;
 
-        let redeem_action = self.alpha.build_redeem_action(secret)?;
+        let redeem_action = alpha_params.build_redeem_action(
+            &secp,
+            fund_amount,
+            fund_location,
+            self.alpha.transient_redeem_identity,
+            self.alpha.final_redeem_identity.clone(),
+            secret,
+        )?;
         alpha_wallet.ensure_redeem(redeem_action).await?;
 
         Ok(())
@@ -234,14 +336,14 @@ mod tests {
     use std::str::FromStr;
     use testcontainers::clients;
 
-    fn hbit_finalized<C>(
+    fn hbit_swap_details<C>(
         secp: &bitcoin::secp256k1::Secp256k1<C>,
-    ) -> (hbit::FinalizedAsFunder, hbit::FinalizedAsRedeemer)
+    ) -> (hbit::SwapDetailsFunder, hbit::SwapDetailsRedeemer)
     where
         C: secp256k1::Signing,
     {
         let asset = asset::Bitcoin::from_sat(100_000_000);
-        let network = Network::Regtest.into();
+        let network = Network::Regtest;
 
         let transient_refund_sk = secp256k1::SecretKey::from_str(
             "01010101010101010001020304050607ffff0000ffff00006363636363636363",
@@ -254,44 +356,38 @@ mod tests {
 
         // FIXME: Get final_refund_identity from funder wallet
         let final_refund_identity =
-            bitcoin::Address::from_str("bcrt1q2nfxmhd4n3c8834pj72xagvyr9gl57n5r94fsl")
-                .unwrap()
-                .into();
-        let finalized_as_funder = hbit::FinalizedAsFunder {
-            asset,
+            bitcoin::Address::from_str("bcrt1q2nfxmhd4n3c8834pj72xagvyr9gl57n5r94fsl").unwrap();
+        let finalized_as_funder = hbit::SwapDetailsFunder {
             network,
+            asset,
             transient_redeem_identity: identity::Bitcoin::from_secret_key(
                 &secp,
                 &transient_redeem_sk,
             ),
-            final_refund_identity,
             transient_refund_identity: transient_refund_sk,
+            final_refund_identity,
             expiry: Timestamp::from(0),
-            state: hbit::State::None,
         };
 
         // FIXME: Get final_redeem_identity from funder wallet
         let final_redeem_identity =
-            bitcoin::Address::from_str("bcrt1q2nfxmhd4n3c8834pj72xagvyr9gl57n5r94fsl")
-                .unwrap()
-                .into();
-        let finalized_as_redeemer = hbit::FinalizedAsRedeemer {
-            asset,
+            bitcoin::Address::from_str("bcrt1q2nfxmhd4n3c8834pj72xagvyr9gl57n5r94fsl").unwrap();
+        let finalized_as_redeemer = hbit::SwapDetailsRedeemer {
             network,
+            asset,
             transient_redeem_identity: transient_redeem_sk,
-            final_redeem_identity,
             transient_refund_identity: identity::Bitcoin::from_secret_key(
                 &secp,
                 &transient_refund_sk,
             ),
+            final_redeem_identity,
             expiry: Timestamp::from(0),
-            state: hbit::State::None,
         };
 
         (finalized_as_funder, finalized_as_redeemer)
     }
 
-    fn herc20_finalized() -> herc20::Finalized {
+    fn herc20_swap_details() -> herc20::SwapDetails {
         let token_contract =
             ethereum::Address::from_str("6b175474e89094c44da98b954eedeac495271d0f").unwrap();
         let quantity = Erc20Quantity::from_wei(1_000u32);
@@ -301,13 +397,12 @@ mod tests {
         let identity =
             identity::Ethereum::from_str("c5549e335b2786520f4c5d706c76c9ee69d0a028").unwrap();
 
-        herc20::Finalized {
+        herc20::SwapDetails {
             asset,
-            chain_id: ethereum::ChainId::regtest(),
-            refund_identity: identity,
             redeem_identity: identity,
+            refund_identity: identity,
             expiry: Timestamp::from(0),
-            state: herc20::State::None,
+            chain_id: ethereum::ChainId::regtest(),
         }
     }
 
@@ -328,7 +423,7 @@ mod tests {
         async fn ensure_redeem(
             &self,
             _action: comit::actions::bitcoin::BroadcastSignedTransaction,
-        ) -> anyhow::Result<cnd::hbit::Redeemed> {
+        ) -> anyhow::Result<hbit::Redeemed> {
             todo!()
         }
     }
@@ -340,7 +435,7 @@ mod tests {
         async fn ensure_deploy(
             &self,
             _action: comit::actions::ethereum::DeployContract,
-        ) -> anyhow::Result<cnd::herc20::Deployed> {
+        ) -> anyhow::Result<herc20::Deployed> {
             todo!()
         }
     }
@@ -350,7 +445,7 @@ mod tests {
         async fn ensure_fund(
             &self,
             _action: comit::actions::ethereum::CallContract,
-        ) -> anyhow::Result<cnd::herc20::Funded> {
+        ) -> anyhow::Result<herc20::Funded> {
             todo!()
         }
     }
@@ -376,10 +471,10 @@ mod tests {
 
     // Interestingly, Alice doesn't care about what Bob does on alpha
     // ledger. We therefore don't pass the `alpha_connector`.
-    impl Swap<hbit::FinalizedAsFunder, herc20::Finalized, Alice> {
+    impl Swap<hbit::SwapDetailsFunder, herc20::SwapDetails, Alice> {
         pub fn new(
-            alpha_params: hbit::FinalizedAsFunder,
-            beta_params: herc20::Finalized,
+            alpha_params: hbit::SwapDetailsFunder,
+            beta_params: herc20::SwapDetails,
             alice: Alice,
             created_at: NaiveDateTime,
         ) -> Self {
@@ -393,7 +488,7 @@ mod tests {
 
         async fn execute<C, BC, AW, BW>(
             &self,
-            _secp: &bitcoin::secp256k1::Secp256k1<C>,
+            secp: &bitcoin::secp256k1::Secp256k1<C>,
             beta_connector: BC,
             alpha_wallet: AW,
             beta_wallet: BW,
@@ -409,10 +504,12 @@ mod tests {
             let secret = self.role.secret;
             let secret_hash = SecretHash::new(secret);
 
-            let fund_action = self.alpha.build_fund_action(secret_hash);
+            let alpha_params = self.alpha.build_htlc_params_funder(&secp, secret_hash);
+            let beta_params = self.beta.build_htlc_params(secret_hash);
+
+            let fund_action = alpha_params.build_fund_action();
             alpha_wallet.ensure_fund(fund_action).await?;
 
-            let beta_params = herc20::build_htlc_params(self.beta.clone(), secret_hash);
             let beta_deployed =
                 herc20::watch_for_deployed(&beta_connector, beta_params.clone(), self.created_at)
                     .await?;
@@ -420,11 +517,12 @@ mod tests {
                 &beta_connector,
                 beta_params.clone(),
                 self.created_at,
-                beta_deployed,
+                beta_deployed.clone(),
             )
             .await?;
 
-            let redeem_action = self.beta.build_redeem_action(self.role.secret)?;
+            let redeem_action =
+                beta_params.build_redeem_action(beta_deployed.location, self.role.secret)?;
             beta_wallet.ensure_redeem(redeem_action).await?;
 
             // NOTE: I don't think we care about the rest of the swap, so long
@@ -464,10 +562,10 @@ mod tests {
         let secret = secret();
         let alice = Alice { secret };
         let secret_hash = SecretHash::new(secret);
-        let (hbit_finalized_as_funder, hbit_finalized_as_redeemer) = hbit_finalized(&secp);
+        let (hbit_finalized_as_funder, hbit_finalized_as_redeemer) = hbit_swap_details(&secp);
         let alice_swap = Swap::<_, _, Alice>::new(
             hbit_finalized_as_funder,
-            herc20_finalized(),
+            herc20_swap_details(),
             alice,
             Utc::now().naive_local(),
         );
@@ -475,7 +573,7 @@ mod tests {
         let bob = Bob { secret_hash };
         let bob_swap = Swap::<_, _, Bob>::new(
             hbit_finalized_as_redeemer,
-            herc20_finalized(),
+            herc20_swap_details(),
             bob,
             Utc::now().naive_local(),
         );
