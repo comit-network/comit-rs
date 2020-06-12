@@ -118,6 +118,7 @@ pub mod herc20 {
     }
 }
 
+#[derive(Debug)]
 pub struct Swap<A, B, R> {
     alpha: A,
     beta: B,
@@ -125,6 +126,7 @@ pub struct Swap<A, B, R> {
     created_at: NaiveDateTime,
 }
 
+#[derive(Clone, Copy, Debug)]
 pub struct Bob {
     secret_hash: SecretHash,
 }
