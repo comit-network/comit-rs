@@ -30,34 +30,34 @@ struct Wallet {
 }
 
 impl Wallet {
-    pub async fn new(seed: Seed, url: Url, network: Network) -> anyhow::Result<Wallet> {
+    pub fn new(seed: Seed, url: Url, network: Network) -> anyhow::Result<Wallet> {
         let private_key = ::bitcoin::PrivateKey {
             compressed: true,
             network,
             key: seed.secret_key()?,
         };
-        let wif = private_key.to_wif();
-
-        dbg!(&wif);
 
         let bitcoind_client = bitcoind::Client::new(url);
 
-        let wallet = Wallet {
-            bitcoind_client: bitcoind_client.clone(),
+        Ok(Wallet {
+            bitcoind_client,
             private_key,
-        };
+        })
+    }
 
+    pub async fn init(&self) -> anyhow::Result<()> {
         // TODO: Probably need to protect the wallet with a passphrase
-        // TODO: Separate initialisation from constructor?
-        bitcoind_client
-            .create_wallet(&wallet.name(), None, Some(true), "".into(), None)
+        self.bitcoind_client
+            .create_wallet(&self.name(), None, Some(true), "".into(), None)
             .await?;
 
-        bitcoind_client
-            .set_hd_seed(&wallet.name(), Some(true), Some(wif))
+        let wif = self.private_key.to_wif();
+
+        self.bitcoind_client
+            .set_hd_seed(&self.name(), Some(true), Some(wif))
             .await?;
 
-        Ok(wallet)
+        Ok(())
     }
 
     pub async fn new_address(&self) -> anyhow::Result<Address> {
@@ -124,9 +124,8 @@ mod docker_tests {
             .unwrap();
 
         let seed = Seed::new();
-        let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
-            .await
-            .unwrap();
+        let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).unwrap();
+        wallet.init().await.unwrap();
 
         let _address = wallet.new_address().await.unwrap();
     }
