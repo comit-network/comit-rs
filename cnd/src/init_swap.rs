@@ -1,13 +1,10 @@
 use crate::{
     db::AcceptedSwap,
-    swap_protocols::{
-        rfc003::{
-            create_swap::{create_watcher, OngoingSwap},
-            events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
-            state::Insert,
-            Accept, Request, SwapCommunication,
-        },
-        Rfc003Facade,
+    swap_protocols::rfc003::{
+        create_swap::{create_watcher, OngoingSwap},
+        events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
+        state::Insert,
+        Accept, Request, SwapCommunication,
     },
 };
 use tracing_futures::Instrument;

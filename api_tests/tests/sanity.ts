@@ -20,18 +20,6 @@ describe("Sanity", () => {
     );
 
     it(
-        "alice-has-empty-peer-list",
-        oneActorTest(async ({ alice }) => {
-            const promise = alice.cnd.fetch("/peers");
-
-            await expect(promise).resolves.toMatchObject({
-                status: 200,
-                data: { peers: [] },
-            });
-        })
-    );
-
-    it(
         "returns-listen-addresses-on-root-document",
         oneActorTest(async ({ alice }) => {
             const res = await alice.cnd.fetch("/");

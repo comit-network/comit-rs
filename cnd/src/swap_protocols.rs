@@ -1,6 +1,5 @@
 pub mod ledger_states;
 pub mod rfc003;
-mod rfc003_facade;
 pub mod state;
 mod swap_error_states;
 pub mod ledger {
@@ -35,7 +34,7 @@ pub mod actions {
     pub use comit::actions::*;
 }
 
-pub use self::{ledger_states::*, rfc003_facade::*, swap_error_states::*};
+pub use self::{ledger_states::*, swap_error_states::*};
 
 use serde::{Deserialize, Serialize};
 

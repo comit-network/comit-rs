@@ -12,12 +12,10 @@ pub mod impl_serialize_http;
 pub mod action;
 mod problem;
 mod protocol;
-mod swap_resource;
 
 pub use self::{
     problem::*,
     protocol::{AliceSwap, BobSwap},
-    swap_resource::{OnFail, SwapParameters, SwapResource, SwapStatus},
 };
 use crate::swap_protocols::actions::lnd::Chain;
 

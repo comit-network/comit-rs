@@ -50,8 +50,6 @@ pub mod halbit;
 pub mod hbit;
 pub mod herc20;
 pub mod http_api;
-pub mod init_swap;
-pub mod load_swaps;
 pub mod protocol_spawner;
 pub mod respawn;
 pub mod spawn;
