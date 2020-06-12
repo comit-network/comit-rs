@@ -16,6 +16,9 @@
 mod ongoing_swaps;
 mod publish;
 
+#[cfg(all(test, feature = "test-docker"))]
+pub mod test_harness;
+
 fn main() {
     println!("Hello, world!");
 }
