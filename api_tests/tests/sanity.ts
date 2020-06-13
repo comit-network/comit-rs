@@ -9,7 +9,7 @@ describe("Sanity", () => {
         "invalid-swap-yields-404",
         oneActorTest(async ({ alice }) => {
             const promise = alice.cnd.fetch(
-                "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead"
+                "/swaps/deadbeef-dead-beef-dead-deadbeefdead"
             );
 
             await expect(promise).rejects.toMatchObject({
