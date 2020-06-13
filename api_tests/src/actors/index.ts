@@ -12,8 +12,8 @@ export class Actors {
         return this.getActorByName("bob");
     }
 
-    get charlie(): Actor {
-        return this.getActorByName("charlie");
+    get carol(): Actor {
+        return this.getActorByName("carol");
     }
 
     public getActorByName(name: string): Actor {
@@ -38,8 +38,8 @@ export class Rfc003Actors {
         return this.getActorByName("bob");
     }
 
-    get charlie(): Rfc003Actor {
-        return this.getActorByName("charlie");
+    get carol(): Rfc003Actor {
+        return this.getActorByName("carol");
     }
 
     public getActorByName(name: string): Rfc003Actor {

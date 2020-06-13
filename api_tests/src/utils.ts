@@ -58,7 +58,7 @@ export const DEFAULT_ALPHA = {
         name: "bitcoin",
         quantity: {
             bob: "100000000",
-            charlie: "200000000",
+            carol: "200000000",
             reasonable: "100000000",
             stingy: "100",
         },
@@ -75,7 +75,7 @@ const DEFAULT_BETA = {
         name: "ether",
         quantity: {
             bob: ethers.utils.parseEther("10").toString(),
-            charlie: ethers.utils.parseEther("20").toString(),
+            carol: ethers.utils.parseEther("20").toString(),
         },
     },
     expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
