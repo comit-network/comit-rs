@@ -1,7 +1,7 @@
 use crate::{
     btsieve::LatestBlock,
     connectors::Connectors,
-    network::{ComitPeers, DialInformation, Identities, Swarm},
+    network::{ComitPeers, DialInformation, Identities, LocalPeerId, Swarm},
     storage::{Load, LoadAll, Storage},
     LocalSwapId, Role, Save, Timestamp,
 };
@@ -14,6 +14,7 @@ use libp2p::{Multiaddr, PeerId};
 /// HTTP API controllers small and still access all the functionality we need.
 #[derive(Clone, Debug, ambassador::Delegate)]
 #[delegate(ComitPeers, target = "swarm")]
+#[delegate(LocalPeerId, target = "swarm")]
 pub struct Facade {
     pub swarm: Swarm,
     pub storage: Storage,

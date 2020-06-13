@@ -26,7 +26,7 @@ pub fn create(
     facade: Facade,
     allowed_origins: &AllowedOrigins,
 ) -> BoxedFilter<(impl Reply,)> {
-    let peer_id = rfc003_facade.local_peer_id();
+    let peer_id = facade.local_peer_id();
     let swaps = warp::path(http_api::PATH);
     let rfc003 = swaps.and(warp::path(RFC003));
     let peer_id = warp::any().map(move || peer_id.clone());
