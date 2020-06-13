@@ -20,21 +20,6 @@ describe("Sanity", () => {
     );
 
     it(
-        "returns-invalid-body-for-bad-json",
-        oneActorTest(async ({ alice }) => {
-            const promise = alice.cnd.postSwap({
-                // @ts-ignore
-                garbage: true,
-            });
-
-            await expect(promise).rejects.toMatchObject({
-                status: 400,
-                title: "Invalid body.",
-            });
-        })
-    );
-
-    it(
         "returns-invalid-body-for-bad-json-herc20-halbit",
         oneActorTest(async ({ alice }) => {
             const promise = alice.createHerc20Halbit({
