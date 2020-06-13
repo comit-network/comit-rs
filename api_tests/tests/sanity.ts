@@ -20,15 +20,6 @@ describe("Sanity", () => {
     );
 
     it(
-        "empty-swap-list-after-startup",
-        oneActorTest(async ({ alice }) => {
-            const promise = alice.cnd.fetch("/swaps");
-
-            await expect(promise).resolves.toHaveProperty("data.entities", []);
-        })
-    );
-
-    it(
         "bad-request-for-invalid-swap-combination",
         oneActorTest(async ({ alice }) => {
             const promise = alice.cnd.postSwap({
