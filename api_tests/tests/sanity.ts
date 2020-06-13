@@ -69,6 +69,66 @@ describe("Sanity", () => {
     );
 
     it(
+        "returns-invalid-body-for-bad-json-herc20-halbit",
+        oneActorTest(async ({ alice }) => {
+            const promise = alice.createHerc20Halbit({
+                // @ts-ignore
+                garbage: true,
+            });
+
+            await expect(promise).rejects.toMatchObject({
+                status: 400,
+                title: "Invalid body.",
+            });
+        })
+    );
+
+    it(
+        "returns-invalid-body-for-bad-json-halbit-herc20",
+        oneActorTest(async ({ alice }) => {
+            const promise = alice.createHalbitHerc20({
+                // @ts-ignore
+                garbage: true,
+            });
+
+            await expect(promise).rejects.toMatchObject({
+                status: 400,
+                title: "Invalid body.",
+            });
+        })
+    );
+
+    it(
+        "returns-invalid-body-for-bad-json-herc20-hbit",
+        oneActorTest(async ({ alice }) => {
+            const promise = alice.createHerc20Hbit({
+                // @ts-ignore
+                garbage: true,
+            });
+
+            await expect(promise).rejects.toMatchObject({
+                status: 400,
+                title: "Invalid body.",
+            });
+        })
+    );
+
+    it(
+        "returns-invalid-body-for-bad-json-hbit-herc20",
+        oneActorTest(async ({ alice }) => {
+            const promise = alice.createHbitHerc20({
+                // @ts-ignore
+                garbage: true,
+            });
+
+            await expect(promise).rejects.toMatchObject({
+                status: 400,
+                title: "Invalid body.",
+            });
+        })
+    );
+
+    it(
         "alice-has-empty-peer-list",
         oneActorTest(async ({ alice }) => {
             const promise = alice.cnd.fetch("/peers");
