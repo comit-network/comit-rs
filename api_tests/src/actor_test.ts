@@ -8,7 +8,7 @@ import ProvidesCallback = jest.ProvidesCallback;
  * after the test, regardless if the test succeeded or failed.
  */
 function nActorTest(
-    actorNames: ["alice", "bob", "charlie"] | ["alice", "bob"] | ["alice"],
+    actorNames: ["alice", "bob", "carol"] | ["alice", "bob"] | ["alice"],
     testFn: (actors: Actors) => Promise<void>
 ): ProvidesCallback {
     return async (done) => {
@@ -47,7 +47,7 @@ function nActorTest(
 export function threeActorTest(
     testFn: (actors: Actors) => Promise<void>
 ): ProvidesCallback {
-    return nActorTest(["alice", "bob", "charlie"], testFn);
+    return nActorTest(["alice", "bob", "carol"], testFn);
 }
 
 /*

@@ -33,7 +33,7 @@ import { Wallets } from "../wallets";
 import { defaultLedgerDescriptionForLedger } from "./defaults";
 import pTimeout from "p-timeout";
 
-export type ActorName = "alice" | "bob" | "charlie";
+export type ActorName = "alice" | "bob" | "carol";
 
 export class Actor {
     public static defaultActionConfig = {
