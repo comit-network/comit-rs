@@ -82,7 +82,7 @@ pub fn create(
     let get_peers = warp::get()
         .and(warp::path("peers"))
         .and(warp::path::end())
-        .and(rfc003_facade.clone())
+        .and(facade.clone())
         .and_then(http_api::routes::peers::get_peers);
 
     let get_info_siren = warp::get()

@@ -92,6 +92,22 @@ impl Announce {
             }
         }
     }
+
+    /// Peer id and address information for connected peer nodes.
+    pub fn connected_peers(&mut self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
+        let addresses = self
+            .connections
+            .iter()
+            .filter_map(|(peer, connection_state)| match connection_state {
+                ConnectionState::Connecting { .. } => None,
+                ConnectionState::Connected { addresses } => {
+                    Some((peer.clone(), addresses.clone().into_iter().collect()))
+                }
+            })
+            .collect::<Vec<_>>();
+
+        addresses.into_iter()
+    }
 }
 
 impl NetworkBehaviour for Announce {
