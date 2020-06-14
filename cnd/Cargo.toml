@@ -35,7 +35,7 @@ libp2p = { version = "0.18", default-features = false, features = ["tcp", "secio
 libp2p-comit = { path = "../libp2p-comit" }
 libsqlite3-sys = { version = ">=0.8.0, <0.13.0", features = ["bundled"] }
 log = { version = "0.4", features = ["serde"] }
-num = "0.2"
+num = "0.3"
 paste = "0.1"
 pem = "0.8"
 rand = "0.7"

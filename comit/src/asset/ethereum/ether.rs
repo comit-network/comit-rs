@@ -2,22 +2,17 @@ use crate::{
     asset::ethereum::{Error, FromWei, TryFromWei},
     ethereum::U256,
 };
-use bigdecimal::BigDecimal;
 use lazy_static::lazy_static;
-use num::{bigint::Sign, pow::Pow, BigInt, BigUint, Num, Zero};
+use num::{pow::Pow, BigUint, Integer, Num, Zero};
 use serde::{
     de::{self, Deserialize, Deserializer},
     ser::{Serialize, Serializer},
 };
-use std::{fmt, ops::Div, str::FromStr};
+use std::{fmt, str::FromStr};
 
 lazy_static! {
     static ref WEI_IN_ETHER_U128: u128 = (10u128).pow(18);
     static ref WEI_IN_ETHER_BIGUINT: BigUint = BigUint::from(*WEI_IN_ETHER_U128);
-    static ref WEI_IN_ETHER_BIGDEC: BigDecimal = BigDecimal::from((
-        BigInt::from_biguint(Sign::Plus, WEI_IN_ETHER_BIGUINT.clone()),
-        0
-    ));
 }
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -53,10 +48,22 @@ impl Ether {
 
 impl fmt::Display for Ether {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        let big_int = BigInt::from_biguint(Sign::Plus, self.clone().0);
-        let dec = BigDecimal::from((big_int, 0));
-        let ether = dec.div(WEI_IN_ETHER_BIGDEC.clone());
-        write!(f, "{} ETH", ether)
+        let (ether, rem) = self.0.div_rem(&WEI_IN_ETHER_BIGUINT);
+
+        if rem.is_zero() {
+            write!(f, "{} ETH", ether)
+        } else {
+            // format number as base 10
+            let rem = rem.to_str_radix(10);
+
+            // prefix with 0 in the front until we have 18 chars
+            let rem = format!("{:0>18}", rem);
+
+            // trim unnecessary 0s from the back
+            let rem = rem.trim_end_matches('0');
+
+            write!(f, "{}.{} ETH", ether, rem)
+        }
     }
 }
 
@@ -172,6 +179,14 @@ mod tests {
         assert_eq!(
             Ether::from_wei(1_000_000_000_000_000u128).to_string(),
             "0.001 ETH"
+        );
+    }
+
+    #[test]
+    fn given_some_weird_wei_number_formats_correctly_as_eth() {
+        assert_eq!(
+            Ether::from_wei(1_003_564_412_000_000_000u128).to_string(),
+            "1.003564412 ETH"
         );
     }
 
