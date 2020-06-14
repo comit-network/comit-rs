@@ -1,12 +1,12 @@
+import { promises as asyncFs } from "fs";
 import { EthereumWallet as EthereumWalletSdk } from "comit-sdk";
 import { ethers } from "ethers";
-import { BigNumber as BigNumberEthers } from "ethers/utils";
 import { Wallet } from "./index";
-import { TransactionRequest } from "ethers/providers";
 import { sleep } from "../utils";
 import { Logger } from "log4js";
 import { lock } from "proper-lockfile";
 import { Asset } from "../asset";
+import path from "path";
 
 export class EthereumWallet implements Wallet {
     public MaximumFee = 0;
@@ -63,14 +63,14 @@ export class EthereumWallet implements Wallet {
         const functionIdentifier = "40c10f19";
         toAddress = toAddress.replace(/^0x/, "").padStart(64, "0");
 
-        const bigNumber = ethers.utils.bigNumberify(asset.quantity);
+        const bigNumber = ethers.BigNumber.from(asset.quantity);
         const hexAmount = bigNumber
             .toHexString()
             .replace(/^0x/, "")
             .padStart(64, "0");
         const data = "0x" + functionIdentifier + toAddress + hexAmount;
 
-        const tx: TransactionRequest = {
+        const tx: ethers.providers.TransactionRequest = {
             to: asset.tokenContract,
             gasLimit: "0x100000",
             value: "0x0",
@@ -89,14 +89,23 @@ export class EthereumWallet implements Wallet {
         );
     }
 
-    private async sendTransaction(tx: TransactionRequest) {
-        const release = await lock(this.ethereumLockDir, {
+    private async sendTransaction(
+        tx: ethers.providers.TransactionRequest
+    ): Promise<ethers.providers.TransactionReceipt> {
+        const lockFile = path.join(
+            this.ethereumLockDir,
+            "ethereum-dev-account.lock"
+        );
+        await asyncFs.mkdir(lockFile, {
+            recursive: true,
+        });
+
+        const release = await lock(lockFile, {
             retries: {
                 retries: 10,
                 minTimeout: 50,
                 maxTimeout: 2000,
             },
-            lockfilePath: "ethereum-dev-account",
         });
 
         this.logger.debug(
@@ -108,7 +117,7 @@ export class EthereumWallet implements Wallet {
             tx.nonce = await this.jsonRpcProvider.getTransactionCount(
                 this.ethereumDevAccount.address
             );
-            const signedTx = await this.ethereumDevAccount.sign(tx);
+            const signedTx = await this.ethereumDevAccount.signTransaction(tx);
             const transactionResponse = await this.jsonRpcProvider.sendTransaction(
                 signedTx
             );
@@ -146,7 +155,7 @@ export class EthereumWallet implements Wallet {
         const minimumExpectedBalance = BigInt(asset.quantity);
 
         // make sure we have at least twice as much
-        const value = new BigNumberEthers(
+        const value = ethers.BigNumber.from(
             minimumExpectedBalance.toString()
         ).mul(2);
         await this.sendTransaction({
@@ -172,21 +181,17 @@ export class EthereumWallet implements Wallet {
     public async deployErc20TokenContract(): Promise<string> {
         const data = ERC20_CONTRACT;
 
-        const tx: TransactionRequest = {
+        const tx: ethers.providers.TransactionRequest = {
             gasLimit: "0x3D0900",
             value: "0x0",
             data,
-            nonce: await this.jsonRpcProvider.getTransactionCount(
-                this.ethereumDevAccount.address
-            ),
             chainId: this.chainId,
         };
-        const signedTx = await this.ethereumDevAccount.sign(tx);
-        const transactionResponse = await this.jsonRpcProvider.sendTransaction(
-            signedTx
-        );
+
+        const transactionResponse = await this.sendTransaction(tx);
+
         const transactionReceipt = await this.jsonRpcProvider.waitForTransaction(
-            transactionResponse.hash,
+            transactionResponse.transactionHash,
             1
         );
         return transactionReceipt.contractAddress;

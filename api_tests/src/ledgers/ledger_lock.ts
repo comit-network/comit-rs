@@ -1,5 +1,6 @@
 import { lock } from "proper-lockfile";
 import * as path from "path";
+import { promises as asyncFc } from "fs";
 
 /**
  * Locks the given directory for exclusive access.
@@ -11,8 +12,12 @@ import * as path from "path";
 export default async function ledgerLock(
     lockDir: string
 ): Promise<() => Promise<void>> {
-    return lock(lockDir, {
-        lockfilePath: path.join(lockDir, "lock"),
+    const lockFile = path.join(lockDir, "ledger.lock");
+
+    await asyncFc.mkdir(lockFile, {
+        recursive: true,
+    });
+    return lock(lockFile, {
         retries: {
             retries: 10,
             minTimeout: 200,
