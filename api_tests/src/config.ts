@@ -93,10 +93,10 @@ export class E2ETestActorConfig {
                 }
                 break;
             }
-            case "charlie":
+            case "carol":
                 {
                     this.logger.warn(
-                        "generating lnd config for charlie is not supported at this stage"
+                        "generating lnd config for carol is not supported at this stage"
                     );
                 }
                 break;
