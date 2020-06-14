@@ -23,7 +23,7 @@ lazy_static = "1"
 levenshtein = "1"
 libp2p = { version = "0.18", default-features = false, features = ["tcp", "secio", "yamux", "mplex"] }
 lru = "0.5.1"
-num = "0.2"
+num = "0.3"
 primitive-types = { version = "0.7.2", features = ["serde"] }
 rand = "0.7"
 reqwest = { version = "0.10.6", default-features = false, features = ["json", "native-tls"] }
