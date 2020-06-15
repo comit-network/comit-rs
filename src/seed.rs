@@ -18,6 +18,12 @@ const ENTROPY_SIZE: usize = 32;
 
 impl Seed {
     pub fn secret_key(&self) -> anyhow::Result<secp256k1::SecretKey> {
+        let bytes = self.secret_key_bytes();
+
+        Ok(secp256k1::SecretKey::from_slice(&bytes)?)
+    }
+
+    pub fn secret_key_bytes(&self) -> [u8; 32] {
         let bytes = &self.bytes();
 
         // TODO: pass it through hmac to get different key for Ethereum and Bitcoin?
@@ -28,7 +34,10 @@ impl Seed {
         hasher.update(bytes);
         let hash = hasher.finalize();
 
-        Ok(secp256k1::SecretKey::from_slice(&hash)?)
+        let mut bytes = [0u8; 32];
+        bytes.copy_from_slice(&hash);
+
+        bytes
     }
 
     pub fn bytes(&self) -> Vec<u8> {

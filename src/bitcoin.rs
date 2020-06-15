@@ -46,6 +46,14 @@ impl Amount {
     }
 }
 
+impl std::ops::Add for Amount {
+    type Output = Amount;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Amount(self.0 + rhs.0)
+    }
+}
+
 impl std::ops::Sub for Amount {
     type Output = Amount;
 
@@ -57,6 +65,18 @@ impl std::ops::Sub for Amount {
 impl From<::bitcoin::Amount> for Amount {
     fn from(amount: ::bitcoin::Amount) -> Self {
         Amount { 0: amount }
+    }
+}
+
+impl From<Amount> for ::bitcoin::Amount {
+    fn from(from: Amount) -> Self {
+        from.0
+    }
+}
+
+impl From<comit::asset::Bitcoin> for Amount {
+    fn from(from: comit::asset::Bitcoin) -> Self {
+        Self(from.into())
     }
 }
 

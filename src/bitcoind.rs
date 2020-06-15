@@ -1,23 +1,33 @@
 use crate::jsonrpc;
-use bitcoin::{Address, Amount};
+use anyhow::Context;
+use bitcoin::{
+    consensus::encode::serialize_hex, hashes::hex::FromHex, Address, Amount, Network, Transaction,
+    Txid,
+};
 use serde::Deserialize;
 
 #[derive(Debug, Clone)]
 pub struct Client {
     rpc_client: jsonrpc::Client,
+    jsonrpc_version: String,
 }
 
 impl Client {
     pub fn new(url: reqwest::Url) -> Self {
         Client {
             rpc_client: jsonrpc::Client::new(url),
+            jsonrpc_version: String::from("1.0"),
         }
     }
 
-    pub async fn network(&self) -> anyhow::Result<String> {
+    pub async fn network(&self) -> anyhow::Result<Network> {
         let blockchain_info = self
             .rpc_client
-            .send::<Vec<()>, BlockchainInfo>(jsonrpc::Request::new("getblockchaininfo", vec![]))
+            .send::<Vec<()>, BlockchainInfo>(jsonrpc::Request::new(
+                "getblockchaininfo",
+                vec![],
+                self.jsonrpc_version.clone(),
+            ))
             .await?;
 
         Ok(blockchain_info.chain)
@@ -28,7 +38,7 @@ impl Client {
         wallet_name: &str,
         disable_private_keys: Option<bool>,
         blank: Option<bool>,
-        passphrase: String,
+        passphrase: Option<String>,
         avoid_reuse: Option<bool>,
     ) -> anyhow::Result<CreateWalletResponse> {
         let response = self
@@ -42,8 +52,10 @@ impl Client {
                     jsonrpc::serialize(passphrase)?,
                     jsonrpc::serialize(avoid_reuse)?,
                 ],
+                self.jsonrpc_version.clone(),
             ))
-            .await?;
+            .await
+            .context("failed to create wallet")?;
         Ok(response)
     }
 
@@ -66,6 +78,7 @@ impl Client {
                         jsonrpc::serialize(include_watch_only)?,
                         jsonrpc::serialize(avoid_reuse)?,
                     ],
+                    self.jsonrpc_version.clone(),
                 ),
             )
             .await?;
@@ -88,9 +101,11 @@ impl Client {
                         jsonrpc::serialize(new_key_pool)?,
                         jsonrpc::serialize(wif_private_key)?,
                     ],
+                    self.jsonrpc_version.clone(),
                 ),
             )
-            .await?;
+            .await
+            .context("failed to set HD seed")?;
 
         Ok(())
     }
@@ -111,9 +126,11 @@ impl Client {
                         jsonrpc::serialize(label)?,
                         jsonrpc::serialize(address_type)?,
                     ],
+                    self.jsonrpc_version.clone(),
                 ),
             )
-            .await?;
+            .await
+            .context("failed to get new address")?;
         Ok(address)
     }
 
@@ -122,10 +139,80 @@ impl Client {
             .rpc_client
             .send_with_path::<Vec<()>, _>(
                 format!("/wallet/{}", wallet_name),
-                jsonrpc::Request::new("getwalletinfo", vec![]),
+                jsonrpc::Request::new("getwalletinfo", vec![], self.jsonrpc_version.clone()),
             )
             .await?;
         Ok(response)
+    }
+
+    pub async fn send_to_address(
+        &self,
+        wallet_name: &str,
+        address: Address,
+        amount: Amount,
+    ) -> anyhow::Result<Txid> {
+        let txid: String = self
+            .rpc_client
+            .send_with_path(
+                format!("/wallet/{}", wallet_name),
+                jsonrpc::Request::new(
+                    "sendtoaddress",
+                    vec![
+                        jsonrpc::serialize(address)?,
+                        jsonrpc::serialize(amount.as_btc())?,
+                    ],
+                    self.jsonrpc_version.clone(),
+                ),
+            )
+            .await
+            .context("failed to send to address")?;
+        let txid = Txid::from_hex(&txid)?;
+
+        Ok(txid)
+    }
+
+    pub async fn send_raw_transaction(
+        &self,
+        wallet_name: &str,
+        transaction: Transaction,
+    ) -> anyhow::Result<Txid> {
+        let txid: String = self
+            .rpc_client
+            .send_with_path(
+                format!("/wallet/{}", wallet_name),
+                jsonrpc::Request::new(
+                    "sendrawtransaction",
+                    vec![serialize_hex(&transaction)],
+                    self.jsonrpc_version.clone(),
+                ),
+            )
+            .await
+            .context("failed to send raw transaction")?;
+        let txid = Txid::from_hex(&txid)?;
+        Ok(txid)
+    }
+
+    pub async fn get_raw_transaction(
+        &self,
+        wallet_name: &str,
+        txid: Txid,
+    ) -> anyhow::Result<Transaction> {
+        let hex: String = self
+            .rpc_client
+            .send_with_path(
+                format!("/wallet/{}", wallet_name),
+                jsonrpc::Request::new(
+                    "getrawtransaction",
+                    vec![jsonrpc::serialize(txid)?],
+                    self.jsonrpc_version.clone(),
+                ),
+            )
+            .await
+            .context("failed to get raw transaction")?;
+        let bytes: Vec<u8> = FromHex::from_hex(&hex)?;
+        let transaction = bitcoin::consensus::encode::deserialize(&bytes)?;
+
+        Ok(transaction)
     }
 
     #[cfg(test)]
@@ -144,15 +231,17 @@ impl Client {
                     jsonrpc::serialize(address)?,
                     jsonrpc::serialize(max_tries)?,
                 ],
+                self.jsonrpc_version.clone(),
             ))
-            .await?;
+            .await
+            .context("failed to generate to address")?;
         Ok(response)
     }
 }
 
 #[derive(Debug, Deserialize)]
 struct BlockchainInfo {
-    chain: String,
+    chain: Network,
 }
 
 #[derive(Debug, Deserialize)]
@@ -196,19 +285,21 @@ pub enum ScanProgress {
 #[cfg(all(test, feature = "test-docker"))]
 mod test {
     use super::*;
-    use crate::test_harness::BitcoinBlockchain;
+    use crate::test_harness::bitcoin;
     use testcontainers::clients;
 
     #[tokio::test]
     async fn get_network_info() {
-        let tc_client = clients::Cli::default();
-        let blockchain = BitcoinBlockchain::new(&tc_client).unwrap();
+        let client = {
+            let tc_client = clients::Cli::default();
+            let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
 
-        let client = Client::new(blockchain.node_url);
+            Client::new(blockchain.node_url)
+        };
 
         let network = client.network().await.unwrap();
 
-        assert_eq!(network.as_str(), "regtest")
+        assert_eq!(network, Network::Regtest)
     }
 
     #[test]
