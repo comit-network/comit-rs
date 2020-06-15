@@ -1578,7 +1578,6 @@ dependencies = [
  "rand 0.6.5",
  "reqwest",
  "serde",
- "serde_derive",
  "serde_json",
  "testcontainers",
  "thiserror",
