@@ -35,6 +35,7 @@ impl Client {
         Res: Debug + DeserializeOwned,
     {
         let url = self.url.clone().join(&path)?;
+
         let response = self
             .inner
             .post(url.clone())
@@ -44,7 +45,12 @@ impl Client {
             .await?
             .json::<Response<Res>>()
             .await
-            .context("failed to deserialize JSON response as JSON-RPC response")?;
+            .with_context(|| {
+                format!(
+                "failed to deserialize JSON response as JSON-RPC response to request {:?} to {}",
+                request, path
+            )
+            })?;
 
         // This is how to print the response to debug
         // let response = response.bytes().await?;
@@ -70,10 +76,10 @@ pub struct Request<T> {
 }
 
 impl<T> Request<T> {
-    pub fn new(method: &str, params: T) -> Self {
+    pub fn new(method: &str, params: T, jsonrpc: String) -> Self {
         Self {
             id: "1".to_owned(),
-            jsonrpc: "1.0".to_owned(),
+            jsonrpc,
             method: method.to_owned(),
             params,
         }
@@ -83,8 +89,8 @@ impl<T> Request<T> {
 #[derive(serde::Deserialize, Debug)]
 #[serde(untagged)]
 pub enum Response<T> {
-    Error { error: JsonRpcError },
     Success { result: T },
+    Error { error: JsonRpcError },
     RpcError(JsonRpcError),
 }
 

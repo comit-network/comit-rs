@@ -1,50 +1,24 @@
-use crate::bitcoind;
-use crate::bitcoind::WalletInfoResponse;
-use ::bitcoin::hash_types::PubkeyHash;
-use ::bitcoin::hashes::Hash;
-use ::bitcoin::secp256k1;
-use ::bitcoin::secp256k1::constants::SECRET_KEY_SIZE;
-use ::bitcoin::Address;
-use ::bitcoin::Network;
-use bitcoin::{Amount, PrivateKey};
-use rand::prelude::*;
+use crate::{bitcoind, Seed};
+use bitcoin::{Address, Amount, Network, Transaction, Txid};
+use bitcoind::WalletInfoResponse;
 use reqwest::Url;
 
-// TODO: Go in its own module
-#[derive(Debug, Clone)]
-struct Seed([u8; SECRET_KEY_SIZE]);
-
-impl Seed {
-    pub fn new() -> Self {
-        let mut bytes = [0u8; SECRET_KEY_SIZE];
-
-        rand::thread_rng().fill_bytes(&mut bytes);
-        Seed(bytes)
-    }
-
-    pub fn secret_key(&self) -> anyhow::Result<secp256k1::SecretKey> {
-        Ok(secp256k1::SecretKey::from_slice(&self.0)?)
-    }
-}
-
-struct Wallet {
-    /// The wallet is named `nectar_x` with `x` being the first 4 byte of the public key hash
+#[derive(Clone, Debug)]
+pub struct Wallet {
     name: String,
     bitcoind_client: bitcoind::Client,
-    private_key: ::bitcoin::PrivateKey,
+    private_key: bitcoin::PrivateKey,
 }
 
 impl Wallet {
-    pub fn new(seed: Seed, url: Url, network: Network) -> anyhow::Result<Wallet> {
-        let private_key = ::bitcoin::PrivateKey {
+    pub fn new(seed: Seed, url: Url, network: Network, name: String) -> anyhow::Result<Wallet> {
+        let private_key = bitcoin::PrivateKey {
             compressed: true,
             network,
             key: seed.secret_key()?,
         };
 
         let bitcoind_client = bitcoind::Client::new(url);
-
-        let name = Wallet::gen_name(private_key);
 
         Ok(Wallet {
             name,
@@ -61,7 +35,7 @@ impl Wallet {
         if info.is_err() {
             // TODO: Probably need to protect the wallet with a passphrase
             self.bitcoind_client
-                .create_wallet(&self.name, None, Some(true), "".into(), None)
+                .create_wallet(&self.name, None, Some(true), None, None)
                 .await?;
 
             let wif = self.private_key.to_wif();
@@ -90,18 +64,52 @@ impl Wallet {
             .await
     }
 
-    fn gen_name(private_key: PrivateKey) -> String {
-        let mut hash_engine = PubkeyHash::engine();
-        private_key
-            .public_key(&crate::SECP)
-            .write_into(&mut hash_engine);
+    pub async fn send_to_address(
+        &self,
+        address: Address,
+        amount: Amount,
+        network: Network,
+    ) -> anyhow::Result<Txid> {
+        self.assert_network(network).await?;
 
-        let public_key_hash = PubkeyHash::from_engine(hash_engine);
+        let txid = self
+            .bitcoind_client
+            .send_to_address(&self.name, address, amount)
+            .await?;
+        Ok(txid)
+    }
 
-        format!(
-            "nectar_{:x}{:x}{:x}{:x}",
-            public_key_hash[0], public_key_hash[1], public_key_hash[2], public_key_hash[3]
-        )
+    pub async fn send_raw_transaction(
+        &self,
+        transaction: Transaction,
+        network: Network,
+    ) -> anyhow::Result<Txid> {
+        self.assert_network(network).await?;
+
+        let txid = self
+            .bitcoind_client
+            .send_raw_transaction(&self.name, transaction)
+            .await?;
+        Ok(txid)
+    }
+
+    pub async fn get_raw_transaction(&self, txid: Txid) -> anyhow::Result<Transaction> {
+        let transaction = self
+            .bitcoind_client
+            .get_raw_transaction(&self.name, txid)
+            .await?;
+
+        Ok(transaction)
+    }
+
+    async fn assert_network(&self, expected: Network) -> anyhow::Result<()> {
+        let actual = self.bitcoind_client.network().await?;
+
+        if expected != actual {
+            anyhow::bail!("Wrong network: expected {}, got {}", expected, actual);
+        }
+
+        Ok(())
     }
 }
 
@@ -118,18 +126,24 @@ mod tests {
 #[cfg(all(test, feature = "test-docker"))]
 mod docker_tests {
     use super::*;
-    use crate::test_harness::BitcoinBlockchain;
+    use crate::test_harness::bitcoin;
     use testcontainers::clients;
 
     #[tokio::test]
     async fn create_bitcoin_wallet_from_seed_and_get_address() {
         let tc_client = clients::Cli::default();
-        let blockchain = BitcoinBlockchain::new(&tc_client).unwrap();
+        let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
 
         blockchain.init().await.unwrap();
 
         let seed = Seed::new();
-        let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).unwrap();
+        let wallet = Wallet::new(
+            seed,
+            blockchain.node_url.clone(),
+            Network::Regtest,
+            "test".into(),
+        )
+        .unwrap();
         wallet.init().await.unwrap();
 
         let _address = wallet.new_address().await.unwrap();
@@ -138,12 +152,18 @@ mod docker_tests {
     #[tokio::test]
     async fn create_bitcoin_wallet_from_seed_and_get_balance() {
         let tc_client = clients::Cli::default();
-        let blockchain = BitcoinBlockchain::new(&tc_client).unwrap();
+        let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
 
         blockchain.init().await.unwrap();
 
         let seed = Seed::new();
-        let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).unwrap();
+        let wallet = Wallet::new(
+            seed,
+            blockchain.node_url.clone(),
+            Network::Regtest,
+            "test".into(),
+        )
+        .unwrap();
         wallet.init().await.unwrap();
 
         let _balance = wallet.balance().await.unwrap();
@@ -152,21 +172,32 @@ mod docker_tests {
     #[tokio::test]
     async fn create_bitcoin_wallet_when_already_existing_and_get_address() {
         let tc_client = clients::Cli::default();
-        let blockchain = BitcoinBlockchain::new(&tc_client).unwrap();
+        let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
 
         blockchain.init().await.unwrap();
 
         let seed = Seed::new();
         {
-            let wallet =
-                Wallet::new(seed.clone(), blockchain.node_url.clone(), Network::Regtest).unwrap();
+            let wallet = Wallet::new(
+                seed,
+                blockchain.node_url.clone(),
+                Network::Regtest,
+                "test".into(),
+            )
+            .unwrap();
             wallet.init().await.unwrap();
 
             let _address = wallet.new_address().await.unwrap();
         }
 
         {
-            let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).unwrap();
+            let wallet = Wallet::new(
+                seed,
+                blockchain.node_url.clone(),
+                Network::Regtest,
+                "test".into(),
+            )
+            .unwrap();
             wallet.init().await.unwrap();
 
             let _address = wallet.new_address().await.unwrap();
