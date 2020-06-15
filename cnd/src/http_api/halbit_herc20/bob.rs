@@ -83,9 +83,10 @@ impl FundAction for BobSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, her
                         state: herc20::State::Deployed { .. },
                         ..
                     },
+                secret_hash,
                 ..
             } => {
-                let fund_action = herc20.build_fund_action()?;
+                let fund_action = herc20.build_fund_action(*secret_hash)?;
                 Ok(fund_action)
             }
             _ => anyhow::bail!(ActionNotFound),
@@ -139,9 +140,10 @@ impl RefundAction for BobSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, h
                         state: herc20::State::Funded { .. },
                         ..
                     },
+                secret_hash,
                 ..
             } => {
-                let refund_action = herc20.build_refund_action()?;
+                let refund_action = herc20.build_refund_action(*secret_hash)?;
                 Ok(refund_action)
             }
             _ => anyhow::bail!(ActionNotFound),

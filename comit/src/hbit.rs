@@ -1,6 +1,9 @@
 //! Htlc Bitcoin atomic swap protocol.
 
 use crate::{
+    actions::bitcoin::{
+        sign_with_fixed_rate, BroadcastSignedTransaction, SendToAddress, SpendOutput,
+    },
     asset,
     btsieve::{
         bitcoin::{watch_for_created_outpoint, watch_for_spent_outpoint},
@@ -12,9 +15,10 @@ use crate::{
 };
 use bitcoin::{
     hashes::{hash160, Hash},
-    Address, Block, BlockHash, Transaction,
+    secp256k1::{Secp256k1, SecretKey, Signing},
+    Address, Block, BlockHash, Network, Transaction,
 };
-use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
+use blockchain_contracts::bitcoin::{rfc003::bitcoin_htlc::BitcoinHtlc, witness::UnlockParameters};
 use chrono::NaiveDateTime;
 use futures::{
     future::{self, Either},
@@ -28,7 +32,7 @@ use tracing_futures::Instrument;
 #[derive(Clone, Debug)]
 pub struct CreatedSwap {
     pub amount: asset::Bitcoin,
-    pub final_identity: bitcoin::Address,
+    pub final_identity: Address,
     pub network: ledger::Bitcoin,
     pub absolute_expiry: u32,
 }
@@ -146,7 +150,7 @@ where
     Ok(())
 }
 
-async fn watch_for_funded<C>(
+pub async fn watch_for_funded<C>(
     connector: &C,
     params: &Params,
     start_of_swap: NaiveDateTime,
@@ -179,7 +183,7 @@ where
     Ok(event)
 }
 
-async fn watch_for_redeemed<C>(
+pub async fn watch_for_redeemed<C>(
     connector: &C,
     params: &Params,
     location: htlc_location::Bitcoin,
@@ -202,7 +206,7 @@ where
     })
 }
 
-async fn watch_for_refunded<C>(
+pub async fn watch_for_refunded<C>(
     connector: &C,
     params: &Params,
     location: htlc_location::Bitcoin,
@@ -221,12 +225,102 @@ where
 
 #[derive(Clone, Copy, Debug)]
 pub struct Params {
-    pub network: bitcoin::Network,
+    pub network: Network,
     pub asset: asset::Bitcoin,
     pub redeem_identity: identity::Bitcoin,
     pub refund_identity: identity::Bitcoin,
     pub expiry: Timestamp,
     pub secret_hash: SecretHash,
+}
+
+impl Params {
+    pub fn build_fund_action(&self) -> SendToAddress {
+        let network = self.network;
+        let to = self.compute_address();
+        let amount = self.asset;
+
+        SendToAddress {
+            to,
+            amount,
+            network,
+        }
+    }
+
+    pub fn build_refund_action<C>(
+        &self,
+        secp: &Secp256k1<C>,
+        fund_amount: asset::Bitcoin,
+        fund_location: htlc_location::Bitcoin,
+        transient_refund_sk: SecretKey,
+        refund_address: Address,
+    ) -> anyhow::Result<BroadcastSignedTransaction>
+    where
+        C: Signing,
+    {
+        self.build_spend_action(
+            &secp,
+            fund_amount,
+            fund_location,
+            refund_address,
+            |htlc: BitcoinHtlc| htlc.unlock_after_timeout(&secp, transient_refund_sk),
+        )
+    }
+
+    pub fn build_redeem_action<C>(
+        &self,
+        secp: &Secp256k1<C>,
+        fund_amount: asset::Bitcoin,
+        fund_location: htlc_location::Bitcoin,
+        transient_redeem_sk: SecretKey,
+        redeem_address: Address,
+        secret: Secret,
+    ) -> anyhow::Result<BroadcastSignedTransaction>
+    where
+        C: Signing,
+    {
+        self.build_spend_action(
+            &secp,
+            fund_amount,
+            fund_location,
+            redeem_address,
+            |htlc: BitcoinHtlc| {
+                htlc.unlock_with_secret(secp, transient_redeem_sk, secret.into_raw_secret())
+            },
+        )
+    }
+
+    fn build_spend_action<C>(
+        &self,
+        secp: &Secp256k1<C>,
+        fund_amount: asset::Bitcoin,
+        fund_location: htlc_location::Bitcoin,
+        spend_address: Address,
+        unlock_fn: impl Fn(BitcoinHtlc) -> UnlockParameters,
+    ) -> anyhow::Result<BroadcastSignedTransaction>
+    where
+        C: Signing,
+    {
+        let network = self.network;
+        let primed_transaction = {
+            let htlc = build_bitcoin_htlc(
+                self.redeem_identity,
+                self.refund_identity,
+                self.expiry,
+                self.secret_hash,
+            );
+            let input_parameters = unlock_fn(htlc);
+            let spend_output =
+                SpendOutput::new(fund_location, fund_amount.into(), input_parameters, network);
+
+            spend_output.spend_to(spend_address)
+        };
+        let transaction = sign_with_fixed_rate(&secp, primed_transaction)?;
+
+        Ok(BroadcastSignedTransaction {
+            transaction,
+            network,
+        })
+    }
 }
 
 impl From<Params> for BitcoinHtlc {
