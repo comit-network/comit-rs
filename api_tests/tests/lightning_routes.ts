@@ -1,6 +1,5 @@
-import { oneActorTest, twoActorTest } from "../src/actor_test";
+import { twoActorTest } from "../src/actor_test";
 import SwapFactory from "../src/actors/swap_factory";
-import { HalbitHerc20Payload, Herc20HalbitPayload } from "../src/payload";
 
 // ******************************************** //
 // Lightning routes                               //
@@ -46,42 +45,6 @@ describe("Lightning routes tests", () => {
             await expect(
                 bob.createHalbitHerc20(bodies.bob)
             ).rejects.toMatchObject(expectedProblem);
-        })
-    );
-
-    it(
-        "create-herc20-halbit-returns-invalid-body",
-        twoActorTest(async ({ alice }) => {
-            await expect(
-                alice.createHerc20Halbit({} as Herc20HalbitPayload)
-            ).rejects.toThrow("Invalid body.");
-        })
-    );
-
-    it(
-        "create-halbit-herc20-returns-invalid-body",
-        twoActorTest(async ({ alice }) => {
-            await expect(
-                alice.createHalbitHerc20({} as HalbitHerc20Payload)
-            ).rejects.toThrow("Invalid body.");
-        })
-    );
-
-    it(
-        "get-swap-with-non-existent-id-yields-swap-not-found",
-        oneActorTest(async ({ alice }) => {
-            try {
-                await alice.cnd.fetch(
-                    "/swaps/deadbeef-dead-beef-dead-deadbeefdead"
-                );
-            } catch (error) {
-                const expectedProblem = {
-                    status: 404,
-                    title: "Swap not found.",
-                };
-
-                expect(error).toMatchObject(expectedProblem);
-            }
         })
     );
 });
