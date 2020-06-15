@@ -4,11 +4,29 @@ import pTimeout from "p-timeout";
 import ProvidesCallback = jest.ProvidesCallback;
 
 /*
+ * Instantiates a new e2e test based on one actor, Alice.
+ */
+export function oneActorTest(
+    testFn: (actors: Actors) => Promise<void>
+): ProvidesCallback {
+    return nActorTest(["alice"], testFn);
+}
+
+/*
+ * Instantiates a new e2e test based on two actors, Alice and Bob.
+ */
+export function twoActorTest(
+    testFn: (actors: Actors) => Promise<void>
+): ProvidesCallback {
+    return nActorTest(["alice", "bob"], testFn);
+}
+
+/*
  * This test function will take care of instantiating the actors and tearing them down again
  * after the test, regardless if the test succeeded or failed.
  */
 function nActorTest(
-    actorNames: ["alice", "bob", "carol"] | ["alice", "bob"] | ["alice"],
+    actorNames: ["alice"] | ["alice", "bob"],
     testFn: (actors: Actors) => Promise<void>
 ): ProvidesCallback {
     return async (done) => {
@@ -38,32 +56,4 @@ function nActorTest(
         }
         done();
     };
-}
-
-/*
- * Instantiates a new e2e test based on three actors
- *
- */
-export function threeActorTest(
-    testFn: (actors: Actors) => Promise<void>
-): ProvidesCallback {
-    return nActorTest(["alice", "bob", "carol"], testFn);
-}
-
-/*
- * Instantiates a new e2e test based on two actors
- */
-export function twoActorTest(
-    testFn: (actors: Actors) => Promise<void>
-): ProvidesCallback {
-    return nActorTest(["alice", "bob"], testFn);
-}
-
-/*
- * Instantiates a new e2e test based on one actor
- */
-export function oneActorTest(
-    testFn: (actors: Actors) => Promise<void>
-): ProvidesCallback {
-    return nActorTest(["alice"], testFn);
 }
