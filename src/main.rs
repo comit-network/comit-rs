@@ -13,8 +13,19 @@
 #![allow(dead_code)] // To be removed further down the line
 #![forbid(unsafe_code)]
 
+mod bitcoin_wallet;
+mod bitcoind;
+mod jsonrpc;
 mod ongoing_swaps;
 mod publish;
+
+#[cfg(all(test, feature = "test-docker"))]
+pub mod test_harness;
+
+lazy_static::lazy_static! {
+    pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =
+        ::bitcoin::secp256k1::Secp256k1::new();
+}
 
 fn main() {
     println!("Hello, world!");

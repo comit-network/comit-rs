@@ -322,7 +322,7 @@ impl Swap<hbit::SwapDetailsRedeemer, herc20::SwapDetails, Bob> {
 #[cfg(all(test, feature = "test-docker"))]
 mod tests {
     use super::*;
-    use crate::ledgers::{BitcoinBlockchain, EthereumBlockchain};
+    use crate::test_harness::{BitcoinBlockchain, EthereumBlockchain};
     use bitcoin::{secp256k1, Network};
     use chrono::Utc;
     use comit::{
