@@ -1,17 +1,21 @@
 use crate::{
     btsieve::LatestBlock,
     connectors::Connectors,
-    network::{DialInformation, Identities, Swarm},
+    network::{ComitPeers, DialInformation, Identities, ListenAddresses, LocalPeerId, Swarm},
     storage::{Load, LoadAll, Storage},
     LocalSwapId, Role, Save, Timestamp,
 };
 use ::comit::network::protocols::announce::SwapDigest;
 use comit::bitcoin;
+use libp2p::{Multiaddr, PeerId};
 
 /// This is a facade that implements all the required traits and forwards them
 /// to another implementation. This allows us to keep the number of arguments to
 /// HTTP API controllers small and still access all the functionality we need.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, ambassador::Delegate)]
+#[delegate(ComitPeers, target = "swarm")]
+#[delegate(ListenAddresses, target = "swarm")]
+#[delegate(LocalPeerId, target = "swarm")]
 pub struct Facade {
     pub swarm: Swarm,
     pub storage: Storage,

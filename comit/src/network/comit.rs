@@ -55,6 +55,10 @@ struct CommunicationState {
 }
 
 impl Comit {
+    pub fn connected_peers(&mut self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
+        self.announce.connected_peers()
+    }
+
     pub fn initiate_communication_for_alice(
         &mut self,
         local_swap_id: LocalSwapId,

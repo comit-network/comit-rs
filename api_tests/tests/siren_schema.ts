@@ -83,22 +83,6 @@ describe("Siren Schema", () => {
                 class: ["swaps"],
                 href: "/swaps",
             });
-
-            const rfc003SwapsLink = links.find(
-                (link: siren.Link) =>
-                    link.rel.length === 2 &&
-                    link.rel.includes("collection") &&
-                    link.rel.includes("edit") &&
-                    link.class.length === 2 &&
-                    link.class.includes("swaps") &&
-                    link.class.includes("rfc003")
-            );
-
-            expect(rfc003SwapsLink).toMatchObject({
-                rel: ["collection", "edit"],
-                class: ["swaps", "rfc003"],
-                href: "/swaps/rfc003",
-            });
         })
     );
 

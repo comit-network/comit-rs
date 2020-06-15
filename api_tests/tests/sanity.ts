@@ -1,4 +1,5 @@
-import { oneActorTest } from "../src/actor_test";
+import { oneActorTest, twoActorTest } from "../src/actor_test";
+import SwapFactory from "../src/actors/swap_factory";
 
 // ******************************************** //
 // Sanity tests                                 //
@@ -9,7 +10,7 @@ describe("Sanity", () => {
         "invalid-swap-yields-404",
         oneActorTest(async ({ alice }) => {
             const promise = alice.cnd.fetch(
-                "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead"
+                "/swaps/deadbeef-dead-beef-dead-deadbeefdead"
             );
 
             await expect(promise).rejects.toMatchObject({
@@ -20,39 +21,11 @@ describe("Sanity", () => {
     );
 
     it(
-        "empty-swap-list-after-startup",
+        "returns-invalid-body-for-bad-json-herc20-halbit",
         oneActorTest(async ({ alice }) => {
-            const promise = alice.cnd.fetch("/swaps");
-
-            await expect(promise).resolves.toHaveProperty("data.entities", []);
-        })
-    );
-
-    it(
-        "bad-request-for-invalid-swap-combination",
-        oneActorTest(async ({ alice }) => {
-            const promise = alice.cnd.postSwap({
-                alpha_ledger: {
-                    name: "Thomas' wallet",
-                },
-                beta_ledger: {
-                    name: "Higher-Dimension",
-                },
-                alpha_asset: {
-                    name: "AUD",
-                    quantity: "3.5",
-                },
-                beta_asset: {
-                    name: "Espresso",
-                    // @ts-ignore
-                    "double-shot": true,
-                },
-                alpha_ledger_refund_identity: "",
-                beta_ledger_redeem_identity: "",
-                alpha_expiry: 123456789,
-                beta_expiry: 123456789,
+            const promise = alice.createHerc20Halbit({
                 // @ts-ignore
-                peer: "QmPRNaiDUcJmnuJWUyoADoqvFotwaMRFKV2RyZ7ZVr1fqd",
+                garbage: true,
             });
 
             await expect(promise).rejects.toMatchObject({
@@ -63,9 +36,39 @@ describe("Sanity", () => {
     );
 
     it(
-        "returns-invalid-body-for-bad-json",
+        "returns-invalid-body-for-bad-json-halbit-herc20",
         oneActorTest(async ({ alice }) => {
-            const promise = alice.cnd.postSwap({
+            const promise = alice.createHalbitHerc20({
+                // @ts-ignore
+                garbage: true,
+            });
+
+            await expect(promise).rejects.toMatchObject({
+                status: 400,
+                title: "Invalid body.",
+            });
+        })
+    );
+
+    it(
+        "returns-invalid-body-for-bad-json-herc20-hbit",
+        oneActorTest(async ({ alice }) => {
+            const promise = alice.createHerc20Hbit({
+                // @ts-ignore
+                garbage: true,
+            });
+
+            await expect(promise).rejects.toMatchObject({
+                status: 400,
+                title: "Invalid body.",
+            });
+        })
+    );
+
+    it(
+        "returns-invalid-body-for-bad-json-hbit-herc20",
+        oneActorTest(async ({ alice }) => {
+            const promise = alice.createHbitHerc20({
                 // @ts-ignore
                 garbage: true,
             });
@@ -100,6 +103,48 @@ describe("Sanity", () => {
             expect(body.id).toBeTruthy();
             // At least 2 ipv4 addresses, lookup and external interface
             expect(body.listen_addresses.length).toBeGreaterThanOrEqual(2);
+        })
+    );
+
+    it(
+        "create-herc20-halbit-returns-bad-request-when-no-lnd-node",
+        twoActorTest(async ({ alice, bob }) => {
+            const bodies = (await SwapFactory.newSwap(alice, bob)).herc20Halbit;
+
+            const expectedProblem = {
+                status: 400,
+                title: "lightning is not configured.",
+                detail:
+                    "lightning ledger is not properly configured, swap involving this ledger are not available.",
+            };
+
+            await expect(
+                alice.createHerc20Halbit(bodies.alice)
+            ).rejects.toMatchObject(expectedProblem);
+            await expect(
+                bob.createHerc20Halbit(bodies.bob)
+            ).rejects.toMatchObject(expectedProblem);
+        })
+    );
+
+    it(
+        "create-halbit-herc20-returns-bad-request-when-no-lnd-node",
+        twoActorTest(async ({ alice, bob }) => {
+            const bodies = (await SwapFactory.newSwap(alice, bob)).halbitHerc20;
+
+            const expectedProblem = {
+                status: 400,
+                title: "lightning is not configured.",
+                detail:
+                    "lightning ledger is not properly configured, swap involving this ledger are not available.",
+            };
+
+            await expect(
+                alice.createHalbitHerc20(bodies.alice)
+            ).rejects.toMatchObject(expectedProblem);
+            await expect(
+                bob.createHalbitHerc20(bodies.bob)
+            ).rejects.toMatchObject(expectedProblem);
         })
     );
 });

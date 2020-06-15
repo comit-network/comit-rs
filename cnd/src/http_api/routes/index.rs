@@ -4,9 +4,11 @@ use crate::{
     ethereum::ChainId,
     halbit, hbit, herc20,
     http_api::{problem, routes::into_rejection, DialInformation, Http},
-    identity,
-    network::{HalbitHerc20, HbitHerc20, Herc20Halbit, Herc20Hbit, Identities, ListenAddresses},
-    swap_protocols::{ledger, Rfc003Facade},
+    identity, ledger,
+    network::{
+        HalbitHerc20, HbitHerc20, Herc20Halbit, Herc20Hbit, Identities, ListenAddresses,
+        LocalPeerId,
+    },
     Facade, LocalSwapId, Role, Side,
 };
 use chrono::Utc;
@@ -21,25 +23,24 @@ pub struct InfoResource {
     listen_addresses: Vec<Multiaddr>,
 }
 
-pub async fn get_info(id: PeerId, dependencies: Rfc003Facade) -> Result<impl Reply, Rejection> {
-    let listen_addresses = dependencies.listen_addresses().await.to_vec();
+pub async fn get_info(facade: Facade) -> Result<impl Reply, Rejection> {
+    let peer_id = facade.local_peer_id();
+    let listen_addresses = facade.listen_addresses().await.to_vec();
 
     Ok(warp::reply::json(&InfoResource {
-        id: Http(id),
+        id: Http(peer_id),
         listen_addresses,
     }))
 }
 
-pub async fn get_info_siren(
-    id: PeerId,
-    dependencies: Rfc003Facade,
-) -> Result<impl Reply, Rejection> {
-    let listen_addresses = dependencies.listen_addresses().await.to_vec();
+pub async fn get_info_siren(facade: Facade) -> Result<impl Reply, Rejection> {
+    let peer_id = facade.local_peer_id();
+    let listen_addresses = facade.listen_addresses().await.to_vec();
 
     Ok(warp::reply::json(
         &siren::Entity::default()
             .with_properties(&InfoResource {
-                id: Http(id),
+                id: Http(peer_id),
                 listen_addresses,
             })
             .map_err(anyhow::Error::from)
@@ -47,11 +48,6 @@ pub async fn get_info_siren(
             .map_err(into_rejection)?
             .with_link(
                 siren::NavigationalLink::new(&["collection"], "/swaps").with_class_member("swaps"),
-            )
-            .with_link(
-                siren::NavigationalLink::new(&["collection", "edit"], "/swaps/rfc003")
-                    .with_class_member("swaps")
-                    .with_class_member("rfc003"),
             ),
     ))
 }

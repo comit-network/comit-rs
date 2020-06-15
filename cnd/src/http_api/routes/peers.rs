@@ -1,7 +1,21 @@
-use crate::{http_api::Http, network::ComitPeers, swap_protocols::Rfc003Facade};
+use crate::{http_api::Http, network::ComitPeers, Facade};
 use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
 use warp::{Rejection, Reply};
+
+#[allow(clippy::needless_pass_by_value)]
+pub async fn get_peers(facade: Facade) -> Result<impl Reply, Rejection> {
+    let peers = facade
+        .comit_peers()
+        .await
+        .map(|(peer, addresses)| Peer {
+            id: Http(peer),
+            endpoints: addresses,
+        })
+        .collect();
+
+    Ok(warp::reply::json(&PeersResource { peers }))
+}
 
 #[derive(Serialize, Debug)]
 pub struct PeersResource {
@@ -12,18 +26,4 @@ pub struct PeersResource {
 pub struct Peer {
     id: Http<PeerId>,
     endpoints: Vec<Multiaddr>,
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub async fn get_peers(dependencies: Rfc003Facade) -> Result<impl Reply, Rejection> {
-    let peers = dependencies
-        .comit_peers()
-        .await
-        .map(|(peer, addresses)| Peer {
-            id: Http(peer),
-            endpoints: addresses,
-        })
-        .collect();
-
-    Ok(warp::reply::json(&PeersResource { peers }))
 }

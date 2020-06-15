@@ -627,7 +627,7 @@ impl ComitPeers for Swarm {
         &self,
     ) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
         let mut swarm = self.inner.lock().await;
-        Box::new(swarm.rfc003_comit.connected_peers())
+        Box::new(swarm.comit.connected_peers())
     }
 }
 

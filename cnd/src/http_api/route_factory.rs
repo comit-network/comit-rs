@@ -1,7 +1,6 @@
 use crate::{
     config::settings::AllowedOrigins,
     http_api,
-    network::LocalPeerId,
     swap_protocols::{self, rfc003::SwapId, Rfc003Facade},
     Facade, LocalSwapId,
 };
@@ -26,10 +25,8 @@ pub fn create(
     facade: Facade,
     allowed_origins: &AllowedOrigins,
 ) -> BoxedFilter<(impl Reply,)> {
-    let peer_id = rfc003_facade.local_peer_id();
     let swaps = warp::path(http_api::PATH);
     let rfc003 = swaps.and(warp::path(RFC003));
-    let peer_id = warp::any().map(move || peer_id.clone());
     let empty_json_body = warp::any().map(|| serde_json::json!({}));
     let rfc003_facade = warp::any().map(move || rfc003_facade.clone());
     let facade = warp::any().map(move || facade.clone());
@@ -75,27 +72,25 @@ pub fn create(
         >())
         .and(warp::path::end())
         .and(warp::query::<http_api::action::ActionExecutionParameters>())
-        .and(rfc003_facade.clone())
+        .and(rfc003_facade)
         .and(warp::body::json().or(empty_json_body).unify())
         .and_then(http_api::routes::rfc003::action);
 
     let get_peers = warp::get()
         .and(warp::path("peers"))
         .and(warp::path::end())
-        .and(rfc003_facade.clone())
+        .and(facade.clone())
         .and_then(http_api::routes::peers::get_peers);
 
     let get_info_siren = warp::get()
         .and(warp::path::end())
         .and(warp::header::exact("accept", "application/vnd.siren+json"))
-        .and(peer_id.clone())
-        .and(rfc003_facade.clone())
+        .and(facade.clone())
         .and_then(http_api::routes::index::get_info_siren);
 
     let get_info = warp::get()
         .and(warp::path::end())
-        .and(peer_id)
-        .and(rfc003_facade)
+        .and(facade.clone())
         .and_then(http_api::routes::index::get_info);
 
     let herc20_halbit = warp::post()
