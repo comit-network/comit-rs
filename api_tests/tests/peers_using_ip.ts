@@ -1,4 +1,4 @@
-import { threeActorTest, twoActorTest } from "../src/actor_test";
+import { threeActorTest } from "../src/actor_test";
 import { createDefaultSwapRequest, sleep } from "../src/utils";
 import { Actor } from "../src/actors/actor";
 import { Rfc003Actor } from "../src/actors/rfc003_actor";
@@ -30,13 +30,6 @@ async function assertPeersAvailable(actor: Actor, peers: Actor[]) {
 }
 
 describe("Peers using IP tests", () => {
-    it(
-        "alice-empty-peer-list",
-        twoActorTest(async ({ alice }) => {
-            await assertPeersAvailable(alice, []);
-        })
-    );
-
     it(
         "alice-send-request-wrong-peer-id",
         threeActorTest(async (actors) => {
