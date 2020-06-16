@@ -4,7 +4,7 @@ function navigate_to_last_folder() {
   cd $(ls -d */|tail -n 1)
 }
 
-RELEASE_TAG=$(git describe --tags)
+RELEASE_TAG=$(git tag | tail -1)
 RELEASE_VERSION=$(echo $RELEASE_TAG | cut -d'-' -f 1)
 echo "Checking for current release version ${RELEASE_VERSION}"
 
