@@ -1,19 +1,25 @@
+/**
+ * @ledger bitcoin
+ * @ledger ethereum
+ */
+
 import { oneActorTest, twoActorTest } from "../src/actor_test";
+import SwapFactory from "../src/actors/swap_factory";
+import { sleep } from "../src/utils";
 import "../src/schema_matcher";
-import * as sirenJsonSchema from "../siren.schema.json";
 import * as sirenRootJsonSchema from "../root.schema.json";
+import * as sirenSwapJsonSchema from "../swap.schema.json";
 import { siren } from "comit-sdk";
 import axios from "axios";
-import { createDefaultSwapRequest } from "../src/utils";
 import { Actor } from "../src/actors/actor";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
-import { Rfc003Actor } from "../src/actors/rfc003_actor";
+import { SwapResponse } from "../src/payload";
 
 // ******************************************** //
 // Siren Schema tests                                 //
 // ******************************************** //
 
-async function assertValidSirenDocument(
+async function assertValidSirenSwapDocument(
     swapsEntity: siren.Entity,
     alice: Actor
 ) {
@@ -24,7 +30,7 @@ async function assertValidSirenDocument(
     const swapResponse = await alice.cnd.fetch(selfLink);
     const swapEntity = swapResponse.data as siren.Entity;
 
-    expect(swapEntity).toMatchSchema(sirenJsonSchema);
+    expect(swapEntity).toMatchSchema(sirenSwapJsonSchema);
     expect(swapEntity.properties).toMatchSchema(swapPropertiesJsonSchema);
 }
 
@@ -89,32 +95,35 @@ describe("Siren Schema", () => {
 
     it(
         "get-single-swap-is-valid-siren",
-        twoActorTest(async (actors) => {
-            const [alice, bob] = Rfc003Actor.convert([
-                actors.alice,
-                actors.bob,
-            ]);
-            // Alice send swap request to Bob
-            await alice.actor.cnd.postSwap(await createDefaultSwapRequest(bob));
+        twoActorTest(async ({ alice, bob }) => {
+            const bodies = (
+                await SwapFactory.newSwap(alice, bob, {
+                    ledgers: {
+                        alpha: "bitcoin",
+                        beta: "ethereum",
+                    },
+                })
+            ).hbitHerc20;
 
-            const aliceSwapEntity = await alice
-                .pollCndUntil("/swaps", (body) => body.entities.length > 0)
-                .then(
-                    (body) =>
-                        body
-                            .entities[0] as siren.EmbeddedRepresentationSubEntity
-                );
+            await alice.createHbitHerc20Swap(bodies.alice);
+            await bob.createHbitHerc20Swap(bodies.bob);
 
-            await assertValidSirenDocument(aliceSwapEntity, alice.actor);
+            // Wait for the announce protocol to complete.
+            await sleep(2000);
 
-            const bobsSwapEntity = await bob
-                .pollCndUntil("/swaps", (body) => body.entities.length > 0)
-                .then(
-                    (body) =>
-                        body
-                            .entities[0] as siren.EmbeddedRepresentationSubEntity
-                );
-            await assertValidSirenDocument(bobsSwapEntity, bob.actor);
+            const responseAlice = await alice.cnd.fetch<SwapResponse>(
+                alice.swap.self
+            );
+            expect(responseAlice.status).toEqual(200);
+            const entityAlice = responseAlice.data;
+            await assertValidSirenSwapDocument(entityAlice, alice);
+
+            const responseBob = await bob.cnd.fetch<SwapResponse>(
+                bob.swap.self
+            );
+            expect(responseBob.status).toEqual(200);
+            const entityBob = responseBob.data;
+            await assertValidSirenSwapDocument(entityBob, bob);
         })
     );
 });
