@@ -1,6 +1,5 @@
 import { Actor } from "../src/actors/actor";
 import * as sirenJsonSchema from "../siren.schema.json";
-import * as swapPropertiesJsonSchema from "../swap.schema.json";
 import { twoActorTest } from "../src/actor_test";
 import { createDefaultSwapRequest, DEFAULT_ALPHA } from "../src/utils";
 import { siren } from "comit-sdk";
@@ -132,9 +131,6 @@ describe("Rfc003 schema swap reject tests", () => {
 
             const bobSwapDetails = await bob.pollSwapDetails(aliceStingySwap);
 
-            expect(bobSwapDetails.properties).toMatchSchema(
-                swapPropertiesJsonSchema
-            );
             expect(bobSwapDetails.actions.map((action) => action.name)).toEqual(
                 expect.arrayContaining(["accept", "decline"])
             );

@@ -7,73 +7,26 @@ import { oneActorTest, twoActorTest } from "../src/actor_test";
 import SwapFactory from "../src/actors/swap_factory";
 import { sleep } from "../src/utils";
 import "../src/schema_matcher";
-import * as sirenRootJsonSchema from "../root.schema.json";
-import * as sirenSwapJsonSchema from "../swap.schema.json";
+import * as sirenJsonSchema from "../siren.schema.json";
+import * as rootJsonSchema from "../root.schema.json";
 import { siren } from "comit-sdk";
 import axios from "axios";
-import { Actor } from "../src/actors/actor";
-import * as swapPropertiesJsonSchema from "../swap.schema.json";
 import { SwapResponse } from "../src/payload";
-
-// ******************************************** //
-// Siren Schema tests                                 //
-// ******************************************** //
-
-async function assertValidSirenSwapDocument(
-    swapsEntity: siren.Entity,
-    alice: Actor
-) {
-    const selfLink = swapsEntity.links.find((link: siren.Link) =>
-        link.rel.includes("self")
-    ).href;
-
-    const swapResponse = await alice.cnd.fetch(selfLink);
-    const swapEntity = swapResponse.data as siren.Entity;
-
-    expect(swapEntity).toMatchSchema(sirenSwapJsonSchema);
-    expect(swapEntity.properties).toMatchSchema(swapPropertiesJsonSchema);
-}
 
 describe("Siren Schema", () => {
     it(
-        "can-fetch-root-document-as-siren",
+        "can-fetch-root-document-as-valid-siren",
         oneActorTest(async ({ alice }) => {
-            const res = await alice.cnd.fetch("/");
+            const res = await axios({
+                baseURL: alice.cndHttpApiUrl(),
+                url: "/",
+                headers: { accept: "application/vnd.siren+json" },
+            });
 
             expect(res.status).toBe(200);
-            expect(res.data).toMatchSchema(sirenRootJsonSchema);
-        })
-    );
+            expect(res.data).toMatchSchema(sirenJsonSchema);
+            expect(res.data.properties).toMatchSchema(rootJsonSchema);
 
-    it(
-        "returns-listen-addresses-on-root-document-as-siren",
-        oneActorTest(async ({ alice }) => {
-            const res = await axios({
-                baseURL: alice.cndHttpApiUrl(),
-                url: "/",
-                headers: { accept: "application/vnd.siren+json" },
-            });
-            const body = res.data as any;
-
-            expect(typeof body.properties.id).toBe("string");
-            expect(
-                Array.isArray(body.properties.listen_addresses)
-            ).toBeTruthy();
-            // At least 2 ipv4 addresses, lookup and external interface
-            expect(
-                body.properties.listen_addresses.length
-            ).toBeGreaterThanOrEqual(2);
-        })
-    );
-
-    it(
-        "returns-links-to-create-swap-endpoints-on-root-document-as-siren",
-        oneActorTest(async ({ alice }) => {
-            const res = await axios({
-                baseURL: alice.cndHttpApiUrl(),
-                url: "/",
-                headers: { accept: "application/vnd.siren+json" },
-            });
             const body = res.data as any;
             const links = body.links;
 
@@ -111,19 +64,19 @@ describe("Siren Schema", () => {
             // Wait for the announce protocol to complete.
             await sleep(2000);
 
+            // For now we just assert that the document returned by "/swaps/:id" is a valid siren object.
+
             const responseAlice = await alice.cnd.fetch<SwapResponse>(
                 alice.swap.self
             );
             expect(responseAlice.status).toEqual(200);
-            const entityAlice = responseAlice.data;
-            await assertValidSirenSwapDocument(entityAlice, alice);
+            expect(responseAlice.data).toMatchSchema(sirenJsonSchema);
 
             const responseBob = await bob.cnd.fetch<SwapResponse>(
                 bob.swap.self
             );
             expect(responseBob.status).toEqual(200);
-            const entityBob = responseBob.data;
-            await assertValidSirenSwapDocument(entityBob, bob);
+            expect(responseBob.data).toMatchSchema(sirenJsonSchema);
         })
     );
 });
