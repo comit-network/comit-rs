@@ -7,7 +7,7 @@
 [COMIT](https://comit.network) is an open protocol facilitating cross-blockchain applications.
 For example, with [COMIT](https://comit.network) you can exchange Bitcoin for Ether or any ERC20 token directly with another person.
 
-This repository contains the implementation of the comit-network daemon (`cnd`), which is the reference implementation of the protocol written in Rust. 
+This repository contains the implementation of the comit-network daemon (`cnd`), which is the reference implementation of the protocol written in Rust.
 
 If you wish to do an atomic swap on your machine or to integrate COMIT into an application (e.g. a DEX) please take a look at the [Getting Started section](https://comit.network/docs/getting-started/create-comit-app/) of the COMIT documentation.
 If you have any questions, feel free to [reach out to the team in our Gitter chat](https://gitter.im/comit-network/community)!
@@ -27,13 +27,12 @@ The Rust reference implementation of the COMIT protocol (comit-rs) implements at
 This repository is a cargo workspace:
 
 - `cnd`: implementation of the comit-network daemon
-- `libp2p-comit`: implementation of the comit messaging protocol on top of [libp2p](https://github.com/libp2p/rust-libp2p)
 
-`cnd` is [released](https://github.com/comit-network/comit-rs/releases) as binary including `libp2p-comit`.
+`cnd` is [released](https://github.com/comit-network/comit-rs/releases) as binary.
 
 ## Setup build environment
 
-All you need is ~love~ rust: `curl https://sh.rustup.rs -sSf | sh` 
+All you need is ~love~ rust: `curl https://sh.rustup.rs -sSf | sh`
 
 ## Build & Run
 
@@ -50,7 +49,7 @@ Please see `cnd --help` for help with command line options.
 1. Install `docker`,
 2. Install `node` (check the version required in api_tests/package.json) & `yarn`,
 3. Run `make` in the root folder of the repository, this will install various crates & tools such as clippy.
-  
+
 ## Testing
 
 - `make test` is just a wrapper around `cargo test --all`

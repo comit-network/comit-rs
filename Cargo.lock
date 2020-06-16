@@ -524,10 +524,9 @@ dependencies = [
  "impl-template",
  "lazy_static",
  "libp2p",
- "libp2p-comit",
  "libsqlite3-sys",
  "log 0.4.8",
- "num 0.3.0",
+ "num",
  "paste",
  "pem",
  "proptest",
@@ -594,7 +593,7 @@ dependencies = [
  "levenshtein",
  "libp2p",
  "lru",
- "num 0.3.0",
+ "num",
  "primitive-types",
  "rand 0.7.3",
  "reqwest",
@@ -1139,18 +1138,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "futures_codec"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe8859feb7140742ed1a2a85a07941100ad2b5f98a421b353931d718a34144d1"
-dependencies = [
- "bytes",
- "futures",
- "memchr",
- "pin-project",
-]
-
-[[package]]
 name = "gcc"
 version = "0.3.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1667,23 +1654,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "libp2p-comit"
-version = "0.1.0"
-dependencies = [
- "bytes",
- "derivative 2.1.1",
- "futures",
- "futures_codec 0.4.0",
- "libp2p",
- "serde",
- "serde_json",
- "spectral",
- "strum_macros",
- "thiserror",
- "tracing",
-]
-
-[[package]]
 name = "libp2p-core"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1769,7 +1739,7 @@ dependencies = [
  "bytes",
  "fnv",
  "futures",
- "futures_codec 0.3.4",
+ "futures_codec",
  "libp2p-core",
  "log 0.4.8",
  "parking_lot 0.10.2",
@@ -2141,42 +2111,16 @@ dependencies = [
 
 [[package]]
 name = "num"
-version = "0.1.42"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4703ad64153382334aa8db57c637364c322d3372e097840c72000dabdcf6156e"
-dependencies = [
- "num-bigint 0.1.44",
- "num-complex 0.1.43",
- "num-integer",
- "num-iter",
- "num-rational 0.1.42",
- "num-traits",
-]
-
-[[package]]
-name = "num"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab3e176191bc4faad357e3122c4747aa098ac880e88b168f106386128736cf4a"
 dependencies = [
  "num-bigint 0.3.0",
- "num-complex 0.3.0",
+ "num-complex",
  "num-integer",
  "num-iter",
- "num-rational 0.3.0",
+ "num-rational",
  "num-traits",
-]
-
-[[package]]
-name = "num-bigint"
-version = "0.1.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e63899ad0da84ce718c14936262a41cee2c79c981fc0a0e7c7beb47d5a07e8c1"
-dependencies = [
- "num-integer",
- "num-traits",
- "rand 0.4.6",
- "rustc-serialize",
 ]
 
 [[package]]
@@ -2199,16 +2143,6 @@ dependencies = [
  "autocfg 1.0.0",
  "num-integer",
  "num-traits",
-]
-
-[[package]]
-name = "num-complex"
-version = "0.1.43"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b288631d7878aaf59442cffd36910ea604ecd7745c36054328595114001c9656"
-dependencies = [
- "num-traits",
- "rustc-serialize",
 ]
 
 [[package]]
@@ -2239,18 +2173,6 @@ dependencies = [
  "autocfg 1.0.0",
  "num-integer",
  "num-traits",
-]
-
-[[package]]
-name = "num-rational"
-version = "0.1.42"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee314c74bd753fc86b4780aa9475da469155f3848473a261d2d18e35245a784e"
-dependencies = [
- "num-bigint 0.1.44",
- "num-integer",
- "num-traits",
- "rustc-serialize",
 ]
 
 [[package]]
@@ -2719,19 +2641,6 @@ checksum = "def50a86306165861203e7f84ecffbbdfdea79f0e51039b33de1e952358c47ac"
 
 [[package]]
 name = "rand"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "552840b97013b1a26992c11eac34bdd778e464601a4c2054b5f0bff7c6761293"
-dependencies = [
- "fuchsia-cprng",
- "libc",
- "rand_core 0.3.1",
- "rdrand",
- "winapi 0.3.8",
-]
-
-[[package]]
-name = "rand"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d71dacdc3c88c1fde3885a3be3fbab9f35724e6ce99467f7d9c5026132184ca"
@@ -3037,12 +2946,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e75f6a532d0fd9f7f13144f392b6ad56a32696bfcd9c78f797f16bbb6f072d6"
 
 [[package]]
-name = "rustc-serialize"
-version = "0.3.24"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
-
-[[package]]
 name = "rustc_version"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3343,9 +3246,6 @@ name = "spectral"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae3c15181f4b14e52eeaac3efaeec4d2764716ce9c86da0c934c3e318649c5ba"
-dependencies = [
- "num 0.1.42",
-]
 
 [[package]]
 name = "spin"
@@ -3832,7 +3732,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f67332660eb59a6f1eb24ff1220c9e8d01738a8503c6002e30bcfe4bd9f2b4a9"
 dependencies = [
  "bytes",
- "futures_codec 0.3.4",
+ "futures_codec",
 ]
 
 [[package]]
