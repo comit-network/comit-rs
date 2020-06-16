@@ -182,7 +182,8 @@ pub struct Transaction {
     /// Transfered value
     pub value: U256,
     /// Input data
-    pub input: Bytes,
+    #[serde(with = "SerHexSeq::<StrictPfx>")]
+    pub input: Vec<u8>,
 }
 
 /// A log produced by a transaction.
@@ -193,7 +194,8 @@ pub struct Log {
     /// Topics
     pub topics: Vec<Hash>,
     /// Data
-    pub data: Bytes,
+    #[serde(with = "SerHexSeq::<StrictPfx>")]
+    pub data: Vec<u8>,
 }
 
 /// The block returned from RPC calls.
@@ -213,22 +215,6 @@ pub struct Block {
     pub timestamp: U256,
     /// Transactions
     pub transactions: Vec<Transaction>,
-}
-
-/// Raw bytes wrapper
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Bytes(#[serde(with = "SerHexSeq::<StrictPfx>")] pub Vec<u8>);
-
-impl AsRef<[u8]> for Bytes {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-
-impl<T: Into<Vec<u8>>> From<T> for Bytes {
-    fn from(data: T) -> Self {
-        Bytes(data.into())
-    }
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]

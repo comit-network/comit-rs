@@ -6,7 +6,7 @@ use crate::{
     btsieve::{
         fetch_blocks_since, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
     },
-    ethereum::{Address, Block, Bytes, Hash, Input, Log, Transaction, TransactionReceipt, U256},
+    ethereum::{Address, Block, Hash, Input, Log, Transaction, TransactionReceipt, U256},
 };
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
@@ -36,7 +36,7 @@ impl PreviousBlockHash for Block {
 pub async fn watch_for_contract_creation<C>(
     connector: &C,
     start_of_swap: NaiveDateTime,
-    bytecode: &Bytes,
+    bytecode: &[u8],
 ) -> anyhow::Result<(Transaction, Address)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
@@ -47,7 +47,7 @@ where
             // creates a contract.
 
             let is_contract_creation = transaction.to.is_none();
-            let is_expected_contract = &transaction.input == bytecode;
+            let is_expected_contract = transaction.input.as_slice() == bytecode;
 
             if !is_contract_creation {
                 tracing::trace!("rejected because transaction doesn't create a contract");
@@ -59,7 +59,7 @@ where
                 // only compute levenshtein distance if we are on trace level, converting to hex is expensive at this scale
                 if tracing::level_enabled!(tracing::level_filters::LevelFilter::TRACE) {
                     let actual = hex::encode(&transaction.input);
-                    let expected = hex::encode(&bytecode);
+                    let expected = hex::encode(bytecode);
 
                     let distance = levenshtein::levenshtein(&actual, &expected);
 

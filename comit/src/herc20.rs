@@ -7,7 +7,7 @@ use crate::{
         ethereum::{watch_for_contract_creation, watch_for_event, ReceiptByHash, Topic},
         BlockByHash, LatestBlock,
     },
-    ethereum::{Block, Bytes, ChainId, Hash, U256},
+    ethereum::{Block, ChainId, Hash, U256},
     htlc_location, identity,
     timestamp::Timestamp,
     transaction, Secret, SecretHash,
@@ -162,7 +162,7 @@ where
         watch_for_contract_creation(connector, start_of_swap, &expected_bytecode)
             .instrument(tracing::trace_span!(
                 "watch_deploy",
-                expected_bytecode = %hex::encode(&expected_bytecode.0)
+                expected_bytecode = %hex::encode(&expected_bytecode)
             ))
             .await?;
 
@@ -198,7 +198,7 @@ where
 
     let expected_asset = &params.asset;
 
-    let quantity = Erc20Quantity::from_wei(U256::from_big_endian(log.data.0.as_ref()));
+    let quantity = Erc20Quantity::from_wei(U256::from_big_endian(&log.data));
     let asset = Erc20::new(log.address, quantity);
 
     let event = match expected_asset.cmp(&asset) {
@@ -228,9 +228,8 @@ where
         .instrument(tracing::info_span!("watch_redeem"))
         .await?;
 
-    let log_data = log.data.0.as_ref();
     let secret =
-        Secret::from_vec(log_data).expect("Must be able to construct secret from log data");
+        Secret::from_vec(&log.data).expect("Must be able to construct secret from log data");
 
     Ok(Redeemed {
         transaction,
@@ -271,7 +270,7 @@ pub struct Params {
 }
 
 impl Params {
-    pub fn bytecode(&self) -> Bytes {
+    pub fn bytecode(&self) -> Vec<u8> {
         Erc20Htlc::from(self.clone()).into()
     }
 
@@ -296,7 +295,7 @@ impl Params {
         let htlc_address = blockchain_contracts::ethereum::Address(htlc_location.into());
         let data =
             Erc20Htlc::transfer_erc20_tx_payload(self.asset.clone().quantity.into(), htlc_address);
-        let data = Some(Bytes(data));
+        let data = Some(data);
 
         let gas_limit = Erc20Htlc::fund_tx_gas_limit();
         let min_block_timestamp = None;
@@ -332,7 +331,7 @@ impl Params {
         htlc_location: htlc_location::Ethereum,
         secret: Secret,
     ) -> actions::ethereum::CallContract {
-        let data = Some(Bytes::from(secret.into_raw_secret().to_vec()));
+        let data = Some(secret.into_raw_secret().to_vec());
         let gas_limit = Erc20Htlc::redeem_tx_gas_limit();
         let min_block_timestamp = None;
 
