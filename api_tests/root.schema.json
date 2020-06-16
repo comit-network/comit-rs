@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/schema#",
+    "$id": "http://comit.network/schemas/root.json",
+    "type": "object",
+    "title": "Root",
+    "description": "schema for the cnd root endpoint",
+    "properties": {
+        "id": {
+            "description": "Peer id of this node",
+            "type": "string"
+        },
+        "listen_addresses": {
+            "description": "Addresses node is listening on (libp2p multiaddress)",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    },
+    "required": ["id", "listen_addresses"]
+}

@@ -1,72 +1,32 @@
+/**
+ * @ledger bitcoin
+ * @ledger ethereum
+ */
+
 import { oneActorTest, twoActorTest } from "../src/actor_test";
+import SwapFactory from "../src/actors/swap_factory";
+import { sleep } from "../src/utils";
 import "../src/schema_matcher";
 import * as sirenJsonSchema from "../siren.schema.json";
+import * as rootJsonSchema from "../root.schema.json";
 import { siren } from "comit-sdk";
 import axios from "axios";
-import { createDefaultSwapRequest } from "../src/utils";
-import { Actor } from "../src/actors/actor";
-import * as swapPropertiesJsonSchema from "../swap.schema.json";
-import { Rfc003Actor } from "../src/actors/rfc003_actor";
-
-// ******************************************** //
-// Siren Schema tests                                 //
-// ******************************************** //
-
-async function assertValidSirenDocument(
-    swapsEntity: siren.Entity,
-    alice: Actor
-) {
-    const selfLink = swapsEntity.links.find((link: siren.Link) =>
-        link.rel.includes("self")
-    ).href;
-
-    const swapResponse = await alice.cnd.fetch(selfLink);
-    const swapEntity = swapResponse.data as siren.Entity;
-
-    expect(swapEntity).toMatchSchema(sirenJsonSchema);
-    expect(swapEntity.properties).toMatchSchema(swapPropertiesJsonSchema);
-}
+import { SwapResponse } from "../src/payload";
 
 describe("Siren Schema", () => {
     it(
-        "can-fetch-root-document-as-siren",
+        "can-fetch-root-document-as-valid-siren",
         oneActorTest(async ({ alice }) => {
-            const res = await alice.cnd.fetch("/");
+            const res = await axios({
+                baseURL: alice.cndHttpApiUrl(),
+                url: "/",
+                headers: { accept: "application/vnd.siren+json" },
+            });
 
             expect(res.status).toBe(200);
             expect(res.data).toMatchSchema(sirenJsonSchema);
-        })
-    );
+            expect(res.data.properties).toMatchSchema(rootJsonSchema);
 
-    it(
-        "returns-listen-addresses-on-root-document-as-siren",
-        oneActorTest(async ({ alice }) => {
-            const res = await axios({
-                baseURL: alice.cndHttpApiUrl(),
-                url: "/",
-                headers: { accept: "application/vnd.siren+json" },
-            });
-            const body = res.data as any;
-
-            expect(typeof body.properties.id).toBe("string");
-            expect(
-                Array.isArray(body.properties.listen_addresses)
-            ).toBeTruthy();
-            // At least 2 ipv4 addresses, lookup and external interface
-            expect(
-                body.properties.listen_addresses.length
-            ).toBeGreaterThanOrEqual(2);
-        })
-    );
-
-    it(
-        "returns-links-to-create-swap-endpoints-on-root-document-as-siren",
-        oneActorTest(async ({ alice }) => {
-            const res = await axios({
-                baseURL: alice.cndHttpApiUrl(),
-                url: "/",
-                headers: { accept: "application/vnd.siren+json" },
-            });
             const body = res.data as any;
             const links = body.links;
 
@@ -88,32 +48,35 @@ describe("Siren Schema", () => {
 
     it(
         "get-single-swap-is-valid-siren",
-        twoActorTest(async (actors) => {
-            const [alice, bob] = Rfc003Actor.convert([
-                actors.alice,
-                actors.bob,
-            ]);
-            // Alice send swap request to Bob
-            await alice.actor.cnd.postSwap(await createDefaultSwapRequest(bob));
+        twoActorTest(async ({ alice, bob }) => {
+            const bodies = (
+                await SwapFactory.newSwap(alice, bob, {
+                    ledgers: {
+                        alpha: "bitcoin",
+                        beta: "ethereum",
+                    },
+                })
+            ).hbitHerc20;
 
-            const aliceSwapEntity = await alice
-                .pollCndUntil("/swaps", (body) => body.entities.length > 0)
-                .then(
-                    (body) =>
-                        body
-                            .entities[0] as siren.EmbeddedRepresentationSubEntity
-                );
+            await alice.createHbitHerc20Swap(bodies.alice);
+            await bob.createHbitHerc20Swap(bodies.bob);
 
-            await assertValidSirenDocument(aliceSwapEntity, alice.actor);
+            // Wait for the announce protocol to complete.
+            await sleep(2000);
 
-            const bobsSwapEntity = await bob
-                .pollCndUntil("/swaps", (body) => body.entities.length > 0)
-                .then(
-                    (body) =>
-                        body
-                            .entities[0] as siren.EmbeddedRepresentationSubEntity
-                );
-            await assertValidSirenDocument(bobsSwapEntity, bob.actor);
+            // For now we just assert that the document returned by "/swaps/:id" is a valid siren object.
+
+            const responseAlice = await alice.cnd.fetch<SwapResponse>(
+                alice.swap.self
+            );
+            expect(responseAlice.status).toEqual(200);
+            expect(responseAlice.data).toMatchSchema(sirenJsonSchema);
+
+            const responseBob = await bob.cnd.fetch<SwapResponse>(
+                bob.swap.self
+            );
+            expect(responseBob.status).toEqual(200);
+            expect(responseBob.data).toMatchSchema(sirenJsonSchema);
         })
     );
 });
