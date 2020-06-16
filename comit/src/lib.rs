@@ -18,6 +18,9 @@ mod swap_id;
 mod timestamp;
 pub mod transaction;
 
+// Re-export rust-bitcoin to make our consumer's life easier.
+pub use ::bitcoin as bitcoin_lib;
+
 pub use self::{
     network::DialInformation,
     secret::Secret,
@@ -25,6 +28,7 @@ pub use self::{
     swap_id::{LocalSwapId, SharedSwapId},
     timestamp::{RelativeTime, Timestamp},
 };
+
 use digest::ToDigestInput;
 
 #[derive(
