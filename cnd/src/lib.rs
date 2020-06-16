@@ -19,13 +19,9 @@ extern crate diesel;
 extern crate diesel_migrations;
 
 #[macro_use]
-pub mod db;
-#[macro_use]
 pub mod network;
 #[cfg(test)]
 pub mod proptest;
-#[macro_use]
-mod seed;
 #[cfg(test)]
 pub mod spectral_ext;
 #[macro_use]
@@ -34,6 +30,7 @@ pub mod with_swap_types;
 mod actions;
 pub mod config;
 pub mod connectors;
+pub mod db;
 mod facade;
 pub mod file_lock;
 pub mod halbit;
@@ -42,6 +39,7 @@ pub mod herc20;
 pub mod http_api;
 pub mod protocol_spawner;
 pub mod respawn;
+mod seed;
 pub mod spawn;
 pub mod storage;
 pub mod swap_protocols;
