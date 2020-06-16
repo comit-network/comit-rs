@@ -25,7 +25,7 @@ pub trait LoadAll<T>: Send + Sync + 'static {
     async fn load_all(&self) -> anyhow::Result<Vec<T>>;
 }
 
-/// Save data to the database.
+/// Save data to the storage layer.
 #[async_trait]
 pub trait Save<T>: Send + Sync + 'static {
     async fn save(&self, swap: T) -> anyhow::Result<()>;
@@ -39,6 +39,7 @@ pub struct ForSwap<T> {
     pub data: T,
 }
 
+/// Type representing the storage layer.
 #[derive(Debug, Clone)]
 pub struct Storage {
     db: Sqlite,
@@ -65,6 +66,7 @@ impl Storage {
         }
     }
 
+    /// Transient identity used by the hbit HTLC.
     pub fn derive_transient_identity(
         &self,
         swap_id: LocalSwapId,
@@ -304,6 +306,8 @@ impl IntoParams for hbit::Params {
     }
 }
 
+/// Loadable type that provides context for a swap i.e., which protocol
+/// is on which side and which role we are playing in the swap.
 #[derive(Clone, Copy, Debug)]
 pub struct SwapContext {
     pub id: LocalSwapId,
