@@ -1,6 +1,7 @@
 import { oneActorTest, twoActorTest } from "../src/actor_test";
 import "../src/schema_matcher";
 import * as sirenJsonSchema from "../siren.schema.json";
+import * as sirenRootJsonSchema from "../root.schema.json";
 import { siren } from "comit-sdk";
 import axios from "axios";
 import { createDefaultSwapRequest } from "../src/utils";
@@ -34,7 +35,7 @@ describe("Siren Schema", () => {
             const res = await alice.cnd.fetch("/");
 
             expect(res.status).toBe(200);
-            expect(res.data).toMatchSchema(sirenJsonSchema);
+            expect(res.data).toMatchSchema(sirenRootJsonSchema);
         })
     );
 
