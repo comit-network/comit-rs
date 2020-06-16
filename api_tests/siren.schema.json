@@ -264,7 +264,7 @@
             "anyOf": [
                 {
                     "type": "string",
-                    "format": "uri"
+                    "format": "uri-reference"
                 },
                 {
                     "type": "string",
