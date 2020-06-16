@@ -39,7 +39,6 @@ pub mod herc20;
 pub mod http_api;
 pub mod protocol_spawner;
 pub mod respawn;
-mod seed;
 pub mod spawn;
 pub mod storage;
 pub mod swap_protocols;
@@ -52,8 +51,8 @@ use std::{
 };
 
 pub use self::{
-    actions::*, asset::AssetKind, facade::Facade, protocol_spawner::*, seed::*, spawn::*,
-    storage::*, swap_protocols::state,
+    actions::*, asset::AssetKind, facade::Facade, protocol_spawner::*, spawn::*, storage::*,
+    swap_protocols::state,
 };
 // Export comit types so we do not need to worry about where they come from.
 pub use comit::{

@@ -1,17 +1,20 @@
 mod http_api;
+mod seed;
 
 use crate::{
     asset,
     db::{self, *},
     halbit, hbit, herc20, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
-    spawn, LocalSwapId, Protocol, Role, RootSeed, SecretHash, Side,
+    spawn, LocalSwapId, Protocol, Role, SecretHash, Side,
 };
 use anyhow::Context;
 use async_trait::async_trait;
 use bitcoin::Network;
 use diesel::{BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 use std::sync::Arc;
+
+pub use seed::*;
 
 /// Load data for a particular swap from the storage layer.
 #[async_trait]

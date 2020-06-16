@@ -4,8 +4,8 @@ use crate::{
     db::{self, Halbit, Hbit, Herc20},
     http_api::{halbit, hbit, herc20, AliceSwap, BobSwap},
     state::Get,
-    storage::{LoadTables, Tables},
-    Load, LocalSwapId, RootSeed, Storage,
+    storage::{LoadTables, RootSeed, Tables},
+    Load, LocalSwapId, Storage,
 };
 use async_trait::async_trait;
 
