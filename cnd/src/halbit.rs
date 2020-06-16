@@ -1,8 +1,6 @@
 use crate::{
-    identity,
-    swap_protocols::{state, state::Update},
-    tracing_ext::InstrumentProtocol,
-    LocalSwapId, Protocol, RelativeTime, Role, Side,
+    identity, state, state::Update, tracing_ext::InstrumentProtocol, LocalSwapId, Protocol,
+    RelativeTime, Role, Side,
 };
 use futures::TryStreamExt;
 use std::{

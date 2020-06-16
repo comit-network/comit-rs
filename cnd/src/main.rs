@@ -25,12 +25,10 @@ use cnd::{
     file_lock::TryLockExclusive,
     halbit, hbit, herc20,
     http_api::route_factory,
-    load_swaps,
     network::{Swarm, SwarmWorker},
     protocol_spawner::ProtocolSpawner,
     respawn::respawn,
     storage::Storage,
-    swap_protocols::{rfc003, rfc003::SwapCommunicationStates, Rfc003Facade, SwapErrorStates},
     Facade, RootSeed,
 };
 use comit::lnd::LndConnectorParams;
@@ -145,16 +143,9 @@ fn main() -> anyhow::Result<()> {
         ethereum: Arc::clone(&ethereum_connector),
     };
 
-    // RCF003 protocol
-    let rfc003_alpha_ledger_states = Arc::new(rfc003::LedgerStates::default());
-    let rfc003_beta_ledger_states = Arc::new(rfc003::LedgerStates::default());
-    let swap_communication_states = Arc::new(SwapCommunicationStates::default());
-
     let herc20_states = Arc::new(herc20::States::default());
     let halbit_states = Arc::new(halbit::States::default());
     let hbit_states = Arc::new(hbit::States::default());
-
-    let swap_error_states = Arc::new(SwapErrorStates::default());
 
     let storage = Storage::new(
         database.clone(),
@@ -179,29 +170,12 @@ fn main() -> anyhow::Result<()> {
         seed,
         Arc::clone(&bitcoin_connector),
         Arc::clone(&ethereum_connector),
-        Arc::clone(&swap_communication_states),
-        Arc::clone(&rfc003_alpha_ledger_states),
-        Arc::clone(&rfc003_beta_ledger_states),
         &database,
         runtime.handle().clone(),
         storage.clone(),
         protocol_spawner.clone(),
     )?;
 
-    // RCF003 protocol
-    let rfc003_facade = Rfc003Facade {
-        bitcoin_connector,
-        ethereum_connector: Arc::clone(&ethereum_connector),
-        alpha_ledger_states: Arc::clone(&rfc003_alpha_ledger_states),
-        beta_ledger_states: Arc::clone(&&rfc003_beta_ledger_states),
-        swap_communication_states,
-        swap_error_states,
-        seed,
-        db: database,
-        swarm: swarm.clone(),
-    };
-
-    // split protocols
     let facade = Facade {
         swarm: swarm.clone(),
         storage: storage.clone(),
@@ -209,18 +183,12 @@ fn main() -> anyhow::Result<()> {
     };
 
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;
-    runtime.block_on(load_swaps::load_swaps_from_database(rfc003_facade.clone()))?;
     match runtime.block_on(respawn(storage, protocol_spawner)) {
         Ok(()) => {}
         Err(e) => tracing::warn!("failed to respawn swaps: {:?}", e),
     };
 
-    runtime.spawn(make_http_api_worker(
-        settings,
-        rfc003_facade,
-        facade,
-        http_api_listener,
-    ));
+    runtime.spawn(make_http_api_worker(settings, facade, http_api_listener));
     runtime.spawn(make_network_api_worker(swarm));
 
     ::std::thread::park();
@@ -254,15 +222,10 @@ async fn bind_http_api_socket(settings: &Settings) -> anyhow::Result<tokio::net:
 /// Construct the worker that is going to process HTTP API requests.
 async fn make_http_api_worker(
     settings: Settings,
-    rfc003_facade: Rfc003Facade,
     facade: Facade,
     incoming_requests: tokio::net::TcpListener,
 ) {
-    let routes = route_factory::create(
-        rfc003_facade,
-        facade,
-        &settings.http_api.cors.allowed_origins,
-    );
+    let routes = route_factory::create(facade, &settings.http_api.cors.allowed_origins);
 
     match incoming_requests.local_addr() {
         Ok(socket) => {

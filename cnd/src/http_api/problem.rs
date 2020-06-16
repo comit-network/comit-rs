@@ -1,12 +1,4 @@
-use crate::{
-    db,
-    http_api::{
-        routes::rfc003::handlers::{
-            post_swap::UnsupportedSwap, InvalidAction, InvalidActionInvocation,
-        },
-        ActionNotFound,
-    },
-};
+use crate::{db, http_api::ActionNotFound};
 use http_api_problem::HttpApiProblem;
 use warp::{
     http::{self, StatusCode},
@@ -87,29 +79,6 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
         return HttpApiProblem::new("Invalid body.")
             .set_status(StatusCode::BAD_REQUEST)
             .set_detail(format!("{:?}", e));
-    }
-
-    if e.is::<InvalidActionInvocation>() {
-        tracing::warn!("{}", e);
-
-        return HttpApiProblem::new("Invalid action invocation")
-            .set_status(http::StatusCode::METHOD_NOT_ALLOWED);
-    }
-
-    if e.is::<InvalidAction>() {
-        tracing::warn!("{}", e);
-
-        return HttpApiProblem::new("Invalid action.")
-            .set_status(StatusCode::CONFLICT)
-            .set_detail("Cannot perform requested action for this swap.");
-    }
-
-    if e.is::<UnsupportedSwap>() {
-        tracing::warn!("{}", e);
-
-        return HttpApiProblem::new("Swap not supported.")
-            .set_status(StatusCode::BAD_REQUEST)
-            .set_detail("The requested combination of ledgers and assets is not supported.");
     }
 
     if e.is::<ActionNotFound>() {

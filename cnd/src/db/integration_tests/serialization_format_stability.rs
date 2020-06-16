@@ -5,18 +5,9 @@
 
 use crate::{
     db::wrapper_types::{Erc20Amount, Ether, EthereumAddress, Satoshis},
-    swap_protocols::{
-        rfc003::{SecretHash, SwapId},
-        HashFunction,
-    },
-    Protocol,
+    Protocol, SecretHash,
 };
 use std::{fmt, str::FromStr};
-
-#[test]
-fn swap_id() {
-    roundtrip_test::<SwapId>("7f3a105d-ecf2-4cc6-b35c-b4351ac28a34")
-}
 
 #[test]
 fn bitcoin_network() {
@@ -38,12 +29,6 @@ fn erc20_amount() {
 #[test]
 fn bitcoin_amount() {
     roundtrip_test::<Satoshis>("100000000000");
-}
-
-#[test]
-fn hash_function() {
-    roundtrip_test::<HashFunction>("SHA-256");
-    assert_num_variants::<HashFunction>(1)
 }
 
 #[test]

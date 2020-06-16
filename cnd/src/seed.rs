@@ -1,4 +1,4 @@
-use crate::{swap_protocols::rfc003::SwapId, LocalSwapId, Secret};
+use crate::{LocalSwapId, Secret};
 use ::bitcoin::secp256k1::SecretKey;
 use pem::{encode, Pem};
 use rand::Rng;
@@ -16,20 +16,6 @@ use std::{
 /// then use as the secret source for deriving redeem/refund identities.
 /// `RootSeed` and `SwapSeed` are the same underlying type (`Seed`), they exist
 /// solely to allow the compiler to provide us with type safety.
-
-// This will go away once rfc003 is gone (because now the swap_id comes from Bob
-// we derive it differently).
-#[ambassador::delegatable_trait]
-pub trait Rfc003DeriveSwapSeed {
-    fn rfc003_derive_swap_seed(&self, id: SwapId) -> SwapSeed;
-}
-
-impl Rfc003DeriveSwapSeed for RootSeed {
-    fn rfc003_derive_swap_seed(&self, id: SwapId) -> SwapSeed {
-        let data = self.sha256_with_seed(&[b"SWAP", id.0.as_bytes()]);
-        SwapSeed(Seed(data))
-    }
-}
 
 const SEED_LENGTH: usize = 32;
 

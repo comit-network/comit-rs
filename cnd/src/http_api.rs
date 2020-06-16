@@ -12,24 +12,16 @@ pub mod impl_serialize_http;
 pub mod action;
 mod problem;
 mod protocol;
-mod swap_resource;
 
 pub use self::{
     problem::*,
     protocol::{AliceSwap, BobSwap},
-    swap_resource::{OnFail, SwapParameters, SwapResource, SwapStatus},
 };
 use crate::swap_protocols::actions::lnd::Chain;
 
 pub const PATH: &str = "swaps";
 
-use crate::{
-    asset,
-    ethereum::ChainId,
-    htlc_location, identity,
-    swap_protocols::{ledger, rfc003::SwapId, SwapProtocol},
-    transaction, Role,
-};
+use crate::{asset, ethereum::ChainId, htlc_location, identity, ledger, transaction, Role};
 use libp2p::{Multiaddr, PeerId};
 use serde::{
     de::Error as _, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer,
@@ -142,18 +134,12 @@ impl Serialize for Http<Chain> {
 }
 
 impl_serialize_type_with_fields!(htlc_location::Bitcoin { "txid" => txid, "vout" => vout });
-impl_serialize_http!(crate::ethereum::Address);
-impl_serialize_http!(SwapId);
-
-impl Serialize for Http<SwapProtocol> {
+impl Serialize for Http<identity::Ethereum> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        match &self.0 {
-            // Currently we do not expose the hash_function protocol parameter via REST.
-            SwapProtocol::Rfc003(_hash_function) => serializer.serialize_str("rfc003"),
-        }
+        self.0.serialize(serializer)
     }
 }
 
@@ -548,12 +534,7 @@ mod tests {
         bitcoin::PublicKey,
         ethereum::{Address, ChainId, Hash, U256},
         http_api::{Http, HttpAsset, HttpLedger},
-        swap_protocols::{
-            ledger::{self},
-            rfc003::SwapId,
-            HashFunction, SwapProtocol,
-        },
-        transaction,
+        ledger, transaction,
     };
     use ::bitcoin::{
         hashes::{hex::FromHex, sha256d},
@@ -716,26 +697,6 @@ mod tests {
             &bitcoin_htlc_location_serialized,
             r#"{"txid":"ad067ee417ee5518122374307d1fa494c67e30c75d38c7061d944b59e56fe024","vout":1}"#
         );
-    }
-
-    #[test]
-    fn http_swap_protocol_serializes_correctly_to_json() {
-        let protocol = SwapProtocol::Rfc003(HashFunction::Sha256);
-        let protocol = Http(protocol);
-        let serialized = serde_json::to_string(&protocol).unwrap();
-        assert_eq!(serialized, r#""rfc003""#);
-    }
-
-    #[test]
-    fn http_swap_id_serializes_correctly_to_json() {
-        let swap_id = SwapId::from_str("ad2652ca-ecf2-4cc6-b35c-b4351ac28a34").unwrap();
-        let swap_id = Http(swap_id);
-
-        let swap_id_serialized = serde_json::to_string(&swap_id).unwrap();
-        assert_eq!(
-            swap_id_serialized,
-            r#""ad2652ca-ecf2-4cc6-b35c-b4351ac28a34""#
-        )
     }
 
     #[test]
