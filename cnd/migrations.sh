@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 function navigate_to_last_folder() {
   cd $(ls -d */|tail -n 1)
