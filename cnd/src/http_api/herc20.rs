@@ -30,7 +30,7 @@ impl Finalized {
         };
 
         let params = self.build_params(secret_hash);
-        params.build_fund_action(htlc_location)
+        Ok(params.build_fund_action(htlc_location))
     }
 
     pub fn build_refund_action(&self, secret_hash: SecretHash) -> anyhow::Result<CallContract> {
@@ -40,7 +40,7 @@ impl Finalized {
         };
 
         let params = self.build_params(secret_hash);
-        params.build_refund_action(htlc_location)
+        Ok(params.build_refund_action(htlc_location))
     }
 
     pub fn build_redeem_action(&self, secret: Secret) -> anyhow::Result<CallContract> {
@@ -51,7 +51,7 @@ impl Finalized {
 
         let secret_hash = SecretHash::new(secret);
         let params = self.build_params(secret_hash);
-        params.build_redeem_action(htlc_location, secret)
+        Ok(params.build_redeem_action(htlc_location, secret))
     }
 
     fn build_params(&self, secret_hash: SecretHash) -> Params {
