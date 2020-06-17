@@ -5,6 +5,8 @@ use comit::{
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
     ethereum, Secret, SecretHash,
 };
+use futures::future::FutureExt;
+use futures::future::{self, Either};
 
 pub mod hbit {
     use bitcoin::{secp256k1::SecretKey, *};
@@ -66,6 +68,7 @@ pub mod hbit {
         async fn refund<SC>(
             &self,
             params: &Params,
+            fund_event: CorrectlyFunded,
             secp: &bitcoin::secp256k1::Secp256k1<SC>,
         ) -> anyhow::Result<Refunded>
         where
@@ -87,10 +90,12 @@ pub mod hbit {
         C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
     {
         match comit::hbit::watch_for_funded(connector, params, start_of_swap).await? {
-            Funded::Correctly {
+            comit::hbit::Funded::Correctly {
                 asset, location, ..
             } => Ok(CorrectlyFunded { asset, location }),
-            Funded::Incorrectly { .. } => anyhow::bail!("Bitcoin HTLC incorrectly funded"),
+            comit::hbit::Funded::Incorrectly { .. } => {
+                anyhow::bail!("Bitcoin HTLC incorrectly funded")
+            }
         }
     }
 }
@@ -137,7 +142,8 @@ pub mod herc20 {
 
     #[async_trait::async_trait]
     pub trait Refund {
-        async fn refund(&self, params: &Params) -> anyhow::Result<Refunded>;
+        async fn refund(&self, params: &Params, deploy_event: Deployed)
+            -> anyhow::Result<Refunded>;
     }
 
     #[derive(Debug, Clone)]
@@ -185,7 +191,7 @@ where
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + ReceiptByHash,
 {
-    async fn fund(&self, params: &comit::hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
+    async fn fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
         let event =
             hbit::watch_for_funded(&self.alpha_connector, &params, self.start_of_swap).await?;
 
@@ -204,12 +210,42 @@ where
 {
     async fn redeem(
         &self,
-        _params: &comit::herc20::Params,
-        deploy_event: comit::herc20::Deployed,
-    ) -> anyhow::Result<comit::herc20::Redeemed> {
+        _params: &herc20::Params,
+        deploy_event: herc20::Deployed,
+    ) -> anyhow::Result<herc20::Redeemed> {
         let event =
             herc20::watch_for_redeemed(&self.beta_connector, self.start_of_swap, deploy_event)
                 .await?;
+
+        Ok(event)
+    }
+}
+
+#[async_trait::async_trait]
+impl<AC, BC> hbit::Refund for WatchOnlyAlice<AC, BC>
+where
+    AC: LatestBlock<Block = bitcoin::Block>
+        + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
+    BC: LatestBlock<Block = ethereum::Block>
+        + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
+        + ReceiptByHash,
+{
+    async fn refund<SC>(
+        &self,
+        params: &hbit::Params,
+        fund_event: hbit::CorrectlyFunded,
+        _secp: &bitcoin::secp256k1::Secp256k1<SC>,
+    ) -> anyhow::Result<hbit::Refunded>
+    where
+        SC: bitcoin::secp256k1::Signing,
+    {
+        let event = hbit::watch_for_refunded(
+            &self.alpha_connector,
+            &params,
+            fund_event.location,
+            self.start_of_swap,
+        )
+        .await?;
 
         Ok(event)
     }
@@ -225,7 +261,7 @@ pub struct WalletBob<AW, BW, E> {
 
 #[async_trait::async_trait]
 impl herc20::Deploy for WalletBob<BitcoinWallet, EthereumWallet, hbit::PrivateDetailsRedeemer> {
-    async fn deploy(&self, params: &comit::herc20::Params) -> anyhow::Result<herc20::Deployed> {
+    async fn deploy(&self, params: &herc20::Params) -> anyhow::Result<herc20::Deployed> {
         let deploy_action = params.build_deploy_action();
         let event = self.beta_wallet.deploy(deploy_action).await?;
 
@@ -237,8 +273,8 @@ impl herc20::Deploy for WalletBob<BitcoinWallet, EthereumWallet, hbit::PrivateDe
 impl herc20::Fund for WalletBob<BitcoinWallet, EthereumWallet, hbit::PrivateDetailsRedeemer> {
     async fn fund(
         &self,
-        params: &comit::herc20::Params,
-        deploy_event: comit::herc20::Deployed,
+        params: &herc20::Params,
+        deploy_event: herc20::Deployed,
     ) -> anyhow::Result<herc20::CorrectlyFunded> {
         let fund_action = params.build_fund_action(deploy_event.location)?;
         let event = self.beta_wallet.fund(fund_action).await?;
@@ -255,7 +291,7 @@ impl hbit::RedeemAsBob for WalletBob<BitcoinWallet, EthereumWallet, hbit::Privat
         fund_event: hbit::CorrectlyFunded,
         secret: Secret,
         secp: &bitcoin::secp256k1::Secp256k1<SC>,
-    ) -> anyhow::Result<comit::hbit::Redeemed>
+    ) -> anyhow::Result<hbit::Redeemed>
     where
         SC: bitcoin::secp256k1::Signing,
     {
@@ -273,6 +309,25 @@ impl hbit::RedeemAsBob for WalletBob<BitcoinWallet, EthereumWallet, hbit::Privat
     }
 }
 
+#[async_trait::async_trait]
+impl herc20::Refund for WalletBob<BitcoinWallet, EthereumWallet, hbit::PrivateDetailsRedeemer> {
+    async fn refund(
+        &self,
+        params: &herc20::Params,
+        deploy_event: herc20::Deployed,
+    ) -> anyhow::Result<herc20::Refunded> {
+        let deadline = u32::from(params.expiry);
+        let duration = deadline - u32::from(comit::Timestamp::now());
+        let duration = std::time::Duration::from_secs(duration as u64);
+        tokio::time::delay_for(duration).await;
+
+        let refund_action = params.build_refund_action(deploy_event.location)?;
+        let event = self.beta_wallet.refund(refund_action).await?;
+
+        Ok(event)
+    }
+}
+
 async fn hbit_herc20<A, B, SC>(
     alice: A,
     bob: B,
@@ -281,18 +336,91 @@ async fn hbit_herc20<A, B, SC>(
     secp: &bitcoin::secp256k1::Secp256k1<SC>,
 ) -> anyhow::Result<()>
 where
-    A: hbit::Fund + herc20::RedeemAsAlice,
-    B: herc20::Deploy + herc20::Fund + hbit::RedeemAsBob,
+    A: hbit::Fund + herc20::RedeemAsAlice + hbit::Refund,
+    B: herc20::Deploy + herc20::Fund + hbit::RedeemAsBob + herc20::Refund,
     SC: bitcoin::secp256k1::Signing,
 {
     let hbit_funded = alice.fund(&hbit_params).await?;
 
-    let herc20_deployed = bob.deploy(&herc20_params).await?;
-    let _herc20_funded = bob.fund(&herc20_params, herc20_deployed.clone()).await?;
+    let hbit_refund = alice.refund(&hbit_params, hbit_funded, secp);
+    let herc20_deploy = bob.deploy(&herc20_params);
 
-    let herc20_redeemed = alice.redeem(&herc20_params, herc20_deployed).await?;
+    let (herc20_deployed, hbit_refund) = match future::try_select(hbit_refund, herc20_deploy).await
+    {
+        Ok(Either::Left((_hbit_refunded, _))) => {
+            // If we're WalletBob, we should never get here i.e. try
+            // to deploy Beta if Alice can refund Alpha. Luckily, it's
+            // safe because deploying doesn't commit any money to the
+            // blockchain
+            return Ok(());
+        }
+        Ok(Either::Right((herc20_deployed, hbit_refund))) => (herc20_deployed, hbit_refund),
+        Err(either) => {
+            let (error, _other_future) = either.factor_first();
+            return Err(error);
+        }
+    };
 
-    let _hbit_redeem = bob.redeem(&hbit_params, hbit_funded, herc20_redeemed.secret, &secp);
+    let herc20_fund = bob.fund(&herc20_params, herc20_deployed.clone());
+
+    let (_herc20_funded, hbit_refund) = match future::try_select(hbit_refund, herc20_fund).await {
+        Ok(Either::Left((_hbit_refunded, _))) => {
+            // If we're WalletBob, we should never get here i.e. try
+            // to fund Beta if Alice can refund Alpha. If we want to
+            // handle this situation we would have to force-refund
+            // here, to not get our funds locked up indefinitely if
+            // fund goes through
+            //
+            // How do we handle this for both parties if at all?
+            return Ok(());
+        }
+        Ok(Either::Right((herc20_funded, hbit_refund))) => (herc20_funded, hbit_refund),
+        Err(either) => {
+            let (error, _other_future) = either.factor_first();
+            return Err(error);
+        }
+    };
+
+    let herc20_refund = bob.refund(&herc20_params, herc20_deployed.clone());
+    let herc20_redeem = alice.redeem(&herc20_params, herc20_deployed);
+
+    let herc20_redeemed = futures::select! {
+        hbit_refunded = hbit_refund.fuse() => {
+            // If we're WalletAlice... what's going on here? We would
+            // be trying to redeem way past Beta expiry (and Alpha's),
+            // yet Bob would have not refunded yet. If we want to
+            // handle this situation, at least our money would already
+            // be safe. Do we take Bob's money for free? Are you
+            // there, Bob?
+            //
+            // Race between herc20_redeem and herc20_refund? Seems fair.
+            unimplemented!();
+        },
+        herc20_refunded = herc20_refund.fuse() => {
+            // If we're WalletAlice, we should never get here i.e. try
+            // to redeem if Bob can refund Beta. This could result in
+            // publishing a transaction which would reveal the secret
+            // without actually redeeming Beta. If we want to handle
+            // this situation we would have to force-refund here, to
+            // prevent Bob from taking Alpha for free
+            //
+            // Race between hbit_redeem and hbit_refund? Seems fair.
+            unimplemented!();
+        },
+        herc20_redeemed = herc20_redeem.fuse() => herc20_redeemed?,
+    };
+
+    let hbit_refund = alice.refund(&hbit_params, hbit_funded, secp);
+    let hbit_redeem = bob.redeem(&hbit_params, hbit_funded, herc20_redeemed.secret, &secp);
+
+    let _hbit_redeemed = match future::try_select(hbit_refund, hbit_redeem).await {
+        Ok(Either::Left((_hbit_refunded, _))) => return Ok(()),
+        Ok(Either::Right((hbit_redeemed, _))) => hbit_redeemed,
+        Err(either) => {
+            let (error, _other_future) = either.factor_first();
+            return Err(error);
+        }
+    };
 
     Ok(())
 }
@@ -307,7 +435,7 @@ struct WalletAlice<AW, BW, E> {
 
 #[async_trait::async_trait]
 impl hbit::Fund for WalletAlice<BitcoinWallet, EthereumWallet, hbit::PrivateDetailsFunder> {
-    async fn fund(&self, params: &comit::hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
+    async fn fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
         let fund_action = params.build_fund_action();
         let event = self.alpha_wallet.fund(fund_action).await?;
 
@@ -321,11 +449,35 @@ impl herc20::RedeemAsAlice
 {
     async fn redeem(
         &self,
-        params: &comit::herc20::Params,
-        deploy_event: comit::herc20::Deployed,
-    ) -> anyhow::Result<comit::herc20::Redeemed> {
+        params: &herc20::Params,
+        deploy_event: herc20::Deployed,
+    ) -> anyhow::Result<herc20::Redeemed> {
         let redeem_action = params.build_redeem_action(deploy_event.location, self.secret)?;
         let event = self.beta_wallet.redeem(redeem_action).await?;
+
+        Ok(event)
+    }
+}
+
+#[async_trait::async_trait]
+impl hbit::Refund for WalletAlice<BitcoinWallet, EthereumWallet, hbit::PrivateDetailsFunder> {
+    async fn refund<SC>(
+        &self,
+        params: &hbit::Params,
+        fund_event: hbit::CorrectlyFunded,
+        secp: &bitcoin::secp256k1::Secp256k1<SC>,
+    ) -> anyhow::Result<hbit::Refunded>
+    where
+        SC: bitcoin::secp256k1::Signing,
+    {
+        let refund_action = params.build_refund_action(
+            secp,
+            fund_event.asset,
+            fund_event.location,
+            self.private_protocol_details.transient_refund_sk,
+            self.private_protocol_details.final_refund_identity.clone(),
+        )?;
+        let event = self.alpha_wallet.refund(refund_action).await?;
 
         Ok(event)
     }
@@ -348,10 +500,7 @@ where
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + ReceiptByHash,
 {
-    async fn deploy(
-        &self,
-        params: &comit::herc20::Params,
-    ) -> anyhow::Result<comit::herc20::Deployed> {
+    async fn deploy(&self, params: &herc20::Params) -> anyhow::Result<herc20::Deployed> {
         let event =
             herc20::watch_for_deployed(&self.beta_connector, params.clone(), self.start_of_swap)
                 .await?;
@@ -371,8 +520,8 @@ where
 {
     async fn fund(
         &self,
-        params: &comit::herc20::Params,
-        deploy_event: comit::herc20::Deployed,
+        params: &herc20::Params,
+        deploy_event: herc20::Deployed,
     ) -> anyhow::Result<herc20::CorrectlyFunded> {
         let event = herc20::watch_for_funded(
             &self.beta_connector,
@@ -397,11 +546,11 @@ where
 {
     async fn redeem<SC>(
         &self,
-        params: &comit::hbit::Params,
+        params: &hbit::Params,
         fund_event: hbit::CorrectlyFunded,
         _secret: Secret,
         _secp: &bitcoin::secp256k1::Secp256k1<SC>,
-    ) -> anyhow::Result<comit::hbit::Redeemed>
+    ) -> anyhow::Result<hbit::Redeemed>
     where
         SC: bitcoin::secp256k1::Signing,
     {
@@ -412,6 +561,28 @@ where
             self.start_of_swap,
         )
         .await?;
+
+        Ok(event)
+    }
+}
+
+#[async_trait::async_trait]
+impl<AC, BC> herc20::Refund for WatchOnlyBob<AC, BC>
+where
+    AC: LatestBlock<Block = bitcoin::Block>
+        + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
+    BC: LatestBlock<Block = ethereum::Block>
+        + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
+        + ReceiptByHash,
+{
+    async fn refund(
+        &self,
+        _params: &comit::herc20::Params,
+        deploy_event: comit::herc20::Deployed,
+    ) -> anyhow::Result<comit::herc20::Refunded> {
+        let event =
+            herc20::watch_for_refunded(&self.beta_connector, self.start_of_swap, deploy_event)
+                .await?;
 
         Ok(event)
     }
