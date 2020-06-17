@@ -3,10 +3,10 @@ mod seed;
 
 use crate::{
     asset,
-    db::{self, *},
+    db::{CreatedSwap, Error, SecretHash, Swap, *},
     halbit, hbit, herc20, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
-    spawn, LocalSwapId, Protocol, Role, SecretHash, Side,
+    spawn, LocalSwapId, Protocol, Role, Side,
 };
 use anyhow::Context;
 use async_trait::async_trait;
@@ -142,17 +142,17 @@ pub trait IntoParams: Sized {
         _: LocalSwapId,
         _: RootSeed,
         _: Role,
-        _: SecretHash,
+        _: comit::SecretHash,
     ) -> anyhow::Result<Self>;
 }
 
 /// Data required to load in order to construct spawnable swaps (`spawn::Swap`).
 #[derive(Debug)]
 pub struct Tables<A, B> {
-    pub swap: db::Swap,
+    pub swap: Swap,
     pub alpha: A, // E.g, Herc20
     pub beta: B,  // E.g, Hbit
-    pub secret_hash: Option<db::SecretHash>,
+    pub secret_hash: Option<SecretHash>,
 }
 
 macro_rules! impl_load_tables {
@@ -174,14 +174,14 @@ macro_rules! impl_load_tables {
                         let alpha = $alpha::belonging_to(&swap).first::<$alpha>(conn)?;
                         let beta = $beta::belonging_to(&swap).first::<$beta>(conn)?;
 
-                        let secret_hash = db::SecretHash::belonging_to(&swap)
-                            .first::<db::SecretHash>(conn)
+                        let secret_hash = SecretHash::belonging_to(&swap)
+                            .first::<SecretHash>(conn)
                             .optional()?;
 
                         Ok((swap, alpha, beta, secret_hash))
                     })
                     .await
-                    .context(db::Error::SwapNotFound)?;
+                    .context(Error::SwapNotFound)?;
 
                 alpha.assert_side(Side::Alpha)?;
                 beta.assert_side(Side::Beta)?;
@@ -215,7 +215,7 @@ impl IntoParams for herc20::Params {
         id: LocalSwapId,
         _: RootSeed,
         _: Role,
-        secret_hash: SecretHash,
+        secret_hash: comit::SecretHash,
     ) -> anyhow::Result<herc20::Params> {
         Ok(herc20::Params {
             asset: asset::Erc20 {
@@ -247,7 +247,7 @@ impl IntoParams for halbit::Params {
         id: LocalSwapId,
         _: RootSeed,
         _: Role,
-        secret_hash: SecretHash,
+        secret_hash: comit::SecretHash,
     ) -> anyhow::Result<halbit::Params> {
         Ok(halbit::Params {
             redeem_identity: halbit
@@ -273,7 +273,7 @@ impl IntoParams for hbit::Params {
         id: LocalSwapId,
         seed: RootSeed,
         role: Role,
-        secret_hash: SecretHash,
+        secret_hash: comit::SecretHash,
     ) -> anyhow::Result<hbit::Params> {
         let (redeem, refund) = match (hbit.side.0, role) {
             (Side::Alpha, Role::Bob) | (Side::Beta, Role::Alice) => {
@@ -336,7 +336,7 @@ impl Load<SwapContext> for Storage {
             .into_iter()
             .find(|context| context.id.0 == swap_id)
             .map(|context| context.into())
-            .ok_or(db::Error::SwapNotFound)?;
+            .ok_or(Error::SwapNotFound)?;
 
         Ok(context)
     }
@@ -348,12 +348,12 @@ fn derive_or_unwrap_secret_hash(
     id: LocalSwapId,
     seed: RootSeed,
     role: Role,
-    secret_hash: Option<db::SecretHash>,
-) -> anyhow::Result<SecretHash> {
+    secret_hash: Option<SecretHash>,
+) -> anyhow::Result<comit::SecretHash> {
     let secret_hash = match role {
         Role::Alice => {
             let swap_seed = seed.derive_swap_seed(id);
-            SecretHash::new(swap_seed.derive_secret())
+            comit::SecretHash::new(swap_seed.derive_secret())
         }
         Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
     };
@@ -376,7 +376,7 @@ impl LoadAll<SwapContext> for Storage {
 }
 
 #[async_trait::async_trait]
-impl<TCreatedA, TCreatedB, TInsertableA, TInsertableB> Save<db::CreatedSwap<TCreatedA, TCreatedB>>
+impl<TCreatedA, TCreatedB, TInsertableA, TInsertableB> Save<CreatedSwap<TCreatedA, TCreatedB>>
     for Storage
 where
     TCreatedA: IntoInsertable<Insertable = TInsertableA> + Clone + Send + 'static,
@@ -387,7 +387,7 @@ where
 {
     async fn save(
         &self,
-        db::CreatedSwap {
+        CreatedSwap {
             swap_id,
             role,
             peer,
@@ -395,7 +395,7 @@ where
             beta,
             start_of_swap,
             ..
-        }: db::CreatedSwap<TCreatedA, TCreatedB>,
+        }: CreatedSwap<TCreatedA, TCreatedB>,
     ) -> anyhow::Result<()> {
         self.db
             .do_in_transaction::<_, _, anyhow::Error>(move |conn| {
