@@ -210,32 +210,34 @@ impl Comit {
         let remote_data = self.remote_data.get(&shared_swap_id);
 
         if let (Some(state), Some(data), Some(remote_data)) = (state, data, remote_data) {
-            let ethereum_sorted = if data.ethereum_identity.is_some() {
-                remote_data.ethereum_identity.is_some() && state.ethereum_identity_sent
-            } else {
-                true
-            };
-
-            let lightning_sorted = if data.lightning_identity.is_some() {
-                remote_data.lightning_identity.is_some() && state.lightning_identity_sent
-            } else {
-                true
-            };
-
-            let bitcoin_sorted = if data.bitcoin_identity.is_some() {
-                remote_data.bitcoin_identity.is_some() && state.bitcoin_identity_sent
-            } else {
-                true
-            };
-
-            if ethereum_sorted
-                && lightning_sorted
-                && bitcoin_sorted
-                && state.secret_hash_sent_or_received
+            if data.ethereum_identity.is_some()
+                && (remote_data.ethereum_identity.is_none() || !state.ethereum_identity_sent)
             {
-                self.finalize
-                    .send(peer, finalize::Message::new(shared_swap_id));
+                // Swap not yet finalized, Ethereum identities not synced.
+                return;
             }
+
+            if data.lightning_identity.is_some()
+                && (remote_data.lightning_identity.is_none() || !state.lightning_identity_sent)
+            {
+                // Swap not yet finalized, Lightning identities not synced.
+                return;
+            }
+
+            if data.bitcoin_identity.is_some()
+                && (remote_data.bitcoin_identity.is_none() || !state.bitcoin_identity_sent)
+            {
+                // Swap not yet finalized, Bitcoin identities not synced.
+                return;
+            }
+
+            if !state.secret_hash_sent_or_received {
+                // Swap not yet finalized, secret hash not synced.
+                return;
+            }
+
+            self.finalize
+                .send(peer, finalize::Message::new(shared_swap_id));
         }
     }
 }
