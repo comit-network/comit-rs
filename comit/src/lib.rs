@@ -18,8 +18,25 @@ mod swap_id;
 mod timestamp;
 pub mod transaction;
 
-// Re-export rust-bitcoin to make our consumer's life easier.
-pub use ::bitcoin as bitcoin_lib;
+/// A module for exporting dependencies that appear in the public API of our
+/// crate.
+///
+/// Ideally, all dependencies of the `comit` crate would be an implementation
+/// detail and the consumer doesn't need to worry about their versions for
+/// interoperability. However, some types of our dependencies appear in public
+/// APIs of the `comit` crate and hence force consumers to use a
+/// semver-compatible version of the crate in their application.
+///
+/// This module allows those consumers to access said dependencies without
+/// having to declare a dependency themselves whose version would need to be
+/// kept in sync with the one `comit` is depending on.
+///
+/// Additions to this module should be considered carefully. Removing types
+/// defined in dependencies from a public API is almost always preferable over
+/// re-exporting the dependency through this module.
+pub mod export {
+    pub use ::bitcoin;
+}
 
 pub use self::{
     network::DialInformation,
