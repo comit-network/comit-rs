@@ -34,7 +34,7 @@ impl OngoingSwaps {
             Ok(())
         }
     }
-    fn remove(&mut self, order: &Order) {
+    fn remove(&mut self, order: Order) {
         self.peers.remove(&order.peer);
     }
 }
@@ -100,7 +100,7 @@ mod tests {
 
         let insertion_1 = state.insert(order_1);
         // Execution is not represented in the test, order should be removed once execution is done.
-        state.remove(&order_1);
+        state.remove(order_1);
 
         let insertion_2 = state.insert(order_2);
 
