@@ -1,14 +1,13 @@
 use crate::{
-    asset,
-    ethereum::ChainId,
-    http_api::{problem, Http, MissingQueryParameters, UnexpectedQueryParameters},
-    identity,
-    swap_protocols::actions::{
+    actions::{
         bitcoin::{self, SendToAddress, SpendOutput},
         ethereum, lnd,
         lnd::Chain,
     },
-    transaction, LocalSwapId, RelativeTime, Secret, SecretHash, Timestamp,
+    asset,
+    ethereum::ChainId,
+    http_api::{problem, Http, MissingQueryParameters, UnexpectedQueryParameters},
+    identity, transaction, LocalSwapId, RelativeTime, Secret, SecretHash, Timestamp,
 };
 use anyhow::Context;
 use blockchain_contracts::bitcoin::witness;

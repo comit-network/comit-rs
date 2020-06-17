@@ -3,7 +3,7 @@ use crate::{
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
     ethereum::{Block, Hash},
     htlc_location, identity,
-    swap_protocols::{state, state::Update},
+    state::{self, Update},
     tracing_ext::InstrumentProtocol,
     transaction, LocalSwapId, Protocol, Role, Secret, Side,
 };

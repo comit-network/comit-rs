@@ -17,7 +17,7 @@ pub use self::{
     problem::*,
     protocol::{AliceSwap, BobSwap},
 };
-use crate::swap_protocols::actions::lnd::Chain;
+use crate::actions::lnd::Chain;
 
 pub const PATH: &str = "swaps";
 
