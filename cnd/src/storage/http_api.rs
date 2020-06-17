@@ -1,10 +1,12 @@
 //! Implement traits to Load/Save types defined in the http_api module.
 use crate::{
     asset,
-    db::{Halbit, Hbit, Herc20, NoRedeemIdentity, NoRefundIdentity, NoSecretHash},
     http_api::{halbit, hbit, herc20, AliceSwap, BobSwap},
     state::Get,
-    storage::{LoadTables, RootSeed, Tables},
+    storage::{
+        db::{Halbit, Hbit, Herc20, NoRedeemIdentity, NoRefundIdentity, NoSecretHash},
+        LoadTables, RootSeed, Tables,
+    },
     Load, LocalSwapId, Storage,
 };
 use async_trait::async_trait;

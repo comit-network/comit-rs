@@ -10,10 +10,11 @@ use crate::{
         ethereum::{self, Web3Connector},
     },
     config::Settings,
-    db::{ForSwap, Save, Sqlite},
     identity,
     network::{Comit, LocalData},
-    spawn, Load, LocalSwapId, Protocol, ProtocolSpawner, Role, RootSeed, SecretHash, SharedSwapId,
+    spawn,
+    storage::{ForSwap, Save, Sqlite},
+    Load, LocalSwapId, Protocol, ProtocolSpawner, Role, RootSeed, SecretHash, SharedSwapId,
     Storage, SwapContext,
 };
 use anyhow::Context;

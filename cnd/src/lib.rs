@@ -30,7 +30,6 @@ pub mod with_swap_types;
 mod actions;
 pub mod config;
 pub mod connectors;
-pub mod db;
 mod facade;
 pub mod file_lock;
 pub mod halbit;

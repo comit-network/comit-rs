@@ -1,10 +1,9 @@
+mod db;
 mod http_api;
 mod seed;
 
 use crate::{
-    asset,
-    db::{CreatedSwap, SecretHash, Swap, *},
-    halbit, hbit, herc20, identity,
+    asset, halbit, hbit, herc20, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
     spawn, LocalSwapId, Protocol, Role, Side,
 };
@@ -14,6 +13,7 @@ use bitcoin::Network;
 use diesel::{BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 use std::sync::Arc;
 
+pub use db::*;
 pub use seed::*;
 
 /// Load data for a particular swap from the storage layer.
@@ -160,7 +160,7 @@ macro_rules! impl_load_tables {
         #[async_trait::async_trait]
         impl LoadTables<$alpha, $beta> for Storage {
             async fn load_tables(&self, id: LocalSwapId) -> anyhow::Result<Tables<$alpha, $beta>> {
-                use crate::db::schema::swaps;
+                use self::db::schema::swaps;
 
                 let (swap, alpha, beta, secret_hash) = self
                     .db

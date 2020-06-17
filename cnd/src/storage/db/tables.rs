@@ -1,6 +1,6 @@
 use crate::{
-    asset, bitcoin,
-    db::{
+    asset, bitcoin, halbit, hbit, herc20, identity, lightning,
+    storage::db::{
         schema::{address_book, halbits, hbits, herc20s, secret_hashes, swaps},
         wrapper_types::{
             custom_sql_types::{Text, U32},
@@ -8,7 +8,7 @@ use crate::{
         },
         Sqlite,
     },
-    halbit, hbit, herc20, identity, lightning, AssertSide, LocalSwapId, Role, Side,
+    AssertSide, LocalSwapId, Role, Side,
 };
 use anyhow::Context;
 use chrono::NaiveDateTime;

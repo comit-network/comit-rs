@@ -1,4 +1,4 @@
-use crate::{db::NoSwapExists, http_api::ActionNotFound};
+use crate::{http_api::ActionNotFound, storage::NoSwapExists};
 use http_api_problem::HttpApiProblem;
 use warp::{
     http::{self, StatusCode},
