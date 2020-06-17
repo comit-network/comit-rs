@@ -1,5 +1,3 @@
-import { ethers } from "ethers";
-import { SwapRequest } from "comit-sdk";
 import { promises as asyncFs } from "fs";
 import * as fs from "fs";
 import { promisify } from "util";
@@ -13,7 +11,6 @@ import {
     EthereumNodeConfig,
     LightningNodeConfig,
 } from "./ledgers";
-import { Rfc003Actor } from "./actors/rfc003_actor";
 
 export interface HarnessGlobal extends Global.Global {
     ledgerConfigs: LedgerConfig;
@@ -47,69 +44,6 @@ export async function sleep(time: number) {
     return new Promise((res) => {
         setTimeout(res, time);
     });
-}
-
-export const DEFAULT_ALPHA = {
-    ledger: {
-        name: "bitcoin",
-        network: "regtest",
-    },
-    asset: {
-        name: "bitcoin",
-        quantity: {
-            bob: "100000000",
-            carol: "200000000",
-            reasonable: "100000000",
-            stingy: "100",
-        },
-    },
-    expiry: new Date("2080-06-11T23:00:00Z").getTime() / 1000,
-};
-
-const DEFAULT_BETA = {
-    ledger: {
-        name: "ethereum",
-        chain_id: 1337,
-    },
-    asset: {
-        name: "ether",
-        quantity: {
-            bob: ethers.utils.parseEther("10").toString(),
-            carol: ethers.utils.parseEther("20").toString(),
-        },
-    },
-    expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
-};
-export async function createDefaultSwapRequest(counterParty: Rfc003Actor) {
-    const swapRequest: SwapRequest = {
-        alpha_ledger: {
-            name: DEFAULT_ALPHA.ledger.name,
-            network: DEFAULT_ALPHA.ledger.network,
-        },
-        beta_ledger: {
-            name: DEFAULT_BETA.ledger.name,
-            chain_id: DEFAULT_BETA.ledger.chain_id,
-        },
-        alpha_asset: {
-            name: DEFAULT_ALPHA.asset.name,
-            quantity: DEFAULT_ALPHA.asset.quantity.bob,
-        },
-        beta_asset: {
-            name: DEFAULT_BETA.asset.name,
-            quantity: DEFAULT_BETA.asset.quantity.bob,
-        },
-        beta_ledger_redeem_identity:
-            "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-        alpha_expiry: DEFAULT_ALPHA.expiry,
-        beta_expiry: DEFAULT_BETA.expiry,
-        peer: {
-            peer_id: await counterParty.actor.cnd.getPeerId(),
-            address_hint: await counterParty.actor.cnd
-                .getPeerListenAddresses()
-                .then((addresses) => addresses[0]),
-        },
-    };
-    return swapRequest;
 }
 
 export async function waitUntilFileExists(filepath: string) {

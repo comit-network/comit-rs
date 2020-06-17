@@ -3,15 +3,12 @@ use crate::{
     ethereum::ChainId,
     http_api::{problem, Http, MissingQueryParameters, UnexpectedQueryParameters},
     identity,
-    swap_protocols::{
-        actions::{
-            bitcoin::{self, SendToAddress, SpendOutput},
-            ethereum, lnd,
-            lnd::Chain,
-        },
-        rfc003::{Secret, SecretHash},
+    swap_protocols::actions::{
+        bitcoin::{self, SendToAddress, SpendOutput},
+        ethereum, lnd,
+        lnd::Chain,
     },
-    transaction, LocalSwapId, RelativeTime, Timestamp,
+    transaction, LocalSwapId, RelativeTime, Secret, SecretHash, Timestamp,
 };
 use anyhow::Context;
 use blockchain_contracts::bitcoin::witness;
@@ -19,14 +16,6 @@ use http_api_problem::HttpApiProblem;
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 use warp::http::StatusCode;
-
-pub mod rfc003 {
-    use crate::swap_protocols::rfc003::SwapId;
-
-    pub trait ToSirenAction {
-        fn to_siren_action(&self, id: &SwapId) -> siren::Action;
-    }
-}
 
 pub trait ToSirenAction {
     fn to_siren_action(&self, id: &LocalSwapId) -> siren::Action;

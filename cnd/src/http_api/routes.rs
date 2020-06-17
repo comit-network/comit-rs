@@ -1,6 +1,5 @@
 pub mod index;
 pub mod peers;
-pub mod rfc003;
 
 use crate::{
     http_api::{

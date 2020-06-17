@@ -1,32 +1,15 @@
 mod errors;
 #[cfg(test)]
 mod integration_tests;
-mod load_swaps;
-mod rfc003_save_load_impls;
-mod rfc003_schema;
 pub mod schema;
 pub mod tables;
 pub mod wrapper_types;
-#[macro_use]
-mod swap;
-#[macro_use]
-mod swap_types;
-#[macro_use]
-pub mod with_swap_types;
 embed_migrations!("./migrations");
 
-pub use self::{
-    errors::*,
-    load_swaps::{AcceptedSwap, LoadAcceptedSwap},
-    rfc003_save_load_impls::*,
-    swap::*,
-    swap_types::*,
-    tables::*,
-    wrapper_types::custom_sql_types::Text,
-};
+pub use self::{errors::*, tables::*, wrapper_types::custom_sql_types::Text};
 pub use crate::storage::{ForSwap, Save};
 
-use crate::{swap_protocols::rfc003::SwapId, LocalSwapId, Protocol, Role};
+use crate::{LocalSwapId, Protocol, Role};
 use chrono::NaiveDateTime;
 use diesel::{self, prelude::*, sql_types, sqlite::SqliteConnection};
 use libp2p::PeerId;
@@ -134,25 +117,6 @@ impl Sqlite {
 
         Ok(contexts)
     }
-
-    async fn rfc003_role(&self, key: &SwapId) -> anyhow::Result<Role> {
-        use self::rfc003_schema::rfc003_swaps as swaps;
-
-        let record: QueryableSwapRole = self
-            .do_in_transaction(|connection| {
-                let key = Text(key);
-
-                swaps::table
-                    .filter(swaps::swap_id.eq(key))
-                    .select((swaps::swap_id, swaps::role))
-                    .first(connection)
-                    .optional()
-            })
-            .await?
-            .ok_or(Error::SwapNotFound)?;
-
-        Ok(*record.role)
-    }
 }
 
 #[cfg(test)]
@@ -178,12 +142,6 @@ fn ensure_folder_tree_exists(path: &Path) -> anyhow::Result<()> {
     }
 
     Ok(())
-}
-
-#[derive(Queryable, Debug, Clone, PartialEq)]
-struct QueryableSwapRole {
-    pub swap_id: Text<SwapId>,
-    pub role: Text<Role>,
 }
 
 #[derive(Debug, Clone, Copy, thiserror::Error)]
