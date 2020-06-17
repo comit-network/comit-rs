@@ -9,7 +9,6 @@ pub struct Client {
 
 impl Client {
     pub fn new(url: reqwest::Url) -> Self {
-        dbg!(&url);
         Client {
             rpc_client: jsonrpc::Client::new(url),
         }
