@@ -3,7 +3,7 @@ mod seed;
 
 use crate::{
     asset,
-    db::{CreatedSwap, Error, SecretHash, Swap, *},
+    db::{CreatedSwap, SecretHash, Swap, *},
     halbit, hbit, herc20, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
     spawn, LocalSwapId, Protocol, Role, Side,
@@ -181,7 +181,7 @@ macro_rules! impl_load_tables {
                         Ok((swap, alpha, beta, secret_hash))
                     })
                     .await
-                    .context(Error::SwapNotFound)?;
+                    .context(NoSwapExists(id))?;
 
                 alpha.assert_side(Side::Alpha)?;
                 beta.assert_side(Side::Beta)?;
@@ -336,7 +336,7 @@ impl Load<SwapContext> for Storage {
             .into_iter()
             .find(|context| context.id.0 == swap_id)
             .map(|context| context.into())
-            .ok_or(Error::SwapNotFound)?;
+            .ok_or(NoSwapExists(swap_id))?;
 
         Ok(context)
     }
