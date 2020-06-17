@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
--  Remove support for RFC003 swaps
+-  **Breaking Change** Remove support for RFC003 swaps
 
 ## [0.8.0] - 2020-06-12
 
