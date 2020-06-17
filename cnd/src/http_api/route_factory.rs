@@ -1,4 +1,12 @@
-use crate::{config::settings::AllowedOrigins, http_api, Facade, LocalSwapId};
+use crate::{
+    config::settings::AllowedOrigins,
+    http_api,
+    http_api::{
+        halbit_herc20, hbit_herc20, herc20_halbit, herc20_hbit,
+        routes::{self, peers, swaps},
+    },
+    Facade, LocalSwapId,
+};
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 pub fn swap_path(id: LocalSwapId) -> String {
@@ -22,57 +30,57 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
 
     let preflight_cors_route = warp::options().map(warp::reply);
 
-    let get_peers = warp::get()
-        .and(warp::path("peers"))
+    let get_info = warp::get()
         .and(warp::path::end())
         .and(facade.clone())
-        .and_then(http_api::routes::peers::get_peers);
+        .and_then(routes::get_info);
 
     let get_info_siren = warp::get()
         .and(warp::path::end())
         .and(warp::header::exact("accept", "application/vnd.siren+json"))
         .and(facade.clone())
-        .and_then(http_api::routes::index::get_info_siren);
+        .and_then(routes::get_info_siren);
 
-    let get_info = warp::get()
+    let get_peers = warp::get()
+        .and(warp::path("peers"))
         .and(warp::path::end())
         .and(facade.clone())
-        .and_then(http_api::routes::index::get_info);
+        .and_then(peers::get_peers);
 
     let herc20_halbit = warp::post()
         .and(warp::path!("swaps" / "herc20" / "halbit"))
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade.clone())
-        .and_then(http_api::routes::index::post_herc20_halbit);
+        .and_then(herc20_halbit::post_swap);
 
     let halbit_herc20 = warp::post()
         .and(warp::path!("swaps" / "halbit" / "herc20"))
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade.clone())
-        .and_then(http_api::routes::index::post_halbit_herc20);
+        .and_then(halbit_herc20::post_swap);
 
     let herc20_hbit = warp::post()
         .and(warp::path!("swaps" / "herc20" / "hbit"))
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade.clone())
-        .and_then(http_api::routes::index::post_herc20_hbit);
+        .and_then(herc20_hbit::post_swap);
 
     let hbit_herc20 = warp::post()
         .and(warp::path!("swaps" / "hbit" / "herc20"))
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade.clone())
-        .and_then(http_api::routes::index::post_hbit_herc20);
+        .and_then(hbit_herc20::post_swap);
 
     let get_swap = swaps
         .and(warp::get())
         .and(warp::path::param())
         .and(warp::path::end())
         .and(facade.clone())
-        .and_then(http_api::routes::get_swap);
+        .and_then(swaps::get_swap);
 
     let action_init = swaps
         .and(warp::get())
@@ -80,7 +88,7 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .and(warp::path("init"))
         .and(warp::path::end())
         .and(facade.clone())
-        .and_then(http_api::routes::action_init);
+        .and_then(swaps::action_init);
 
     let action_fund = swaps
         .and(warp::get())
@@ -88,7 +96,7 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .and(warp::path("fund"))
         .and(warp::path::end())
         .and(facade.clone())
-        .and_then(http_api::routes::action_fund);
+        .and_then(swaps::action_fund);
 
     let action_deploy = swaps
         .and(warp::get())
@@ -96,7 +104,7 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .and(warp::path("deploy"))
         .and(warp::path::end())
         .and(facade.clone())
-        .and_then(http_api::routes::action_deploy);
+        .and_then(swaps::action_deploy);
 
     let action_redeem = swaps
         .and(warp::get())
@@ -104,7 +112,7 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .and(warp::path("redeem"))
         .and(warp::path::end())
         .and(facade.clone())
-        .and_then(http_api::routes::action_redeem);
+        .and_then(swaps::action_redeem);
 
     let action_refund = swaps
         .and(warp::get())
@@ -112,7 +120,7 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .and(warp::path("refund"))
         .and(warp::path::end())
         .and(facade)
-        .and_then(http_api::routes::action_refund);
+        .and_then(swaps::action_refund);
 
     preflight_cors_route
         .or(get_peers)

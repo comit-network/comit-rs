@@ -10,6 +10,7 @@ pub mod routes;
 #[macro_use]
 pub mod impl_serialize_http;
 pub mod action;
+pub mod post;
 mod problem;
 mod protocol;
 
