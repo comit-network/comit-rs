@@ -8,6 +8,10 @@
 use crate::LocalSwapId;
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
+#[error("no swap exists in the database for id {0}")]
+pub struct NoSwapExists(pub LocalSwapId);
+
+#[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("no secret hash found in database for swap {0}")]
 pub struct NoSecretHash(pub LocalSwapId);
 
@@ -34,3 +38,11 @@ pub struct NoHbitRefundIdentity(pub LocalSwapId);
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("no hbit redeem identity found in database for swap {0}")]
 pub struct NoHbitRedeemIdentity(pub LocalSwapId);
+
+#[derive(thiserror::Error, Debug, Clone, Copy)]
+#[error("no redeem identity set")]
+pub struct NoRedeemIdentity;
+
+#[derive(thiserror::Error, Debug, Clone, Copy)]
+#[error("no refund identity set")]
+pub struct NoRefundIdentity;

@@ -144,16 +144,6 @@ fn ensure_folder_tree_exists(path: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Clone, Copy, thiserror::Error)]
-pub enum Error {
-    #[error("swap not found")]
-    SwapNotFound,
-    #[error("identity is not set")]
-    IdentityNotSet,
-    #[error("secret hash is not set")]
-    SecretHashNotSet,
-}
-
 /// Data required to create a swap.
 ///
 /// 'create' a swap is defined as the process of initiating a swap within `cnd`.

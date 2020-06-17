@@ -1,4 +1,8 @@
-use crate::{db::CreatedSwap, proptest::*, storage::SwapContext, Load, Protocol, Save, Storage};
+use crate::{
+    proptest::*,
+    storage::{db::CreatedSwap, SwapContext},
+    Load, Protocol, Save, Storage,
+};
 use proptest::prelude::*;
 use tokio::runtime::Runtime;
 

@@ -1,6 +1,5 @@
 use crate::{
     asset,
-    db::{CreatedSwap, Save},
     ethereum::ChainId,
     halbit, hbit, herc20,
     http_api::{problem, routes::into_rejection, DialInformation, Http},
@@ -9,6 +8,7 @@ use crate::{
         HalbitHerc20, HbitHerc20, Herc20Halbit, Herc20Hbit, Identities, ListenAddresses,
         LocalPeerId,
     },
+    storage::{CreatedSwap, Save},
     Facade, LocalSwapId, Role, Side,
 };
 use chrono::Utc;

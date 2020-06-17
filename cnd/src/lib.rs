@@ -19,13 +19,9 @@ extern crate diesel;
 extern crate diesel_migrations;
 
 #[macro_use]
-pub mod db;
-#[macro_use]
 pub mod network;
 #[cfg(test)]
 pub mod proptest;
-#[macro_use]
-mod seed;
 #[cfg(test)]
 pub mod spectral_ext;
 #[macro_use]
@@ -54,8 +50,8 @@ use std::{
 };
 
 pub use self::{
-    actions::*, asset::AssetKind, facade::Facade, protocol_spawner::*, seed::*, spawn::*,
-    storage::*, swap_protocols::state,
+    actions::*, asset::AssetKind, facade::Facade, protocol_spawner::*, spawn::*, storage::*,
+    swap_protocols::state,
 };
 // Export comit types so we do not need to worry about where they come from.
 pub use comit::{

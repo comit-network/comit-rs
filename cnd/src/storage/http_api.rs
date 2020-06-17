@@ -1,11 +1,13 @@
 //! Implement traits to Load/Save types defined in the http_api module.
 use crate::{
     asset,
-    db::{self, Halbit, Hbit, Herc20},
     http_api::{halbit, hbit, herc20, AliceSwap, BobSwap},
     state::Get,
-    storage::{LoadTables, Tables},
-    Load, LocalSwapId, RootSeed, Storage,
+    storage::{
+        db::{Halbit, Hbit, Herc20, NoRedeemIdentity, NoRefundIdentity, NoSecretHash},
+        LoadTables, RootSeed, Tables,
+    },
+    Load, LocalSwapId, Storage,
 };
 use async_trait::async_trait;
 
@@ -209,11 +211,7 @@ impl Load<BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Final
                 let alpha_finalized = tab.alpha.into_finalized(alpha_state)?;
                 let beta_finalized = tab.beta.into_finalized(beta_state)?;
 
-                let secret_hash = tab
-                    .secret_hash
-                    .ok_or(db::Error::SecretHashNotSet)?
-                    .secret_hash
-                    .0;
+                let secret_hash = tab.secret_hash.ok_or(NoSecretHash(swap_id))?.secret_hash.0;
 
                 BobSwap::Finalized {
                     alpha_finalized,
@@ -248,11 +246,7 @@ impl Load<BobSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Final
                 let alpha_finalized = tab.alpha.into_finalized(alpha_state)?;
                 let beta_finalized = tab.beta.into_finalized(beta_state)?;
 
-                let secret_hash = tab
-                    .secret_hash
-                    .ok_or(db::Error::SecretHashNotSet)?
-                    .secret_hash
-                    .0;
+                let secret_hash = tab.secret_hash.ok_or(NoSecretHash(swap_id))?.secret_hash.0;
 
                 BobSwap::Finalized {
                     alpha_finalized,
@@ -292,11 +286,7 @@ impl Load<BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::Finaliz
                     .beta
                     .into_finalized_as_funder(swap_id, self.seed, beta_state)?;
 
-                let secret_hash = tab
-                    .secret_hash
-                    .ok_or(db::Error::SecretHashNotSet)?
-                    .secret_hash
-                    .0;
+                let secret_hash = tab.secret_hash.ok_or(NoSecretHash(swap_id))?.secret_hash.0;
 
                 BobSwap::Finalized {
                     alpha_finalized,
@@ -336,11 +326,7 @@ impl Load<BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc2
                     tab.alpha
                         .into_finalized_as_redeemer(swap_id, self.seed, alpha_state)?;
 
-                let secret_hash = tab
-                    .secret_hash
-                    .ok_or(db::Error::SecretHashNotSet)?
-                    .secret_hash
-                    .0;
+                let secret_hash = tab.secret_hash.ok_or(NoSecretHash(swap_id))?.secret_hash.0;
 
                 BobSwap::Finalized {
                     alpha_finalized,
@@ -371,16 +357,8 @@ impl IntoFinalized for Herc20 {
         Ok(herc20::Finalized {
             asset,
             chain_id: self.chain_id.0.into(),
-            refund_identity: self
-                .refund_identity
-                .ok_or(db::Error::IdentityNotSet)?
-                .0
-                .into(),
-            redeem_identity: self
-                .redeem_identity
-                .ok_or(db::Error::IdentityNotSet)?
-                .0
-                .into(),
+            refund_identity: self.refund_identity.ok_or(NoRefundIdentity)?.0.into(),
+            redeem_identity: self.redeem_identity.ok_or(NoRedeemIdentity)?.0.into(),
             expiry: self.expiry.0.into(),
             state,
         })
@@ -395,8 +373,8 @@ impl IntoFinalized for Halbit {
         Ok(halbit::Finalized {
             asset: self.amount.0.into(),
             network: self.network.0.into(),
-            refund_identity: self.refund_identity.ok_or(db::Error::IdentityNotSet)?.0,
-            redeem_identity: self.redeem_identity.ok_or(db::Error::IdentityNotSet)?.0,
+            refund_identity: self.refund_identity.ok_or(NoRefundIdentity)?.0,
+            redeem_identity: self.redeem_identity.ok_or(NoRedeemIdentity)?.0,
             cltv_expiry: self.cltv_expiry.0.into(),
             state,
         })
@@ -413,7 +391,7 @@ impl IntoFinalizedAsFunder for Hbit {
         let finalized = hbit::FinalizedAsFunder {
             asset: self.amount.0.into(),
             network: self.network.0.into(),
-            transient_redeem_identity: self.transient_identity.ok_or(db::Error::IdentityNotSet)?.0,
+            transient_redeem_identity: self.transient_identity.ok_or(NoRedeemIdentity)?.0,
             transient_refund_identity: seed
                 .derive_swap_seed(swap_id)
                 .derive_transient_refund_identity(),
@@ -439,7 +417,7 @@ impl IntoFinalizedAsRedeemer for Hbit {
             transient_redeem_identity: seed
                 .derive_swap_seed(swap_id)
                 .derive_transient_redeem_identity(),
-            transient_refund_identity: self.transient_identity.ok_or(db::Error::IdentityNotSet)?.0,
+            transient_refund_identity: self.transient_identity.ok_or(NoRefundIdentity)?.0,
             final_redeem_identity: self.final_identity.0,
             expiry: self.expiry.0.into(),
             state,

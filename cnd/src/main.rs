@@ -21,14 +21,13 @@ use cnd::{
     },
     config::{self, validation::validate_connection_to_network, Settings},
     connectors::Connectors,
-    db::Sqlite,
     file_lock::TryLockExclusive,
     halbit, hbit, herc20,
     http_api::route_factory,
     network::{Swarm, SwarmWorker},
     protocol_spawner::ProtocolSpawner,
     respawn::respawn,
-    storage::Storage,
+    storage::{Sqlite, Storage},
     Facade, RootSeed,
 };
 use comit::lnd::LndConnectorParams;

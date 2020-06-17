@@ -4,7 +4,7 @@
 //! make sure we don't change the format accidentally!
 
 use crate::{
-    db::wrapper_types::{Erc20Amount, Ether, EthereumAddress, Satoshis},
+    storage::db::wrapper_types::{Erc20Amount, Ether, EthereumAddress, Satoshis},
     Protocol, SecretHash,
 };
 use std::{fmt, str::FromStr};

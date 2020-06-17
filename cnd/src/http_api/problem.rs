@@ -1,4 +1,4 @@
-use crate::{db, http_api::ActionNotFound};
+use crate::{http_api::ActionNotFound, storage::NoSwapExists};
 use http_api_problem::HttpApiProblem;
 use warp::{
     http::{self, StatusCode},
@@ -40,7 +40,7 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
         Err(e) => e,
     };
 
-    if let Some(db::Error::SwapNotFound) = e.downcast_ref::<db::Error>() {
+    if e.is::<NoSwapExists>() {
         tracing::error!("swap was not found");
         return HttpApiProblem::new("Swap not found.").set_status(StatusCode::NOT_FOUND);
     }
