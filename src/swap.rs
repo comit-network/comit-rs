@@ -5,7 +5,6 @@ use comit::{
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
     ethereum, Secret, SecretHash,
 };
-use futures::future::FutureExt;
 use futures::future::{self, Either};
 
 pub mod hbit {
@@ -328,6 +327,22 @@ impl herc20::Refund for WalletBob<BitcoinWallet, EthereumWallet, hbit::PrivateDe
     }
 }
 
+/// Determine whether funding a smart contract is safe.
+///
+/// Implementations should decide based on blockchain time and
+/// expiries.
+pub trait SafeToFund {
+    fn is_safe_to_fund(&self) -> bool;
+}
+
+/// Determine whether redeeming a smart contract is safe.
+///
+/// Implementations should decide based on blockchain time and
+/// expiries.
+pub trait SafeToRedeem {
+    fn is_safe_to_redeem(&self) -> bool;
+}
+
 async fn hbit_herc20<A, B, SC>(
     alice: A,
     bob: B,
@@ -336,93 +351,56 @@ async fn hbit_herc20<A, B, SC>(
     secp: &bitcoin::secp256k1::Secp256k1<SC>,
 ) -> anyhow::Result<()>
 where
-    A: hbit::Fund + herc20::RedeemAsAlice + hbit::Refund,
-    B: herc20::Deploy + herc20::Fund + hbit::RedeemAsBob + herc20::Refund,
+    A: hbit::Fund + herc20::RedeemAsAlice + hbit::Refund + SafeToFund + SafeToRedeem,
+    B: herc20::Deploy + herc20::Fund + hbit::RedeemAsBob + herc20::Refund + SafeToFund,
     SC: bitcoin::secp256k1::Signing,
 {
+    if !alice.is_safe_to_fund() {
+        return Ok(());
+    }
+
     let hbit_funded = alice.fund(&hbit_params).await?;
 
-    let hbit_refund = alice.refund(&hbit_params, hbit_funded, secp);
-    let herc20_deploy = bob.deploy(&herc20_params);
+    if !bob.is_safe_to_fund() {
+        let _hbit_refunded = alice.refund(&hbit_params, hbit_funded, secp).await?;
+        return Ok(());
+    }
 
-    let (herc20_deployed, hbit_refund) = match future::try_select(hbit_refund, herc20_deploy).await
-    {
-        Ok(Either::Left((_hbit_refunded, _))) => {
-            // If we're WalletBob, we should never get here i.e. try
-            // to deploy Beta if Alice can refund Alpha. Luckily, it's
-            // safe because deploying doesn't commit any money to the
-            // blockchain
-            return Ok(());
-        }
-        Ok(Either::Right((herc20_deployed, hbit_refund))) => (herc20_deployed, hbit_refund),
-        Err(either) => {
-            let (error, _other_future) = either.factor_first();
-            return Err(error);
-        }
-    };
+    let herc20_deployed = bob.deploy(&herc20_params).await?;
 
-    let herc20_fund = bob.fund(&herc20_params, herc20_deployed.clone());
+    if !bob.is_safe_to_fund() {
+        // Refund for WalletACTORs should wait for the contract to
+        // expire and then refund.
+        //
+        // Refund for WatchOnlyActors should be a no-op, since the
+        // protocol is over and we don't care if they refund or not
+        let _hbit_refunded = alice.refund(&hbit_params, hbit_funded, secp).await?;
+        return Ok(());
+    }
 
-    let (_herc20_funded, hbit_refund) = match future::try_select(hbit_refund, herc20_fund).await {
-        Ok(Either::Left((_hbit_refunded, _))) => {
-            // If we're WalletBob, we should never get here i.e. try
-            // to fund Beta if Alice can refund Alpha. If we want to
-            // handle this situation we would have to force-refund
-            // here, to not get our funds locked up indefinitely if
-            // fund goes through
-            //
-            // How do we handle this for both parties if at all?
-            return Ok(());
-        }
-        Ok(Either::Right((herc20_funded, hbit_refund))) => (herc20_funded, hbit_refund),
-        Err(either) => {
-            let (error, _other_future) = either.factor_first();
-            return Err(error);
-        }
-    };
+    let _herc20_funded = bob.fund(&herc20_params, herc20_deployed.clone()).await?;
 
-    let herc20_refund = bob.refund(&herc20_params, herc20_deployed.clone());
-    let herc20_redeem = alice.redeem(&herc20_params, herc20_deployed);
+    if !alice.is_safe_to_redeem() {
+        let _hbit_refunded = alice.refund(&hbit_params, hbit_funded, secp).await?;
+        let _herc20_refunded = bob.refund(&herc20_params, herc20_deployed.clone()).await?;
+        return Ok(());
+    }
 
-    let herc20_redeemed = futures::select! {
-        hbit_refunded = hbit_refund.fuse() => {
-            // If we're WalletAlice... what's going on here? We would
-            // be trying to redeem way past Beta expiry (and Alpha's),
-            // yet Bob would have not refunded yet. If we want to
-            // handle this situation, at least our money would already
-            // be safe. Do we take Bob's money for free? Are you
-            // there, Bob?
-            //
-            // Race between herc20_redeem and herc20_refund? Seems fair.
-            unimplemented!();
-        },
-        herc20_refunded = herc20_refund.fuse() => {
-            // If we're WalletAlice, we should never get here i.e. try
-            // to redeem if Bob can refund Beta. This could result in
-            // publishing a transaction which would reveal the secret
-            // without actually redeeming Beta. If we want to handle
-            // this situation we would have to force-refund here, to
-            // prevent Bob from taking Alpha for free
-            //
-            // Race between hbit_redeem and hbit_refund? Seems fair.
-            unimplemented!();
-        },
-        herc20_redeemed = herc20_redeem.fuse() => herc20_redeemed?,
-    };
+    let herc20_redeemed = alice.redeem(&herc20_params, herc20_deployed).await?;
 
-    let hbit_refund = alice.refund(&hbit_params, hbit_funded, secp);
     let hbit_redeem = bob.redeem(&hbit_params, hbit_funded, herc20_redeemed.secret, &secp);
+    let hbit_refund = alice.refund(&hbit_params, hbit_funded, secp);
 
-    let _hbit_redeemed = match future::try_select(hbit_refund, hbit_redeem).await {
-        Ok(Either::Left((_hbit_refunded, _))) => return Ok(()),
-        Ok(Either::Right((hbit_redeemed, _))) => hbit_redeemed,
+    // It's always safe for bob to redeem, he just has to do it before
+    // alice refunds
+    match future::try_select(hbit_redeem, hbit_refund).await {
+        Ok(Either::Left((_hbit_redeemed, _))) => Ok(()),
+        Ok(Either::Right((_hbit_refunded, _))) => Ok(()),
         Err(either) => {
             let (error, _other_future) = either.factor_first();
-            return Err(error);
+            Err(error)
         }
-    };
-
-    Ok(())
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
