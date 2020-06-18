@@ -2,11 +2,33 @@ use crate::{
     actions::bitcoin::{BroadcastSignedTransaction, SendToAddress},
     asset,
     bitcoin::Address,
+    http_api::Http,
     ledger, Secret, SecretHash, Timestamp,
 };
 use bitcoin::secp256k1::SecretKey;
 
 pub use crate::hbit::*;
+
+/// Data for the hbit protocol, wrapped where needed to control
+/// serialization/deserialization.
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct Hbit {
+    pub amount: Http<asset::Bitcoin>,
+    pub final_identity: Http<bitcoin::Address>,
+    pub network: Http<bitcoin::Network>,
+    pub absolute_expiry: u32,
+}
+
+impl From<Hbit> for CreatedSwap {
+    fn from(p: Hbit) -> Self {
+        CreatedSwap {
+            amount: *p.amount,
+            final_identity: p.final_identity.0,
+            network: p.network.0.into(),
+            absolute_expiry: p.absolute_expiry,
+        }
+    }
+}
 
 /// Data known by the party funding the HTLC in the Hbit protocol, after the
 /// swap has been finalized.

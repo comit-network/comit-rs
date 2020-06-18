@@ -3,7 +3,7 @@ pub mod bob;
 
 use crate::{
     hbit, herc20,
-    http_api::{post::*, problem},
+    http_api::{problem, Hbit, Herc20, PostBody},
     network::{HbitHerc20, Identities},
     storage::Save,
     Facade, LocalSwapId, Side,
@@ -14,7 +14,7 @@ use warp::{http::StatusCode, Rejection, Reply};
 
 #[allow(clippy::needless_pass_by_value)]
 pub async fn post_swap(body: serde_json::Value, facade: Facade) -> Result<impl Reply, Rejection> {
-    let body = Body::<Hbit, Herc20>::deserialize(&body)
+    let body = PostBody::<Hbit, Herc20>::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
@@ -53,4 +53,16 @@ pub async fn post_swap(body: serde_json::Value, facade: Facade) -> Result<impl R
         })
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)
+}
+
+impl From<PostBody<Hbit, Herc20>> for HbitHerc20 {
+    fn from(body: PostBody<Hbit, Herc20>) -> Self {
+        Self {
+            bitcoin_expiry: body.alpha.absolute_expiry.into(),
+            bitcoin_amount: *body.alpha.amount,
+            ethereum_expiry: body.beta.absolute_expiry.into(),
+            erc20_amount: body.beta.amount,
+            token_contract: body.beta.token_contract,
+        }
+    }
 }

@@ -10,19 +10,24 @@ pub mod routes;
 #[macro_use]
 pub mod impl_serialize_http;
 pub mod action;
-pub mod post;
 mod problem;
 mod protocol;
 
 pub use self::{
+    halbit::Halbit,
+    hbit::Hbit,
+    herc20::Herc20,
     problem::*,
     protocol::{AliceSwap, BobSwap},
 };
-use crate::swap_protocols::actions::lnd::Chain;
+use crate::{storage::CreatedSwap, swap_protocols::actions::lnd::Chain};
+use chrono::Utc;
 
 pub const PATH: &str = "swaps";
 
-use crate::{asset, ethereum::ChainId, htlc_location, identity, ledger, transaction, Role};
+use crate::{
+    asset, ethereum::ChainId, htlc_location, identity, ledger, transaction, LocalSwapId, Role,
+};
 use libp2p::{Multiaddr, PeerId};
 use serde::{
     de::Error as _, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer,
@@ -32,6 +37,41 @@ use std::{
     ops::Deref,
     str::FromStr,
 };
+
+/// Object representing the data of a POST request for creating a swap.
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct PostBody<A, B> {
+    pub alpha: A,
+    pub beta: B,
+    pub peer: DialInformation,
+    pub role: Http<Role>,
+}
+
+impl<A, B> PostBody<A, B> {
+    pub fn to_created_swap<CA, CB>(&self, swap_id: LocalSwapId) -> CreatedSwap<CA, CB>
+    where
+        CA: From<A>,
+        CB: From<B>,
+        Self: Clone,
+    {
+        let body = self.clone();
+
+        let alpha = CA::from(body.alpha);
+        let beta = CB::from(body.beta);
+
+        let start_of_swap = Utc::now().naive_local();
+
+        CreatedSwap {
+            swap_id,
+            alpha,
+            beta,
+            peer: body.peer.into(),
+            address_hint: None,
+            role: body.role.0,
+            start_of_swap,
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Http<I>(pub I);

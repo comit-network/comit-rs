@@ -7,6 +7,28 @@ use crate::{
 
 pub use crate::herc20::*;
 
+/// Data for the herc20 protocol, wrapped where needed to control
+/// serialization/deserialization.
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct Herc20 {
+    pub amount: asset::Erc20Quantity,
+    pub identity: identity::Ethereum,
+    pub chain_id: ChainId,
+    pub token_contract: identity::Ethereum,
+    pub absolute_expiry: u32,
+}
+
+impl From<Herc20> for CreatedSwap {
+    fn from(p: Herc20) -> Self {
+        CreatedSwap {
+            asset: asset::Erc20::new(p.token_contract, p.amount),
+            identity: p.identity,
+            chain_id: p.chain_id,
+            absolute_expiry: p.absolute_expiry,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Finalized {
     pub asset: asset::Erc20,

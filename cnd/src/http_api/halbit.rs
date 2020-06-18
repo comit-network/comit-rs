@@ -1,10 +1,33 @@
 use crate::{
-    asset, identity, ledger,
+    asset,
+    http_api::Http,
+    identity, ledger,
     lnd::{AddHoldInvoice, Chain, SendPayment, SettleInvoice},
     RelativeTime, Secret, SecretHash,
 };
 
 pub use crate::halbit::*;
+
+/// Data for the halbit protocol, wrapped where needed to control
+/// serialization/deserialization.
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct Halbit {
+    pub amount: Http<asset::Bitcoin>,
+    pub identity: identity::Lightning,
+    pub network: Http<ledger::Bitcoin>,
+    pub cltv_expiry: u32,
+}
+
+impl From<Halbit> for CreatedSwap {
+    fn from(p: Halbit) -> Self {
+        CreatedSwap {
+            asset: *p.amount,
+            identity: p.identity,
+            network: *p.network,
+            cltv_expiry: p.cltv_expiry,
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct Finalized {

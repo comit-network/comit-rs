@@ -3,7 +3,7 @@ pub mod bob;
 
 use crate::{
     halbit, herc20,
-    http_api::{post::*, problem},
+    http_api::{problem, Halbit, Herc20, PostBody},
     network::{Herc20Halbit, Identities},
     storage::Save,
     Facade, LocalSwapId,
@@ -13,7 +13,7 @@ use serde::Deserialize;
 use warp::{http::StatusCode, Rejection, Reply};
 
 pub async fn post_swap(body: serde_json::Value, facade: Facade) -> Result<impl Reply, Rejection> {
-    let body = Body::<Herc20, Halbit>::deserialize(&body)
+    let body = PostBody::<Herc20, Halbit>::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
@@ -48,4 +48,16 @@ pub async fn post_swap(body: serde_json::Value, facade: Facade) -> Result<impl R
         })
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)
+}
+
+impl From<PostBody<Herc20, Halbit>> for Herc20Halbit {
+    fn from(body: PostBody<Herc20, Halbit>) -> Self {
+        Self {
+            ethereum_absolute_expiry: body.alpha.absolute_expiry.into(),
+            erc20_amount: body.alpha.amount,
+            token_contract: body.alpha.token_contract,
+            lightning_cltv_expiry: body.beta.cltv_expiry.into(),
+            lightning_amount: body.beta.amount.0,
+        }
+    }
 }

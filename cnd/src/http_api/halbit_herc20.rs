@@ -3,7 +3,7 @@ pub mod bob;
 
 use crate::{
     halbit, herc20,
-    http_api::{post::*, problem},
+    http_api::{problem, Halbit, Herc20, PostBody},
     network::{HalbitHerc20, Identities},
     storage::Save,
     Facade, LocalSwapId,
@@ -14,7 +14,7 @@ use warp::{http::StatusCode, Rejection, Reply};
 
 #[allow(clippy::needless_pass_by_value)]
 pub async fn post_swap(body: serde_json::Value, facade: Facade) -> Result<impl Reply, Rejection> {
-    let body = Body::<Halbit, Herc20>::deserialize(&body)
+    let body = PostBody::<Halbit, Herc20>::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
@@ -49,4 +49,16 @@ pub async fn post_swap(body: serde_json::Value, facade: Facade) -> Result<impl R
         })
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)
+}
+
+impl From<PostBody<Halbit, Herc20>> for HalbitHerc20 {
+    fn from(body: PostBody<Halbit, Herc20>) -> Self {
+        Self {
+            lightning_cltv_expiry: body.alpha.cltv_expiry.into(),
+            lightning_amount: body.alpha.amount.0,
+            ethereum_absolute_expiry: body.beta.absolute_expiry.into(),
+            erc20_amount: body.beta.amount,
+            token_contract: body.beta.token_contract,
+        }
+    }
 }
