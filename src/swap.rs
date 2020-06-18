@@ -3,9 +3,10 @@
 use chrono::NaiveDateTime;
 use comit::{
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
-    ethereum, Secret, SecretHash,
+    ethereum, Secret, SecretHash, Timestamp,
 };
 use futures::future::{self, Either};
+use std::sync::Arc;
 
 pub mod hbit {
     use bitcoin::{secp256k1::SecretKey, *};
@@ -98,6 +99,7 @@ pub mod hbit {
         }
     }
 }
+
 pub mod herc20 {
     use chrono::NaiveDateTime;
     pub use comit::{
@@ -173,10 +175,10 @@ pub mod herc20 {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 struct WatchOnlyAlice<AC, BC> {
-    alpha_connector: AC,
-    beta_connector: BC,
+    alpha_connector: Arc<AC>,
+    beta_connector: Arc<BC>,
     secret_hash: SecretHash,
     start_of_swap: NaiveDateTime,
 }
@@ -192,7 +194,8 @@ where
 {
     async fn fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
         let event =
-            hbit::watch_for_funded(&self.alpha_connector, &params, self.start_of_swap).await?;
+            hbit::watch_for_funded(self.alpha_connector.as_ref(), &params, self.start_of_swap)
+                .await?;
 
         Ok(event)
     }
@@ -212,9 +215,12 @@ where
         _params: &herc20::Params,
         deploy_event: herc20::Deployed,
     ) -> anyhow::Result<herc20::Redeemed> {
-        let event =
-            herc20::watch_for_redeemed(&self.beta_connector, self.start_of_swap, deploy_event)
-                .await?;
+        let event = herc20::watch_for_redeemed(
+            self.beta_connector.as_ref(),
+            self.start_of_swap,
+            deploy_event,
+        )
+        .await?;
 
         Ok(event)
     }
@@ -239,7 +245,7 @@ where
         SC: bitcoin::secp256k1::Signing,
     {
         let event = hbit::watch_for_refunded(
-            &self.alpha_connector,
+            self.alpha_connector.as_ref(),
             &params,
             fund_event.location,
             self.start_of_swap,
@@ -330,17 +336,65 @@ impl herc20::Refund for WalletBob<BitcoinWallet, EthereumWallet, hbit::PrivateDe
 /// Determine whether funding a smart contract is safe.
 ///
 /// Implementations should decide based on blockchain time and
-/// expiries.
+/// Beta expiry, the shorter of the two expiries.
+#[async_trait::async_trait]
 pub trait SafeToFund {
-    fn is_safe_to_fund(&self) -> bool;
+    async fn is_safe_to_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool>;
 }
 
 /// Determine whether redeeming a smart contract is safe.
 ///
 /// Implementations should decide based on blockchain time and
 /// expiries.
+#[async_trait::async_trait]
 pub trait SafeToRedeem {
-    fn is_safe_to_redeem(&self) -> bool;
+    async fn is_safe_to_redeem(&self, beta_expiry: Timestamp) -> anyhow::Result<bool>;
+}
+
+#[async_trait::async_trait]
+impl<AC, BC> SafeToFund for WatchOnlyAlice<AC, BC>
+where
+    BC: LatestBlock<Block = ethereum::Block>,
+    AC: Send + Sync,
+{
+    async fn is_safe_to_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+        let ethereum_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
+        // TODO: Apply a buffer depending on the blocktime and how
+        // safe we want to be
+
+        Ok(beta_expiry > ethereum_time)
+    }
+}
+
+#[async_trait::async_trait]
+impl<AW, BW, E> SafeToFund for WalletBob<AW, BW, E>
+where
+    AW: Send + Sync,
+    BW: LatestBlock<Block = ethereum::Block>,
+    E: Send + Sync,
+{
+    async fn is_safe_to_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+        let ethereum_time = ethereum_latest_time(&self.beta_wallet).await?;
+        // TODO: Apply a buffer depending on the blocktime and how
+        // safe we want to be.
+
+        Ok(beta_expiry > ethereum_time)
+    }
+}
+
+#[async_trait::async_trait]
+impl<AC, BC> SafeToRedeem for WatchOnlyAlice<AC, BC>
+where
+    BC: LatestBlock<Block = ethereum::Block>,
+    AC: Send + Sync,
+{
+    async fn is_safe_to_redeem(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+        let ethereum_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
+        // TODO: Apply a buffer depending on the blocktime and how
+        // safe we want to be.
+
+        Ok(beta_expiry > ethereum_time)
+    }
 }
 
 async fn hbit_herc20<A, B, SC>(
@@ -355,20 +409,20 @@ where
     B: herc20::Deploy + herc20::Fund + hbit::RedeemAsBob + herc20::Refund + SafeToFund,
     SC: bitcoin::secp256k1::Signing,
 {
-    if !alice.is_safe_to_fund() {
+    if !alice.is_safe_to_fund(herc20_params.expiry).await? {
         return Ok(());
     }
 
     let hbit_funded = alice.fund(&hbit_params).await?;
 
-    if !bob.is_safe_to_fund() {
+    if !bob.is_safe_to_fund(herc20_params.expiry).await? {
         let _hbit_refunded = alice.refund(&hbit_params, hbit_funded, secp).await?;
         return Ok(());
     }
 
     let herc20_deployed = bob.deploy(&herc20_params).await?;
 
-    if !bob.is_safe_to_fund() {
+    if !bob.is_safe_to_fund(herc20_params.expiry).await? {
         // Refund for WalletACTORs should wait for the contract to
         // expire and then refund.
         //
@@ -380,7 +434,7 @@ where
 
     let _herc20_funded = bob.fund(&herc20_params, herc20_deployed.clone()).await?;
 
-    if !alice.is_safe_to_redeem() {
+    if !alice.is_safe_to_redeem(herc20_params.expiry).await? {
         let _hbit_refunded = alice.refund(&hbit_params, hbit_funded, secp).await?;
         let _herc20_refunded = bob.refund(&herc20_params, herc20_deployed.clone()).await?;
         return Ok(());
@@ -461,10 +515,10 @@ impl hbit::Refund for WalletAlice<BitcoinWallet, EthereumWallet, hbit::PrivateDe
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct WatchOnlyBob<AC, BC> {
-    alpha_connector: AC,
-    beta_connector: BC,
+    alpha_connector: Arc<AC>,
+    beta_connector: Arc<BC>,
     secret_hash: SecretHash,
     start_of_swap: NaiveDateTime,
 }
@@ -479,9 +533,12 @@ where
         + ReceiptByHash,
 {
     async fn deploy(&self, params: &herc20::Params) -> anyhow::Result<herc20::Deployed> {
-        let event =
-            herc20::watch_for_deployed(&self.beta_connector, params.clone(), self.start_of_swap)
-                .await?;
+        let event = herc20::watch_for_deployed(
+            self.beta_connector.as_ref(),
+            params.clone(),
+            self.start_of_swap,
+        )
+        .await?;
 
         Ok(event)
     }
@@ -502,7 +559,7 @@ where
         deploy_event: herc20::Deployed,
     ) -> anyhow::Result<herc20::CorrectlyFunded> {
         let event = herc20::watch_for_funded(
-            &self.beta_connector,
+            self.beta_connector.as_ref(),
             params.clone(),
             self.start_of_swap,
             deploy_event,
@@ -533,7 +590,7 @@ where
         SC: bitcoin::secp256k1::Signing,
     {
         let event = hbit::watch_for_redeemed(
-            &self.alpha_connector,
+            self.alpha_connector.as_ref(),
             &params,
             fund_event.location,
             self.start_of_swap,
@@ -558,16 +615,68 @@ where
         _params: &comit::herc20::Params,
         deploy_event: comit::herc20::Deployed,
     ) -> anyhow::Result<comit::herc20::Refunded> {
-        let event =
-            herc20::watch_for_refunded(&self.beta_connector, self.start_of_swap, deploy_event)
-                .await?;
+        let event = herc20::watch_for_refunded(
+            self.beta_connector.as_ref(),
+            self.start_of_swap,
+            deploy_event,
+        )
+        .await?;
 
         Ok(event)
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct BitcoinWallet;
+#[async_trait::async_trait]
+impl<AW, BW, E> SafeToFund for WalletAlice<AW, BW, E>
+where
+    AW: Send + Sync,
+    BW: LatestBlock<Block = ethereum::Block>,
+    E: Send + Sync,
+{
+    async fn is_safe_to_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+        let ethereum_time = ethereum_latest_time(&self.beta_wallet).await?;
+        // TODO: Apply a buffer depending on the blocktime and how
+        // safe we want to be
+
+        Ok(beta_expiry > ethereum_time)
+    }
+}
+
+#[async_trait::async_trait]
+impl<AC, BC> SafeToFund for WatchOnlyBob<AC, BC>
+where
+    AC: Send + Sync,
+    BC: LatestBlock<Block = ethereum::Block>,
+{
+    async fn is_safe_to_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+        let ethereum_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
+        // TODO: Apply a buffer depending on the blocktime and how
+        // safe we want to be.
+
+        Ok(beta_expiry > ethereum_time)
+    }
+}
+
+#[async_trait::async_trait]
+impl<AW, BW, E> SafeToRedeem for WalletAlice<AW, BW, E>
+where
+    AW: Send + Sync,
+    BW: LatestBlock<Block = ethereum::Block>,
+    E: Send + Sync,
+{
+    async fn is_safe_to_redeem(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+        let ethereum_time = ethereum_latest_time(&self.beta_wallet).await?;
+        // TODO: Apply a buffer depending on the blocktime and how
+        // safe we want to be
+
+        Ok(beta_expiry > ethereum_time)
+    }
+}
+
+#[derive(Debug)]
+pub struct BitcoinWallet {
+    connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
+}
 
 impl BitcoinWallet {
     pub async fn fund(
@@ -592,8 +701,18 @@ impl BitcoinWallet {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct EthereumWallet;
+#[async_trait::async_trait]
+impl LatestBlock for BitcoinWallet {
+    type Block = bitcoin::Block;
+    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
+        self.connector.as_ref().latest_block().await
+    }
+}
+
+#[derive(Debug)]
+pub struct EthereumWallet {
+    connector: Arc<comit::btsieve::ethereum::Web3Connector>,
+}
 
 impl EthereumWallet {
     pub async fn deploy(
@@ -619,6 +738,23 @@ impl EthereumWallet {
     }
 }
 
+#[async_trait::async_trait]
+impl LatestBlock for EthereumWallet {
+    type Block = ethereum::Block;
+    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
+        self.connector.latest_block().await
+    }
+}
+
+async fn ethereum_latest_time<C>(connector: &C) -> anyhow::Result<Timestamp>
+where
+    C: LatestBlock<Block = ethereum::Block>,
+{
+    let timestamp = connector.latest_block().await?.timestamp.into();
+
+    Ok(timestamp)
+}
+
 #[cfg(all(test, feature = "test-docker"))]
 mod tests {
     use super::*;
@@ -633,7 +769,7 @@ mod tests {
         btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
         ethereum, identity, Secret, SecretHash, Timestamp,
     };
-    use std::str::FromStr;
+    use std::{str::FromStr, sync::Arc};
     use testcontainers::clients;
 
     fn hbit_params<C>(
@@ -731,21 +867,17 @@ mod tests {
         let secp: bitcoin::secp256k1::Secp256k1<bitcoin::secp256k1::All> =
             bitcoin::secp256k1::Secp256k1::new();
 
-        let (alice_bitcoin_connector, bob_bitcoin_connector) = {
+        let bitcoin_connector = {
             let client = clients::Cli::default();
             let blockchain = BitcoinBlockchain::new(&client).unwrap();
-            (
-                BitcoindConnector::new(blockchain.node_url.clone(), Network::Regtest).unwrap(),
-                BitcoindConnector::new(blockchain.node_url, Network::Regtest).unwrap(),
-            )
+
+            Arc::new(BitcoindConnector::new(blockchain.node_url, Network::Regtest).unwrap())
         };
-        let (alice_ethereum_connector, bob_ethereum_connector) = {
+        let ethereum_connector = {
             let client = clients::Cli::default();
             let blockchain = EthereumBlockchain::new(&client).unwrap();
-            (
-                Web3Connector::new(blockchain.node_url.clone()),
-                Web3Connector::new(blockchain.node_url),
-            )
+
+            Arc::new(Web3Connector::new(blockchain.node_url))
         };
 
         let secret = secret();
@@ -760,14 +892,18 @@ mod tests {
 
         let _alice_swap = {
             let alice = WalletAlice {
-                alpha_wallet: BitcoinWallet,
-                beta_wallet: EthereumWallet,
+                alpha_wallet: BitcoinWallet {
+                    connector: Arc::clone(&bitcoin_connector),
+                },
+                beta_wallet: EthereumWallet {
+                    connector: Arc::clone(&ethereum_connector),
+                },
                 private_protocol_details: private_details_funder,
                 secret,
             };
             let bob = WatchOnlyBob {
-                alpha_connector: bob_bitcoin_connector,
-                beta_connector: bob_ethereum_connector,
+                alpha_connector: Arc::clone(&bitcoin_connector),
+                beta_connector: Arc::clone(&ethereum_connector),
                 secret_hash,
                 start_of_swap,
             };
@@ -777,14 +913,18 @@ mod tests {
 
         let _bob_swap = {
             let alice = WatchOnlyAlice {
-                alpha_connector: alice_bitcoin_connector,
-                beta_connector: alice_ethereum_connector,
+                alpha_connector: Arc::clone(&bitcoin_connector),
+                beta_connector: Arc::clone(&ethereum_connector),
                 secret_hash,
                 start_of_swap,
             };
             let bob = WalletBob {
-                alpha_wallet: BitcoinWallet,
-                beta_wallet: EthereumWallet,
+                alpha_wallet: BitcoinWallet {
+                    connector: bitcoin_connector,
+                },
+                beta_wallet: EthereumWallet {
+                    connector: ethereum_connector,
+                },
                 secret_hash,
                 private_protocol_details: private_details_redeemer,
             };
