@@ -70,7 +70,7 @@ pub mod hbit {
             params: &Params,
             fund_event: CorrectlyFunded,
             secp: &bitcoin::secp256k1::Secp256k1<SC>,
-        ) -> anyhow::Result<Refunded>
+        ) -> anyhow::Result<()>
         where
             SC: bitcoin::secp256k1::Signing;
     }
@@ -143,8 +143,7 @@ pub mod herc20 {
 
     #[async_trait::async_trait]
     pub trait Refund {
-        async fn refund(&self, params: &Params, deploy_event: Deployed)
-            -> anyhow::Result<Refunded>;
+        async fn refund(&self, params: &Params, deploy_event: Deployed) -> anyhow::Result<()>;
     }
 
     #[derive(Debug, Clone)]
@@ -235,24 +234,19 @@ where
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + ReceiptByHash,
 {
+    /// Refund for a watch-only actor is a no-op. The protocol is
+    /// finished, so there is verifying that the other party has
+    /// refunded
     async fn refund<SC>(
         &self,
-        params: &hbit::Params,
-        fund_event: hbit::CorrectlyFunded,
+        _params: &hbit::Params,
+        _fund_event: hbit::CorrectlyFunded,
         _secp: &bitcoin::secp256k1::Secp256k1<SC>,
-    ) -> anyhow::Result<hbit::Refunded>
+    ) -> anyhow::Result<()>
     where
         SC: bitcoin::secp256k1::Signing,
     {
-        let event = hbit::watch_for_refunded(
-            self.alpha_connector.as_ref(),
-            &params,
-            fund_event.location,
-            self.start_of_swap,
-        )
-        .await?;
-
-        Ok(event)
+        Ok(())
     }
 }
 
@@ -320,16 +314,16 @@ impl herc20::Refund for WalletBob<BitcoinWallet, EthereumWallet, hbit::PrivateDe
         &self,
         params: &herc20::Params,
         deploy_event: herc20::Deployed,
-    ) -> anyhow::Result<herc20::Refunded> {
+    ) -> anyhow::Result<()> {
         let deadline = u32::from(params.expiry);
         let duration = deadline - u32::from(comit::Timestamp::now());
         let duration = std::time::Duration::from_secs(duration as u64);
         tokio::time::delay_for(duration).await;
 
         let refund_action = params.build_refund_action(deploy_event.location)?;
-        let event = self.beta_wallet.refund(refund_action).await?;
+        let _event = self.beta_wallet.refund(refund_action).await?;
 
-        Ok(event)
+        Ok(())
     }
 }
 
@@ -416,7 +410,8 @@ where
     let hbit_funded = alice.fund(&hbit_params).await?;
 
     if !bob.is_safe_to_fund(herc20_params.expiry).await? {
-        let _hbit_refunded = alice.refund(&hbit_params, hbit_funded, secp).await?;
+        alice.refund(&hbit_params, hbit_funded, secp).await?;
+
         return Ok(());
     }
 
@@ -425,18 +420,17 @@ where
     if !bob.is_safe_to_fund(herc20_params.expiry).await? {
         // Refund for WalletACTORs should wait for the contract to
         // expire and then refund.
-        //
-        // Refund for WatchOnlyActors should be a no-op, since the
-        // protocol is over and we don't care if they refund or not
-        let _hbit_refunded = alice.refund(&hbit_params, hbit_funded, secp).await?;
+        alice.refund(&hbit_params, hbit_funded, secp).await?;
+
         return Ok(());
     }
 
     let _herc20_funded = bob.fund(&herc20_params, herc20_deployed.clone()).await?;
 
     if !alice.is_safe_to_redeem(herc20_params.expiry).await? {
-        let _hbit_refunded = alice.refund(&hbit_params, hbit_funded, secp).await?;
-        let _herc20_refunded = bob.refund(&herc20_params, herc20_deployed.clone()).await?;
+        alice.refund(&hbit_params, hbit_funded, secp).await?;
+        bob.refund(&herc20_params, herc20_deployed.clone()).await?;
+
         return Ok(());
     }
 
@@ -498,7 +492,7 @@ impl hbit::Refund for WalletAlice<BitcoinWallet, EthereumWallet, hbit::PrivateDe
         params: &hbit::Params,
         fund_event: hbit::CorrectlyFunded,
         secp: &bitcoin::secp256k1::Secp256k1<SC>,
-    ) -> anyhow::Result<hbit::Refunded>
+    ) -> anyhow::Result<()>
     where
         SC: bitcoin::secp256k1::Signing,
     {
@@ -509,9 +503,9 @@ impl hbit::Refund for WalletAlice<BitcoinWallet, EthereumWallet, hbit::PrivateDe
             self.private_protocol_details.transient_refund_sk,
             self.private_protocol_details.final_refund_identity.clone(),
         )?;
-        let event = self.alpha_wallet.refund(refund_action).await?;
+        let _event = self.alpha_wallet.refund(refund_action).await?;
 
-        Ok(event)
+        Ok(())
     }
 }
 
@@ -610,19 +604,15 @@ where
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + ReceiptByHash,
 {
+    /// Refund for a watch-only actor is a no-op. The protocol is
+    /// finished, so there is verifying that the other party has
+    /// refunded
     async fn refund(
         &self,
         _params: &comit::herc20::Params,
-        deploy_event: comit::herc20::Deployed,
-    ) -> anyhow::Result<comit::herc20::Refunded> {
-        let event = herc20::watch_for_refunded(
-            self.beta_connector.as_ref(),
-            self.start_of_swap,
-            deploy_event,
-        )
-        .await?;
-
-        Ok(event)
+        _deploy_event: comit::herc20::Deployed,
+    ) -> anyhow::Result<()> {
+        Ok(())
     }
 }
 
