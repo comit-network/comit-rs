@@ -6,7 +6,7 @@ use comit::{
     ethereum, Secret, SecretHash, Timestamp,
 };
 use futures::future::{self, Either};
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 pub mod hbit {
     use bitcoin::{secp256k1::SecretKey, *};
@@ -315,10 +315,15 @@ impl herc20::Refund for WalletBob<BitcoinWallet, EthereumWallet, hbit::PrivateDe
         params: &herc20::Params,
         deploy_event: herc20::Deployed,
     ) -> anyhow::Result<()> {
-        let deadline = u32::from(params.expiry);
-        let duration = deadline - u32::from(comit::Timestamp::now());
-        let duration = std::time::Duration::from_secs(duration as u64);
-        tokio::time::delay_for(duration).await;
+        loop {
+            let ethereum_time = ethereum_latest_time(self.beta_wallet.connector.as_ref()).await?;
+
+            if ethereum_time >= params.expiry {
+                break;
+            }
+
+            tokio::time::delay_for(Duration::from_secs(1)).await;
+        }
 
         let refund_action = params.build_refund_action(deploy_event.location)?;
         let _event = self.beta_wallet.refund(refund_action).await?;
@@ -418,8 +423,6 @@ where
     let herc20_deployed = bob.deploy(&herc20_params).await?;
 
     if !bob.is_safe_to_fund(herc20_params.expiry).await? {
-        // Refund for WalletACTORs should wait for the contract to
-        // expire and then refund.
         alice.refund(&hbit_params, hbit_funded, secp).await?;
 
         return Ok(());
@@ -439,8 +442,8 @@ where
     let hbit_redeem = bob.redeem(&hbit_params, hbit_funded, herc20_redeemed.secret, &secp);
     let hbit_refund = alice.refund(&hbit_params, hbit_funded, secp);
 
-    // It's always safe for bob to redeem, he just has to do it before
-    // alice refunds
+    // It's always safe for Bob to redeem, he just has to do it before
+    // Alice refunds
     match future::try_select(hbit_redeem, hbit_refund).await {
         Ok(Either::Left((_hbit_redeemed, _))) => Ok(()),
         Ok(Either::Right((_hbit_refunded, _))) => Ok(()),
@@ -496,6 +499,17 @@ impl hbit::Refund for WalletAlice<BitcoinWallet, EthereumWallet, hbit::PrivateDe
     where
         SC: bitcoin::secp256k1::Signing,
     {
+        loop {
+            let bitcoin_time =
+                comit::bitcoin::median_time_past(self.alpha_wallet.connector.as_ref()).await?;
+
+            if bitcoin_time >= params.expiry {
+                break;
+            }
+
+            tokio::time::delay_for(Duration::from_secs(1)).await;
+        }
+
         let refund_action = params.build_refund_action(
             secp,
             fund_event.asset,
