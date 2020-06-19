@@ -3,16 +3,13 @@ use crate::float_maths::{divide_pow_ten_trunc, multiple_pow_ten, truncate};
 use crate::publish::WorthIn;
 use crate::rate::Rate;
 use anyhow::anyhow;
+use conquer_once::Lazy;
 use num::{pow::Pow, BigUint, ToPrimitive};
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 
 pub const ATTOS_IN_DAI_EXP: u16 = 18;
-
-lazy_static::lazy_static! {
-    pub static ref DAI_DEC: BigUint =
-        BigUint::from(10u16).pow(ATTOS_IN_DAI_EXP);
-}
+pub static DAI_DEC: Lazy<BigUint> = Lazy::new(|| BigUint::from(10u16).pow(ATTOS_IN_DAI_EXP));
 
 #[derive(Clone, Ord, PartialOrd, PartialEq, Eq)]
 pub struct Amount(BigUint);

@@ -433,6 +433,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "conquer-once"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6f7644600a548ecad74e4a918392af1798f7dd045be610be3203b9e129b4f98f"
+dependencies = [
+ "conquer-util",
+]
+
+[[package]]
+name = "conquer-util"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "654fb2472cc369d311c547103a1fa81d467bef370ae7a0680f65939895b1182a"
+
+[[package]]
 name = "const-random"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1588,8 +1603,8 @@ dependencies = [
  "bitcoin",
  "chrono",
  "comit",
+ "conquer-once",
  "futures",
- "lazy_static",
  "num",
  "proptest",
  "rand 0.6.5",

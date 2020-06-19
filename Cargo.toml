@@ -11,8 +11,8 @@ async-trait = "0.1"
 bitcoin = { version = "0.23.0", features = ["rand"] }
 chrono = "0.4"
 comit = { git = "https://github.com/comit-network/comit-rs", package = "comit", branch = "nectar" }
+conquer-once = "0.2"
 futures = "0.3.5"
-lazy_static = "1.4"
 num = "0.2"
 reqwest = "0.10.6"
 serde = { version = "1.0", features = ["derive"] }

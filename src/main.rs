@@ -14,6 +14,8 @@
 #![forbid(unsafe_code)]
 // TODO: Add no unwrap policy
 
+use conquer_once::Lazy;
+
 mod bitcoin;
 mod bitcoin_wallet;
 mod bitcoind;
@@ -29,10 +31,8 @@ mod swap;
 #[cfg(all(test, feature = "test-docker"))]
 pub mod test_harness;
 
-lazy_static::lazy_static! {
-    pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =
-        ::bitcoin::secp256k1::Secp256k1::new();
-}
+pub static SECP: Lazy<::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All>> =
+    Lazy::new(::bitcoin::secp256k1::Secp256k1::new);
 
 fn main() {
     println!("Hello, world!");
