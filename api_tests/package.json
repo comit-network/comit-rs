@@ -47,7 +47,7 @@
         "proper-lockfile": "^4.1.1",
         "rimraf": "^3.0.2",
         "satoshi-bitcoin": "^1.0.4",
-        "tail": "^2.0.3",
+        "tail": "^2.0.4",
         "temp-write": "^4.0.0",
         "tmp": "^0.2.1",
         "ts-jest": "^26.1.0",
