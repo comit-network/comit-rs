@@ -1,10 +1,5 @@
 mod kraken;
-use chrono::{DateTime, NaiveDateTime, Utc};
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, strum_macros::Display)]
-pub enum Market {
-    Kraken,
-}
+use chrono::{DateTime, Utc};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, strum_macros::Display)]
 pub enum TradingPair {
@@ -14,7 +9,6 @@ pub enum TradingPair {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Rate {
     trading_pair: TradingPair,
-    market: Market,
     position: Position,
     rate: f64,
     timestamp: DateTime<Utc>,
@@ -37,8 +31,8 @@ pub struct Ohlc {
 impl Ohlc {
     fn to_rate(&self, position: Position) -> anyhow::Result<Rate> {
         let rate = if self.vwap == 0.0 {
-            let error = 0.000_000_000_000_001;
-            if (self.high - self.low).abs() > error {
+            let precision = 0.000_000_000_000_001;
+            if (self.high - self.low).abs() > precision {
                 anyhow::bail!("OHLC high and low value are not the same even though there were no trades recorded (vwap 0).")
             }
             self.high
@@ -52,14 +46,12 @@ impl Ohlc {
         match position {
             Position::BUY => Ok(Rate {
                 trading_pair,
-                market: Market::Kraken,
                 position,
                 rate: 1f64 / rate,
                 timestamp,
             }),
             Position::SELL => Ok(Rate {
                 trading_pair,
-                market: Market::Kraken,
                 position,
                 rate,
                 timestamp,
@@ -75,22 +67,13 @@ pub async fn get_rate(trading_pair: TradingPair, position: Position) -> anyhow::
 
 #[derive(Copy, Clone, Debug, thiserror::Error)]
 #[error(
-    "no rate found for market {market} with trading pair {trading_pair} on position {position}"
+    "no rate found for trading pair {trading_pair} on position {position}"
 )]
 pub struct NoRateFound {
-    market: Market,
     trading_pair: TradingPair,
     position: Position,
 }
 
-#[derive(Copy, Clone, Debug, thiserror::Error)]
-#[error("the rate for market {market} with trading pair {trading_pair} on position {position}")]
-pub struct RateOutdated {
-    market: Market,
-    trading_pair: TradingPair,
-    position: Position,
-    time_stamp: NaiveDateTime,
-}
 #[cfg(test)]
 #[allow(clippy::float_cmp)]
 mod tests {
