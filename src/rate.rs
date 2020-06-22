@@ -89,7 +89,7 @@ impl Rate {
 /// a maximum precision of 2 decimals
 // 0 is the rate * 100.
 #[derive(Clone, Copy, Debug)]
-pub struct Spread(u32);
+pub struct Spread(u16);
 
 impl Spread {
     /// Input is the spread in percent: 5.0 is 5%
@@ -107,7 +107,7 @@ impl Spread {
         match decimal_index {
             None => {
                 if spread.len() <= 2 || spread == "100" {
-                    let spread = u32::from_str(&spread).expect("an integer");
+                    let spread = u16::from_str(&spread).expect("an integer");
                     Ok(Spread(spread * 100))
                 } else {
                     anyhow::bail!("Spread value is too high, it should be between 0 and 100.")
@@ -122,8 +122,8 @@ impl Spread {
                     spread.truncate(spread.len() - 1);
                     let integer = spread;
                     if integer.len() <= 2 || integer == "100" {
-                        let integer = u32::from_str(&integer).expect("an integer");
-                        let mantissa = u32::from_str(&mantissa).expect("an integer");
+                        let integer = u16::from_str(&integer).expect("an integer");
+                        let mantissa = u16::from_str(&mantissa).expect("an integer");
                         Ok(Spread(integer * 100 + mantissa))
                     } else {
                         anyhow::bail!("Spread value is too high, it should be between 0 and 100.")
