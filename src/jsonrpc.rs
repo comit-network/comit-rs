@@ -46,9 +46,15 @@ impl Client {
             .await
             .context("failed to deserialize JSON response as JSON-RPC response")?;
 
+        // This is how to print the response to debug
+        // let response = response.bytes().await?;
+        // dbg!(String::from_utf8((&response[..]).to_vec()));
+        // let response: Response<Res> = serde_json::from_slice(&response)
+        //     .context("failed to deserialize JSON response as JSON-RPC response")?;
+
         match response {
             Response::Success { result } => Ok(result),
-            Response::Error(error) => {
+            Response::Error { error } | Response::RpcError(error) => {
                 Err(error).with_context(|| format!("JSON-RPC request {:?} failed", request))
             }
         }
@@ -77,8 +83,9 @@ impl<T> Request<T> {
 #[derive(serde::Deserialize, Debug)]
 #[serde(untagged)]
 pub enum Response<T> {
+    Error { error: JsonRpcError },
     Success { result: T },
-    Error(JsonRpcError),
+    RpcError(JsonRpcError),
 }
 
 #[derive(Debug, serde::Deserialize, thiserror::Error)]
