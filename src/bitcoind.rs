@@ -1,5 +1,5 @@
 use crate::jsonrpc;
-use bitcoin::Address;
+use bitcoin::{Address, Amount};
 use serde::Deserialize;
 
 #[derive(Debug, Clone)]
@@ -45,6 +45,32 @@ impl Client {
             ))
             .await?;
         Ok(response)
+    }
+
+    pub async fn get_balance(
+        &self,
+        wallet_name: &str,
+        minimum_confirmation: Option<u32>,
+        include_watch_only: Option<bool>,
+        avoid_reuse: Option<bool>,
+    ) -> anyhow::Result<Amount> {
+        let response = self
+            .rpc_client
+            .send_with_path(
+                format!("/wallet/{}", wallet_name),
+                jsonrpc::Request::new(
+                    "getbalance",
+                    vec![
+                        jsonrpc::serialize('*')?,
+                        jsonrpc::serialize(minimum_confirmation)?,
+                        jsonrpc::serialize(include_watch_only)?,
+                        jsonrpc::serialize(avoid_reuse)?,
+                    ],
+                ),
+            )
+            .await?;
+        let amount = Amount::from_btc(response)?;
+        Ok(amount)
     }
 
     pub async fn set_hd_seed(

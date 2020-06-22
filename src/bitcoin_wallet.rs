@@ -6,7 +6,7 @@ use ::bitcoin::secp256k1;
 use ::bitcoin::secp256k1::constants::SECRET_KEY_SIZE;
 use ::bitcoin::Address;
 use ::bitcoin::Network;
-use bitcoin::PrivateKey;
+use bitcoin::{Amount, PrivateKey};
 use rand::prelude::*;
 use reqwest::Url;
 
@@ -84,6 +84,12 @@ impl Wallet {
             .await
     }
 
+    pub async fn balance(&self) -> anyhow::Result<Amount> {
+        self.bitcoind_client
+            .get_balance(&self.name, None, None, None)
+            .await
+    }
+
     fn gen_name(private_key: PrivateKey) -> String {
         let mut hash_engine = PubkeyHash::engine();
         private_key
@@ -127,6 +133,20 @@ mod docker_tests {
         wallet.init().await.unwrap();
 
         let _address = wallet.new_address().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn create_bitcoin_wallet_from_seed_and_get_balance() {
+        let tc_client = clients::Cli::default();
+        let blockchain = BitcoinBlockchain::new(&tc_client).unwrap();
+
+        blockchain.init().await.unwrap();
+
+        let seed = Seed::new();
+        let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).unwrap();
+        wallet.init().await.unwrap();
+
+        let _balance = wallet.balance().await.unwrap();
     }
 
     #[tokio::test]
