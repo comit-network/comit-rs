@@ -16,6 +16,7 @@
 mod bitcoin_wallet;
 mod bitcoind;
 mod jsonrpc;
+mod markets;
 mod ongoing_swaps;
 mod publish;
 
