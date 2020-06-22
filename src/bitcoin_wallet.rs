@@ -1,4 +1,5 @@
 use crate::bitcoind;
+use crate::bitcoind::WalletInfoResponse;
 use ::bitcoin::hash_types::PubkeyHash;
 use ::bitcoin::hashes::Hash;
 use ::bitcoin::secp256k1;
@@ -10,6 +11,7 @@ use rand::prelude::*;
 use reqwest::Url;
 
 // TODO: Go in its own module
+#[derive(Debug, Clone)]
 struct Seed([u8; SECRET_KEY_SIZE]);
 
 impl Seed {
@@ -52,18 +54,28 @@ impl Wallet {
     }
 
     pub async fn init(&self) -> anyhow::Result<()> {
-        // TODO: Probably need to protect the wallet with a passphrase
-        self.bitcoind_client
-            .create_wallet(&self.name, None, Some(true), "".into(), None)
-            .await?;
+        let info = self.info().await;
 
-        let wif = self.private_key.to_wif();
+        // We assume the wallet present with the same name has the
+        // same seed, which is fair but could be safer.
+        if info.is_err() {
+            // TODO: Probably need to protect the wallet with a passphrase
+            self.bitcoind_client
+                .create_wallet(&self.name, None, Some(true), "".into(), None)
+                .await?;
 
-        self.bitcoind_client
-            .set_hd_seed(&self.name, Some(true), Some(wif))
-            .await?;
+            let wif = self.private_key.to_wif();
+
+            self.bitcoind_client
+                .set_hd_seed(&self.name, Some(true), Some(wif))
+                .await?;
+        }
 
         Ok(())
+    }
+
+    pub async fn info(&self) -> anyhow::Result<WalletInfoResponse> {
+        self.bitcoind_client.get_wallet_info(&self.name).await
     }
 
     pub async fn new_address(&self) -> anyhow::Result<Address> {
@@ -115,5 +127,29 @@ mod docker_tests {
         wallet.init().await.unwrap();
 
         let _address = wallet.new_address().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn create_bitcoin_wallet_when_already_existing_and_get_address() {
+        let tc_client = clients::Cli::default();
+        let blockchain = BitcoinBlockchain::new(&tc_client).unwrap();
+
+        blockchain.init().await.unwrap();
+
+        let seed = Seed::new();
+        {
+            let wallet =
+                Wallet::new(seed.clone(), blockchain.node_url.clone(), Network::Regtest).unwrap();
+            wallet.init().await.unwrap();
+
+            let _address = wallet.new_address().await.unwrap();
+        }
+
+        {
+            let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).unwrap();
+            wallet.init().await.unwrap();
+
+            let _address = wallet.new_address().await.unwrap();
+        }
     }
 }

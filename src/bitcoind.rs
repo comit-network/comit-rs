@@ -91,6 +91,17 @@ impl Client {
         Ok(address)
     }
 
+    pub async fn get_wallet_info(&self, wallet_name: &str) -> anyhow::Result<WalletInfoResponse> {
+        let response = self
+            .rpc_client
+            .send_with_path::<Vec<()>, _>(
+                format!("/wallet/{}", wallet_name),
+                jsonrpc::Request::new("getwalletinfo", vec![]),
+            )
+            .await?;
+        Ok(response)
+    }
+
     #[cfg(test)]
     pub async fn generate_to_address(
         &self,
@@ -127,6 +138,35 @@ pub struct CreateWalletResponse {
     warning: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct WalletInfoResponse {
+    #[serde(rename = "walletname")]
+    wallet_name: String,
+    #[serde(rename = "walletversion")]
+    wallet_version: u32,
+    #[serde(rename = "txcount")]
+    tx_count: u32,
+    #[serde(rename = "keypoololdest")]
+    keypool_oldest: u32,
+    #[serde(rename = "keypoolsize_hd_internal")]
+    keypool_size_hd_internal: u32,
+    unlocked_until: Option<u32>,
+    #[serde(rename = "paytxfee")]
+    pay_tx_fee: f64,
+    #[serde(rename = "hdseedid")]
+    hd_seed_id: Option<String>, // Hash 160
+    private_keys_enabled: bool,
+    avoid_reuse: bool,
+    scanning: ScanProgress,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum ScanProgress {
+    Bool(bool),
+    Progress { duration: u32, progress: f64 },
+}
+
 #[cfg(all(test, feature = "test-docker"))]
 mod test {
     use super::*;
@@ -143,5 +183,44 @@ mod test {
         let network = client.network().await.unwrap();
 
         assert_eq!(network.as_str(), "regtest")
+    }
+
+    #[test]
+    fn decode_wallet_info() {
+        let json = r#"{
+        "walletname":"nectar_7426b018",
+        "walletversion":169900,
+        "balance":0.00000000,
+        "unconfirmed_balance":0.00000000,
+        "immature_balance":0.00000000,
+        "txcount":0,
+        "keypoololdest":1592792998,
+        "keypoolsize":1000,
+        "keypoolsize_hd_internal":1000,
+        "paytxfee":0.00000000,
+        "hdseedid":"4959e065fd8e278e4ffe62254897ddac18b02674",
+        "private_keys_enabled":true,
+        "avoid_reuse":false,
+        "scanning":false
+        }"#;
+
+        let info: WalletInfoResponse = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(
+            info,
+            WalletInfoResponse {
+                wallet_name: "nectar_7426b018".into(),
+                wallet_version: 169900,
+                tx_count: 0,
+                keypool_oldest: 1592792998,
+                keypool_size_hd_internal: 1000,
+                unlocked_until: None,
+                pay_tx_fee: 0.0,
+                hd_seed_id: Some("4959e065fd8e278e4ffe62254897ddac18b02674".into()),
+                private_keys_enabled: true,
+                avoid_reuse: false,
+                scanning: ScanProgress::Bool(false)
+            }
+        )
     }
 }
