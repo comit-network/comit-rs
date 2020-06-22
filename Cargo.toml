@@ -19,6 +19,7 @@ serde_json = "1.0"
 strum = "0.18"
 strum_macros = "0.18"
 thiserror = "1.0"
+tracing = "0.1.15"
 
 [dependencies.rand]
 default-features = false

@@ -33,7 +33,7 @@ impl Ohlc {
         let rate = if self.vwap == 0.0 {
             let precision = 0.000_000_000_000_001;
             if (self.high - self.low).abs() > precision {
-                anyhow::bail!("OHLC high and low value are not the same even though there were no trades recorded (vwap 0).")
+                tracing::warn!("OHLC high and low value are not the same even though there were no trades recorded (vwap 0).")
             }
             self.high
         } else {
@@ -66,9 +66,7 @@ pub async fn get_rate(trading_pair: TradingPair, position: Position) -> anyhow::
 }
 
 #[derive(Copy, Clone, Debug, thiserror::Error)]
-#[error(
-    "no rate found for trading pair {trading_pair} on position {position}"
-)]
+#[error("no rate found for trading pair {trading_pair} on position {position}")]
 pub struct NoRateFound {
     trading_pair: TradingPair,
     position: Position,

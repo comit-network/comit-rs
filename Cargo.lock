@@ -1584,6 +1584,7 @@ dependencies = [
  "testcontainers",
  "thiserror",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
