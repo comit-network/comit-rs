@@ -16,13 +16,14 @@ pub struct Rate {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, strum_macros::Display)]
 pub enum Position {
-    BUY,
-    SELL,
+    Buy,
+    Sell,
 }
 
 pub struct Ohlc {
     high: f64,
     low: f64,
+    // volume weighted average price per time interval (time interval defined when requesting the OHLC data)
     vwap: f64,
     timestamp: DateTime<Utc>,
     trading_pair: TradingPair,
@@ -31,7 +32,7 @@ pub struct Ohlc {
 impl Ohlc {
     fn to_rate(&self, position: Position) -> anyhow::Result<Rate> {
         let rate = if self.vwap == 0.0 {
-            let precision = 0.000_000_000_000_001;
+            let precision = 10e-10;
             if (self.high - self.low).abs() > precision {
                 tracing::warn!("OHLC high and low value are not the same even though there were no trades recorded (vwap 0).")
             }
@@ -44,13 +45,13 @@ impl Ohlc {
         let timestamp = self.timestamp;
 
         match position {
-            Position::BUY => Ok(Rate {
+            Position::Buy => Ok(Rate {
                 trading_pair,
                 position,
                 rate: 1f64 / rate,
                 timestamp,
             }),
-            Position::SELL => Ok(Rate {
+            Position::Sell => Ok(Rate {
                 trading_pair,
                 position,
                 rate,
@@ -112,37 +113,31 @@ mod tests {
     fn given_sell_order_ohlc_data_without_vwap_use_high_low() {
         let ohlc_without_vwap = ohlc_without_vwap();
 
-        let rate = ohlc_without_vwap.to_rate(Position::SELL).unwrap();
+        let rate = ohlc_without_vwap.to_rate(Position::Sell).unwrap();
 
         assert_eq!(rate.trading_pair, ohlc_without_vwap.trading_pair);
-        assert_eq!(rate.position, Position::SELL);
+        assert_eq!(rate.position, Position::Sell);
         assert_eq!(rate.rate, 9000.0);
     }
 
     #[test]
     fn given_buy_order_ohlc_data_without_vwap_use_high_low() {
-        let rate = ohlc_without_vwap().to_rate(Position::BUY).unwrap();
+        let rate = ohlc_without_vwap().to_rate(Position::Buy).unwrap();
         let expected_rate = 1.0 / 9000.0;
         assert_eq!(rate.rate, expected_rate);
     }
 
     #[test]
     fn given_sell_order_ohlc_data_with_vwap_use_vwap() {
-        let rate = ohlc_with_vwap().to_rate(Position::SELL).unwrap();
+        let rate = ohlc_with_vwap().to_rate(Position::Sell).unwrap();
 
         assert_eq!(rate.rate, 9806.7);
     }
 
     #[test]
     fn given_buy_order_ohlc_data_with_vwap_use_vwap() {
-        let rate = ohlc_with_vwap().to_rate(Position::BUY).unwrap();
+        let rate = ohlc_with_vwap().to_rate(Position::Buy).unwrap();
 
         assert_eq!(rate.rate, 1.0 / 9806.7);
-    }
-
-    #[test]
-    fn given_buy_order_ohlc_data_without_vwap_and_different_high_low() {
-        let rate = ohlc_without_vwap_different_high_low().to_rate(Position::BUY);
-        assert!(rate.is_err());
     }
 }
