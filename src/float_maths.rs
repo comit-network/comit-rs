@@ -62,7 +62,7 @@ pub fn multiply_pow_ten(float: f64, pow: u16) -> anyhow::Result<BigUint> {
     }
 }
 
-/// Divide BigUint by 10e`-inv_pow`, Returns as a BigUint.
+/// Divide BigUint by 10e`inv_pow`, Returns as a BigUint.
 /// Result is truncated
 pub fn divide_pow_ten_trunc(uint: BigUint, inv_pow: usize) -> BigUint {
     let mut uint_str = uint.to_string();
