@@ -187,10 +187,15 @@ mod tests {
         assert_eq!(divide_pow_ten_trunc(uint.clone(), pow), BigUint::zero())
     }
 
+    prop_compose! {
+        fn new_biguint()(s in "[0-9]+") -> anyhow::Result<BigUint> {
+            Ok(BigUint::from_str(&s)?)
+        }
+    }
+
     proptest! {
         #[test]
-        fn divide_pow_ten_trunc_doesnt_panic(s in "[0-9]+", p in any::<usize>()) {
-            let uint = BigUint::from_str(&s);
+        fn divide_pow_ten_trunc_doesnt_panic(uint in new_biguint(), p in any::<usize>()) {
             if let Ok(uint) = uint {
                 let _ = divide_pow_ten_trunc(uint, p);
             }

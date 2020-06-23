@@ -165,8 +165,8 @@ mod tests {
 
     proptest! {
         #[test]
-        fn spread_new_doesnt_panic(f in any::<u16>()) {
-            let _ = Spread::new(f);
+        fn spread_new_doesnt_panic(s in any::<u16>()) {
+            let _ = Spread::new(s);
         }
     }
 
@@ -184,11 +184,21 @@ mod tests {
         }
     }
 
+    prop_compose! {
+        fn new_spread()(s in any::<u16>()) -> anyhow::Result<Spread> {
+            Spread::new(s)
+        }
+    }
+
+    prop_compose! {
+        fn new_rate()(f in any::<f64>()) -> anyhow::Result<Rate> {
+            Rate::try_from(f)
+        }
+    }
+
     proptest! {
         #[test]
-        fn spread_apply_doesnt_panic(s in any::<u16>(), r in any::<f64>()) {
-            let spread = Spread::new(s);
-            let rate = Rate::try_from(r);
+        fn spread_apply_doesnt_panic(rate in new_rate(), spread in new_spread()) {
             if let (Ok(rate), Ok(spread)) = (rate, spread) {
                 let _ = spread.apply(rate);
             }
@@ -197,9 +207,8 @@ mod tests {
 
     proptest! {
         #[test]
-        fn spread_zero_doesnt_change_rate(r in any::<f64>()) {
+        fn spread_zero_doesnt_change_rate(rate in new_rate()) {
             let spread = Spread::new(0).unwrap();
-            let rate = Rate::try_from(r);
             if let Ok(rate) = rate {
                 let res = spread.apply(rate).unwrap();
                 assert_eq!(res, rate)
