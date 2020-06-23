@@ -60,23 +60,6 @@ impl Rate {
             .context("Rate is unexpectedly large")?;
         Rate::new(integer)
     }
-
-    /// If the integer part ends with 0 and the inverse_decimal_exponent is not null
-    /// then we can reduce the representation by removing zero and decrementing the inverse
-    /// exponent. For example:
-    /// Rate { integer: 1000, inv_dec_exp: 1 } becomes
-    /// Rate { integer: 100, inv_dec_exp: 0 }.
-    fn reduce(integer: u64, inv_dec_exp: usize) -> (u64, usize) {
-        let mut integer_str = integer.to_string();
-        if integer_str.len() > 1 && integer_str.ends_with('0') && inv_dec_exp != 0 {
-            integer_str.truncate(integer_str.len() - 1);
-            let inv_dec_exp = inv_dec_exp - 1;
-            let integer = u64::from_str(&integer_str).expect("an integer");
-            Rate::reduce(integer, inv_dec_exp)
-        } else {
-            (integer, inv_dec_exp)
-        }
-    }
 }
 
 /// Spread: percentage to be added on top of a rate or amount with
