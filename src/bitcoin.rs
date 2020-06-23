@@ -1,13 +1,9 @@
 use crate::dai;
 use crate::dai::ATTOS_IN_DAI_EXP;
-use crate::float_maths::divide_pow_ten_trunc;
 use crate::publish::WorthIn;
 use crate::rate::Rate;
-use anyhow::anyhow;
-use bitcoin::hashes::core::cmp::Ordering;
 use num::pow::Pow;
 use num::BigUint;
-use std::convert::TryFrom;
 
 pub const SATS_IN_BITCOIN_EXP: u16 = 8;
 
@@ -32,6 +28,13 @@ impl Amount {
     }
 }
 
+// The rate input is for bitcoin to dai but we applied to satoshis so we need to:
+// - divide to get bitcoins (8)
+// - divide to adjust for rate (9)
+// - multiple to get attodai (18)
+// = 1
+const ADJUSTEMENT_EXP: u16 = ATTOS_IN_DAI_EXP - SATS_IN_BITCOIN_EXP - Rate::PRECISION;
+
 impl WorthIn<dai::Amount> for Amount {
     fn worth_in(&self, btc_to_dai_rate: Rate) -> anyhow::Result<dai::Amount> {
         // Get the integer part of the rate
@@ -40,29 +43,7 @@ impl WorthIn<dai::Amount> for Amount {
         // Apply the rate
         let worth = uint_rate * self.as_sat();
 
-        // The rate input is for bitcoin to dai but we applied to satoshis so we need to:
-        // - divide to get bitcoins
-        // - divide to adjust for rate (we used integer part only).
-        // - multiple to get attodai
-        let sats_in_bitcoin = i32::from(SATS_IN_BITCOIN_EXP);
-        let rate_exp = i32::try_from(btc_to_dai_rate.inverse_decimal_exponent())
-            .map_err(|_| anyhow!("Exponent is unexpectedly large."))?;
-        let attos_in_dai = i32::from(ATTOS_IN_DAI_EXP);
-        let adjustment_exp = -sats_in_bitcoin - rate_exp + attos_in_dai;
-
-        let atto_dai = match adjustment_exp.cmp(&0) {
-            Ordering::Less => {
-                let inv_exp = usize::try_from(adjustment_exp.abs())
-                    .map_err(|_| anyhow!("Exponent is unexpectedly large."))?;
-                divide_pow_ten_trunc(worth, inv_exp)
-            }
-            Ordering::Equal => worth,
-            Ordering::Greater => {
-                let exp = u16::try_from(adjustment_exp)
-                    .map_err(|_| anyhow!("Exponent is unexpectedly large."))?;
-                worth * BigUint::from(10u16).pow(BigUint::from(exp))
-            }
-        };
+        let atto_dai = worth * BigUint::from(10u16).pow(BigUint::from(ADJUSTEMENT_EXP));
 
         Ok(dai::Amount::from_atto(atto_dai))
     }
@@ -111,6 +92,17 @@ mod tests {
         let res: dai::Amount = btc.worth_in(rate).unwrap();
 
         let dai = dai::Amount::from_dai_trunc(100.102_566).unwrap();
+        assert_eq!(res, dai);
+    }
+
+    #[test]
+    fn worth_in_4() {
+        let btc = Amount::from_btc(9999.0).unwrap();
+        let rate = Rate::from_f64(10.0).unwrap();
+
+        let res: dai::Amount = btc.worth_in(rate).unwrap();
+
+        let dai = dai::Amount::from_dai_trunc(99990.0).unwrap();
         assert_eq!(res, dai);
     }
 

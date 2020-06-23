@@ -131,8 +131,8 @@ mod tests {
     fn given_a_balance_return_order_selling_full_balance() {
         let wallet = Wallet::new(btc(10.0), btc(0.0));
         let book = Book::new(btc(0.0));
-        let rate = Rate::from_f64(1.0).unwrap();
 
+        let rate = Rate::from_f64(1.0).unwrap();
         let order =
             new_dai_bitcoin_order(wallet, book, btc(100.0), rate, Spread::new(0).unwrap()).unwrap();
 
@@ -143,8 +143,8 @@ mod tests {
     fn given_a_balance_and_locked_funds_return_order_selling_available_balance() {
         let wallet = Wallet::new(btc(10.0), btc(0.0));
         let book = Book::new(btc(2.0));
-        let rate = Rate::from_f64(1.0).unwrap();
 
+        let rate = Rate::from_f64(1.0).unwrap();
         let order =
             new_dai_bitcoin_order(wallet, book, btc(100.0), rate, Spread::new(0).unwrap()).unwrap();
 
@@ -155,8 +155,8 @@ mod tests {
     fn given_an_available_balance_and_a_max_amount_sell_min_of_either() {
         let wallet = Wallet::new(btc(10.0), btc(0.0));
         let book = Book::new(btc(2.0));
-        let rate = Rate::from_f64(1.0).unwrap();
 
+        let rate = Rate::from_f64(1.0).unwrap();
         let order =
             new_dai_bitcoin_order(wallet, book, btc(2.0), rate, Spread::new(0).unwrap()).unwrap();
 
@@ -166,7 +166,6 @@ mod tests {
     #[test]
     fn given_an_available_balance_and_fees_sell_balance_minus_fees() {
         let wallet = Wallet::new(btc(10.0), btc(1.0));
-
         let book = Book::new(btc(2.0));
 
         let rate = Rate::from_f64(1.0).unwrap();
@@ -180,10 +179,11 @@ mod tests {
     fn given_a_rate_return_order_with_both_amounts() {
         let wallet = Wallet::new(btc(1051.0), btc(1.0));
         let book = Book::new(btc(50.0));
+        let spread = Spread::new(0).unwrap();
+
         let rate = Rate::from_f64(0.1).unwrap();
 
-        let order = new_dai_bitcoin_order(wallet, book, btc(9999.0), rate, Spread::new(0).unwrap())
-            .unwrap();
+        let order = new_dai_bitcoin_order(wallet, book, btc(9999.0), rate, spread).unwrap();
 
         // 1 Sell => 0.1 Buy
         // 1000 Sell => 100 Buy
@@ -192,8 +192,7 @@ mod tests {
 
         let rate = Rate::from_f64(10.0).unwrap();
 
-        let order = new_dai_bitcoin_order(wallet, book, btc(9999.0), rate, Spread::new(0).unwrap())
-            .unwrap();
+        let order = new_dai_bitcoin_order(wallet, book, btc(9999.0), rate, spread).unwrap();
 
         assert_eq!(order.sell_amount, btc(1000.0));
         assert_eq!(order.buy_amount, dai(10_000.0));

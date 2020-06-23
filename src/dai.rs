@@ -2,11 +2,8 @@ use crate::bitcoin::{self, SATS_IN_BITCOIN_EXP};
 use crate::float_maths::{divide_pow_ten_trunc, multiple_pow_ten, truncate};
 use crate::publish::WorthIn;
 use crate::rate::Rate;
-use anyhow::anyhow;
 use conquer_once::Lazy;
 use num::{pow::Pow, BigUint, ToPrimitive};
-use std::cmp::Ordering;
-use std::convert::TryFrom;
 
 pub const ATTOS_IN_DAI_EXP: u16 = 18;
 pub static DAI_DEC: Lazy<BigUint> = Lazy::new(|| BigUint::from(10u16).pow(ATTOS_IN_DAI_EXP));
@@ -53,6 +50,14 @@ impl std::fmt::Display for Amount {
     }
 }
 
+// The rate input is for dai to bitcoin but we applied it to attodai so we need to:
+// - divide to get dai (18)
+// - divide to adjust for rate (9)
+// - multiple to get satoshis (8)
+// = - 19
+const ADJUSTEMENT_EXP: i32 =
+    SATS_IN_BITCOIN_EXP as i32 - ATTOS_IN_DAI_EXP as i32 - Rate::PRECISION as i32;
+
 impl WorthIn<crate::bitcoin::Amount> for Amount {
     fn worth_in(&self, dai_to_btc_rate: Rate) -> anyhow::Result<bitcoin::Amount> {
         // Get the integer part of the rate
@@ -61,31 +66,10 @@ impl WorthIn<crate::bitcoin::Amount> for Amount {
         // Apply the rate
         let worth = uint_rate * self.as_atto();
 
-        // The rate input is for dai to bitcoin but we applied it to attodai so we need to:
-        // - divide to get dai
-        // - divide to adjust for rate (we used integer part only).
-        // - multiple to get satoshis
-        let attos_in_dai = i32::from(ATTOS_IN_DAI_EXP);
-        let rate_exp = i32::try_from(dai_to_btc_rate.inverse_decimal_exponent())
-            .map_err(|_| anyhow!("Exponent is unexpectedly large."))?;
-        let sats_in_bitcoin = i32::from(SATS_IN_BITCOIN_EXP);
-        let adjustment_exp = -attos_in_dai - rate_exp + sats_in_bitcoin;
-
-        let sats = match adjustment_exp.cmp(&0) {
-            Ordering::Less => {
-                let inv_exp = usize::try_from(adjustment_exp.abs())
-                    .map_err(|_| anyhow!("Exponent is unexpectedly large."))?;
-                divide_pow_ten_trunc(worth, inv_exp)
-            }
-            Ordering::Equal => worth,
-            Ordering::Greater => {
-                let exp = usize::try_from(adjustment_exp)
-                    .map_err(|_| anyhow!("Exponent is unexpectedly large."))?;
-                worth * BigUint::from(10u16).pow(BigUint::from(exp))
-            }
-        }
-        .to_u64()
-        .ok_or_else(|| anyhow::anyhow!("Result is unexpectedly large"))?;
+        let inv_exp = ADJUSTEMENT_EXP.abs() as usize;
+        let sats = divide_pow_ten_trunc(worth, inv_exp)
+            .to_u64()
+            .ok_or_else(|| anyhow::anyhow!("Result is unexpectedly large"))?;
 
         Ok(bitcoin::Amount::from_sat(sats))
     }
