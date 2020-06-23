@@ -72,6 +72,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::convert::TryFrom;
 
     #[derive(Copy, Clone)]
     struct Book {
@@ -132,7 +133,7 @@ mod tests {
         let wallet = Wallet::new(btc(10.0), btc(0.0));
         let book = Book::new(btc(0.0));
 
-        let rate = Rate::from_f64(1.0).unwrap();
+        let rate = Rate::try_from(1.0).unwrap();
         let order =
             new_dai_bitcoin_order(wallet, book, btc(100.0), rate, Spread::new(0).unwrap()).unwrap();
 
@@ -144,7 +145,7 @@ mod tests {
         let wallet = Wallet::new(btc(10.0), btc(0.0));
         let book = Book::new(btc(2.0));
 
-        let rate = Rate::from_f64(1.0).unwrap();
+        let rate = Rate::try_from(1.0).unwrap();
         let order =
             new_dai_bitcoin_order(wallet, book, btc(100.0), rate, Spread::new(0).unwrap()).unwrap();
 
@@ -156,7 +157,7 @@ mod tests {
         let wallet = Wallet::new(btc(10.0), btc(0.0));
         let book = Book::new(btc(2.0));
 
-        let rate = Rate::from_f64(1.0).unwrap();
+        let rate = Rate::try_from(1.0).unwrap();
         let order =
             new_dai_bitcoin_order(wallet, book, btc(2.0), rate, Spread::new(0).unwrap()).unwrap();
 
@@ -168,7 +169,7 @@ mod tests {
         let wallet = Wallet::new(btc(10.0), btc(1.0));
         let book = Book::new(btc(2.0));
 
-        let rate = Rate::from_f64(1.0).unwrap();
+        let rate = Rate::try_from(1.0).unwrap();
         let order =
             new_dai_bitcoin_order(wallet, book, btc(2.0), rate, Spread::new(0).unwrap()).unwrap();
 
@@ -181,7 +182,7 @@ mod tests {
         let book = Book::new(btc(50.0));
         let spread = Spread::new(0).unwrap();
 
-        let rate = Rate::from_f64(0.1).unwrap();
+        let rate = Rate::try_from(0.1).unwrap();
 
         let order = new_dai_bitcoin_order(wallet, book, btc(9999.0), rate, spread).unwrap();
 
@@ -190,7 +191,7 @@ mod tests {
         assert_eq!(order.sell_amount, btc(1000.0));
         assert_eq!(order.buy_amount, dai(100.0));
 
-        let rate = Rate::from_f64(10.0).unwrap();
+        let rate = Rate::try_from(10.0).unwrap();
 
         let order = new_dai_bitcoin_order(wallet, book, btc(9999.0), rate, spread).unwrap();
 
@@ -202,7 +203,7 @@ mod tests {
     fn given_a_rate_and_spread_return_order_with_both_amounts() {
         let wallet = Wallet::new(btc(1051.0), btc(1.0));
         let book = Book::new(btc(50.0));
-        let rate = Rate::from_f64(0.1).unwrap();
+        let rate = Rate::try_from(0.1).unwrap();
         let spread = Spread::new(300).unwrap();
 
         let order = new_dai_bitcoin_order(wallet, book, btc(9999.0), rate, spread).unwrap();

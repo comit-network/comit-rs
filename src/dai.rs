@@ -87,6 +87,7 @@ impl std::ops::Sub for Amount {
 mod tests {
     use super::*;
     use proptest::prelude::*;
+    use std::convert::TryFrom;
     use std::str::FromStr;
 
     #[test]
@@ -108,7 +109,7 @@ mod tests {
     #[test]
     fn using_rate_returns_correct_result() {
         let dai = Amount::from_dai_trunc(1.0).unwrap();
-        let rate = Rate::from_f64(0.001_234).unwrap();
+        let rate = Rate::try_from(0.001_234).unwrap();
 
         let res: bitcoin::Amount = dai.worth_in(rate).unwrap();
 
@@ -119,7 +120,7 @@ mod tests {
     #[test]
     fn worth_in_result_truncated_1() {
         let dai = Amount::from_dai_trunc(101.0).unwrap();
-        let rate = Rate::from_f64(0.000_123_456).unwrap();
+        let rate = Rate::try_from(0.000_123_456).unwrap();
 
         let res: bitcoin::Amount = dai.worth_in(rate).unwrap();
 
@@ -131,7 +132,7 @@ mod tests {
     #[test]
     fn worth_in_result_truncated_2() {
         let dai = Amount::from_dai_trunc(100_001.0).unwrap();
-        let rate = Rate::from_f64(0.000_001_234).unwrap();
+        let rate = Rate::try_from(0.000_001_234).unwrap();
 
         let res: bitcoin::Amount = dai.worth_in(rate).unwrap();
 
@@ -151,7 +152,7 @@ mod tests {
         #[test]
         fn worth_in_bitcoin_doesnt_panic(s in "[0-9]+", r in any::< f64>()) {
             let uint = BigUint::from_str(&s);
-            let rate = Rate::from_f64(r);
+            let rate = Rate::try_from(r);
             if let (Ok(uint), Ok(rate)) = (uint, rate) {
                 let amount = Amount::from_atto(uint);
                 let _: anyhow::Result<bitcoin::Amount> = amount.worth_in(rate);

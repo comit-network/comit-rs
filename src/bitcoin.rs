@@ -61,11 +61,12 @@ impl std::ops::Sub for Amount {
 mod tests {
     use super::*;
     use proptest::prelude::*;
+    use std::convert::TryFrom;
 
     #[test]
     fn worth_in_1() {
         let btc = Amount::from_btc(1.0).unwrap();
-        let rate = Rate::from_f64(1_000.123_4).unwrap();
+        let rate = Rate::try_from(1_000.123_4).unwrap();
 
         let res: dai::Amount = btc.worth_in(rate).unwrap();
 
@@ -76,7 +77,7 @@ mod tests {
     #[test]
     fn worth_in_2() {
         let btc = Amount::from_btc(0.345_678_9).unwrap();
-        let rate = Rate::from_f64(9_123.456_7).unwrap();
+        let rate = Rate::try_from(9_123.456_7).unwrap();
 
         let res: dai::Amount = btc.worth_in(rate).unwrap();
 
@@ -87,7 +88,7 @@ mod tests {
     #[test]
     fn worth_in_3() {
         let btc = Amount::from_btc(0.010_7).unwrap();
-        let rate = Rate::from_f64(9_355.38).unwrap();
+        let rate = Rate::try_from(9_355.38).unwrap();
 
         let res: dai::Amount = btc.worth_in(rate).unwrap();
 
@@ -98,7 +99,7 @@ mod tests {
     #[test]
     fn worth_in_4() {
         let btc = Amount::from_btc(9999.0).unwrap();
-        let rate = Rate::from_f64(10.0).unwrap();
+        let rate = Rate::try_from(10.0).unwrap();
 
         let res: dai::Amount = btc.worth_in(rate).unwrap();
 
@@ -110,7 +111,7 @@ mod tests {
         #[test]
         fn worth_in_dai_doesnt_panic(u in any::<u64>(), r in any::<f64>()) {
             let amount = Amount::from_sat(u);
-            let rate = Rate::from_f64(r);
+            let rate = Rate::try_from(r);
             if let Ok(rate) = rate {
                 let _: anyhow::Result<dai::Amount> = amount.worth_in(rate);
             }
