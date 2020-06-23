@@ -124,10 +124,36 @@ mod tests {
     #[test]
     fn using_rate_returns_correct_result() {
         let dai = Amount::from_dai_trunc(1.0).unwrap();
+        let rate = Rate::from_f64(0.001_234).unwrap();
 
-        let res: bitcoin::Amount = dai.worth_in(Rate::from_f64(0.001234).unwrap()).unwrap();
+        let res: bitcoin::Amount = dai.worth_in(rate).unwrap();
 
-        assert_eq!(res, bitcoin::Amount::from_btc(0.001234).unwrap());
+        let btc = bitcoin::Amount::from_btc(0.001_234).unwrap();
+        assert_eq!(res, btc);
+    }
+
+    #[test]
+    fn worth_in_result_truncated_1() {
+        let dai = Amount::from_dai_trunc(101.0).unwrap();
+        let rate = Rate::from_f64(0.000_123_456).unwrap();
+
+        let res: bitcoin::Amount = dai.worth_in(rate).unwrap();
+
+        // Result is 0.012469056 btc or 1246905.6 satoshis
+        let btc = bitcoin::Amount::from_btc(0.012_469_05).unwrap();
+        assert_eq!(res, btc);
+    }
+
+    #[test]
+    fn worth_in_result_truncated_2() {
+        let dai = Amount::from_dai_trunc(100_001.0).unwrap();
+        let rate = Rate::from_f64(0.000_001_234).unwrap();
+
+        let res: bitcoin::Amount = dai.worth_in(rate).unwrap();
+
+        // Result is 12,340,123.4 satoshis
+        let btc = bitcoin::Amount::from_sat(12_340_123);
+        assert_eq!(res, btc);
     }
 
     proptest! {
