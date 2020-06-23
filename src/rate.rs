@@ -71,7 +71,6 @@ impl TryFrom<f64> for Rate {
 
 /// Spread: percentage to be added on top of a rate or amount with
 /// a maximum precision of 2 decimals
-// 0 is the rate * 100.
 #[derive(Clone, Copy, Debug)]
 pub struct Spread(u16);
 
