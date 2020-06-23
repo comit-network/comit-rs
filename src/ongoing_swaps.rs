@@ -34,6 +34,9 @@ impl OngoingSwaps {
             Ok(())
         }
     }
+    // if balance changed
+    // if rate is not good any more...
+
     fn remove(&mut self, order: Order) {
         self.peers.remove(&order.peer);
     }

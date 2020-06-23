@@ -2,7 +2,7 @@ use crate::bitcoin::{self, SATS_IN_BITCOIN_EXP};
 use crate::float_maths::{divide_pow_ten_trunc, multiply_pow_ten, truncate};
 use crate::Rate;
 use conquer_once::Lazy;
-use num::{pow::Pow, BigUint, ToPrimitive};
+use num::{pow::Pow, BigUint, ToPrimitive, Zero};
 
 pub const ATTOS_IN_DAI_EXP: u16 = 18;
 pub static DAI_DEC: Lazy<BigUint> = Lazy::new(|| BigUint::from(10u16).pow(ATTOS_IN_DAI_EXP));
@@ -11,6 +11,10 @@ pub static DAI_DEC: Lazy<BigUint> = Lazy::new(|| BigUint::from(10u16).pow(ATTOS_
 pub struct Amount(BigUint);
 
 impl Amount {
+    pub fn zero() -> Self {
+        Self(BigUint::zero())
+    }
+
     // The rate input is for dai to bitcoin but we applied it to attodai so we need to:
     // - divide to get dai (18)
     // - divide to adjust for rate (9)

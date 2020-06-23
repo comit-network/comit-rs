@@ -25,6 +25,7 @@ pub mod float_maths;
 pub mod geth;
 pub mod jsonrpc;
 pub mod mid_market_rate;
+pub mod network;
 pub mod ongoing_swaps;
 pub mod order;
 pub mod rate;

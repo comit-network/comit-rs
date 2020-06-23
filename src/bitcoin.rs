@@ -2,6 +2,8 @@ use crate::dai;
 use crate::dai::ATTOS_IN_DAI_EXP;
 use crate::Rate;
 
+// TODO: Move all bitcoin things under a bitcoin module to allow `bitcoin::Wallet` call
+
 pub const SATS_IN_BITCOIN_EXP: u16 = 8;
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq)]
@@ -14,6 +16,8 @@ impl Amount {
     // - multiply to get attodai (18)
     // = 1
     const ADJUSTEMENT_EXP: u16 = ATTOS_IN_DAI_EXP - SATS_IN_BITCOIN_EXP - Rate::PRECISION;
+
+    pub const ZERO: Self = Self(::bitcoin::Amount::ZERO);
 
     pub fn from_btc(btc: f64) -> anyhow::Result<Amount> {
         Ok(Amount(::bitcoin::Amount::from_btc(btc)?))
