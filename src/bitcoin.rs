@@ -82,12 +82,36 @@ mod tests {
     use proptest::prelude::*;
 
     #[test]
-    fn using_rate_returns_correct_result() {
+    fn worth_in_1() {
         let btc = Amount::from_btc(1.0).unwrap();
+        let rate = Rate::from_f64(1000.1234).unwrap();
 
-        let res: dai::Amount = btc.worth_in(Rate::from_f64(1000.1234).unwrap()).unwrap();
+        let res: dai::Amount = btc.worth_in(rate).unwrap();
 
-        assert_eq!(res, dai::Amount::from_dai_trunc(1000.1234).unwrap());
+        let dai = dai::Amount::from_dai_trunc(1000.1234).unwrap();
+        assert_eq!(res, dai);
+    }
+
+    #[test]
+    fn worth_in_2() {
+        let btc = Amount::from_btc(0.345).unwrap();
+        let rate = Rate::from_f64(9123.456).unwrap();
+
+        let res: dai::Amount = btc.worth_in(rate).unwrap();
+
+        let dai = dai::Amount::from_dai_trunc(31475.88732).unwrap();
+        assert_eq!(res, dai);
+    }
+
+    #[test]
+    fn worth_in_3() {
+        let btc = Amount::from_btc(0.0107).unwrap();
+        let rate = Rate::from_f64(9355.38).unwrap();
+
+        let res: dai::Amount = btc.worth_in(rate).unwrap();
+
+        let dai = dai::Amount::from_dai_trunc(100.102566).unwrap();
+        assert_eq!(res, dai);
     }
 
     proptest! {
