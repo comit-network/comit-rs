@@ -1,4 +1,4 @@
-use anyhow::bail;
+use anyhow::{bail, Context};
 use num::{BigUint, Integer, ToPrimitive};
 use std::iter::FromIterator;
 use std::str::FromStr;
@@ -57,7 +57,7 @@ impl Rate {
         let zeros = vec!['0'].repeat(Self::PRECISION as usize - mantissa_length);
         let zeros = String::from_iter(zeros.into_iter());
         let integer = u64::from_str(&format!("{}{}{}", integer, mantissa, zeros))
-            .map_err(|_| anyhow::anyhow!("Rate is unexpectedly large"))?;
+            .context("Rate is unexpectedly large")?;
         Rate::new(integer)
     }
 
