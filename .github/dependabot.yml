@@ -1,0 +1,36 @@
+version: 2
+updates:
+- package-ecosystem: cargo
+  directory: "/"
+  schedule:
+    interval: daily
+    time: "00:00"
+    timezone: Australia/Brisbane
+  labels:
+  - dependencies
+  allow:
+  - dependency-type: direct
+  ignore:
+  - dependency-name: bytes
+    versions:
+    - ">= 0"
+  - dependency-name: libsqlite3-sys
+    versions:
+    - ">= 0"
+- package-ecosystem: npm
+  directory: "/api_tests"
+  schedule:
+    interval: daily
+    time: "00:00"
+    timezone: Australia/Brisbane
+  labels:
+  - dependencies
+  allow:
+  - dependency-type: direct
+  ignore:
+  - dependency-name: ethereumjs-tx
+    versions:
+    - "> 1.3.7"
+  - dependency-name: web3
+    versions:
+    - "> 1.0.0-beta.55"
