@@ -43,25 +43,20 @@ pub fn multiply_pow_ten(float: f64, pow: u16) -> anyhow::Result<BigUint> {
             float.truncate(float.len() - 1);
             let integer = float;
 
-            if mantissa.is_empty() {
-                unreachable!("already covered with decimal_index == None");
-            } else {
-                let pow = pow as usize;
-                match mantissa.len().cmp(&pow) {
-                    Ordering::Less => {
-                        let remain = pow as usize - mantissa.len();
-                        let zeroes = "0".repeat(remain);
-                        Ok(
-                            BigUint::from_str(&format!("{}{}{}", integer, mantissa, zeroes))
-                                .expect("an integer"),
-                        )
-                    }
-                    Ordering::Equal => {
-                        Ok(BigUint::from_str(&format!("{}{}", integer, mantissa))
-                            .expect("an integer"))
-                    }
-                    Ordering::Greater => anyhow::bail!("Result is not an integer"),
+            let pow = pow as usize;
+            match mantissa.len().cmp(&pow) {
+                Ordering::Less => {
+                    let remain = pow as usize - mantissa.len();
+                    let zeroes = "0".repeat(remain);
+                    Ok(
+                        BigUint::from_str(&format!("{}{}{}", integer, mantissa, zeroes))
+                            .expect("an integer"),
+                    )
                 }
+                Ordering::Equal => {
+                    Ok(BigUint::from_str(&format!("{}{}", integer, mantissa)).expect("an integer"))
+                }
+                Ordering::Greater => anyhow::bail!("Result is not an integer"),
             }
         }
     }
