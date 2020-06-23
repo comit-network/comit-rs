@@ -1,5 +1,6 @@
 #![allow(unreachable_code, unused_variables, clippy::unit_arg)]
 
+use nectar::maker::RateUpdateDecision;
 use nectar::{
     bitcoin, bitcoin_wallet, dai, ethereum_wallet,
     maker::TakeRequestDecision,
@@ -60,13 +61,14 @@ async fn init_maker(
 
 #[tokio::main]
 async fn main() {
-    // TODO: from config or hardcoded
-    let dai_contract_addr: comit::ethereum::Address = unimplemented!();
-
-    // TODO: Proper wallet initialisation from config
-    let bitcoin_wallet =
-        bitcoin_wallet::Wallet::new(unimplemented!(), unimplemented!(), unimplemented!()).unwrap();
-    let ethereum_wallet = ethereum_wallet::Wallet::new(unimplemented!(), unimplemented!()).unwrap();
+    let bitcoin_wallet = bitcoin_wallet::Wallet::new(
+        todo!("from config"),
+        todo!("from config"),
+        todo!("from config"),
+    )
+    .unwrap();
+    let ethereum_wallet =
+        ethereum_wallet::Wallet::new(todo!("from config"), todo!("from config")).unwrap();
 
     let maker = init_maker(bitcoin_wallet, ethereum_wallet).await;
 
@@ -90,7 +92,20 @@ async fn main() {
     loop {
         let rate = get_btc_dai_mid_market_rate().await;
         match rate {
-            Ok(new_rate) => maker.update_rate(unimplemented!()),
+            Ok(new_rate) => {
+                let reaction = maker.update_rate(new_rate); // maker should record timestamp of this
+                match reaction {
+                    Ok(RateUpdateDecision::RateUpdatedWithNewValue {
+                        next_sell_order,
+                        next_buy_order,
+                    }) => {
+                        swarm.orderbook.publish(next_sell_order.into());
+                        swarm.orderbook.publish(next_buy_order.into());
+                    }
+                    Ok(RateUpdateDecision::RateUpdated) => (),
+                    Err(err) => tracing::warn!("Rate update yielded error: {}", err),
+                }
+            }
             Err(e) => maker.track_failed_rate(e),
         }
 

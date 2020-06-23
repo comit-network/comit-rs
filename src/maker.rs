@@ -57,7 +57,23 @@ impl Maker {
         }
     }
 
-    pub fn update_rate(&mut self, mid_market_rate: ()) {}
+    pub fn update_rate(
+        &mut self,
+        mid_market_rate: MidMarketRate,
+    ) -> anyhow::Result<RateUpdateDecision> {
+        // if rate did not change don't create new orders
+        if self.mid_market_rate.value == mid_market_rate.value {
+            // if value did not change update to have newest timestamp
+            self.mid_market_rate = mid_market_rate;
+            return Ok(RateUpdateDecision::RateUpdated);
+        }
+
+        self.mid_market_rate = mid_market_rate;
+        Ok(RateUpdateDecision::RateUpdatedWithNewValue {
+            next_sell_order: self.new_sell_order()?,
+            next_buy_order: self.new_buy_order()?,
+        })
+    }
 
     pub fn update_bitcoin_balance(&mut self, balance: bitcoin::Amount) {
         self.btc_balance = balance;
@@ -170,6 +186,15 @@ pub enum TakeRequestDecision {
     CannotTradeWithTaker,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum RateUpdateDecision {
+    RateUpdatedWithNewValue {
+        next_sell_order: BtcDaiOrder,
+        next_buy_order: BtcDaiOrder,
+    },
+    RateUpdated,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -178,6 +203,7 @@ mod tests {
         order::{BtcDaiOrder, Position},
         MidMarketRate, Rate,
     };
+    use chrono::Utc;
     use std::convert::TryFrom;
 
     impl Default for Maker {
@@ -390,5 +416,45 @@ mod tests {
         let result = maker.process_taken_order(order_taken).unwrap();
 
         assert_eq!(result, TakeRequestDecision::RateSucks);
+    }
+
+    #[test]
+    fn rate_updated_if_rate_update_with_same_value() {
+        let mut maker = Maker {
+            mid_market_rate: MidMarketRate {
+                value: Rate::try_from(1.0).unwrap(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let new_mid_market_rate = MidMarketRate {
+            value: Rate::try_from(1.0).unwrap(),
+            timestamp: Utc::now(),
+        };
+
+        let reaction = maker.update_rate(new_mid_market_rate).unwrap();
+        assert_eq!(reaction, RateUpdateDecision::RateUpdated);
+        assert_eq!(maker.mid_market_rate, new_mid_market_rate)
+    }
+
+    #[test]
+    fn rate_updated_and_new_orders_if_rate_update_with_new_value() {
+        let mut maker = Maker {
+            mid_market_rate: MidMarketRate {
+                value: Rate::try_from(1.0).unwrap(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let new_mid_market_rate = MidMarketRate {
+            value: Rate::try_from(2.0).unwrap(),
+            timestamp: Utc::now(),
+        };
+
+        let reaction = maker.update_rate(new_mid_market_rate).unwrap();
+        assert!(matches!(reaction, RateUpdateDecision::RateUpdatedWithNewValue {..}));
+        assert_eq!(maker.mid_market_rate, new_mid_market_rate)
     }
 }
