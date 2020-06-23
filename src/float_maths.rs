@@ -69,7 +69,7 @@ pub fn divide_pow_ten_trunc(uint: BigUint, inv_pow: usize) -> BigUint {
 
     match uint_str.len().cmp(&inv_pow) {
         Ordering::Less => BigUint::zero(),
-        Ordering::Equal => uint,
+        Ordering::Equal => BigUint::zero(),
         Ordering::Greater => {
             uint_str.truncate(uint_str.len() - inv_pow);
             BigUint::from_str(&uint_str).expect("still an integer")
@@ -168,9 +168,23 @@ mod tests {
 
     #[test]
     fn given_pow_zero_it_doesnt_modifies() {
-        let uint = BigUint::from(1_234_456_789u64);
+        let uint = BigUint::from(1_234_567_890u64);
         let pow = 0;
         assert_eq!(divide_pow_ten_trunc(uint.clone(), pow), uint)
+    }
+
+    #[test]
+    fn given_pow_greater_than_uint_it_truncates_to_zero_1() {
+        let uint = BigUint::from(1_234_567_890u64);
+        let pow = 10;
+        assert_eq!(divide_pow_ten_trunc(uint.clone(), pow), BigUint::zero())
+    }
+
+    #[test]
+    fn given_pow_greater_than_uint_it_truncates_to_zero_2() {
+        let uint = BigUint::from(1_234_456_789u64);
+        let pow = 11;
+        assert_eq!(divide_pow_ten_trunc(uint.clone(), pow), BigUint::zero())
     }
 
     proptest! {
