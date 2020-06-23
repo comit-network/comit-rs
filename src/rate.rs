@@ -22,8 +22,8 @@ impl Rate {
     }
 
     /// integer = rate * 10ePRECISION
-    pub fn integer(&self) -> u64 {
-        self.0
+    pub fn integer(&self) -> BigUint {
+        BigUint::from(self.0)
     }
 
     pub fn from_f64(rate: f64) -> anyhow::Result<Rate> {
@@ -101,7 +101,7 @@ impl Spread {
 
     pub fn apply(&self, rate: Rate) -> anyhow::Result<Rate> {
         let ten_thousand = BigUint::from(10_000u16);
-        let integer = BigUint::from(rate.integer()) * (ten_thousand.clone() + self.0);
+        let integer = rate.integer() * (ten_thousand.clone() + self.0);
         // Now divide by 10e4 because of the spread
         let (rate, _remainder) = integer.div_rem(&ten_thousand);
         let rate = rate

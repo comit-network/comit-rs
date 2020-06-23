@@ -38,7 +38,7 @@ const ADJUSTEMENT_EXP: u16 = ATTOS_IN_DAI_EXP - SATS_IN_BITCOIN_EXP - Rate::PREC
 impl WorthIn<dai::Amount> for Amount {
     fn worth_in(&self, btc_to_dai_rate: Rate) -> anyhow::Result<dai::Amount> {
         // Get the integer part of the rate
-        let uint_rate = BigUint::from(btc_to_dai_rate.integer());
+        let uint_rate = btc_to_dai_rate.integer();
 
         // Apply the rate
         let worth = uint_rate * self.as_sat();

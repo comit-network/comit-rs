@@ -61,7 +61,7 @@ const ADJUSTEMENT_EXP: i32 =
 impl WorthIn<crate::bitcoin::Amount> for Amount {
     fn worth_in(&self, dai_to_btc_rate: Rate) -> anyhow::Result<bitcoin::Amount> {
         // Get the integer part of the rate
-        let uint_rate = BigUint::from(dai_to_btc_rate.integer());
+        let uint_rate = dai_to_btc_rate.integer();
 
         // Apply the rate
         let worth = uint_rate * self.as_atto();
