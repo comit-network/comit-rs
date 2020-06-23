@@ -99,7 +99,7 @@ mod tests {
 
         let res: dai::Amount = btc.worth_in(rate).unwrap();
 
-        let dai = dai::Amount::from_dai_trunc(31475.88732).unwrap();
+        let dai = dai::Amount::from_dai_trunc(3147.59232).unwrap();
         assert_eq!(res, dai);
     }
 
