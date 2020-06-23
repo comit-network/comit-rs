@@ -92,45 +92,17 @@ impl Rate {
 pub struct Spread(u16);
 
 impl Spread {
-    /// Input is the spread in percent: 5.0 is 5%
-    pub fn new(spread: f64) -> anyhow::Result<Spread> {
-        if spread.is_sign_negative() {
-            anyhow::bail!("Spread must be positive");
+    /// Input is the spread in percent, with 2 digits after the decimal point:
+    /// 5% => 500
+    /// 23.14% => 2314
+    /// 0.001% => Not allowed
+    /// 200% => Not allowed
+    pub fn new(spread: u16) -> anyhow::Result<Spread> {
+        if spread > 10000 {
+            anyhow::bail!("Spread must be between 0% and 100%");
         }
 
-        if !spread.is_finite() {
-            anyhow::bail!("Spread must be finite")
-        }
-
-        let mut spread = spread.to_string();
-        let decimal_index = spread.find('.');
-        match decimal_index {
-            None => {
-                if spread.len() <= 2 || spread == "100" {
-                    let spread = u16::from_str(&spread).expect("an integer");
-                    Ok(Spread(spread * 100))
-                } else {
-                    anyhow::bail!("Spread value is too high, it should be between 0 and 100.")
-                }
-            }
-            Some(decimal_index) => {
-                let mantissa = spread.split_off(decimal_index + 1);
-                if mantissa.len() > 2 {
-                    anyhow::bail!("Precision of the rate is too high, maximum allow is 2 digits after the decimal point.")
-                } else {
-                    // Removes the trailing decimal point
-                    spread.truncate(spread.len() - 1);
-                    let integer = spread;
-                    if integer.len() <= 2 || integer == "100" {
-                        let integer = u16::from_str(&integer).expect("an integer");
-                        let mantissa = u16::from_str(&mantissa).expect("an integer");
-                        Ok(Spread(integer * 100 + mantissa))
-                    } else {
-                        anyhow::bail!("Spread value is too high, it should be between 0 and 100.")
-                    }
-                }
-            }
-        }
+        Ok(Spread(spread))
     }
 
     pub fn apply(&self, rate: Rate) -> anyhow::Result<Rate> {
@@ -147,8 +119,26 @@ mod tests {
     use proptest::prelude::*;
 
     #[test]
+    fn rate_error_on_negative_rate() {
+        let rate = Rate::from_f64(-1.0);
+        assert!(rate.is_err());
+    }
+
+    #[test]
+    fn spread_error_on_above_hundred() {
+        let spread = Spread::new(10100);
+        assert!(spread.is_err());
+    }
+
+    #[test]
+    fn spread_no_error_on_hundred() {
+        let spread = Spread::new(10000);
+        assert!(spread.is_ok());
+    }
+
+    #[test]
     fn apply_spread_20() {
-        let spread = Spread::new(20.0).unwrap();
+        let spread = Spread::new(2000).unwrap();
         let rate = Rate::from_f64(25.0).unwrap();
         let new_rate = spread.apply(rate).unwrap();
 
@@ -163,7 +153,7 @@ mod tests {
 
     #[test]
     fn apply_spread_3() {
-        let spread = Spread::new(20.0).unwrap();
+        let spread = Spread::new(2000).unwrap();
         let rate = Rate::from_f64(25.0).unwrap();
         let new_rate = spread.apply(rate).unwrap();
 
@@ -178,7 +168,7 @@ mod tests {
 
     proptest! {
         #[test]
-        fn spread_new_doesnt_panic(f in any::<f64>()) {
+        fn spread_new_doesnt_panic(f in any::<u16>()) {
             let _ = Spread::new(f);
         }
     }
@@ -199,7 +189,7 @@ mod tests {
 
     proptest! {
         #[test]
-        fn spread_apply_doesnt_panic(s in any::<f64>(), r in any::<f64>()) {
+        fn spread_apply_doesnt_panic(s in any::<u16>(), r in any::<f64>()) {
             let spread = Spread::new(s);
             let rate = Rate::from_f64(r);
             if let (Ok(rate), Ok(spread)) = (rate, spread) {
