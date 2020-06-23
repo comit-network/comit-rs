@@ -177,14 +177,14 @@ mod tests {
     fn given_pow_greater_than_uint_it_truncates_to_zero_1() {
         let uint = BigUint::from(1_234_567_890u64);
         let pow = 10;
-        assert_eq!(divide_pow_ten_trunc(uint.clone(), pow), BigUint::zero())
+        assert_eq!(divide_pow_ten_trunc(uint, pow), BigUint::zero())
     }
 
     #[test]
     fn given_pow_greater_than_uint_it_truncates_to_zero_2() {
         let uint = BigUint::from(1_234_456_789u64);
         let pow = 11;
-        assert_eq!(divide_pow_ten_trunc(uint.clone(), pow), BigUint::zero())
+        assert_eq!(divide_pow_ten_trunc(uint, pow), BigUint::zero())
     }
 
     prop_compose! {
