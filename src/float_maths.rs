@@ -17,10 +17,10 @@ pub fn truncate(float: f64, precision: u16) -> f64 {
     }
 }
 
-/// Multiple float by 10e`pow`, Returns as a BigUint. No data loss.
+/// Multiply float by 10e`pow`, Returns as a BigUint. No data loss.
 /// Errors if the float is negative.
 /// Errors if the result is a fraction.
-pub fn multiple_pow_ten(float: f64, pow: u16) -> anyhow::Result<BigUint> {
+pub fn multiply_pow_ten(float: f64, pow: u16) -> anyhow::Result<BigUint> {
     if float.is_sign_negative() {
         anyhow::bail!("Float is negative");
     }
@@ -107,7 +107,7 @@ mod tests {
         let pow = 6;
 
         assert_eq!(
-            multiple_pow_ten(float, pow).unwrap(),
+            multiply_pow_ten(float, pow).unwrap(),
             BigUint::from(123_456_789_000_000u64)
         )
     }
@@ -118,7 +118,7 @@ mod tests {
         let pow = 9;
 
         assert_eq!(
-            multiple_pow_ten(float, pow).unwrap(),
+            multiply_pow_ten(float, pow).unwrap(),
             BigUint::from(123_123_456_789u64)
         )
     }
@@ -129,7 +129,7 @@ mod tests {
         let pow = 12;
 
         assert_eq!(
-            multiple_pow_ten(float, pow).unwrap(),
+            multiply_pow_ten(float, pow).unwrap(),
             BigUint::from(123_123_456_789_000u64)
         )
     }
@@ -139,7 +139,7 @@ mod tests {
         let float = 123.123_456_789f64;
         let pow = 6;
 
-        assert!(multiple_pow_ten(float, pow).is_err(),)
+        assert!(multiply_pow_ten(float, pow).is_err(),)
     }
 
     #[test]
@@ -147,13 +147,13 @@ mod tests {
         let float = -123_456_789.0f64;
         let pow = 6;
 
-        assert!(multiple_pow_ten(float, pow).is_err(),)
+        assert!(multiply_pow_ten(float, pow).is_err(),)
     }
 
     proptest! {
         #[test]
         fn multiple_pow_ten_doesnt_panic(f in any::<f64>(), p in any::<u16>()) {
-            let _ = multiple_pow_ten(f, p);
+            let _ = multiply_pow_ten(f, p);
         }
     }
 

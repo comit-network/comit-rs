@@ -1,5 +1,5 @@
 use crate::bitcoin::{self, SATS_IN_BITCOIN_EXP};
-use crate::float_maths::{divide_pow_ten_trunc, multiple_pow_ten, truncate};
+use crate::float_maths::{divide_pow_ten_trunc, multiply_pow_ten, truncate};
 use crate::publish::WorthIn;
 use crate::rate::Rate;
 use conquer_once::Lazy;
@@ -24,7 +24,7 @@ impl Amount {
 
         let dai = truncate(dai, ATTOS_IN_DAI_EXP);
 
-        let u_int_value = multiple_pow_ten(dai, ATTOS_IN_DAI_EXP).expect("It is truncated");
+        let u_int_value = multiply_pow_ten(dai, ATTOS_IN_DAI_EXP).expect("It is truncated");
 
         Ok(Amount(u_int_value))
     }
@@ -53,7 +53,7 @@ impl std::fmt::Display for Amount {
 // The rate input is for dai to bitcoin but we applied it to attodai so we need to:
 // - divide to get dai (18)
 // - divide to adjust for rate (9)
-// - multiple to get satoshis (8)
+// - multiply to get satoshis (8)
 // = - 19
 const ADJUSTEMENT_EXP: i32 =
     SATS_IN_BITCOIN_EXP as i32 - ATTOS_IN_DAI_EXP as i32 - Rate::PRECISION as i32;

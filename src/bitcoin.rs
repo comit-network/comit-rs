@@ -31,7 +31,7 @@ impl Amount {
 // The rate input is for bitcoin to dai but we applied to satoshis so we need to:
 // - divide to get bitcoins (8)
 // - divide to adjust for rate (9)
-// - multiple to get attodai (18)
+// - multiply to get attodai (18)
 // = 1
 const ADJUSTEMENT_EXP: u16 = ATTOS_IN_DAI_EXP - SATS_IN_BITCOIN_EXP - Rate::PRECISION;
 
