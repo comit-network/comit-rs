@@ -94,12 +94,12 @@ mod tests {
 
     #[test]
     fn worth_in_2() {
-        let btc = Amount::from_btc(0.345).unwrap();
-        let rate = Rate::from_f64(9123.456).unwrap();
+        let btc = Amount::from_btc(0.3456789).unwrap();
+        let rate = Rate::from_f64(9123.4567).unwrap();
 
         let res: dai::Amount = btc.worth_in(rate).unwrap();
 
-        let dai = dai::Amount::from_dai_trunc(3147.59232).unwrap();
+        let dai = dai::Amount::from_dai_trunc(3153.78647625363).unwrap();
         assert_eq!(res, dai);
     }
 
