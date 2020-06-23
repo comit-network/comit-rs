@@ -84,33 +84,33 @@ mod tests {
     #[test]
     fn worth_in_1() {
         let btc = Amount::from_btc(1.0).unwrap();
-        let rate = Rate::from_f64(1000.1234).unwrap();
+        let rate = Rate::from_f64(1_000.123_4).unwrap();
 
         let res: dai::Amount = btc.worth_in(rate).unwrap();
 
-        let dai = dai::Amount::from_dai_trunc(1000.1234).unwrap();
+        let dai = dai::Amount::from_dai_trunc(1_000.123_4).unwrap();
         assert_eq!(res, dai);
     }
 
     #[test]
     fn worth_in_2() {
-        let btc = Amount::from_btc(0.3456789).unwrap();
-        let rate = Rate::from_f64(9123.4567).unwrap();
+        let btc = Amount::from_btc(0.345_678_9).unwrap();
+        let rate = Rate::from_f64(9_123.456_7).unwrap();
 
         let res: dai::Amount = btc.worth_in(rate).unwrap();
 
-        let dai = dai::Amount::from_dai_trunc(3153.78647625363).unwrap();
+        let dai = dai::Amount::from_dai_trunc(3_153.786_476_253_63).unwrap();
         assert_eq!(res, dai);
     }
 
     #[test]
     fn worth_in_3() {
-        let btc = Amount::from_btc(0.0107).unwrap();
-        let rate = Rate::from_f64(9355.38).unwrap();
+        let btc = Amount::from_btc(0.010_7).unwrap();
+        let rate = Rate::from_f64(9_355.38).unwrap();
 
         let res: dai::Amount = btc.worth_in(rate).unwrap();
 
-        let dai = dai::Amount::from_dai_trunc(100.102566).unwrap();
+        let dai = dai::Amount::from_dai_trunc(100.102_566).unwrap();
         assert_eq!(res, dai);
     }
 
