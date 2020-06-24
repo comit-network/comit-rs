@@ -5,15 +5,11 @@ pub use ::comit::network::*;
 pub use transport::ComitTransport;
 
 use crate::{
-    btsieve::{
-        bitcoin::{self, BitcoindConnector},
-        ethereum::{self, Web3Connector},
-    },
     config::Settings,
     identity,
     network::{Comit, LocalData},
     spawn,
-    storage::{ForSwap, Save, Sqlite},
+    storage::{ForSwap, Save},
     Load, LocalSwapId, Protocol, ProtocolSpawner, Role, RootSeed, SecretHash, SharedSwapId,
     Storage, SwapContext,
 };
@@ -49,9 +45,6 @@ impl Swarm {
     pub fn new(
         settings: &Settings,
         seed: RootSeed,
-        bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
-        ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
-        database: &Sqlite,
         task_executor: tokio::runtime::Handle,
         storage: Storage,
         protocol_spawner: ProtocolSpawner,
@@ -61,15 +54,7 @@ impl Swarm {
         tracing::info!("Starting with peer_id: {}", local_peer_id);
 
         let transport = transport::build_comit_transport(local_key_pair)?;
-        let behaviour = ComitNode::new(
-            bitcoin_connector,
-            ethereum_connector,
-            seed,
-            database.clone(),
-            task_executor.clone(),
-            storage,
-            protocol_spawner,
-        )?;
+        let behaviour = ComitNode::new(seed, task_executor.clone(), storage, protocol_spawner)?;
 
         let mut swarm = SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
             .executor(Box::new(TokioExecutor {
@@ -153,16 +138,8 @@ pub struct ComitNode {
     /// Multicast DNS discovery network behaviour.
     mdns: Mdns,
 
-    // blockchain connectors
-    #[behaviour(ignore)]
-    pub bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
-    #[behaviour(ignore)]
-    pub ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
-
     #[behaviour(ignore)]
     pub seed: RootSeed,
-    #[behaviour(ignore)]
-    pub db: Sqlite,
     #[behaviour(ignore)]
     task_executor: Handle,
 
@@ -187,10 +164,7 @@ pub enum RequestError {
 impl ComitNode {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
-        ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
         seed: RootSeed,
-        db: Sqlite,
         task_executor: Handle,
         storage: Storage,
         protocol_spawner: ProtocolSpawner,
@@ -198,10 +172,7 @@ impl ComitNode {
         Ok(Self {
             mdns: Mdns::new()?,
             comit: Comit::default(),
-            bitcoin_connector,
-            ethereum_connector,
             seed,
-            db,
             task_executor,
             storage,
             protocol_spawner,
