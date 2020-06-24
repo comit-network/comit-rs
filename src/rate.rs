@@ -14,8 +14,8 @@ impl Rate {
     pub const PRECISION: u16 = 9;
 
     /// integer = rate * 10ePRECISION
-    pub fn new(integer: u64) -> anyhow::Result<Self> {
-        Ok(Rate(integer))
+    pub fn new(integer: u64) -> Self {
+        Rate(integer)
     }
 
     /// integer = rate * 10ePRECISION
@@ -60,7 +60,7 @@ impl TryFrom<f64> for Rate {
         let zeros = String::from_iter(zeros.into_iter());
         let integer = u64::from_str(&format!("{}{}{}", integer, mantissa, zeros))
             .context("Rate is unexpectedly large")?;
-        Rate::new(integer)
+        Ok(Rate::new(integer))
     }
 }
 
@@ -91,7 +91,7 @@ impl Spread {
         let rate = rate
             .to_u64()
             .ok_or_else(|| anyhow::anyhow!("Result is unexpectedly large"))?;
-        Rate::new(rate)
+        Ok(Rate::new(rate))
     }
 }
 
@@ -103,14 +103,14 @@ mod tests {
     #[test]
     fn from_f64_and_new_matches_1() {
         let rate_from_f64 = Rate::try_from(123.456).unwrap();
-        let rate_new = Rate::new(123_456_000_000).unwrap();
+        let rate_new = Rate::new(123_456_000_000);
         assert_eq!(rate_from_f64, rate_new);
     }
 
     #[test]
     fn from_f64_and_new_matches_2() {
         let rate_from_f64 = Rate::try_from(10.0).unwrap();
-        let rate_new = Rate::new(10_000_000_000).unwrap();
+        let rate_new = Rate::new(10_000_000_000);
         assert_eq!(rate_from_f64, rate_new);
     }
 
