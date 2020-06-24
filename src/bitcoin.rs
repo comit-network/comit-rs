@@ -2,8 +2,6 @@ use crate::dai;
 use crate::dai::ATTOS_IN_DAI_EXP;
 use crate::publish::WorthIn;
 use crate::rate::Rate;
-use num::pow::Pow;
-use num::BigUint;
 
 pub const SATS_IN_BITCOIN_EXP: u16 = 8;
 
@@ -43,7 +41,7 @@ impl WorthIn<dai::Amount> for Amount {
         // Apply the rate
         let worth = uint_rate * self.as_sat();
 
-        let atto_dai = worth * BigUint::from(10u16).pow(BigUint::from(ADJUSTEMENT_EXP));
+        let atto_dai = worth * 10u16.pow(ADJUSTEMENT_EXP.into());
 
         Ok(dai::Amount::from_atto(atto_dai))
     }
