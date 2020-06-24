@@ -70,17 +70,17 @@ impl TryFrom<f64> for Rate {
 pub struct Spread(u16);
 
 impl Spread {
-    /// Input is the spread in percent, with 2 digits after the decimal point:
-    /// 5% => 500
-    /// 23.14% => 2314
+    /// Input is the spread in permyriad (per ten thousand):
+    /// 5% => 500 permyriad
+    /// 23.14% => 2314 permyriad
     /// 0.001% => Not allowed
     /// 200% => Not allowed
-    pub fn new(spread: u16) -> anyhow::Result<Spread> {
-        if spread > 10000 {
+    pub fn new(permyriad: u16) -> anyhow::Result<Spread> {
+        if permyriad > 10000 {
             anyhow::bail!("Spread must be between 0% and 100%");
         }
 
-        Ok(Spread(spread))
+        Ok(Spread(permyriad))
     }
 
     pub fn apply(&self, rate: Rate) -> anyhow::Result<Rate> {
