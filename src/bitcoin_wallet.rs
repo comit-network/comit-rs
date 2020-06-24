@@ -64,7 +64,7 @@ impl Wallet {
                 .create_wallet(&self.name, None, Some(true), "".into(), None)
                 .await?;
 
-            let wif = self.private_key.to_wif();
+            let wif = self.wif();
 
             self.bitcoind_client
                 .set_hd_seed(&self.name, Some(true), Some(wif))
@@ -88,6 +88,14 @@ impl Wallet {
         self.bitcoind_client
             .get_balance(&self.name, None, None, None)
             .await
+    }
+
+    /// Returns the private key in wif format, this allows the user to import the wallet in a
+    /// different bitcoind using `sethdseed`.
+    /// It seems relevant that access to bitcoind must not be needed to complete the task
+    /// in case there is an issue with bitcoind and the user wants to regain control over their wallet
+    pub fn wif(&self) -> String {
+        self.private_key.to_wif()
     }
 
     fn gen_name(private_key: PrivateKey) -> String {
