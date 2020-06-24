@@ -22,9 +22,8 @@ struct DaiBitcoinOrder {
 
 /// Allow to know the worth of self in a different asset using
 /// The given conversion rate.
-/// MAX_PRECISION_EXP is the maximum precision allowed (number of digits after
-/// the comma) for the rate passed in. This is to ensure that no precision is loss
-/// or truncation done when doing the conversion.
+/// Truncation may be done during the conversion to allow a result in the smallest
+/// supported unit of `Asset`.
 pub trait WorthIn<Asset> {
     fn worth_in(&self, rate: Rate) -> anyhow::Result<Asset>;
 }
