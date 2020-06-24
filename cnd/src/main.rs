@@ -147,7 +147,7 @@ fn main() -> anyhow::Result<()> {
     let hbit_states = Arc::new(hbit::States::default());
 
     let storage = Storage::new(
-        database.clone(),
+        database,
         seed,
         herc20_states.clone(),
         halbit_states.clone(),
@@ -167,9 +167,6 @@ fn main() -> anyhow::Result<()> {
     let swarm = Swarm::new(
         &settings,
         seed,
-        Arc::clone(&bitcoin_connector),
-        Arc::clone(&ethereum_connector),
-        &database,
         runtime.handle().clone(),
         storage.clone(),
         protocol_spawner.clone(),
