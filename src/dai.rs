@@ -1,6 +1,5 @@
 use crate::bitcoin::{self, SATS_IN_BITCOIN_EXP};
 use crate::float_maths::{divide_pow_ten_trunc, multiply_pow_ten, truncate};
-use crate::publish::WorthIn;
 use crate::rate::Rate;
 use conquer_once::Lazy;
 use num::{pow::Pow, BigUint, ToPrimitive};
@@ -12,6 +11,14 @@ pub static DAI_DEC: Lazy<BigUint> = Lazy::new(|| BigUint::from(10u16).pow(ATTOS_
 pub struct Amount(BigUint);
 
 impl Amount {
+    // The rate input is for dai to bitcoin but we applied it to attodai so we need to:
+    // - divide to get dai (18)
+    // - divide to adjust for rate (9)
+    // - multiply to get satoshis (8)
+    // = - 19
+    const ADJUSTEMENT_EXP: i32 =
+        SATS_IN_BITCOIN_EXP as i32 - ATTOS_IN_DAI_EXP as i32 - Rate::PRECISION as i32;
+
     /// Rounds the value received to a 9 digits mantissa.
     pub fn from_dai_trunc(dai: f64) -> anyhow::Result<Self> {
         if dai.is_sign_negative() {
@@ -36,6 +43,23 @@ impl Amount {
     pub fn as_atto(&self) -> BigUint {
         self.0.clone()
     }
+
+    /// Allow to know the worth of self in bitcoin asset using the given conversion rate.
+    /// Truncation may be done during the conversion to allow a result in satoshi
+    pub fn worth_in(&self, dai_to_btc_rate: Rate) -> anyhow::Result<bitcoin::Amount> {
+        // Get the integer part of the rate
+        let uint_rate = dai_to_btc_rate.integer();
+
+        // Apply the rate
+        let worth = uint_rate * self.as_atto();
+
+        let inv_exp = Self::ADJUSTEMENT_EXP.abs() as usize;
+        let sats = divide_pow_ten_trunc(worth, inv_exp)
+            .to_u64()
+            .ok_or_else(|| anyhow::anyhow!("Result is unexpectedly large"))?;
+
+        Ok(bitcoin::Amount::from_sat(sats))
+    }
 }
 
 impl std::fmt::Debug for Amount {
@@ -47,31 +71,6 @@ impl std::fmt::Debug for Amount {
 impl std::fmt::Display for Amount {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
-    }
-}
-
-// The rate input is for dai to bitcoin but we applied it to attodai so we need to:
-// - divide to get dai (18)
-// - divide to adjust for rate (9)
-// - multiply to get satoshis (8)
-// = - 19
-const ADJUSTEMENT_EXP: i32 =
-    SATS_IN_BITCOIN_EXP as i32 - ATTOS_IN_DAI_EXP as i32 - Rate::PRECISION as i32;
-
-impl WorthIn<crate::bitcoin::Amount> for Amount {
-    fn worth_in(&self, dai_to_btc_rate: Rate) -> anyhow::Result<bitcoin::Amount> {
-        // Get the integer part of the rate
-        let uint_rate = dai_to_btc_rate.integer();
-
-        // Apply the rate
-        let worth = uint_rate * self.as_atto();
-
-        let inv_exp = ADJUSTEMENT_EXP.abs() as usize;
-        let sats = divide_pow_ten_trunc(worth, inv_exp)
-            .to_u64()
-            .ok_or_else(|| anyhow::anyhow!("Result is unexpectedly large"))?;
-
-        Ok(bitcoin::Amount::from_sat(sats))
     }
 }
 

@@ -20,14 +20,6 @@ struct DaiBitcoinOrder {
     pub sell_amount: bitcoin::Amount,
 }
 
-/// Allow to know the worth of self in a different asset using
-/// The given conversion rate.
-/// Truncation may be done during the conversion to allow a result in the smallest
-/// supported unit of `Asset`.
-pub trait WorthIn<Asset> {
-    fn worth_in(&self, rate: Rate) -> anyhow::Result<Asset>;
-}
-
 /// The maker creates an order that defines how much he wants to buy for the amount he is selling.
 /// order's buy amount = what the maker wants from a taker
 /// order's sell amount = what the maker is offering to a taker
@@ -60,7 +52,7 @@ where
 
     let rate = spread.apply(mid_market_rate)?;
 
-    let buy_amount = sell_amount.worth_in(rate).unwrap();
+    let buy_amount = sell_amount.worth_in(rate);
 
     Ok(DaiBitcoinOrder {
         sell_amount,
