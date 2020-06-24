@@ -12,13 +12,9 @@ pub struct Rate(u64);
 
 impl Rate {
     pub const PRECISION: u16 = 9;
-    const MAX_RATE: u64 = (u64::MAX / 10) ^ 9;
 
     /// integer = rate * 10ePRECISION
     pub fn new(integer: u64) -> anyhow::Result<Self> {
-        if integer > Self::MAX_RATE {
-            bail!("Rate is larger than supported");
-        }
         Ok(Rate(integer))
     }
 
