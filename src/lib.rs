@@ -13,15 +13,21 @@
 #![allow(dead_code)] // To be removed further down the line
 #![forbid(unsafe_code)]
 
+use conquer_once::Lazy;
+
+pub mod bitcoin;
 pub mod bitcoin_wallet;
 pub mod bitcoind;
+pub mod dai;
+pub mod float_maths;
 pub mod jsonrpc;
+pub mod ongoing_swaps;
+pub mod publish;
+pub mod rate;
 pub mod swap;
 
-lazy_static::lazy_static! {
-    pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =
-        ::bitcoin::secp256k1::Secp256k1::new();
-}
+pub static SECP: Lazy<::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All>> =
+    Lazy::new(::bitcoin::secp256k1::Secp256k1::new);
 
 #[cfg(all(test, feature = "test-docker"))]
 pub mod test_harness;
