@@ -19,7 +19,7 @@ impl Rate {
     }
 
     /// integer = rate * 10ePRECISION
-    pub fn integer(&self) -> BigUint {
+    pub fn integer(self) -> BigUint {
         BigUint::from(self.0)
     }
 }
@@ -83,7 +83,7 @@ impl Spread {
         Ok(Spread(permyriad))
     }
 
-    pub fn apply(&self, rate: Rate) -> anyhow::Result<Rate> {
+    pub fn apply(self, rate: Rate) -> anyhow::Result<Rate> {
         let ten_thousand = BigUint::from(10_000u16);
         let integer = rate.integer() * (ten_thousand.clone() + self.0);
         // Now divide by 10e4 because of the spread
@@ -153,7 +153,7 @@ mod tests {
     #[test]
     fn apply_spread_zero_doesnt_change_rate() {
         let spread = Spread::new(0).unwrap();
-        let rate = Rate::try_from(123456.789).unwrap();
+        let rate = Rate::try_from(123_456.789).unwrap();
         let res = spread.apply(rate).unwrap();
         assert_eq!(rate, res);
     }
