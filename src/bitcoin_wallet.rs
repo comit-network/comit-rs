@@ -1,31 +1,12 @@
 use crate::bitcoind;
 use crate::bitcoind::WalletInfoResponse;
+use crate::seed::Seed;
 use ::bitcoin::hash_types::PubkeyHash;
 use ::bitcoin::hashes::Hash;
-use ::bitcoin::secp256k1;
-use ::bitcoin::secp256k1::constants::SECRET_KEY_SIZE;
 use ::bitcoin::Address;
 use ::bitcoin::Network;
 use bitcoin::{Amount, PrivateKey};
-use rand::prelude::*;
 use reqwest::Url;
-
-// TODO: Go in its own module
-#[derive(Debug, Clone)]
-struct Seed([u8; SECRET_KEY_SIZE]);
-
-impl Seed {
-    pub fn new() -> Self {
-        let mut bytes = [0u8; SECRET_KEY_SIZE];
-
-        rand::thread_rng().fill_bytes(&mut bytes);
-        Seed(bytes)
-    }
-
-    pub fn secret_key(&self) -> anyhow::Result<secp256k1::SecretKey> {
-        Ok(secp256k1::SecretKey::from_slice(&self.0)?)
-    }
-}
 
 struct Wallet {
     /// The wallet is named `nectar_x` with `x` being the first 4 byte of the public key hash
@@ -113,16 +94,6 @@ impl Wallet {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn generate_random_seed() {
-        let _seed = Seed::new();
-    }
-}
-
 #[cfg(all(test, feature = "test-docker"))]
 mod docker_tests {
     use super::*;
@@ -136,7 +107,7 @@ mod docker_tests {
 
         blockchain.init().await.unwrap();
 
-        let seed = Seed::new();
+        let seed = Seed::default();
         let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).unwrap();
         wallet.init().await.unwrap();
 
@@ -150,7 +121,7 @@ mod docker_tests {
 
         blockchain.init().await.unwrap();
 
-        let seed = Seed::new();
+        let seed = Seed::default();
         let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).unwrap();
         wallet.init().await.unwrap();
 
@@ -164,10 +135,9 @@ mod docker_tests {
 
         blockchain.init().await.unwrap();
 
-        let seed = Seed::new();
+        let seed = Seed::default();
         {
-            let wallet =
-                Wallet::new(seed.clone(), blockchain.node_url.clone(), Network::Regtest).unwrap();
+            let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).unwrap();
             wallet.init().await.unwrap();
 
             let _address = wallet.new_address().await.unwrap();
