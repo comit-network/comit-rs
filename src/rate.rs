@@ -1,4 +1,4 @@
-use anyhow::{bail, Context};
+use anyhow::Context;
 use num::{BigUint, Integer, ToPrimitive};
 use std::convert::TryFrom;
 use std::iter::FromIterator;
@@ -51,10 +51,9 @@ impl TryFrom<f64> for Rate {
                         "Precision of the rate is too high (max is {}).",
                         Self::PRECISION
                     ))
-                } else {
-                    rate.truncate(rate.len() - 1); // Removes the trailing decimal point
-                    mantissa
                 }
+                rate.truncate(rate.len() - 1); // Removes the trailing decimal point
+                mantissa
             }
         };
 
