@@ -614,7 +614,6 @@ mod tests {
         asset::{self, ethereum::FromWei},
         network::{swap_digest, test_swarm, DialInformation},
     };
-    use digest::Digest;
     use futures::future;
     use std::str::FromStr;
 
@@ -646,14 +645,7 @@ mod tests {
             bitcoin_identity: None,
         };
 
-        let digest = swap_digest::Herc20Halbit {
-            ethereum_absolute_expiry: 12345.into(),
-            erc20_amount: asset::Erc20Quantity::from_wei(9_001_000_000_000_000_000_000u128),
-            token_contract: identity::Ethereum::random(),
-            lightning_cltv_expiry: 12345.into(),
-            lightning_amount: asset::Bitcoin::from_sat(1_000_000_000),
-        }
-        .digest();
+        let digest = swap_digest::herc20_halbit(DummySwap);
 
         let want_alice_to_learn_from_bob = RemoteData {
             // This is not exactly 'learned' but it is in the behaviour out event for both roles.
@@ -702,5 +694,19 @@ mod tests {
         let bob_learned = bob_event.remote_data;
         assert_eq!(bob_learned, want_bob_to_learn_from_alice);
         assert_eq!(alice_learned, want_alice_to_learn_from_bob);
+    }
+
+    struct DummySwap;
+
+    impl From<DummySwap> for swap_digest::Herc20Halbit {
+        fn from(_: DummySwap) -> Self {
+            swap_digest::Herc20Halbit {
+                ethereum_absolute_expiry: 12345.into(),
+                erc20_amount: asset::Erc20Quantity::from_wei(9_001_000_000_000_000_000_000u128),
+                token_contract: identity::Ethereum::random(),
+                lightning_cltv_expiry: 12345.into(),
+                lightning_amount: asset::Bitcoin::from_sat(1_000_000_000),
+            }
+        }
     }
 }

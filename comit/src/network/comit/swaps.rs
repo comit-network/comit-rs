@@ -322,6 +322,7 @@ mod tests {
             lightning_amount: asset::Bitcoin::from_sat(1_000_000_000),
         }
         .digest()
+        .into()
     }
 
     // The same applies here as for digest() re property based testing.
