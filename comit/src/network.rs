@@ -16,6 +16,7 @@ pub use self::{
         announce::{behaviour::*, handler::*, protocol::*, *},
         *,
     },
+    swap_digest::SwapDigest,
 };
 
 #[derive(Clone, Debug, PartialEq)]
