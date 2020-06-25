@@ -28,15 +28,6 @@ lazy_static::lazy_static! {
     static ref TRANSFER_LOG_MSG: Hash = blockchain_contracts::ethereum::rfc003::ERC20_TRANSFER.parse().expect("to be valid hex");
 }
 
-/// Data required to create a swap that involves an ERC20 token.
-#[derive(Clone, Debug, PartialEq)]
-pub struct CreatedSwap {
-    pub asset: asset::Erc20,
-    pub identity: identity::Ethereum,
-    pub chain_id: ChainId,
-    pub absolute_expiry: u32,
-}
-
 /// Represents the events in the herc20 protocol.
 #[derive(Debug, Clone, PartialEq, strum_macros::Display)]
 pub enum Event {

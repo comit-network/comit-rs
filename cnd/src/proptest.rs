@@ -148,7 +148,7 @@ pub mod asset {
 
 pub mod herc20 {
     use super::*;
-    use comit::herc20;
+    use crate::herc20;
 
     prop_compose! {
         pub fn created_swap()(
@@ -169,7 +169,7 @@ pub mod herc20 {
 
 pub mod halbit {
     use super::*;
-    use comit::halbit;
+    use crate::halbit;
 
     prop_compose! {
         pub fn created_swap()(
@@ -190,7 +190,7 @@ pub mod halbit {
 
 pub mod hbit {
     use super::*;
-    use comit::hbit;
+    use crate::hbit;
 
     prop_compose! {
         pub fn created_swap()(

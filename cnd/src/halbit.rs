@@ -1,6 +1,6 @@
 use crate::{
-    identity, state, state::Update, tracing_ext::InstrumentProtocol, LocalSwapId, Protocol,
-    RelativeTime, Role, Side,
+    asset, identity, ledger, state, state::Update, tracing_ext::InstrumentProtocol, LocalSwapId,
+    Protocol, RelativeTime, Role, Side,
 };
 use futures::TryStreamExt;
 use std::{
@@ -122,6 +122,16 @@ pub async fn new<C>(
     }
 
     tracing::info!("swap finished");
+}
+
+/// Data required to create a swap that involves bitcoin on the lightning
+/// network.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CreatedSwap {
+    pub asset: asset::Bitcoin,
+    pub identity: identity::Lightning,
+    pub network: ledger::Bitcoin,
+    pub cltv_expiry: u32,
 }
 
 /// Represents states that an invoice can be in.
