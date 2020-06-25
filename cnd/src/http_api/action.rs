@@ -51,7 +51,7 @@ pub enum ActionResponseBody {
         min_median_block_time: Option<Timestamp>,
     },
     EthereumDeployContract {
-        data: crate::ethereum::Bytes,
+        data: EthereumData,
         amount: asset::Ether,
         gas_limit: crate::ethereum::U256,
         chain_id: ChainId,
@@ -59,7 +59,7 @@ pub enum ActionResponseBody {
     EthereumCallContract {
         contract_address: identity::Ethereum,
         #[serde(skip_serializing_if = "Option::is_none")]
-        data: Option<crate::ethereum::Bytes>,
+        data: Option<EthereumData>,
         gas_limit: crate::ethereum::U256,
         chain_id: ChainId,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -90,6 +90,23 @@ pub enum ActionResponseBody {
         self_public_key: identity::Lightning,
     },
     None,
+}
+
+/// A wrapper type for serializing bytes to hex with a `0x` prefix.
+///
+/// In the Ethereum ecosystem (i.e. Web3-based clients), the `data` field of a
+/// transaction is serialized to hex with a `0x` prefix when represented as a
+/// string.
+/// We want our API to be easily interoperable with such clients, hence we
+/// serialize this data already in that format so consumers of our API can
+/// simply pass it along to a Web3-based client.
+#[derive(Clone, Debug, Serialize)]
+pub struct EthereumData(#[serde(with = "serde_hex::SerHexSeq::<serde_hex::StrictPfx>")] Vec<u8>);
+
+impl<T: Into<Vec<u8>>> From<T> for EthereumData {
+    fn from(data: T) -> Self {
+        EthereumData(data.into())
+    }
 }
 
 impl ActionResponseBody {
@@ -196,7 +213,7 @@ impl From<ethereum::DeployContract> for ActionResponseBody {
         } = action;
 
         ActionResponseBody::EthereumDeployContract {
-            data,
+            data: EthereumData(data),
             amount,
             gas_limit: gas_limit.into(),
             chain_id,
@@ -258,7 +275,7 @@ impl From<ethereum::CallContract> for ActionResponseBody {
 
         ActionResponseBody::EthereumCallContract {
             contract_address: to,
-            data,
+            data: data.map(EthereumData),
             gas_limit: gas_limit.into(),
             chain_id,
             min_block_timestamp,
@@ -430,7 +447,9 @@ impl IntoResponsePayload for Infallible {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{bitcoin::Address as BitcoinAddress, ethereum::U256, identity};
+    use crate::{
+        asset::ethereum::FromWei, bitcoin::Address as BitcoinAddress, ethereum::U256, identity,
+    };
     use std::str::FromStr;
 
     #[test]
@@ -471,6 +490,23 @@ mod test {
         assert_eq!(
             serialized,
             r#"{"type":"ethereum-call-contract","payload":{"contract_address":"0x0a81e8be41b21f651a71aab1a85c6813b8bbccf8","gas_limit":"0x1","chain_id":3}}"#
+        );
+    }
+
+    #[test]
+    fn deploy_contract_serializes_correctly_to_json() {
+        let response_body = ActionResponseBody::EthereumDeployContract {
+            data: EthereumData::from(vec![0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0x10]),
+            amount: asset::Ether::from_wei(10000u32),
+            gas_limit: U256::from(1),
+            chain_id: ChainId::from(3),
+        };
+
+        let serialized = serde_json::to_string(&response_body).unwrap();
+
+        assert_eq!(
+            serialized,
+            r#"{"type":"ethereum-deploy-contract","payload":{"data":"0x01020304050607080910","amount":"10000","gas_limit":"0x1","chain_id":3}}"#
         );
     }
 
