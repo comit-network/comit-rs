@@ -1,17 +1,7 @@
 pull_request_rules:
-  - name: comment on broken dependabot PRs, asking for help
-    conditions:
-      - "author=dependabot-preview[bot]"
-      - "status-failure=build (ubuntu-latest)"
-    actions:
-      comment:
-        message: "The build on this dependency update is broken and needs attention."
-      request_reviews:
-        teams:
-          - "@comit-network/rust-devs"
   - name: instruct bors to merge dependabot PRs with passing tests
     conditions:
-      - "author=dependabot-preview[bot]"
+      - "author=dependabot[bot]"
       - "status-success=static_analysis"
       - "status-success=build (ubuntu-latest)"
       - "status-success=license/cla"
