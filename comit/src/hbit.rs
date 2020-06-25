@@ -9,7 +9,7 @@ use crate::{
         bitcoin::{watch_for_created_outpoint, watch_for_spent_outpoint},
         BlockByHash, LatestBlock,
     },
-    htlc_location, identity, ledger,
+    htlc_location, identity,
     timestamp::Timestamp,
     transaction, Secret, SecretHash,
 };
@@ -27,15 +27,6 @@ use futures::{
 use genawaiter::sync::{Co, Gen};
 use std::cmp::Ordering;
 use tracing_futures::Instrument;
-
-/// Data required to create a swap that involves Bitcoin.
-#[derive(Clone, Debug)]
-pub struct CreatedSwap {
-    pub amount: asset::Bitcoin,
-    pub final_identity: Address,
-    pub network: ledger::Bitcoin,
-    pub absolute_expiry: u32,
-}
 
 /// Represents the events in the hbit protocol.
 #[derive(Debug, Clone, PartialEq, strum_macros::Display)]

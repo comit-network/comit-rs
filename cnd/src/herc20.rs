@@ -15,6 +15,7 @@ use std::{
 };
 use tokio::sync::Mutex;
 
+use crate::ethereum::ChainId;
 pub use comit::herc20::*;
 
 /// Creates a new instance of the herc20 protocol, annotated with tracing spans
@@ -43,6 +44,15 @@ pub async fn new<C>(
     }
 
     tracing::info!("swap finished");
+}
+
+/// Data required to create a swap that involves an ERC20 token.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CreatedSwap {
+    pub asset: asset::Erc20,
+    pub identity: identity::Ethereum,
+    pub chain_id: ChainId,
+    pub absolute_expiry: u32,
 }
 
 #[derive(Default, Debug)]

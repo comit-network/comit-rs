@@ -1,4 +1,4 @@
-use crate::{asset, identity, ledger, RelativeTime, Secret, SecretHash};
+use crate::{asset, identity, RelativeTime, Secret, SecretHash};
 use bitcoin::hashes::core::fmt::Formatter;
 use futures::{future, future::Either, Stream, TryFutureExt};
 use genawaiter::sync::Gen;
@@ -48,16 +48,6 @@ where
             }
         }
     })
-}
-
-/// Data required to create a swap that involves bitcoin on the lightning
-/// network.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct CreatedSwap {
-    pub asset: asset::Bitcoin,
-    pub identity: identity::Lightning,
-    pub network: ledger::Bitcoin,
-    pub cltv_expiry: u32,
 }
 
 #[derive(Copy, Clone, Debug)]
