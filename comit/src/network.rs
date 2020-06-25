@@ -2,7 +2,7 @@ pub mod comit;
 pub mod oneshot_behaviour;
 pub mod oneshot_protocol;
 pub mod protocols;
-mod swap_digest;
+pub mod swap_digest;
 #[cfg(test)]
 pub mod test_swarm;
 
@@ -16,7 +16,6 @@ pub use self::{
         announce::{behaviour::*, handler::*, protocol::*, *},
         *,
     },
-    swap_digest::*,
 };
 
 #[derive(Clone, Debug, PartialEq)]

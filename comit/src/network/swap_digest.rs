@@ -1,6 +1,22 @@
 use crate::{asset, identity, network::SwapDigest, RelativeTime, Timestamp};
 use digest::Digest;
 
+pub fn herc20_halbit<S: Into<Herc20Halbit>>(swap: S) -> SwapDigest {
+    swap.into().digest()
+}
+
+pub fn halbit_herc20<S: Into<HalbitHerc20>>(swap: S) -> SwapDigest {
+    swap.into().digest()
+}
+
+pub fn herc20_hbit<S: Into<Herc20Hbit>>(swap: S) -> SwapDigest {
+    swap.into().digest()
+}
+
+pub fn hbit_herc20<S: Into<HbitHerc20>>(swap: S) -> SwapDigest {
+    swap.into().digest()
+}
+
 /// This represents the information that we use to create a swap digest for
 /// herc20 <-> halbit swaps.
 #[derive(Clone, Digest, Debug)]

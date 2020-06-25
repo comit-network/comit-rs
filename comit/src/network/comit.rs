@@ -612,7 +612,7 @@ mod tests {
     use super::*;
     use crate::{
         asset::{self, ethereum::FromWei},
-        network::{test_swarm, DialInformation, Herc20Halbit},
+        network::{swap_digest, test_swarm, DialInformation},
     };
     use digest::Digest;
     use futures::future;
@@ -646,7 +646,7 @@ mod tests {
             bitcoin_identity: None,
         };
 
-        let digest = Herc20Halbit {
+        let digest = swap_digest::Herc20Halbit {
             ethereum_absolute_expiry: 12345.into(),
             erc20_amount: asset::Erc20Quantity::from_wei(9_001_000_000_000_000_000_000u128),
             token_contract: identity::Ethereum::random(),

@@ -4,11 +4,10 @@ pub mod bob;
 use crate::{
     halbit, herc20,
     http_api::{problem, Halbit, Herc20, PostBody},
-    network::{Herc20Halbit, Identities},
+    network::{swap_digest, Identities},
     storage::Save,
     Facade, LocalSwapId,
 };
-use digest::Digest;
 use serde::Deserialize;
 use warp::{http::StatusCode, Rejection, Reply};
 
@@ -33,7 +32,7 @@ pub async fn post_swap(body: serde_json::Value, facade: Facade) -> Result<impl R
         lightning_identity: Some(body.beta.identity),
         bitcoin_identity: None,
     };
-    let digest = Herc20Halbit::from(body.clone()).digest();
+    let digest = swap_digest::herc20_halbit(body.clone());
     let peer = body.peer.into();
     let role = body.role.0;
 
@@ -50,7 +49,7 @@ pub async fn post_swap(body: serde_json::Value, facade: Facade) -> Result<impl R
         .map_err(warp::reject::custom)
 }
 
-impl From<PostBody<Herc20, Halbit>> for Herc20Halbit {
+impl From<PostBody<Herc20, Halbit>> for swap_digest::Herc20Halbit {
     fn from(body: PostBody<Herc20, Halbit>) -> Self {
         Self {
             ethereum_absolute_expiry: body.alpha.absolute_expiry.into(),
