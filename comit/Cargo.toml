@@ -41,6 +41,7 @@ uuid = { version = "0.8", features = ["serde", "v4"] }
 
 [dev-dependencies]
 bitcoincore-rpc = "0.11.0"
+proptest = "0.10.0"
 spectral = { version = "0.6", default-features = false }
 testcontainers = "0.9"
 tokio = { version = "0.2.21", features = ["macros"] }
