@@ -1,6 +1,6 @@
 use crate::{asset, identity, RelativeTime, Timestamp};
 use digest::Digest;
-use libp2p::multihash::{self, Multihash};
+use libp2p::multihash::Multihash;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 
@@ -115,7 +115,7 @@ impl<'de> Deserialize<'de> for SwapDigest {
     {
         let hex = String::deserialize(deserializer)?;
         let bytes = hex::decode(hex).map_err(D::Error::custom)?;
-        let multihash = multihash::Multihash::from_bytes(bytes).map_err(D::Error::custom)?;
+        let multihash = Multihash::from_bytes(bytes).map_err(D::Error::custom)?;
 
         Ok(SwapDigest(multihash))
     }
@@ -127,7 +127,7 @@ pub struct Sha3_256(Multihash);
 
 impl digest::Hash for Sha3_256 {
     fn hash(bytes: &[u8]) -> Self {
-        Self(multihash::Sha3_256::digest(bytes))
+        Self(libp2p::multihash::Sha3_256::digest(bytes))
     }
 }
 
