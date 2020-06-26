@@ -1,18 +1,3 @@
-//! The maker creates an order that defines how much he wants to buy for the amount he is selling.
-//! order's buy amount = what the maker wants from a taker
-//! order's sell amount = what the maker is offering to a taker
-//!
-//! mid_market_rate is set as 1 sell => x buy, where x is the mid_market_rate
-//!
-//! BTC-DAI: When selling 1 BTC we should buy 9000 DAI, mid_market_rate is 1:9000
-//! Given BTC:DAI and the rate of 1:9000
-//!     selling 1.0 BTC with spread_pc of 3% => buy 9270 DAI
-//!     selling 0.5 BTC with spread_pc of 3% => buy 4635 DAI
-//! Given DAI:BTC and a rate of 1:0.0001
-//!     selling 10000 DAI with spread_pc of 3% => buy 1.03 BTC
-//!     selling 1000 DAI with spread_pc of 3% => buy 0.103 DAI
-//!
-
 use crate::bitcoin;
 use crate::dai;
 use crate::{Rate, Spread};
@@ -43,7 +28,20 @@ impl BtcDaiOrder<Buy> {
         W: Balance<Amount = dai::Amount> + Fees<Amount = dai::Amount>,
         B: LockedFunds<Amount = dai::Amount>,
     {
-        todo!();
+        // TODO: Uncomment and implement missing features
+
+        // let quote = min(wallet.balance() - book.locked_funds(), max_sell_amount) - wallet.fees();
+
+        // let rate = todo!("Spread::apply() doesn't support negative spreads");
+        // let base = todo!("quote.worth_in(mid_market_rate.inv())?");
+
+        // Ok(BtcDaiOrder {
+        //     position: Buy,
+        //     base,
+        //     quote,
+        // })
+
+        todo!()
     }
 }
 
