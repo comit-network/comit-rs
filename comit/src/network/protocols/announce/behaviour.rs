@@ -5,7 +5,7 @@ use crate::{
             handler::{Handler, HandlerEvent},
             protocol::OutboundConfig,
         },
-        protocols::announce::ReplySubstream,
+        protocols::announce::protocol::Confirmed,
         SwapDigest,
     },
     DialInformation, SharedSwapId,
@@ -13,14 +13,12 @@ use crate::{
 use libp2p::{
     core::{connection::ConnectionId, ConnectedPoint, Multiaddr, PeerId},
     swarm::{
-        NegotiatedSubstream, NetworkBehaviour, NetworkBehaviourAction, NotifyHandler,
-        PollParameters, ProtocolsHandler,
+        NetworkBehaviour, NetworkBehaviourAction, NotifyHandler, PollParameters, ProtocolsHandler,
     },
 };
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
     task::{Context, Poll},
-    time::{Duration, Instant},
 };
 
 /// Network behaviour that implements the "announce" protocol.
@@ -42,9 +40,8 @@ pub struct Announce {
     events: VecDeque<NetworkBehaviourAction<OutboundConfig, BehaviourOutEvent>>,
     /// Stores connection state for nodes we connect to.
     connections: HashMap<PeerId, ConnectionState>,
-    /* sent_announcements: HashMap<SwapDigest, Instant>,
-     *
-     * awaiting_announcements: HashMap<SwapDigest, Instant>, */
+
+    awaiting_announcements: HashSet<SwapDigest>,
 }
 
 impl Announce {
@@ -109,7 +106,9 @@ impl Announce {
     ///
     /// This starts the announce protocol from Bob's perspective. In other
     /// words, he is going to wait for an announce message.
-    pub fn await_announcement(&mut self, swap: SwapDigest, from: PeerId) {}
+    pub fn await_announcement(&mut self, swap: SwapDigest, _from: PeerId) {
+        self.awaiting_announcements.insert(swap);
+    }
 
     /// Peer id and address information for connected peer nodes.
     pub fn connected_peers(&mut self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
@@ -237,31 +236,40 @@ impl NetworkBehaviour for Announce {
         }
     }
 
-    fn inject_event(&mut self, peer_id: PeerId, _: ConnectionId, event: HandlerEvent) {
+    fn inject_event(&mut self, peer: PeerId, _: ConnectionId, event: HandlerEvent) {
         match event {
-            HandlerEvent::ReceivedConfirmation(confirmed) => {
-                // self.events.push_back(NetworkBehaviourAction::GenerateEvent(
-                //     BehaviourOutEvent::ReceivedConfirmation {
-                //         peer: peer_id,
-                //         swap_id: confirmed.swap_id,
-                //         swap_digest: confirmed.swap_digest,
-                //     },
-                // ));
+            HandlerEvent::ReceivedConfirmation(Confirmed {
+                swap_id,
+                swap_digest,
+            }) => {
+                self.events.push_back(NetworkBehaviourAction::GenerateEvent(
+                    BehaviourOutEvent::Confirmed {
+                        peer,
+                        swap_id,
+                        swap_digest,
+                    },
+                ));
             }
             HandlerEvent::AwaitingConfirmation(sender) => {
-                // self.events.push_back(NetworkBehaviourAction::GenerateEvent(
-                //     BehaviourOutEvent::ReceivedAnnouncement {
-                //         peer: peer_id,
-                //         io: sender,
-                //     },
-                // ));
+                let swap_digest = sender.swap_digest.clone();
+
+                if self.awaiting_announcements.contains(&swap_digest) {
+                    let swap_id = SharedSwapId::default();
+
+                    tokio::spawn(sender.send(swap_id));
+
+                    self.events.push_back(NetworkBehaviourAction::GenerateEvent(
+                        BehaviourOutEvent::Confirmed {
+                            peer,
+                            swap_id,
+                            swap_digest,
+                        },
+                    ))
+                }
             }
             HandlerEvent::Error(error) => {
                 self.events.push_back(NetworkBehaviourAction::GenerateEvent(
-                    BehaviourOutEvent::Error {
-                        peer: peer_id,
-                        error,
-                    },
+                    BehaviourOutEvent::Error { peer, error },
                 ));
             }
         }
@@ -325,6 +333,7 @@ mod tests {
     use super::*;
     use crate::network::test_swarm;
     use futures::future;
+    use std::time::Duration;
 
     #[tokio::test]
     async fn given_bob_awaits_an_announcements_when_alice_sends_once_then_he_replies_with_shared_swap_id(
