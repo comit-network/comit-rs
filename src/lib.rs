@@ -21,6 +21,7 @@ pub mod bitcoind;
 pub mod dai;
 pub mod float_maths;
 pub mod jsonrpc;
+pub mod mid_market_rate;
 pub mod ongoing_swaps;
 pub mod publish;
 pub mod rate;
