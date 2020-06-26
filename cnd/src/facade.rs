@@ -1,11 +1,12 @@
 use crate::{
     btsieve::LatestBlock,
     connectors::Connectors,
-    network::{ComitPeers, DialInformation, Identities, ListenAddresses, LocalPeerId, Swarm},
+    network::{
+        ComitPeers, DialInformation, Identities, ListenAddresses, LocalPeerId, SwapDigest, Swarm,
+    },
     storage::{Load, LoadAll, Storage},
     LocalSwapId, Role, Save, Timestamp,
 };
-use ::comit::network::protocols::announce::SwapDigest;
 use comit::bitcoin;
 use libp2p::{Multiaddr, PeerId};
 
