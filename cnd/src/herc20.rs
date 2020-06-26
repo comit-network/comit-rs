@@ -2,8 +2,8 @@ use crate::{
     asset,
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
     ethereum::{Block, Hash},
-    htlc_location, identity,
-    swap_protocols::{state, state::Update},
+    htlc_location, identity, state,
+    state::Update,
     tracing_ext::InstrumentProtocol,
     transaction, LocalSwapId, Protocol, Role, Secret, Side,
 };

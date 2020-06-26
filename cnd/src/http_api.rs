@@ -20,7 +20,7 @@ pub use self::{
     problem::*,
     protocol::{AliceSwap, BobSwap},
 };
-use crate::{storage::CreatedSwap, swap_protocols::actions::lnd::Chain};
+use crate::{actions::lnd::Chain, storage::CreatedSwap};
 use chrono::Utc;
 
 pub const PATH: &str = "swaps";
