@@ -363,12 +363,10 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<execution_parameters::Behaviour
 
 // It is already split in smaller functions
 #[allow(clippy::cognitive_complexity)]
-impl libp2p::swarm::NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent>
-    for ComitNode
-{
-    fn inject_event(&mut self, event: announce::behaviour::BehaviourOutEvent) {
+impl libp2p::swarm::NetworkBehaviourEventProcess<announce::BehaviourOutEvent> for ComitNode {
+    fn inject_event(&mut self, event: announce::BehaviourOutEvent) {
         match event {
-            announce::behaviour::BehaviourOutEvent::ReceivedAnnouncement { peer, io } => {
+            announce::BehaviourOutEvent::ReceivedAnnouncement { peer, io } => {
                 tracing::info!("Peer {} announced a swap ({})", peer, io.swap_digest);
                 let span =
                     tracing::trace_span!("swap", digest = format_args!("{}", io.swap_digest));
@@ -408,7 +406,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<announce::behaviour::BehaviourO
                     ),
                 }
             }
-            announce::behaviour::BehaviourOutEvent::ReceivedConfirmation {
+            announce::BehaviourOutEvent::ReceivedConfirmation {
                 peer,
                 swap_digest,
                 swap_id: shared_swap_id,
@@ -429,7 +427,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<announce::behaviour::BehaviourO
                     );
                 }
             }
-            announce::behaviour::BehaviourOutEvent::Error { peer, error } => {
+            announce::BehaviourOutEvent::Error { peer, error } => {
                 tracing::warn!(
                     "failed to complete announce protocol with {} because {:?}",
                     peer,

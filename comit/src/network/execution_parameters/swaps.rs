@@ -21,7 +21,7 @@ pub enum Error {
 /// We use a type parameter for the substream type so we can write unit tests
 /// without creating actual substreams.
 #[derive(Debug)]
-pub struct Swaps<T = ReplySubstream<NegotiatedSubstream>> {
+pub struct Swaps<T = announce::ReplySubstream<NegotiatedSubstream>> {
     /// In role of Alice; swaps exist in here once a swap is created by Alice
     /// (and up until an announce confirmation is received from Bob).
     pending_confirmation: HashMap<SwapDigest, LocalSwapId>,
@@ -272,22 +272,7 @@ impl<T> Swaps<T> {
     }
 }
 
-impl Default for Swaps<ReplySubstream<NegotiatedSubstream>> {
-    fn default() -> Self {
-        Swaps {
-            pending_confirmation: Default::default(),
-            pending_announcement: Default::default(),
-            pending_creation: Default::default(),
-            swaps: Default::default(),
-            roles: Default::default(),
-            swap_ids: Default::default(),
-            timestamps: Default::default(),
-        }
-    }
-}
-
-#[cfg(test)]
-impl Default for Swaps<()> {
+impl<T> Default for Swaps<T> {
     fn default() -> Self {
         Swaps {
             pending_confirmation: Default::default(),

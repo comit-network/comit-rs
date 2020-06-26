@@ -59,7 +59,10 @@ struct CommunicationState {
 }
 
 impl ExecutionParameters {
-    pub fn confirm(shared_swap_id: SharedSwapId, io: ReplySubstream<NegotiatedSubstream>) {
+    pub fn confirm(
+        shared_swap_id: SharedSwapId,
+        io: announce::ReplySubstream<NegotiatedSubstream>,
+    ) {
         tokio::task::spawn(io.send(shared_swap_id));
     }
 

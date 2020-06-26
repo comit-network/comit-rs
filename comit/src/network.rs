@@ -12,10 +12,7 @@ use std::fmt;
 
 pub use self::{
     execution_parameters::*,
-    protocols::{
-        announce::{behaviour::*, handler::*, protocol::*, *},
-        *,
-    },
+    protocols::{announce::Announce, *},
     swap_digest::SwapDigest,
 };
 
