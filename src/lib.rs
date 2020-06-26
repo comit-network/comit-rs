@@ -28,6 +28,8 @@ pub mod rate;
 pub mod seed;
 pub mod swap;
 
+pub use rate::{Rate, Spread};
+
 pub static SECP: Lazy<::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All>> =
     Lazy::new(::bitcoin::secp256k1::Secp256k1::new);
 

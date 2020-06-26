@@ -1,8 +1,10 @@
+use crate::Rate;
 use chrono::{DateTime, Utc};
+use std::convert::TryInto;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct MidMarketRate {
-    value: f64,
+    value: Rate,
     timestamp: DateTime<Utc>,
 }
 
@@ -29,8 +31,9 @@ mod kraken {
             .json::<TickerResponse>()
             .await
             .map(|response| response.result.xbtdai)?;
+        let rate = ask_and_bid.try_into()?;
 
-        Ok(ask_and_bid.into())
+        Ok(rate)
     }
 
     #[derive(Clone, Copy, Debug, Deserialize)]
@@ -40,12 +43,17 @@ mod kraken {
         pub bid: f64,
     }
 
-    impl From<AskAndBid> for MidMarketRate {
-        fn from(AskAndBid { ask, bid }: AskAndBid) -> Self {
-            Self {
-                value: (bid + ask) / 2f64,
+    impl TryFrom<AskAndBid> for MidMarketRate {
+        type Error = anyhow::Error;
+
+        fn try_from(AskAndBid { ask, bid }: AskAndBid) -> anyhow::Result<Self> {
+            let value = (bid + ask) / 2f64;
+            let value = Rate::try_from(value).unwrap();
+
+            Ok(Self {
+                value,
                 timestamp: Utc::now(),
-            }
+            })
         }
     }
 
