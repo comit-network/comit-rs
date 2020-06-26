@@ -8,7 +8,7 @@ description = "Core components of the COMIT protocol"
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
-base64 = "0.12.2"
+base64 = "0.12.3"
 bitcoin = { version = "0.23.0", features = ["rand"] }
 blockchain_contracts = "0.3.2"
 chrono = { version = "0.4", features = ["serde"] }
