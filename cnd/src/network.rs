@@ -215,8 +215,7 @@ impl ComitNode {
         let data = LocalData::for_alice(secret_hash, identities);
 
         tracing::info!("Starting announcement for swap: {}", digest);
-        self.announce
-            .start_announce_protocol(digest.clone(), dial_info);
+        self.announce.announce_swap(digest.clone(), dial_info);
         self.execution_parameters
             .swaps
             .create_as_pending_confirmation(digest, local_swap_id, data)?;

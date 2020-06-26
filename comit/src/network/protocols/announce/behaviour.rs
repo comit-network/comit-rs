@@ -6,7 +6,7 @@ use crate::{
             protocol::OutboundConfig,
         },
         protocols::announce::ReplySubstream,
-        *,
+        SwapDigest,
     },
     DialInformation, SharedSwapId,
 };
@@ -20,54 +20,55 @@ use libp2p::{
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
     task::{Context, Poll},
+    time::{Duration, Instant},
 };
 
-/// Network behaviour that announces a swap to peer by sending a `swap_digest`
-/// and receives the `swap_id` back.
-#[derive(Debug)]
+/// Network behaviour that implements the "announce" protocol.
+///
+/// The announce protocol allows two nodes to confirm the expectations about an
+/// upcoming swap. In fact, Bob needs to confirm the swap through the announce
+/// protocol for any further action to happen. Bob's confirmed contains the
+/// `swap_id` which allows both parties to continue with the execution parameter
+/// exchange protocols.
+///
+/// To confirm the expectations about a swap, both nodes start the announce
+/// protocol with a `SwapDigest`. A `SwapDigest` is a fingerprint of all the
+/// data that is relevant to a given swap. If both nodes compute the same
+/// `SwapDigest` from the data they received from their users, all critical
+/// parameters of the swap match and the swap execution can safely start.
+#[derive(Debug, Default)]
 pub struct Announce {
     /// Pending events to be emitted when polled.
     events: VecDeque<NetworkBehaviourAction<OutboundConfig, BehaviourOutEvent>>,
     /// Stores connection state for nodes we connect to.
     connections: HashMap<PeerId, ConnectionState>,
-}
-
-impl Default for Announce {
-    fn default() -> Self {
-        Self {
-            events: VecDeque::new(),
-            connections: HashMap::new(),
-        }
-    }
+    /* sent_announcements: HashMap<SwapDigest, Instant>,
+     *
+     * awaiting_announcements: HashMap<SwapDigest, Instant>, */
 }
 
 impl Announce {
-    /// Start the announce protocol.
+    /// Alice to announce a swap to Bob.
     ///
-    /// This is the entry point for Alice when wishing to start the announce
-    /// protocol to announce a swap to Bob.  In libp2p parlance Alice is the
-    /// dialer and Bob is the listener, `dial_info` is what is used to dial Bob.
-    ///
-    /// # Arguments
-    ///
-    /// * `swap_digest` - The swap to announce.
-    /// * `dial_info` - The `PeerId` and address hint to dial to Bob's node.
-    pub fn start_announce_protocol(&mut self, swap_digest: SwapDigest, dial_info: DialInformation) {
-        tracing::info!("Announcing swap {} to {}", swap_digest, dial_info.peer_id);
+    /// This starts the announce protocol from Alice's perspective. In other
+    /// words, Alice is going to send an announce message to Bob and wait
+    /// for his confirmation.
+    pub fn announce_swap(&mut self, swap_to_announce: SwapDigest, peer: DialInformation) {
+        tracing::info!("Announcing swap {} to {}", swap_to_announce, peer.peer_id);
 
-        match self.connections.entry(dial_info.peer_id.clone()) {
+        match self.connections.entry(peer.peer_id.clone()) {
             Entry::Vacant(entry) => {
                 self.events.push_back(NetworkBehaviourAction::DialPeer {
-                    peer_id: dial_info.peer_id.clone(),
+                    peer_id: peer.peer_id.clone(),
                     condition: Default::default(),
                 });
 
                 let mut address_hints = VecDeque::new();
-                if let Some(address) = dial_info.address_hint {
+                if let Some(address) = peer.address_hint {
                     address_hints.push_back(address);
                 }
 
-                let pending_events = vec![OutboundConfig::new(swap_digest)];
+                let pending_events = vec![OutboundConfig::new(swap_to_announce)];
 
                 entry.insert(ConnectionState::Connecting {
                     pending_events,
@@ -82,8 +83,8 @@ impl Announce {
                         pending_events,
                         address_hints,
                     } => {
-                        pending_events.push(OutboundConfig::new(swap_digest));
-                        if let Some(address) = dial_info.address_hint {
+                        pending_events.push(OutboundConfig::new(swap_to_announce));
+                        if let Some(address) = peer.address_hint {
                             // We push to the front because we consider the new address to be the
                             // most likely one to succeed. The order of this queue is important
                             // when returning it from `addresses_of_peer()` because it will be tried
@@ -94,15 +95,21 @@ impl Announce {
                     ConnectionState::Connected { .. } => {
                         self.events
                             .push_back(NetworkBehaviourAction::NotifyHandler {
-                                peer_id: dial_info.peer_id.clone(),
+                                peer_id: peer.peer_id.clone(),
                                 handler: NotifyHandler::Any,
-                                event: OutboundConfig::new(swap_digest),
+                                event: OutboundConfig::new(swap_to_announce),
                             });
                     }
                 }
             }
         }
     }
+
+    /// Bob to await an announcement from Alice.
+    ///
+    /// This starts the announce protocol from Bob's perspective. In other
+    /// words, he is going to wait for an announce message.
+    pub fn await_announcement(&mut self, swap: SwapDigest, from: PeerId) {}
 
     /// Peer id and address information for connected peer nodes.
     pub fn connected_peers(&mut self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
@@ -233,21 +240,21 @@ impl NetworkBehaviour for Announce {
     fn inject_event(&mut self, peer_id: PeerId, _: ConnectionId, event: HandlerEvent) {
         match event {
             HandlerEvent::ReceivedConfirmation(confirmed) => {
-                self.events.push_back(NetworkBehaviourAction::GenerateEvent(
-                    BehaviourOutEvent::ReceivedConfirmation {
-                        peer: peer_id,
-                        swap_id: confirmed.swap_id,
-                        swap_digest: confirmed.swap_digest,
-                    },
-                ));
+                // self.events.push_back(NetworkBehaviourAction::GenerateEvent(
+                //     BehaviourOutEvent::ReceivedConfirmation {
+                //         peer: peer_id,
+                //         swap_id: confirmed.swap_id,
+                //         swap_digest: confirmed.swap_digest,
+                //     },
+                // ));
             }
             HandlerEvent::AwaitingConfirmation(sender) => {
-                self.events.push_back(NetworkBehaviourAction::GenerateEvent(
-                    BehaviourOutEvent::ReceivedAnnouncement {
-                        peer: peer_id,
-                        io: sender,
-                    },
-                ));
+                // self.events.push_back(NetworkBehaviourAction::GenerateEvent(
+                //     BehaviourOutEvent::ReceivedAnnouncement {
+                //         peer: peer_id,
+                //         io: sender,
+                //     },
+                // ));
             }
             HandlerEvent::Error(error) => {
                 self.events.push_back(NetworkBehaviourAction::GenerateEvent(
@@ -295,29 +302,13 @@ enum ConnectionState {
 /// Event emitted  by the `Announce` behaviour.
 #[derive(Debug)]
 pub enum BehaviourOutEvent {
-    /// This event created when a confirmation message containing a `swap_id` is
-    /// received in response to an announce messagunlo  e containing a
-    /// `swap_digest`. The Event contains both the swap id and
-    /// the swap digest. The announce message is sent by Alice to Bob.
-    ReceivedConfirmation {
+    Confirmed {
         /// The peer (Bob) that the swap has been announced to.
         peer: PeerId,
         /// The swap id returned by the peer (Bob).
         swap_id: SharedSwapId,
         /// The swap_digest
         swap_digest: SwapDigest,
-    },
-
-    /// The event is created when a remote sends a `swap_digest`. The event
-    /// contains a reply substream for the receiver to send back the
-    /// `swap_id` that corresponds to the swap digest. Bob sends the
-    /// confirmations message to Alice using the the reply substream.
-    ReceivedAnnouncement {
-        /// The peer (Alice) that the reply substream is connected to.
-        peer: PeerId,
-        /// The substream (inc. `swap_digest`) to reply on (i.e., send
-        /// `swap_id`).
-        io: Box<ReplySubstream<NegotiatedSubstream>>,
     },
 
     /// Error while attempting to announce swap to the remote.
@@ -327,4 +318,52 @@ pub enum BehaviourOutEvent {
         /// The error that occurred.
         error: handler::Error,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::network::test_swarm;
+    use futures::future;
+
+    #[tokio::test]
+    async fn given_bob_awaits_an_announcements_when_alice_sends_once_then_he_replies_with_shared_swap_id(
+    ) {
+        let (mut alice_swarm, _, alice_id) = test_swarm::new(Announce::default());
+        let (mut bob_swarm, bob_addr, bob_id) = test_swarm::new(Announce::default());
+
+        let swap_digest = SwapDigest::random();
+
+        bob_swarm.await_announcement(swap_digest.clone(), alice_id.clone());
+        alice_swarm.announce_swap(swap_digest, DialInformation {
+            peer_id: bob_id.clone(),
+            address_hint: Some(bob_addr),
+        });
+
+        let event_future = future::join(alice_swarm.next(), bob_swarm.next());
+        let (alice_event, bob_event) = tokio::time::timeout(Duration::from_secs(2), event_future)
+            .await
+            .expect("network behaviours should confirm the swap");
+
+        match (alice_event, bob_event) {
+            (
+                BehaviourOutEvent::Confirmed {
+                    peer: alice_event_peer,
+                    swap_id: alice_event_swap_id,
+                    swap_digest: alice_event_swap_digest,
+                },
+                BehaviourOutEvent::Confirmed {
+                    peer: bob_event_peer,
+                    swap_id: bob_event_swap_id,
+                    swap_digest: bob_event_swap_digest,
+                },
+            ) => {
+                assert_eq!(alice_event_peer, bob_id);
+                assert_eq!(bob_event_peer, alice_id);
+                assert_eq!(alice_event_swap_id, bob_event_swap_id);
+                assert_eq!(alice_event_swap_digest, bob_event_swap_digest);
+            }
+            _ => panic!("expected both parties to confirm the swap"),
+        }
+    }
 }
