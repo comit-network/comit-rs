@@ -1,4 +1,4 @@
-pub mod comit;
+pub mod execution_parameters;
 pub mod oneshot_behaviour;
 pub mod oneshot_protocol;
 pub mod protocols;
@@ -11,7 +11,7 @@ use libp2p::{Multiaddr, PeerId};
 use std::fmt;
 
 pub use self::{
-    comit::*,
+    execution_parameters::*,
     protocols::{
         announce::{behaviour::*, handler::*, protocol::*, *},
         *,

@@ -7,7 +7,7 @@ pub use transport::ComitTransport;
 use crate::{
     config::Settings,
     identity,
-    network::{Comit, LocalData},
+    network::{ExecutionParameters, LocalData},
     spawn,
     storage::{ForSwap, Save},
     Load, LocalSwapId, Protocol, ProtocolSpawner, Role, RootSeed, SecretHash, SharedSwapId,
@@ -19,7 +19,7 @@ use futures::{stream::StreamExt, Future, TryFutureExt};
 use libp2p::{
     identity::{ed25519, Keypair},
     mdns::Mdns,
-    swarm::SwarmBuilder,
+    swarm::{NetworkBehaviour as _, SwarmBuilder},
     Multiaddr, NetworkBehaviour, PeerId,
 };
 use std::{
@@ -134,7 +134,8 @@ fn derive_key_pair(seed: &RootSeed) -> Keypair {
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
 pub struct ComitNode {
-    comit: Comit,
+    announce: Announce,
+    execution_parameters: ExecutionParameters,
     /// Multicast DNS discovery network behaviour.
     mdns: Mdns,
 
@@ -170,8 +171,9 @@ impl ComitNode {
         protocol_spawner: ProtocolSpawner,
     ) -> Result<Self, io::Error> {
         Ok(Self {
+            announce: Announce::default(),
+            execution_parameters: ExecutionParameters::default(),
             mdns: Mdns::new()?,
-            comit: Comit::default(),
             seed,
             task_executor,
             storage,
@@ -181,9 +183,22 @@ impl ComitNode {
 
     pub fn initiate_communication(
         &mut self,
-        local_swap_id: LocalSwapId,
+        id: LocalSwapId,
         peer: DialInformation,
         role: Role,
+        digest: SwapDigest,
+        identities: Identities,
+    ) -> anyhow::Result<()> {
+        match role {
+            Role::Alice => self.initiate_communication_for_alice(id, peer, digest, identities),
+            Role::Bob => self.initiate_communication_for_bob(id, peer, digest, identities),
+        }
+    }
+
+    fn initiate_communication_for_alice(
+        &mut self,
+        local_swap_id: LocalSwapId,
+        dial_info: DialInformation,
         digest: SwapDigest,
         identities: Identities,
     ) -> anyhow::Result<()> {
@@ -194,24 +209,59 @@ impl ComitNode {
         // kicks off here.
         self.assert_have_lnd_if_needed(identities.lightning_identity)?;
 
-        match role {
-            Role::Alice => {
-                let swap_seed = self.seed.derive_swap_seed(local_swap_id);
-                let secret = swap_seed.derive_secret();
-                let secret_hash = SecretHash::new(secret);
-                let data = LocalData::for_alice(secret_hash, identities);
+        let swap_seed = self.seed.derive_swap_seed(local_swap_id);
+        let secret = swap_seed.derive_secret();
+        let secret_hash = SecretHash::new(secret);
+        let data = LocalData::for_alice(secret_hash, identities);
 
-                self.comit
-                    .initiate_communication_for_alice(local_swap_id, peer, digest, data)
-            }
-            Role::Bob => {
-                let shared_swap_id = SharedSwapId::default();
-                let data = LocalData::for_bob(shared_swap_id, identities);
+        tracing::info!("Starting announcement for swap: {}", digest);
+        self.announce
+            .start_announce_protocol(digest.clone(), dial_info);
+        self.execution_parameters
+            .swaps
+            .create_as_pending_confirmation(digest, local_swap_id, data)?;
 
-                self.comit
-                    .initiate_communication_for_bob(local_swap_id, peer, digest, data)
-            }
+        Ok(())
+    }
+
+    fn initiate_communication_for_bob(
+        &mut self,
+        local_swap_id: LocalSwapId,
+        dial_info: DialInformation,
+        digest: SwapDigest,
+        identities: Identities,
+    ) -> anyhow::Result<()> {
+        let shared_swap_id = SharedSwapId::default();
+        let data = LocalData::for_bob(shared_swap_id, identities);
+
+        if let Ok((shared_swap_id, peer_id, io)) = self
+            .execution_parameters
+            .swaps
+            .move_pending_creation_to_communicate(
+                &digest,
+                local_swap_id,
+                dial_info.peer_id.clone(),
+                data,
+            )
+        {
+            tracing::info!("Confirm & communicate for swap: {}", digest);
+            ExecutionParameters::confirm(shared_swap_id, io);
+            let addresses = self.announce.addresses_of_peer(&peer_id);
+            self.execution_parameters
+                .communicate(shared_swap_id, peer_id, data, addresses)
+        } else {
+            self.execution_parameters
+                .swaps
+                .create_as_pending_announcement(
+                    digest.clone(),
+                    local_swap_id,
+                    dial_info.peer_id,
+                    data,
+                )?;
+            tracing::debug!("Swap {} waiting for announcement", digest);
         }
+
+        Ok(())
     }
 
     fn assert_have_lnd_if_needed(
@@ -253,7 +303,7 @@ impl ComitPeers for Swarm {
         &self,
     ) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
         let mut swarm = self.inner.lock().await;
-        Box::new(swarm.comit.connected_peers())
+        Box::new(swarm.announce.connected_peers())
     }
 }
 
@@ -284,9 +334,11 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<()> for ComitNode {
     fn inject_event(&mut self, _event: ()) {}
 }
 
-impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for ComitNode {
-    fn inject_event(&mut self, event: comit::BehaviourOutEvent) {
-        let comit::BehaviourOutEvent {
+impl libp2p::swarm::NetworkBehaviourEventProcess<execution_parameters::BehaviourOutEvent>
+    for ComitNode
+{
+    fn inject_event(&mut self, event: execution_parameters::BehaviourOutEvent) {
+        let execution_parameters::BehaviourOutEvent {
             local_swap_id,
             remote_data,
         } = event;
@@ -306,6 +358,85 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for C
             .spawn(save_and_start_swap.map_err(|e: anyhow::Error| {
                 tracing::error!("{}", e);
             }));
+    }
+}
+
+// It is already split in smaller functions
+#[allow(clippy::cognitive_complexity)]
+impl libp2p::swarm::NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent>
+    for ComitNode
+{
+    fn inject_event(&mut self, event: announce::behaviour::BehaviourOutEvent) {
+        match event {
+            announce::behaviour::BehaviourOutEvent::ReceivedAnnouncement { peer, io } => {
+                tracing::info!("Peer {} announced a swap ({})", peer, io.swap_digest);
+                let span =
+                    tracing::trace_span!("swap", digest = format_args!("{}", io.swap_digest));
+                let _enter = span.enter();
+                match self
+                    .execution_parameters
+                    .swaps
+                    .move_pending_announcement_to_communicate(&io.swap_digest, &peer)
+                {
+                    Ok((shared_swap_id, create_params)) => {
+                        tracing::debug!("Swap confirmation and communication has started.");
+                        ExecutionParameters::confirm(shared_swap_id, *io);
+                        let addresses = self.announce.addresses_of_peer(&peer);
+                        self.execution_parameters.communicate(
+                            shared_swap_id,
+                            peer,
+                            create_params,
+                            addresses,
+                        );
+                    }
+                    Err(swaps::Error::NotFound) => {
+                        tracing::debug!("Swap has not been created yet, parking it.");
+                        let _ = self
+                            .execution_parameters
+                            .swaps
+                            .insert_pending_creation((&io.swap_digest).clone(), peer, *io)
+                            .map_err(|_| {
+                                tracing::error!(
+                                    "Swap already known, Alice appeared to have sent it twice."
+                                )
+                            });
+                    }
+                    Err(err) => tracing::warn!(
+                        "Announcement for {} was not processed due to {}",
+                        io.swap_digest,
+                        err
+                    ),
+                }
+            }
+            announce::behaviour::BehaviourOutEvent::ReceivedConfirmation {
+                peer,
+                swap_digest,
+                swap_id: shared_swap_id,
+            } => {
+                if let Some(data) = self
+                    .execution_parameters
+                    .swaps
+                    .move_pending_confirmation_to_communicate(&swap_digest, shared_swap_id)
+                {
+                    let addresses = self.announce.addresses_of_peer(&peer);
+                    self.execution_parameters
+                        .communicate(shared_swap_id, peer, data, addresses);
+                } else {
+                    tracing::warn!(
+                        "Confirmation received for unknown swap {} from {}",
+                        shared_swap_id,
+                        peer
+                    );
+                }
+            }
+            announce::behaviour::BehaviourOutEvent::Error { peer, error } => {
+                tracing::warn!(
+                    "failed to complete announce protocol with {} because {:?}",
+                    peer,
+                    error
+                );
+            }
+        }
     }
 }
 
