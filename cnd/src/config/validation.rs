@@ -8,7 +8,7 @@ use std::fmt::Debug;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-#[error("Connected network does not match network specified in settings (expected {connected_network:?}, got {specified_network:?})")]
+#[error("Connected network does not match network specified in settings (expected {specified_network:?}, got {connected_network:?})")]
 pub struct NetworkMismatch<T: Debug> {
     connected_network: T,
     specified_network: T,
