@@ -33,7 +33,7 @@ impl Amount {
 
     /// Allow to know the worth of self in dai using the given conversion rate.
     /// Truncation may be done during the conversion to allow a result in attodai.
-    pub fn worth_in(&self, btc_to_dai_rate: Rate) -> dai::Amount {
+    pub fn worth_in(self, btc_to_dai_rate: Rate) -> dai::Amount {
         // Get the integer part of the rate
         let uint_rate = btc_to_dai_rate.integer();
 

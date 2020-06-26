@@ -22,7 +22,7 @@ mod bitcoind;
 mod dai;
 mod float_maths;
 mod jsonrpc;
-mod markets;
+mod kraken;
 mod ongoing_swaps;
 mod publish;
 mod rate;

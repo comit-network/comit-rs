@@ -236,9 +236,9 @@ mod test {
             info,
             WalletInfoResponse {
                 wallet_name: "nectar_7426b018".into(),
-                wallet_version: 169900,
+                wallet_version: 169_900,
                 tx_count: 0,
-                keypool_oldest: 1592792998,
+                keypool_oldest: 1_592_792_998,
                 keypool_size_hd_internal: 1000,
                 unlocked_until: None,
                 pay_tx_fee: 0.0,
