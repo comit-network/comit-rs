@@ -1,6 +1,6 @@
 use crate::bitcoin;
 use crate::dai;
-use crate::rate::{Rate, Spread};
+use crate::{Rate, Spread};
 use std::cmp::min;
 
 pub trait BitcoinLockedFunds {
@@ -63,6 +63,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Rate;
     use std::convert::TryFrom;
 
     #[derive(Copy, Clone)]

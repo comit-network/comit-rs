@@ -4,8 +4,8 @@ use std::convert::TryInto;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct MidMarketRate {
-    value: Rate,
-    timestamp: DateTime<Utc>,
+    pub value: Rate,
+    pub timestamp: DateTime<Utc>,
 }
 
 /// Get mid-market rate for the trading pair BTC-DAI.
