@@ -41,7 +41,7 @@ fn bitcoin_public_key() {
 
 #[test]
 fn ethereum_address() {
-    roundtrip_test::<identity::Ethereum>("68917b35bacf71dbadf37628b3b7f290f6d88877");
+    roundtrip_test::<identity::Ethereum>("0x68917b35bacf71dbadf37628b3b7f290f6d88877");
 }
 
 #[test]
