@@ -26,6 +26,7 @@ mod kraken;
 mod ongoing_swaps;
 mod publish;
 mod rate;
+mod seed;
 mod swap;
 
 #[cfg(all(test, feature = "test-docker"))]

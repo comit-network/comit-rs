@@ -24,6 +24,7 @@ pub mod jsonrpc;
 pub mod ongoing_swaps;
 pub mod publish;
 pub mod rate;
+pub mod seed;
 pub mod swap;
 
 pub static SECP: Lazy<::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All>> =
