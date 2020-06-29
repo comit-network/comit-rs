@@ -20,7 +20,7 @@ use libp2p::{
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
     task::{Context, Poll},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 /// Network behaviour that implements the "announce" protocol.
@@ -47,8 +47,14 @@ pub struct Announce {
 
     /// For how long Bob will buffer an incoming announcement before it expires.
     incoming_announcements_buffer_expiry: Duration,
-    incoming_announcements_buffer:
-        HashMap<SwapDigest, (PeerId, ReplySubstream<NegotiatedSubstream>)>,
+    incoming_announcements_buffer: HashMap<SwapDigest, BufferedAnnouncement>,
+}
+
+#[derive(Debug)]
+struct BufferedAnnouncement {
+    peer: PeerId,
+    reply_substream: ReplySubstream<NegotiatedSubstream>,
+    received_on: Instant,
 }
 
 impl Default for Announce {
@@ -133,8 +139,8 @@ impl Announce {
     /// words, he is going to wait for an announce message.
     pub fn await_announcement(&mut self, swap: SwapDigest, _from: PeerId) {
         match self.incoming_announcements_buffer.remove(&swap) {
-            Some((peer, reply_substream)) => {
-                self.confirm_swap(peer, swap, reply_substream);
+            Some(announcement) => {
+                self.confirm_swap(announcement.peer, swap, announcement.reply_substream);
             }
             None => {
                 self.awaiting_announcements.insert(swap);
@@ -309,7 +315,11 @@ impl NetworkBehaviour for Announce {
                     self.confirm_swap(peer, swap_digest, reply_substream)
                 } else {
                     self.incoming_announcements_buffer
-                        .insert(swap_digest, (peer, reply_substream));
+                        .insert(swap_digest, BufferedAnnouncement {
+                            peer,
+                            reply_substream,
+                            received_on: Instant::now(),
+                        });
                 }
             }
             HandlerEvent::Error(error) => {
