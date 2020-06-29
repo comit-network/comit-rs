@@ -17,10 +17,12 @@ struct Wallet {
 
 impl Wallet {
     pub fn new(seed: Seed, url: Url, network: Network) -> anyhow::Result<Wallet> {
+        let key = seed.secret_key()?;
+
         let private_key = ::bitcoin::PrivateKey {
             compressed: true,
             network,
-            key: seed.secret_key()?,
+            key,
         };
 
         let bitcoind_client = bitcoind::Client::new(url);
@@ -91,6 +93,21 @@ impl Wallet {
             "nectar_{:x}{:x}{:x}{:x}",
             public_key_hash[0], public_key_hash[1], public_key_hash[2], public_key_hash[3]
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn create_new_wallet() {
+        let seed = Seed::default();
+        let url = Url::from_str("http://localhost:1234").unwrap();
+
+        let res = Wallet::new(seed, url, Network::Regtest);
+        assert!(res.is_ok())
     }
 }
 
