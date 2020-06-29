@@ -378,7 +378,7 @@ mod tests {
     use super::*;
     use crate::network::test_swarm;
     use futures::future;
-    use libp2p::swarm::SwarmEvent;
+    use libp2p::Swarm;
     use std::{future::Future, time::Duration};
 
     #[tokio::test]
@@ -409,28 +409,29 @@ mod tests {
             peer_id: bob_id.clone(),
             address_hint: Some(bob_addr),
         });
-        let bob_event = async {
-            // wait until Alice established a connection
-            loop {
-                if let SwarmEvent::ConnectionEstablished { .. } = bob_swarm.next_event().await {
-                    break;
-                }
-            }
-
-            // poll Bob's swarm for another second. we don't care about the result, we just
-            // want all events to be processed
-            loop {
-                if let Err(_) = tokio::time::timeout(Duration::from_secs(1), bob_swarm.next()).await
-                {
-                    break;
-                }
-            }
-
-            bob_swarm.await_announcement(swap_digest, alice_id.clone());
-            bob_swarm.next().await
-        };
+        let bob_event = await_announcement_with_delay(
+            alice_id,
+            &mut bob_swarm,
+            swap_digest,
+            Duration::from_secs(1),
+        );
 
         assert_both_confirmed(alice_swarm.next(), bob_event).await;
+    }
+
+    async fn await_announcement_with_delay(
+        alice_id: PeerId,
+        bob_swarm: &mut Swarm<Announce>,
+        swap_digest: SwapDigest,
+        delay: Duration,
+    ) -> BehaviourOutEvent {
+        // poll Bob's swarm for some time. We don't expect any events though
+        while let Ok(event) = tokio::time::timeout(delay, bob_swarm.next()).await {
+            panic!("unexpected event emitted: {:?}", event)
+        }
+
+        bob_swarm.await_announcement(swap_digest, alice_id.clone());
+        bob_swarm.next().await
     }
 
     async fn assert_both_confirmed(
