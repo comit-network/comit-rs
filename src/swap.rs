@@ -21,22 +21,36 @@ pub async fn hbit_herc20<A, B>(
     herc20_params: herc20::Params,
 ) -> anyhow::Result<()>
 where
-    A: hbit::Fund + herc20::RedeemAsAlice + hbit::Refund + ShouldNotFund + ShouldNotRedeem,
-    B: herc20::Deploy + herc20::Fund + hbit::RedeemAsBob + herc20::Refund + ShouldNotFund,
+    A: hbit::Fund + herc20::RedeemAsAlice + hbit::Refund + hbit::DecideOnFund + ShouldNotRedeem,
+
+    B: herc20::Deploy
+        + herc20::Fund
+        + hbit::RedeemAsBob
+        + herc20::Refund
+        + herc20::DecideOnDeploy
+        + ShouldNotFund,
 {
-    if alice.should_not_fund(herc20_params.expiry).await? {
-        return Ok(());
-    }
+    let hbit_funded = match alice
+        .decide_on_fund(&hbit_params, herc20_params.expiry)
+        .await?
+    {
+        Decision::Act => alice.fund(&hbit_params).await?,
+        Decision::Skip(hbit_funded) => hbit_funded,
+        Decision::Stop => return Ok(()),
+    };
 
-    let hbit_funded = alice.fund(&hbit_params).await?;
+    let herc20_deployed = match bob
+        .decide_on_deploy(herc20_params.clone(), herc20_params.expiry)
+        .await?
+    {
+        Decision::Act => bob.deploy(&herc20_params).await?,
+        Decision::Skip(herc20_deployed) => herc20_deployed,
+        Decision::Stop => {
+            alice.refund(&hbit_params, hbit_funded).await?;
 
-    if bob.should_not_fund(herc20_params.expiry).await? {
-        alice.refund(&hbit_params, hbit_funded).await?;
-
-        return Ok(());
-    }
-
-    let herc20_deployed = bob.deploy(&herc20_params).await?;
+            return Ok(());
+        }
+    };
 
     if bob.should_not_fund(herc20_params.expiry).await? {
         alice.refund(&hbit_params, hbit_funded).await?;
@@ -70,6 +84,13 @@ where
             Err(error)
         }
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Decision<R> {
+    Act,
+    Skip(R),
+    Stop,
 }
 
 /// Determine whether funding a smart contract is safe.

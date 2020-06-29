@@ -6,7 +6,7 @@
 
 use crate::swap::{
     ethereum::{self, ethereum_latest_time},
-    ShouldNotFund, ShouldNotRedeem, {hbit, herc20},
+    hbit, herc20, Decision, ShouldNotFund, ShouldNotRedeem,
 };
 use chrono::NaiveDateTime;
 use comit::{
@@ -114,6 +114,40 @@ where
         // safe we want to be.
 
         Ok(beta_expiry <= ethereum_time)
+    }
+}
+
+#[async_trait::async_trait]
+impl<AC, BC> hbit::DecideOnFund for WatchOnlyAlice<AC, BC>
+where
+    AC: LatestBlock<Block = bitcoin::Block>
+        + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
+    BC: LatestBlock<Block = ethereum::Block>,
+{
+    async fn decide_on_fund(
+        &self,
+        hbit_params: &hbit::Params,
+        beta_expiry: Timestamp,
+    ) -> anyhow::Result<Decision<hbit::CorrectlyFunded>> {
+        if let Some(fund_event) = hbit::watch_for_funded_in_the_past(
+            self.alpha_connector.as_ref(),
+            hbit_params,
+            self.start_of_swap,
+        )
+        .await?
+        {
+            return Ok(Decision::Skip(fund_event));
+        }
+
+        let beta_ledger_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
+        // TODO: Apply a buffer depending on the blocktime and how
+        // safe we want to be
+
+        if beta_expiry > beta_ledger_time {
+            Ok(Decision::Act)
+        } else {
+            Ok(Decision::Stop)
+        }
     }
 }
 
@@ -229,22 +263,6 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AW, BW, E> ShouldNotFund for WalletAlice<AW, BW, E>
-    where
-        AW: Send + Sync,
-        BW: LatestBlock<Block = ethereum::Block>,
-        E: Send + Sync,
-    {
-        async fn should_not_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
-            let ethereum_time = ethereum_latest_time(&self.beta_wallet).await?;
-            // TODO: Apply a buffer depending on the blocktime and how
-            // safe we want to be
-
-            Ok(beta_expiry <= ethereum_time)
-        }
-    }
-
-    #[async_trait::async_trait]
     impl<AW, BW, E> ShouldNotRedeem for WalletAlice<AW, BW, E>
     where
         AW: Send + Sync,
@@ -257,6 +275,41 @@ pub mod wallet_actor {
             // safe we want to be
 
             Ok(beta_expiry <= ethereum_time)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<AW, BW, E> hbit::DecideOnFund for WalletAlice<AW, BW, E>
+    where
+        AW: LatestBlock<Block = bitcoin::Block>
+            + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
+        BW: LatestBlock<Block = ethereum::Block>,
+        E: Send + Sync,
+    {
+        async fn decide_on_fund(
+            &self,
+            hbit_params: &hbit::Params,
+            beta_expiry: Timestamp,
+        ) -> anyhow::Result<Decision<hbit::CorrectlyFunded>> {
+            if let Some(fund_event) = hbit::watch_for_funded_in_the_past(
+                &self.alpha_wallet,
+                hbit_params,
+                self.start_of_swap,
+            )
+            .await?
+            {
+                return Ok(Decision::Skip(fund_event));
+            }
+
+            let beta_ledger_time = ethereum_latest_time(&self.beta_wallet).await?;
+            // TODO: Apply a buffer depending on the blocktime and how
+            // safe we want to be
+
+            if beta_expiry > beta_ledger_time {
+                Ok(Decision::Act)
+            } else {
+                Ok(Decision::Stop)
+            }
         }
     }
 }

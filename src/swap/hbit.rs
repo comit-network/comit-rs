@@ -1,5 +1,6 @@
 //! Wrapper module around COMIT lib's Hbit module.
 
+use crate::swap::Decision;
 use bitcoin::{secp256k1::SecretKey, Address, Block, BlockHash};
 use chrono::NaiveDateTime;
 use comit::asset;
@@ -8,7 +9,7 @@ pub use comit::{
     actions::bitcoin::{BroadcastSignedTransaction, SendToAddress},
     btsieve::{BlockByHash, LatestBlock},
     hbit::*,
-    htlc_location, transaction, Secret, SecretHash,
+    htlc_location, transaction, Secret, SecretHash, Timestamp,
 };
 
 #[derive(Clone, Debug)]
@@ -62,6 +63,15 @@ pub struct CorrectlyFunded {
     pub location: htlc_location::Bitcoin,
 }
 
+#[async_trait::async_trait]
+pub trait DecideOnFund {
+    async fn decide_on_fund(
+        &self,
+        hbit_params: &Params,
+        beta_expiry: Timestamp,
+    ) -> anyhow::Result<Decision<CorrectlyFunded>>;
+}
+
 pub async fn watch_for_funded<C>(
     connector: &C,
     params: &Params,
@@ -76,4 +86,15 @@ where
         } => Ok(CorrectlyFunded { asset, location }),
         comit::hbit::Funded::Incorrectly { .. } => anyhow::bail!("Bitcoin HTLC incorrectly funded"),
     }
+}
+
+pub async fn watch_for_funded_in_the_past<C>(
+    _connector: &C,
+    _params: &Params,
+    _start_of_swap: NaiveDateTime,
+) -> anyhow::Result<Option<CorrectlyFunded>>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
+{
+    todo!()
 }

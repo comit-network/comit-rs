@@ -1,5 +1,6 @@
 //! Wrapper module around COMIT lib's Herc20 module.
 
+use super::Decision;
 use chrono::NaiveDateTime;
 pub use comit::{
     actions::ethereum::*,
@@ -47,6 +48,15 @@ pub struct CorrectlyFunded {
     pub asset: asset::Erc20,
 }
 
+#[async_trait::async_trait]
+pub trait DecideOnDeploy {
+    async fn decide_on_deploy(
+        &self,
+        herc20_params: Params,
+        beta_expiry: Timestamp,
+    ) -> anyhow::Result<Decision<Deployed>>;
+}
+
 pub async fn watch_for_funded<C>(
     connector: &C,
     params: Params,
@@ -64,4 +74,15 @@ where
             anyhow::bail!("Ethereum HTLC incorrectly funded")
         }
     }
+}
+
+pub async fn watch_for_deployed_in_the_past<C>(
+    _connector: &C,
+    _params: Params,
+    _start_of_swap: NaiveDateTime,
+) -> anyhow::Result<Option<Deployed>>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+{
+    todo!()
 }
