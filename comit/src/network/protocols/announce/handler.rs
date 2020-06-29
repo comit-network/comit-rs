@@ -4,9 +4,10 @@ use crate::network::{
         protocol::{Confirmed, InboundConfig, OutboundConfig},
     },
     protocols::announce::ReplySubstream,
+    SwapDigest,
 };
 use libp2p::{
-    core::upgrade::{InboundUpgrade, OutboundUpgrade},
+    core::upgrade::OutboundUpgrade,
     swarm::{
         KeepAlive, NegotiatedSubstream, ProtocolsHandler, ProtocolsHandlerEvent,
         ProtocolsHandlerUpgrErr, SubstreamProtocol,
@@ -49,7 +50,10 @@ pub enum HandlerEvent {
     /// The event is created when a remote sends a `swap_digest`. The event
     /// contains a reply substream for the receiver to send back the
     /// `swap_id` that corresponds to the swap digest.
-    AwaitingConfirmation(Box<ReplySubstream<NegotiatedSubstream>>),
+    AwaitingConfirmation {
+        swap_digest: SwapDigest,
+        reply_substream: ReplySubstream<NegotiatedSubstream>,
+    },
 
     /// Failed to announce swap to peer.
     Error(Error),
@@ -69,15 +73,17 @@ impl ProtocolsHandler for Handler {
 
     fn inject_fully_negotiated_inbound(
         &mut self,
-        sender: <Self::InboundProtocol as InboundUpgrade<NegotiatedSubstream>>::Output,
+        (swap_digest, reply_substream): (SwapDigest, ReplySubstream<NegotiatedSubstream>),
     ) {
-        self.events
-            .push_back(HandlerEvent::AwaitingConfirmation(Box::new(sender)))
+        self.events.push_back(HandlerEvent::AwaitingConfirmation {
+            swap_digest,
+            reply_substream,
+        })
     }
 
     fn inject_fully_negotiated_outbound(
         &mut self,
-        confirmed: <Self::OutboundProtocol as OutboundUpgrade<NegotiatedSubstream>>::Output,
+        confirmed: Confirmed,
         _info: Self::OutboundOpenInfo,
     ) {
         self.events

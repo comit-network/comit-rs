@@ -5,7 +5,7 @@ use crate::{
             handler::{Handler, HandlerEvent},
             protocol::OutboundConfig,
         },
-        protocols::announce::protocol::Confirmed,
+        protocols::announce::{protocol::Confirmed, ReplySubstream},
         SwapDigest,
     },
     DialInformation, SharedSwapId,
@@ -13,7 +13,8 @@ use crate::{
 use libp2p::{
     core::{connection::ConnectionId, ConnectedPoint, Multiaddr, PeerId},
     swarm::{
-        NetworkBehaviour, NetworkBehaviourAction, NotifyHandler, PollParameters, ProtocolsHandler,
+        NegotiatedSubstream, NetworkBehaviour, NetworkBehaviourAction, NotifyHandler,
+        PollParameters, ProtocolsHandler,
     },
 };
 use std::{
@@ -45,7 +46,9 @@ pub struct Announce {
     awaiting_announcements: HashSet<SwapDigest>,
 
     /// For how long Bob will buffer an incoming announcement before it expires.
-    incoming_announcement_buffer_expiry: Duration,
+    incoming_announcements_buffer_expiry: Duration,
+    incoming_announcements_buffer:
+        HashMap<SwapDigest, (PeerId, ReplySubstream<NegotiatedSubstream>)>,
 }
 
 impl Default for Announce {
@@ -57,12 +60,13 @@ impl Default for Announce {
 }
 
 impl Announce {
-    pub fn new(incoming_announcement_buffer_expiry: Duration) -> Self {
+    pub fn new(incoming_announcements_buffer_expiry: Duration) -> Self {
         Self {
             events: VecDeque::default(),
             connections: HashMap::default(),
             awaiting_announcements: HashSet::default(),
-            incoming_announcement_buffer_expiry,
+            incoming_announcements_buffer_expiry,
+            incoming_announcements_buffer: HashMap::default(),
         }
     }
 
@@ -128,7 +132,33 @@ impl Announce {
     /// This starts the announce protocol from Bob's perspective. In other
     /// words, he is going to wait for an announce message.
     pub fn await_announcement(&mut self, swap: SwapDigest, _from: PeerId) {
-        self.awaiting_announcements.insert(swap);
+        match self.incoming_announcements_buffer.remove(&swap) {
+            Some((peer, reply_substream)) => {
+                self.confirm_swap(peer, swap, reply_substream);
+            }
+            None => {
+                self.awaiting_announcements.insert(swap);
+            }
+        }
+    }
+
+    fn confirm_swap(
+        &mut self,
+        peer: PeerId,
+        swap_digest: SwapDigest,
+        reply_substream: ReplySubstream<NegotiatedSubstream>,
+    ) {
+        let swap_id = SharedSwapId::default();
+
+        tokio::spawn(reply_substream.send(swap_id));
+
+        self.events.push_back(NetworkBehaviourAction::GenerateEvent(
+            BehaviourOutEvent::Confirmed {
+                peer,
+                swap_id,
+                swap_digest,
+            },
+        ))
     }
 
     /// Peer id and address information for connected peer nodes.
@@ -271,21 +301,15 @@ impl NetworkBehaviour for Announce {
                     },
                 ));
             }
-            HandlerEvent::AwaitingConfirmation(sender) => {
-                let swap_digest = sender.swap_digest.clone();
-
+            HandlerEvent::AwaitingConfirmation {
+                swap_digest,
+                reply_substream,
+            } => {
                 if self.awaiting_announcements.contains(&swap_digest) {
-                    let swap_id = SharedSwapId::default();
-
-                    tokio::spawn(sender.send(swap_id));
-
-                    self.events.push_back(NetworkBehaviourAction::GenerateEvent(
-                        BehaviourOutEvent::Confirmed {
-                            peer,
-                            swap_id,
-                            swap_digest,
-                        },
-                    ))
+                    self.confirm_swap(peer, swap_digest, reply_substream)
+                } else {
+                    self.incoming_announcements_buffer
+                        .insert(swap_digest, (peer, reply_substream));
                 }
             }
             HandlerEvent::Error(error) => {

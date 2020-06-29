@@ -90,7 +90,7 @@ impl<C> InboundUpgrade<C> for InboundConfig
 where
     C: AsyncRead + Unpin + Send + 'static,
 {
-    type Output = ReplySubstream<C>;
+    type Output = (SwapDigest, ReplySubstream<C>);
     type Error = Error;
     type Future = UpgradeFuture<Result<Self::Output, Self::Error>>;
 
@@ -104,10 +104,7 @@ where
             let message = upgrade::read_one(&mut socket, 1024).await?;
             let mut de = serde_json::Deserializer::from_slice(&message);
             let swap_digest = SwapDigest::deserialize(&mut de)?;
-            Ok(ReplySubstream {
-                io: socket,
-                swap_digest,
-            })
+            Ok((swap_digest, ReplySubstream { io: socket }))
         })
     }
 }
@@ -115,8 +112,7 @@ where
 /// The substream on which a reply is expected to be sent.
 #[derive(Debug)]
 pub struct ReplySubstream<T> {
-    pub io: T,
-    pub swap_digest: SwapDigest,
+    io: T,
 }
 
 impl<T> ReplySubstream<T>
