@@ -371,6 +371,12 @@ pub enum BehaviourOutEvent {
         /// The error that occurred.
         error: handler::Error,
     },
+
+    /// The announcement for a given swap timed out.
+    Timeout {
+        peer: PeerId,
+        swap_digest: SwapDigest,
+    },
 }
 
 #[cfg(test)]
@@ -417,6 +423,37 @@ mod tests {
         );
 
         assert_both_confirmed(alice_swarm.next(), bob_event).await;
+    }
+
+    #[tokio::test]
+    async fn given_alice_announces_swap_when_bob_is_too_slow_then_announcement_times_out() {
+        let incoming_announcement_buffer_expiry = Duration::from_secs(2);
+
+        let (mut alice_swarm, _, alice_id) = test_swarm::new(Announce::default());
+        let (mut bob_swarm, bob_addr, bob_id) =
+            test_swarm::new(Announce::new(incoming_announcement_buffer_expiry));
+        let swap_digest = SwapDigest::random();
+
+        alice_swarm.announce_swap(swap_digest.clone(), DialInformation {
+            peer_id: bob_id.clone(),
+            address_hint: Some(bob_addr),
+        });
+        let bob_event = await_announcement_with_delay(
+            alice_id,
+            &mut bob_swarm,
+            swap_digest,
+            Duration::from_secs(4),
+        );
+
+        let (alice_event, bob_event) = await_events_or_timeout(alice_swarm.next(), bob_event).await;
+        assert!(
+            matches!(alice_event, BehaviourOutEvent::Error { .. }),
+            "announcement should fail on alice's side"
+        );
+        assert!(
+            matches!(bob_event, BehaviourOutEvent::Timeout { .. }),
+            "announcement should time out on bob's side"
+        );
     }
 
     async fn await_announcement_with_delay(
