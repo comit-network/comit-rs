@@ -6,7 +6,7 @@
 use crate::swap::{
     bitcoin,
     ethereum::{self, ethereum_latest_time},
-    SafeToFund, {hbit, herc20},
+    ShouldNotFund, {hbit, herc20},
 };
 use chrono::NaiveDateTime;
 use comit::{btsieve::LatestBlock, Secret, SecretHash, Timestamp};
@@ -112,18 +112,18 @@ impl herc20::Refund for WalletBob<bitcoin::Wallet, ethereum::Wallet, hbit::Priva
 }
 
 #[async_trait::async_trait]
-impl<AW, BW, E> SafeToFund for WalletBob<AW, BW, E>
+impl<AW, BW, E> ShouldNotFund for WalletBob<AW, BW, E>
 where
     AW: Send + Sync,
     BW: LatestBlock<Block = ethereum::Block>,
     E: Send + Sync,
 {
-    async fn is_safe_to_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+    async fn should_not_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
         let ethereum_time = ethereum_latest_time(&self.beta_wallet).await?;
         // TODO: Apply a buffer depending on the blocktime and how
         // safe we want to be.
 
-        Ok(beta_expiry > ethereum_time)
+        Ok(beta_expiry <= ethereum_time)
     }
 }
 
@@ -243,17 +243,17 @@ pub mod watch_only_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AC, BC> SafeToFund for WatchOnlyBob<AC, BC>
+    impl<AC, BC> ShouldNotFund for WatchOnlyBob<AC, BC>
     where
         AC: Send + Sync,
         BC: LatestBlock<Block = ethereum::Block>,
     {
-        async fn is_safe_to_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+        async fn should_not_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
             let ethereum_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
             // TODO: Apply a buffer depending on the blocktime and how
             // safe we want to be.
 
-            Ok(beta_expiry > ethereum_time)
+            Ok(beta_expiry <= ethereum_time)
         }
     }
 }

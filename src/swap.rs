@@ -21,16 +21,16 @@ pub async fn hbit_herc20<A, B>(
     herc20_params: herc20::Params,
 ) -> anyhow::Result<()>
 where
-    A: hbit::Fund + herc20::RedeemAsAlice + hbit::Refund + SafeToFund + SafeToRedeem,
-    B: herc20::Deploy + herc20::Fund + hbit::RedeemAsBob + herc20::Refund + SafeToFund,
+    A: hbit::Fund + herc20::RedeemAsAlice + hbit::Refund + ShouldNotFund + ShouldNotRedeem,
+    B: herc20::Deploy + herc20::Fund + hbit::RedeemAsBob + herc20::Refund + ShouldNotFund,
 {
-    if !alice.is_safe_to_fund(herc20_params.expiry).await? {
+    if alice.should_not_fund(herc20_params.expiry).await? {
         return Ok(());
     }
 
     let hbit_funded = alice.fund(&hbit_params).await?;
 
-    if !bob.is_safe_to_fund(herc20_params.expiry).await? {
+    if bob.should_not_fund(herc20_params.expiry).await? {
         alice.refund(&hbit_params, hbit_funded).await?;
 
         return Ok(());
@@ -38,7 +38,7 @@ where
 
     let herc20_deployed = bob.deploy(&herc20_params).await?;
 
-    if !bob.is_safe_to_fund(herc20_params.expiry).await? {
+    if bob.should_not_fund(herc20_params.expiry).await? {
         alice.refund(&hbit_params, hbit_funded).await?;
 
         return Ok(());
@@ -48,7 +48,7 @@ where
         .fund(herc20_params.clone(), herc20_deployed.clone())
         .await?;
 
-    if !alice.is_safe_to_redeem(herc20_params.expiry).await? {
+    if alice.should_not_redeem(herc20_params.expiry).await? {
         alice.refund(&hbit_params, hbit_funded).await?;
         bob.refund(&herc20_params, herc20_deployed.clone()).await?;
 
@@ -77,8 +77,8 @@ where
 /// Implementations should decide based on blockchain time and
 /// Beta expiry, the shorter of the two expiries.
 #[async_trait::async_trait]
-pub trait SafeToFund {
-    async fn is_safe_to_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool>;
+pub trait ShouldNotFund {
+    async fn should_not_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool>;
 }
 
 /// Determine whether redeeming a smart contract is safe.
@@ -86,8 +86,8 @@ pub trait SafeToFund {
 /// Implementations should decide based on blockchain time and
 /// expiries.
 #[async_trait::async_trait]
-pub trait SafeToRedeem {
-    async fn is_safe_to_redeem(&self, beta_expiry: Timestamp) -> anyhow::Result<bool>;
+pub trait ShouldNotRedeem {
+    async fn should_not_redeem(&self, beta_expiry: Timestamp) -> anyhow::Result<bool>;
 }
 
 #[cfg(all(test, feature = "test-docker"))]

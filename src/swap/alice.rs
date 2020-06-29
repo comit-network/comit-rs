@@ -6,7 +6,7 @@
 
 use crate::swap::{
     ethereum::{self, ethereum_latest_time},
-    SafeToFund, SafeToRedeem, {hbit, herc20},
+    ShouldNotFund, ShouldNotRedeem, {hbit, herc20},
 };
 use chrono::NaiveDateTime;
 use comit::{
@@ -88,32 +88,32 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AC, BC> SafeToFund for WatchOnlyAlice<AC, BC>
+impl<AC, BC> ShouldNotFund for WatchOnlyAlice<AC, BC>
 where
     BC: LatestBlock<Block = ethereum::Block>,
     AC: Send + Sync,
 {
-    async fn is_safe_to_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+    async fn should_not_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
         let ethereum_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
         // TODO: Apply a buffer depending on the blocktime and how
         // safe we want to be
 
-        Ok(beta_expiry > ethereum_time)
+        Ok(beta_expiry <= ethereum_time)
     }
 }
 
 #[async_trait::async_trait]
-impl<AC, BC> SafeToRedeem for WatchOnlyAlice<AC, BC>
+impl<AC, BC> ShouldNotRedeem for WatchOnlyAlice<AC, BC>
 where
     BC: LatestBlock<Block = ethereum::Block>,
     AC: Send + Sync,
 {
-    async fn is_safe_to_redeem(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+    async fn should_not_redeem(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
         let ethereum_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
         // TODO: Apply a buffer depending on the blocktime and how
         // safe we want to be.
 
-        Ok(beta_expiry > ethereum_time)
+        Ok(beta_expiry <= ethereum_time)
     }
 }
 
@@ -229,34 +229,34 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AW, BW, E> SafeToFund for WalletAlice<AW, BW, E>
+    impl<AW, BW, E> ShouldNotFund for WalletAlice<AW, BW, E>
     where
         AW: Send + Sync,
         BW: LatestBlock<Block = ethereum::Block>,
         E: Send + Sync,
     {
-        async fn is_safe_to_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+        async fn should_not_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
             let ethereum_time = ethereum_latest_time(&self.beta_wallet).await?;
             // TODO: Apply a buffer depending on the blocktime and how
             // safe we want to be
 
-            Ok(beta_expiry > ethereum_time)
+            Ok(beta_expiry <= ethereum_time)
         }
     }
 
     #[async_trait::async_trait]
-    impl<AW, BW, E> SafeToRedeem for WalletAlice<AW, BW, E>
+    impl<AW, BW, E> ShouldNotRedeem for WalletAlice<AW, BW, E>
     where
         AW: Send + Sync,
         BW: LatestBlock<Block = ethereum::Block>,
         E: Send + Sync,
     {
-        async fn is_safe_to_redeem(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+        async fn should_not_redeem(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
             let ethereum_time = ethereum_latest_time(&self.beta_wallet).await?;
             // TODO: Apply a buffer depending on the blocktime and how
             // safe we want to be
 
-            Ok(beta_expiry > ethereum_time)
+            Ok(beta_expiry <= ethereum_time)
         }
     }
 }
