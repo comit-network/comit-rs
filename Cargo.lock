@@ -566,6 +566,7 @@ dependencies = [
  "lru",
  "num",
  "primitive-types",
+ "proptest",
  "rand 0.7.3",
  "reqwest",
  "serde",
