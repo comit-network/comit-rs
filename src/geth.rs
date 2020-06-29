@@ -3,11 +3,11 @@ use anyhow::Context;
 use asset::Erc20Quantity;
 use comit::{
     asset::{self, ethereum::TryFromWei},
-    ethereum::{Address, Bytes, ChainId, Hash, Transaction, TransactionReceipt},
+    ethereum::{Address, ChainId, Hash, Transaction, TransactionReceipt},
 };
 use ethereum_types::U256;
 use num::{BigUint, Num};
-use serde_hex::{CompactPfx, SerHex};
+use serde_hex::{CompactPfx, SerHex, SerHexSeq, StrictPfx};
 
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -124,12 +124,13 @@ impl Client {
         #[derive(Debug, serde::Serialize)]
         struct CallRequest {
             to: Address,
-            data: Bytes,
+            #[serde(with = "SerHexSeq::<StrictPfx>")]
+            data: Vec<u8>,
         }
 
         let call_request = CallRequest {
             to: token_contract,
-            data: balance_of_fn(account)?.into(),
+            data: balance_of_fn(account)?,
         };
 
         let quantity: String = self
@@ -174,7 +175,7 @@ pub struct SendTransactionRequest {
     #[serde(with = "SerHex::<CompactPfx>")]
     pub gas_limit: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub data: Option<Bytes>,
+    pub data: Option<Vec<u8>>,
 }
 
 #[cfg(all(test, feature = "test-docker"))]

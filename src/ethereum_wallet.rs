@@ -39,8 +39,10 @@ impl Wallet {
             .private_key
             .to_public_key()
             .map_err(|_| anyhow::anyhow!("Failed to derive public key from private key"))?;
+        let mut bytes = [0u8; 20];
+        bytes.copy_from_slice(address.as_bytes());
 
-        Ok(Address::from_slice(&address.as_bytes()))
+        Ok(Address::from(bytes))
     }
 
     pub async fn deploy_contract(
@@ -60,7 +62,7 @@ impl Wallet {
             gas_limit: gas_limit.into(),
             to: clarity::Address::default(),
             value: 0u64.into(),
-            data: data.0,
+            data,
             signature: None,
         };
 
@@ -150,7 +152,7 @@ impl Wallet {
                 anyhow::anyhow!("Failed to deserialize slice into clarity::Address")
             })?,
             value: 0u32.into(),
-            data: data.unwrap_or_default().0,
+            data: data.unwrap_or_default(),
             signature: None,
         };
 

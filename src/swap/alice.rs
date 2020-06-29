@@ -225,7 +225,7 @@ pub mod wallet_actor {
             params: &herc20::Params,
             deploy_event: herc20::Deployed,
         ) -> anyhow::Result<herc20::Redeemed> {
-            let redeem_action = params.build_redeem_action(deploy_event.location, self.secret)?;
+            let redeem_action = params.build_redeem_action(deploy_event.location, self.secret);
             self.beta_wallet.redeem(redeem_action).await?;
 
             let event = herc20::watch_for_redeemed(

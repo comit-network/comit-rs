@@ -127,6 +127,7 @@ mod tests {
         test_harness, Seed,
     };
     use ::bitcoin::secp256k1;
+    use anyhow::Context;
 
     use chrono::Utc;
     use comit::{
@@ -399,11 +400,17 @@ mod tests {
         let alice_erc20_starting_balance = alice_ethereum_wallet
             .inner
             .erc20_balance(token_contract)
-            .await?;
+            .await
+            .context(anyhow::anyhow!(
+                "failed to get alice's balance before the swap"
+            ))?;
         let bob_erc20_starting_balance = bob_ethereum_wallet
             .inner
             .erc20_balance(token_contract)
-            .await?;
+            .await
+            .context(anyhow::anyhow!(
+                "failed to get bob's balance before the swap"
+            ))?;
 
         futures::future::try_join(alice_swap, bob_swap).await?;
 

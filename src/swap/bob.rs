@@ -41,7 +41,7 @@ impl herc20::Fund for WalletBob<bitcoin::Wallet, ethereum::Wallet, hbit::Private
         params: herc20::Params,
         deploy_event: herc20::Deployed,
     ) -> anyhow::Result<herc20::CorrectlyFunded> {
-        let fund_action = params.build_fund_action(deploy_event.location)?;
+        let fund_action = params.build_fund_action(deploy_event.location);
         self.beta_wallet.fund(fund_action).await?;
 
         let event = herc20::watch_for_funded(
@@ -100,7 +100,7 @@ impl herc20::Refund for WalletBob<bitcoin::Wallet, ethereum::Wallet, hbit::Priva
             tokio::time::delay_for(Duration::from_secs(1)).await;
         }
 
-        let refund_action = params.build_refund_action(deploy_event.location)?;
+        let refund_action = params.build_refund_action(deploy_event.location);
         self.beta_wallet.refund(refund_action).await?;
 
         let event = herc20::watch_for_refunded(

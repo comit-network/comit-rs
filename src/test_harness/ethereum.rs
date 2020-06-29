@@ -128,7 +128,7 @@ impl<'c> Blockchain<'c> {
         let transaction_hash = self
             .dev_account_wallet
             .deploy_contract(DeployContract {
-                data: contract.into(),
+                data: contract,
                 amount: Ether::zero(),
                 gas_limit: 1_000_000,
                 chain_id: ChainId::regtest(),
