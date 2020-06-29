@@ -438,12 +438,7 @@ mod tests {
         alice_event: impl Future<Output = BehaviourOutEvent>,
         bob_event: impl Future<Output = BehaviourOutEvent>,
     ) {
-        let event_future = future::join(alice_event, bob_event);
-        let (alice_event, bob_event) = tokio::time::timeout(Duration::from_secs(5), event_future)
-            .await
-            .expect("network behaviours should confirm the swap");
-
-        match (alice_event, bob_event) {
+        match await_events_or_timeout(alice_event, bob_event).await {
             (
                 BehaviourOutEvent::Confirmed {
                     swap_id: alice_event_swap_id,
@@ -461,5 +456,14 @@ mod tests {
             }
             _ => panic!("expected both parties to confirm the swap"),
         }
+    }
+
+    async fn await_events_or_timeout(
+        alice_event: impl Future<Output = BehaviourOutEvent>,
+        bob_event: impl Future<Output = BehaviourOutEvent>,
+    ) -> (BehaviourOutEvent, BehaviourOutEvent) {
+        tokio::time::timeout(Duration::from_secs(5), future::join(alice_event, bob_event))
+            .await
+            .expect("network behaviours to emit an event within 5 seconds")
     }
 }
