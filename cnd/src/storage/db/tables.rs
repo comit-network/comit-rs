@@ -8,7 +8,7 @@ use crate::{
         },
         Sqlite,
     },
-    AssertSide, LocalSwapId, Role, Side,
+    LocalSwapId, Role, Side,
 };
 use anyhow::Context;
 use chrono::NaiveDateTime;
@@ -314,27 +314,6 @@ macro_rules! swap_id_fk {
             .select(swaps::id)
     };
 }
-
-macro_rules! impl_assert_side {
-    ($target:tt) => {
-        impl AssertSide for $target {
-            fn assert_side(&self, expected: Side) -> anyhow::Result<()> {
-                let actual = self.side.0;
-                if actual != expected {
-                    anyhow::bail!(
-                        "side assertion failed: actual: {} expected: {}",
-                        actual,
-                        expected
-                    )
-                }
-                Ok(())
-            }
-        }
-    };
-}
-impl_assert_side!(Herc20);
-impl_assert_side!(Halbit);
-impl_assert_side!(Hbit);
 
 trait EnsureSingleRowAffected {
     fn ensure_single_row_affected(self) -> anyhow::Result<usize>;
