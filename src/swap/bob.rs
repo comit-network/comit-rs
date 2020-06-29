@@ -6,7 +6,7 @@
 use crate::swap::{
     bitcoin,
     ethereum::{self, ethereum_latest_time},
-    Decision, ShouldNotFund, {hbit, herc20},
+    Decision, {hbit, herc20},
 };
 use chrono::NaiveDateTime;
 use comit::{
@@ -115,22 +115,6 @@ impl herc20::Refund for WalletBob<bitcoin::Wallet, ethereum::Wallet, hbit::Priva
 }
 
 #[async_trait::async_trait]
-impl<AW, BW, E> ShouldNotFund for WalletBob<AW, BW, E>
-where
-    AW: Send + Sync,
-    BW: LatestBlock<Block = ethereum::Block>,
-    E: Send + Sync,
-{
-    async fn should_not_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
-        let ethereum_time = ethereum_latest_time(&self.beta_wallet).await?;
-        // TODO: Apply a buffer depending on the blocktime and how
-        // safe we want to be.
-
-        Ok(beta_expiry <= ethereum_time)
-    }
-}
-
-#[async_trait::async_trait]
 impl<AW, BW, E> herc20::DecideOnDeploy for WalletBob<AW, BW, E>
 where
     AW: Send + Sync,
@@ -153,6 +137,46 @@ where
             .await?
             {
                 return Ok(Decision::Skip(deploy_event));
+            }
+
+            let beta_ledger_time = ethereum_latest_time(&self.beta_wallet).await?;
+            // TODO: Apply a buffer depending on the blocktime and how
+            // safe we want to be
+
+            if beta_expiry > beta_ledger_time {
+                Ok(Decision::Act)
+            } else {
+                Ok(Decision::Stop)
+            }
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl<AW, BW, E> herc20::DecideOnFund for WalletBob<AW, BW, E>
+where
+    AW: Send + Sync,
+    BW: LatestBlock<Block = ethereum::Block>
+        + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
+        + ReceiptByHash,
+    E: Send + Sync,
+{
+    async fn decide_on_fund(
+        &self,
+        herc20_params: herc20::Params,
+        deploy_event: herc20::Deployed,
+        beta_expiry: Timestamp,
+    ) -> anyhow::Result<crate::swap::Decision<herc20::CorrectlyFunded>> {
+        {
+            if let Some(fund_event) = herc20::watch_for_funded_in_the_past(
+                &self.beta_wallet,
+                herc20_params,
+                self.start_of_swap,
+                deploy_event,
+            )
+            .await?
+            {
+                return Ok(Decision::Skip(fund_event));
             }
 
             let beta_ledger_time = ethereum_latest_time(&self.beta_wallet).await?;
@@ -284,21 +308,6 @@ pub mod watch_only_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AC, BC> ShouldNotFund for WatchOnlyBob<AC, BC>
-    where
-        AC: Send + Sync,
-        BC: LatestBlock<Block = ethereum::Block>,
-    {
-        async fn should_not_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
-            let ethereum_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
-            // TODO: Apply a buffer depending on the blocktime and how
-            // safe we want to be.
-
-            Ok(beta_expiry <= ethereum_time)
-        }
-    }
-
-    #[async_trait::async_trait]
     impl<AC, BC> herc20::DecideOnDeploy for WatchOnlyBob<AC, BC>
     where
         AC: Send + Sync,
@@ -320,6 +329,45 @@ pub mod watch_only_actor {
                 .await?
                 {
                     return Ok(Decision::Skip(deploy_event));
+                }
+
+                let beta_ledger_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
+                // TODO: Apply a buffer depending on the blocktime and how
+                // safe we want to be
+
+                if beta_expiry > beta_ledger_time {
+                    Ok(Decision::Act)
+                } else {
+                    Ok(Decision::Stop)
+                }
+            }
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<AC, BC> herc20::DecideOnFund for WatchOnlyBob<AC, BC>
+    where
+        AC: Send + Sync,
+        BC: LatestBlock<Block = ethereum::Block>
+            + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
+            + ReceiptByHash,
+    {
+        async fn decide_on_fund(
+            &self,
+            herc20_params: herc20::Params,
+            deploy_event: herc20::Deployed,
+            beta_expiry: Timestamp,
+        ) -> anyhow::Result<crate::swap::Decision<herc20::CorrectlyFunded>> {
+            {
+                if let Some(fund_event) = herc20::watch_for_funded_in_the_past(
+                    self.beta_connector.as_ref(),
+                    herc20_params,
+                    self.start_of_swap,
+                    deploy_event,
+                )
+                .await?
+                {
+                    return Ok(Decision::Skip(fund_event));
                 }
 
                 let beta_ledger_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;

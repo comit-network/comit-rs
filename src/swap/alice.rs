@@ -6,7 +6,7 @@
 
 use crate::swap::{
     ethereum::{self, ethereum_latest_time},
-    hbit, herc20, Decision, ShouldNotFund, ShouldNotRedeem,
+    hbit, herc20, Decision, ShouldNotRedeem,
 };
 use chrono::NaiveDateTime;
 use comit::{
@@ -84,21 +84,6 @@ where
         .await?;
 
         Ok(event)
-    }
-}
-
-#[async_trait::async_trait]
-impl<AC, BC> ShouldNotFund for WatchOnlyAlice<AC, BC>
-where
-    BC: LatestBlock<Block = ethereum::Block>,
-    AC: Send + Sync,
-{
-    async fn should_not_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
-        let ethereum_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
-        // TODO: Apply a buffer depending on the blocktime and how
-        // safe we want to be
-
-        Ok(beta_expiry <= ethereum_time)
     }
 }
 

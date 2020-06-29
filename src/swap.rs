@@ -28,7 +28,7 @@ where
         + hbit::RedeemAsBob
         + herc20::Refund
         + herc20::DecideOnDeploy
-        + ShouldNotFund,
+        + herc20::DecideOnFund,
 {
     let hbit_funded = match alice
         .decide_on_fund(&hbit_params, herc20_params.expiry)
@@ -52,15 +52,25 @@ where
         }
     };
 
-    if bob.should_not_fund(herc20_params.expiry).await? {
-        alice.refund(&hbit_params, hbit_funded).await?;
+    let _herc20_funded = match bob
+        .decide_on_fund(
+            herc20_params.clone(),
+            herc20_deployed.clone(),
+            herc20_params.expiry,
+        )
+        .await?
+    {
+        Decision::Act => {
+            bob.fund(herc20_params.clone(), herc20_deployed.clone())
+                .await?
+        }
+        Decision::Skip(herc20_funded) => herc20_funded,
+        Decision::Stop => {
+            alice.refund(&hbit_params, hbit_funded).await?;
 
-        return Ok(());
-    }
-
-    let _herc20_funded = bob
-        .fund(herc20_params.clone(), herc20_deployed.clone())
-        .await?;
+            return Ok(());
+        }
+    };
 
     if alice.should_not_redeem(herc20_params.expiry).await? {
         alice.refund(&hbit_params, hbit_funded).await?;
@@ -91,15 +101,6 @@ pub enum Decision<R> {
     Act,
     Skip(R),
     Stop,
-}
-
-/// Determine whether funding a smart contract is safe.
-///
-/// Implementations should decide based on blockchain time and
-/// Beta expiry, the shorter of the two expiries.
-#[async_trait::async_trait]
-pub trait ShouldNotFund {
-    async fn should_not_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool>;
 }
 
 /// Determine whether redeeming a smart contract is safe.

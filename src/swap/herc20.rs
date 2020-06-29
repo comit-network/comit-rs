@@ -57,6 +57,16 @@ pub trait DecideOnDeploy {
     ) -> anyhow::Result<Decision<Deployed>>;
 }
 
+#[async_trait::async_trait]
+pub trait DecideOnFund {
+    async fn decide_on_fund(
+        &self,
+        herc20_params: Params,
+        deploy_event: Deployed,
+        beta_expiry: Timestamp,
+    ) -> anyhow::Result<Decision<CorrectlyFunded>>;
+}
+
 pub async fn watch_for_funded<C>(
     connector: &C,
     params: Params,
@@ -81,6 +91,18 @@ pub async fn watch_for_deployed_in_the_past<C>(
     _params: Params,
     _start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<Option<Deployed>>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+{
+    todo!()
+}
+
+pub async fn watch_for_funded_in_the_past<C>(
+    _connector: &C,
+    _params: Params,
+    _start_of_swap: NaiveDateTime,
+    _deployed: Deployed,
+) -> anyhow::Result<Option<CorrectlyFunded>>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
