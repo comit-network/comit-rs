@@ -19,6 +19,7 @@ use libp2p::{
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet, VecDeque},
     task::{Context, Poll},
+    time::Duration,
 };
 
 /// Network behaviour that implements the "announce" protocol.
@@ -34,7 +35,7 @@ use std::{
 /// data that is relevant to a given swap. If both nodes compute the same
 /// `SwapDigest` from the data they received from their users, all critical
 /// parameters of the swap match and the swap execution can safely start.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Announce {
     /// Pending events to be emitted when polled.
     events: VecDeque<NetworkBehaviourAction<OutboundConfig, BehaviourOutEvent>>,
@@ -42,9 +43,29 @@ pub struct Announce {
     connections: HashMap<PeerId, ConnectionState>,
 
     awaiting_announcements: HashSet<SwapDigest>,
+
+    /// For how long Bob will buffer an incoming announcement before it expires.
+    incoming_announcement_buffer_expiry: Duration,
+}
+
+impl Default for Announce {
+    fn default() -> Self {
+        let five_minutes = Duration::from_secs(5 * 60);
+
+        Self::new(five_minutes)
+    }
 }
 
 impl Announce {
+    pub fn new(incoming_announcement_buffer_expiry: Duration) -> Self {
+        Self {
+            events: VecDeque::default(),
+            connections: HashMap::default(),
+            awaiting_announcements: HashSet::default(),
+            incoming_announcement_buffer_expiry,
+        }
+    }
+
     /// Alice to announce a swap to Bob.
     ///
     /// This starts the announce protocol from Alice's perspective. In other
@@ -333,14 +354,13 @@ mod tests {
     use super::*;
     use crate::network::test_swarm;
     use futures::future;
-    use std::time::Duration;
+    use libp2p::swarm::SwarmEvent;
+    use std::{future::Future, time::Duration};
 
     #[tokio::test]
-    async fn given_bob_awaits_an_announcements_when_alice_sends_once_then_he_replies_with_shared_swap_id(
-    ) {
+    async fn given_bob_awaits_an_announcements_when_alice_sends_one_then_swap_is_confirmed() {
         let (mut alice_swarm, _, alice_id) = test_swarm::new(Announce::default());
         let (mut bob_swarm, bob_addr, bob_id) = test_swarm::new(Announce::default());
-
         let swap_digest = SwapDigest::random();
 
         bob_swarm.await_announcement(swap_digest.clone(), alice_id.clone());
@@ -349,26 +369,68 @@ mod tests {
             address_hint: Some(bob_addr),
         });
 
-        let event_future = future::join(alice_swarm.next(), bob_swarm.next());
-        let (alice_event, bob_event) = tokio::time::timeout(Duration::from_secs(2), event_future)
+        assert_both_confirmed(alice_swarm.next(), bob_swarm.next()).await;
+    }
+
+    #[tokio::test]
+    async fn given_alice_announces_swap_when_bob_awaits_it_within_timeout_then_swap_is_confirmed() {
+        let incoming_announcement_buffer_expiry = Duration::from_secs(5);
+
+        let (mut alice_swarm, _, alice_id) = test_swarm::new(Announce::default());
+        let (mut bob_swarm, bob_addr, bob_id) =
+            test_swarm::new(Announce::new(incoming_announcement_buffer_expiry));
+        let swap_digest = SwapDigest::random();
+
+        alice_swarm.announce_swap(swap_digest.clone(), DialInformation {
+            peer_id: bob_id.clone(),
+            address_hint: Some(bob_addr),
+        });
+        let bob_event = async {
+            // wait until Alice established a connection
+            loop {
+                if let SwarmEvent::ConnectionEstablished { .. } = bob_swarm.next_event().await {
+                    break;
+                }
+            }
+
+            // poll Bob's swarm for another second. we don't care about the result, we just
+            // want all events to be processed
+            loop {
+                if let Err(_) = tokio::time::timeout(Duration::from_secs(1), bob_swarm.next()).await
+                {
+                    break;
+                }
+            }
+
+            bob_swarm.await_announcement(swap_digest, alice_id.clone());
+            bob_swarm.next().await
+        };
+
+        assert_both_confirmed(alice_swarm.next(), bob_event).await;
+    }
+
+    async fn assert_both_confirmed(
+        alice_event: impl Future<Output = BehaviourOutEvent>,
+        bob_event: impl Future<Output = BehaviourOutEvent>,
+    ) {
+        let event_future = future::join(alice_event, bob_event);
+        let (alice_event, bob_event) = tokio::time::timeout(Duration::from_secs(5), event_future)
             .await
             .expect("network behaviours should confirm the swap");
 
         match (alice_event, bob_event) {
             (
                 BehaviourOutEvent::Confirmed {
-                    peer: alice_event_peer,
                     swap_id: alice_event_swap_id,
                     swap_digest: alice_event_swap_digest,
+                    ..
                 },
                 BehaviourOutEvent::Confirmed {
-                    peer: bob_event_peer,
                     swap_id: bob_event_swap_id,
                     swap_digest: bob_event_swap_digest,
+                    ..
                 },
             ) => {
-                assert_eq!(alice_event_peer, bob_id);
-                assert_eq!(bob_event_peer, alice_id);
                 assert_eq!(alice_event_swap_id, bob_event_swap_id);
                 assert_eq!(alice_event_swap_digest, bob_event_swap_digest);
             }
