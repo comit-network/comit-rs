@@ -7,7 +7,6 @@ mod ethereum;
 mod hbit;
 mod herc20;
 
-use comit::Timestamp;
 use futures::future;
 
 pub use alice::WatchOnlyAlice;
@@ -21,8 +20,11 @@ pub async fn hbit_herc20<A, B>(
     herc20_params: herc20::Params,
 ) -> anyhow::Result<()>
 where
-    A: hbit::Fund + herc20::RedeemAsAlice + hbit::Refund + hbit::DecideOnFund + ShouldNotRedeem,
-
+    A: hbit::Fund
+        + herc20::RedeemAsAlice
+        + hbit::Refund
+        + hbit::DecideOnFund
+        + herc20::DecideOnRedeem,
     B: herc20::Deploy
         + herc20::Fund
         + hbit::RedeemAsBob
@@ -72,14 +74,27 @@ where
         }
     };
 
-    if alice.should_not_redeem(herc20_params.expiry).await? {
-        alice.refund(&hbit_params, hbit_funded).await?;
-        bob.refund(&herc20_params, herc20_deployed.clone()).await?;
+    let herc20_redeemed = match alice
+        .decide_on_redeem(
+            herc20_params.clone(),
+            herc20_deployed.clone(),
+            herc20_params.expiry,
+        )
+        .await?
+    {
+        Decision::Act => {
+            alice
+                .redeem(&herc20_params, herc20_deployed.clone())
+                .await?
+        }
+        Decision::Skip(herc20_redeemed) => herc20_redeemed,
+        Decision::Stop => {
+            alice.refund(&hbit_params, hbit_funded).await?;
+            bob.refund(&herc20_params, herc20_deployed.clone()).await?;
 
-        return Ok(());
-    }
-
-    let herc20_redeemed = alice.redeem(&herc20_params, herc20_deployed).await?;
+            return Ok(());
+        }
+    };
 
     let hbit_redeem = bob.redeem(&hbit_params, hbit_funded, herc20_redeemed.secret);
     let hbit_refund = alice.refund(&hbit_params, hbit_funded);
@@ -101,15 +116,6 @@ pub enum Decision<R> {
     Act,
     Skip(R),
     Stop,
-}
-
-/// Determine whether redeeming a smart contract is safe.
-///
-/// Implementations should decide based on blockchain time and
-/// expiries.
-#[async_trait::async_trait]
-pub trait ShouldNotRedeem {
-    async fn should_not_redeem(&self, beta_expiry: Timestamp) -> anyhow::Result<bool>;
 }
 
 #[cfg(all(test, feature = "test-docker"))]

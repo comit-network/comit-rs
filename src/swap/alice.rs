@@ -6,7 +6,7 @@
 
 use crate::swap::{
     ethereum::{self, ethereum_latest_time},
-    hbit, herc20, Decision, ShouldNotRedeem,
+    hbit, herc20, Decision,
 };
 use chrono::NaiveDateTime;
 use comit::{
@@ -88,21 +88,6 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AC, BC> ShouldNotRedeem for WatchOnlyAlice<AC, BC>
-where
-    BC: LatestBlock<Block = ethereum::Block>,
-    AC: Send + Sync,
-{
-    async fn should_not_redeem(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
-        let ethereum_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
-        // TODO: Apply a buffer depending on the blocktime and how
-        // safe we want to be.
-
-        Ok(beta_expiry <= ethereum_time)
-    }
-}
-
-#[async_trait::async_trait]
 impl<AC, BC> hbit::DecideOnFund for WatchOnlyAlice<AC, BC>
 where
     AC: LatestBlock<Block = bitcoin::Block>
@@ -132,6 +117,45 @@ where
             Ok(Decision::Act)
         } else {
             Ok(Decision::Stop)
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl<AC, BC> herc20::DecideOnRedeem for WatchOnlyAlice<AC, BC>
+where
+    AC: Send + Sync,
+    BC: LatestBlock<Block = ethereum::Block>
+        + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
+        + ReceiptByHash,
+{
+    async fn decide_on_redeem(
+        &self,
+        herc20_params: herc20::Params,
+        deploy_event: herc20::Deployed,
+        beta_expiry: Timestamp,
+    ) -> anyhow::Result<crate::swap::Decision<herc20::Redeemed>> {
+        {
+            if let Some(redeem_event) = herc20::watch_for_redeemed_in_the_past(
+                self.beta_connector.as_ref(),
+                herc20_params,
+                self.start_of_swap,
+                deploy_event,
+            )
+            .await?
+            {
+                return Ok(Decision::Skip(redeem_event));
+            }
+
+            let beta_ledger_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
+            // TODO: Apply a buffer depending on the blocktime and how
+            // safe we want to be
+
+            if beta_expiry > beta_ledger_time {
+                Ok(Decision::Act)
+            } else {
+                Ok(Decision::Stop)
+            }
         }
     }
 }
@@ -248,22 +272,6 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AW, BW, E> ShouldNotRedeem for WalletAlice<AW, BW, E>
-    where
-        AW: Send + Sync,
-        BW: LatestBlock<Block = ethereum::Block>,
-        E: Send + Sync,
-    {
-        async fn should_not_redeem(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
-            let ethereum_time = ethereum_latest_time(&self.beta_wallet).await?;
-            // TODO: Apply a buffer depending on the blocktime and how
-            // safe we want to be
-
-            Ok(beta_expiry <= ethereum_time)
-        }
-    }
-
-    #[async_trait::async_trait]
     impl<AW, BW, E> hbit::DecideOnFund for WalletAlice<AW, BW, E>
     where
         AW: LatestBlock<Block = bitcoin::Block>
@@ -294,6 +302,46 @@ pub mod wallet_actor {
                 Ok(Decision::Act)
             } else {
                 Ok(Decision::Stop)
+            }
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<AW, BW, E> herc20::DecideOnRedeem for WalletAlice<AW, BW, E>
+    where
+        AW: Send + Sync,
+        BW: LatestBlock<Block = ethereum::Block>
+            + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
+            + ReceiptByHash,
+        E: Send + Sync,
+    {
+        async fn decide_on_redeem(
+            &self,
+            herc20_params: herc20::Params,
+            deploy_event: herc20::Deployed,
+            beta_expiry: Timestamp,
+        ) -> anyhow::Result<crate::swap::Decision<herc20::Redeemed>> {
+            {
+                if let Some(redeem_event) = herc20::watch_for_redeemed_in_the_past(
+                    &self.beta_wallet,
+                    herc20_params,
+                    self.start_of_swap,
+                    deploy_event,
+                )
+                .await?
+                {
+                    return Ok(Decision::Skip(redeem_event));
+                }
+
+                let beta_ledger_time = ethereum_latest_time(&self.beta_wallet).await?;
+                // TODO: Apply a buffer depending on the blocktime and how
+                // safe we want to be
+
+                if beta_expiry > beta_ledger_time {
+                    Ok(Decision::Act)
+                } else {
+                    Ok(Decision::Stop)
+                }
             }
         }
     }

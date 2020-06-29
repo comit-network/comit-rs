@@ -67,6 +67,16 @@ pub trait DecideOnFund {
     ) -> anyhow::Result<Decision<CorrectlyFunded>>;
 }
 
+#[async_trait::async_trait]
+pub trait DecideOnRedeem {
+    async fn decide_on_redeem(
+        &self,
+        herc20_params: Params,
+        deploy_event: Deployed,
+        beta_expiry: Timestamp,
+    ) -> anyhow::Result<Decision<Redeemed>>;
+}
+
 pub async fn watch_for_funded<C>(
     connector: &C,
     params: Params,
@@ -103,6 +113,18 @@ pub async fn watch_for_funded_in_the_past<C>(
     _start_of_swap: NaiveDateTime,
     _deployed: Deployed,
 ) -> anyhow::Result<Option<CorrectlyFunded>>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+{
+    todo!()
+}
+
+pub async fn watch_for_redeemed_in_the_past<C>(
+    _connector: &C,
+    _params: Params,
+    _start_of_swap: NaiveDateTime,
+    _deployed: Deployed,
+) -> anyhow::Result<Option<Redeemed>>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
