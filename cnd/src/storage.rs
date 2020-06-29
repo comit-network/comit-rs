@@ -230,18 +230,16 @@ impl IntoParams for herc20::Params {
         Ok(herc20::Params {
             asset: asset::Erc20 {
                 quantity: herc20.amount.0.into(),
-                token_contract: herc20.token_contract.0.into(),
+                token_contract: herc20.token_contract.0,
             },
             redeem_identity: herc20
                 .redeem_identity
                 .ok_or_else(|| NoHerc20RedeemIdentity(id))?
-                .0
-                .into(),
+                .0,
             refund_identity: herc20
                 .refund_identity
                 .ok_or_else(|| NoHerc20RefundIdentity(id))?
-                .0
-                .into(),
+                .0,
             expiry: herc20.expiry.0.into(),
             secret_hash,
             chain_id: herc20.chain_id.0.into(),

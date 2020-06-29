@@ -4,7 +4,7 @@ use crate::{
         schema::{address_book, halbits, hbits, herc20s, secret_hashes, swaps},
         wrapper_types::{
             custom_sql_types::{Text, U32},
-            BitcoinNetwork, Erc20Amount, EthereumAddress, Satoshis,
+            BitcoinNetwork, Erc20Amount, Satoshis,
         },
         Sqlite,
     },
@@ -86,9 +86,9 @@ pub struct Herc20 {
     pub amount: Text<Erc20Amount>,
     pub chain_id: U32,
     pub expiry: U32,
-    pub token_contract: Text<EthereumAddress>,
-    pub redeem_identity: Option<Text<EthereumAddress>>,
-    pub refund_identity: Option<Text<EthereumAddress>>,
+    pub token_contract: Text<identity::Ethereum>,
+    pub redeem_identity: Option<Text<identity::Ethereum>>,
+    pub refund_identity: Option<Text<identity::Ethereum>>,
     pub side: Text<Side>,
 }
 
@@ -99,9 +99,9 @@ pub struct InsertableHerc20 {
     pub amount: Text<Erc20Amount>,
     pub chain_id: U32,
     pub expiry: U32,
-    pub token_contract: Text<EthereumAddress>,
-    pub redeem_identity: Option<Text<EthereumAddress>>,
-    pub refund_identity: Option<Text<EthereumAddress>>,
+    pub token_contract: Text<identity::Ethereum>,
+    pub redeem_identity: Option<Text<identity::Ethereum>>,
+    pub refund_identity: Option<Text<identity::Ethereum>>,
     pub side: Text<Side>,
 }
 
@@ -109,7 +109,7 @@ impl From<Herc20> for asset::Erc20 {
     fn from(herc20: Herc20) -> asset::Erc20 {
         asset::Erc20 {
             quantity: herc20.amount.0.into(),
-            token_contract: herc20.token_contract.0.into(),
+            token_contract: herc20.token_contract.0,
         }
     }
 }
@@ -129,15 +129,11 @@ impl IntoInsertable for herc20::CreatedSwap {
 
     fn into_insertable(self, swap_id: i32, role: Role, side: Side) -> Self::Insertable {
         let redeem_identity = match (role, side) {
-            (Role::Alice, Side::Beta) | (Role::Bob, Side::Alpha) => {
-                Some(Text(EthereumAddress::from(self.identity)))
-            }
+            (Role::Alice, Side::Beta) | (Role::Bob, Side::Alpha) => Some(Text(self.identity)),
             _ => None,
         };
         let refund_identity = match (role, side) {
-            (Role::Alice, Side::Alpha) | (Role::Bob, Side::Beta) => {
-                Some(Text(EthereumAddress::from(self.identity)))
-            }
+            (Role::Alice, Side::Alpha) | (Role::Bob, Side::Beta) => Some(Text(self.identity)),
             _ => None,
         };
         assert!(redeem_identity.is_some() || refund_identity.is_some());
@@ -147,7 +143,7 @@ impl IntoInsertable for herc20::CreatedSwap {
             amount: Text(self.asset.quantity.into()),
             chain_id: U32(self.chain_id.into()),
             expiry: U32(self.absolute_expiry),
-            token_contract: Text(self.asset.token_contract.into()),
+            token_contract: Text(self.asset.token_contract),
             redeem_identity,
             refund_identity,
             side: Text(side),
