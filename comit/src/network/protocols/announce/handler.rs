@@ -20,22 +20,13 @@ use std::{
 
 /// Protocol handler for sending and receiving announce protocol messages.
 #[derive(derivative::Derivative)]
-#[derivative(Debug)]
+#[derivative(Debug, Default)]
 pub struct Handler {
     /// Pending events to yield.
     #[derivative(Debug = "ignore")]
     events: VecDeque<HandlerEvent>,
     /// Queue of outbound substreams to open.
     dial_queue: VecDeque<OutboundConfig>,
-}
-
-impl Default for Handler {
-    fn default() -> Self {
-        Handler {
-            events: VecDeque::new(),
-            dial_queue: VecDeque::new(),
-        }
-    }
 }
 
 /// Event produced by the `Handler`.
