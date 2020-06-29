@@ -1,4 +1,5 @@
 use crate::{
+    actions::{ethereum, lnd},
     asset,
     http_api::{
         halbit, herc20,
@@ -8,7 +9,6 @@ use crate::{
         },
         ActionNotFound, BobSwap,
     },
-    swap_protocols::actions::{ethereum, lnd},
     DeployAction, FundAction, InitAction, RedeemAction, RefundAction, Timestamp,
 };
 

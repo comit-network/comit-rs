@@ -39,8 +39,8 @@ pub mod http_api;
 pub mod protocol_spawner;
 pub mod respawn;
 pub mod spawn;
+pub mod state;
 pub mod storage;
-pub mod swap_protocols;
 mod tracing_ext;
 
 use anyhow::Context;
@@ -51,7 +51,6 @@ use std::{
 
 pub use self::{
     actions::*, asset::AssetKind, facade::Facade, protocol_spawner::*, spawn::*, storage::*,
-    swap_protocols::state,
 };
 // Export comit types so we do not need to worry about where they come from.
 pub use comit::{
