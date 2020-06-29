@@ -1,3 +1,4 @@
+use crate::bitcoin::Amount;
 use crate::bitcoind;
 use crate::bitcoind::WalletInfoResponse;
 use crate::seed::Seed;
@@ -5,7 +6,7 @@ use ::bitcoin::hash_types::PubkeyHash;
 use ::bitcoin::hashes::Hash;
 use ::bitcoin::Address;
 use ::bitcoin::Network;
-use bitcoin::{Amount, PrivateKey};
+use bitcoin::PrivateKey;
 use reqwest::Url;
 
 struct Wallet {
@@ -71,6 +72,7 @@ impl Wallet {
         self.bitcoind_client
             .get_balance(&self.name, None, None, None)
             .await
+            .map(|amount| amount.into())
     }
 
     /// Returns the private key in wif format, this allows the user to import the wallet in a
