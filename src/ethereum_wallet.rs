@@ -26,6 +26,7 @@ impl Wallet {
         })
     }
 
+    #[cfg(test)]
     pub fn new_from_private_key(private_key: clarity::PrivateKey, url: Url) -> Self {
         let geth_client = geth::Client::new(url);
 
