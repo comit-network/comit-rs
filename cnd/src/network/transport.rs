@@ -10,7 +10,7 @@ use libp2p::{
     identity,
     mplex::MplexConfig,
     secio::{SecioConfig, SecioError},
-    tcp::TcpConfig,
+    tcp::TokioTcpConfig,
     yamux, PeerId, Transport,
 };
 use std::{io, time::Duration};
@@ -31,7 +31,7 @@ pub type ComitTransport = Boxed<
 /// - authentication via secio
 /// - multiplexing via yamux or mplex
 pub fn build_comit_transport(keypair: identity::Keypair) -> anyhow::Result<ComitTransport> {
-    let transport = TcpConfig::new().nodelay(true);
+    let transport = TokioTcpConfig::new().nodelay(true);
     let transport = DnsConfig::new(transport)?;
 
     let transport = transport
