@@ -54,6 +54,12 @@ impl std::ops::Sub for Amount {
     }
 }
 
+impl From<::bitcoin::Amount> for Amount {
+    fn from(amount: ::bitcoin::Amount) -> Self {
+        Amount { 0: amount }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
