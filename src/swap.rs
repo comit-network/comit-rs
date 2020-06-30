@@ -274,7 +274,7 @@ mod tests {
 
             ethereum_blockchain
                 .mint(
-                    ethereum_wallet.account()?,
+                    ethereum_wallet.account(),
                     asset::Erc20::new(token_contract, Erc20Quantity::from_wei(5_000_000_000u64)),
                     ethereum_chain_id,
                 )
@@ -307,8 +307,8 @@ mod tests {
         let herc20_params = herc20_params(
             secret_hash,
             ethereum_chain_id,
-            alice_ethereum_wallet.inner.account()?,
-            bob_ethereum_wallet.inner.account()?,
+            alice_ethereum_wallet.inner.account(),
+            bob_ethereum_wallet.inner.account(),
             token_contract,
         );
 

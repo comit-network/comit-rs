@@ -36,13 +36,10 @@ impl Wallet {
         }
     }
 
-    pub fn account(&self) -> anyhow::Result<Address> {
-        let address = self
-            .private_key
-            .to_public_key()
-            .map_err(|_| anyhow::anyhow!("Failed to derive public key from private key"))?;
+    pub fn account(&self) -> Address {
+        let address = self.private_key.to_public_key().expect("cannot fail");
 
-        Ok(Address::from_slice(&address.as_bytes()))
+        Address::from_slice(&address.as_bytes())
     }
 
     pub async fn deploy_contract(
@@ -199,13 +196,11 @@ impl Wallet {
     // QUESTION: Do we need to handle decimal places?
     pub async fn erc20_balance(&self, token_contract: Address) -> anyhow::Result<Erc20> {
         self.geth_client
-            .erc20_balance(self.account()?, token_contract)
+            .erc20_balance(self.account(), token_contract)
             .await
     }
 
     pub async fn get_transaction_count(&self) -> anyhow::Result<u32> {
-        self.geth_client
-            .get_transaction_count(self.account()?)
-            .await
+        self.geth_client.get_transaction_count(self.account()).await
     }
 }
