@@ -6,6 +6,7 @@ use comit::{
 };
 use reqwest::Url;
 
+// TODO: Add network; assert network on all calls to geth
 #[derive(Debug, Clone)]
 pub struct Wallet {
     private_key: clarity::PrivateKey,
