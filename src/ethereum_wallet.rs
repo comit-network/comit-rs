@@ -63,7 +63,6 @@ impl Wallet {
             signature: None,
         };
 
-        #[allow(clippy::cast_possible_truncation)]
         let signed_transaction =
             transaction.sign(&self.private_key, Some(u32::from(chain_id) as u64));
         let transaction_hex =
