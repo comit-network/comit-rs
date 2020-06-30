@@ -41,7 +41,7 @@ impl LatestBlock for Web3Connector {
             ]))
             .await?;
 
-        tracing::trace!("Fetched block from web3: {:x}", block.hash);
+        tracing::trace!("Fetched block from web3: {}", block.hash);
 
         Ok(block)
     }
@@ -61,7 +61,7 @@ impl BlockByHash for Web3Connector {
             ]))
             .await?;
 
-        tracing::trace!("Fetched block from web3: {:x}", block_hash);
+        tracing::trace!("Fetched block from web3: {}", block_hash);
 
         Ok(block)
     }
@@ -77,7 +77,7 @@ impl ReceiptByHash for Web3Connector {
             ]))
             .await?;
 
-        tracing::trace!("Fetched receipt from web3: {:x}", transaction_hash);
+        tracing::trace!("Fetched receipt from web3: {}", transaction_hash);
 
         Ok(receipt)
     }

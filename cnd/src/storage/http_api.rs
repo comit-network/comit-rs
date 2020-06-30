@@ -351,14 +351,14 @@ impl IntoFinalized for Herc20 {
     fn into_finalized(self, state: Self::State) -> anyhow::Result<Self::Finalized> {
         let asset = asset::Erc20 {
             quantity: self.amount.0.into(),
-            token_contract: self.token_contract.0.into(),
+            token_contract: self.token_contract.0,
         };
 
         Ok(herc20::Finalized {
             asset,
             chain_id: self.chain_id.0.into(),
-            refund_identity: self.refund_identity.ok_or(NoRefundIdentity)?.0.into(),
-            redeem_identity: self.redeem_identity.ok_or(NoRedeemIdentity)?.0.into(),
+            refund_identity: self.refund_identity.ok_or(NoRefundIdentity)?.0,
+            redeem_identity: self.redeem_identity.ok_or(NoRedeemIdentity)?.0,
             expiry: self.expiry.0.into(),
             state,
         })

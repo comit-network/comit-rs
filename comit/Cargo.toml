@@ -21,7 +21,7 @@ genawaiter = { version = "0.99", features = ["futures03"] }
 hex = "0.4"
 lazy_static = "1"
 levenshtein = "1"
-libp2p = { version = "0.18", default-features = false, features = ["tcp", "secio", "yamux", "mplex", "gossipsub"] }
+libp2p = { version = "0.20", default-features = false, features = ["tcp-tokio", "secio", "yamux", "mplex", "gossipsub"] }
 lru = "0.5.2"
 num = "0.3"
 primitive-types = { version = "0.7.2", features = ["serde"] }
@@ -42,6 +42,7 @@ uuid = { version = "0.8", features = ["serde", "v4"] }
 
 [dev-dependencies]
 bitcoincore-rpc = "0.11.0"
+proptest = "0.10.0"
 spectral = { version = "0.6", default-features = false }
 testcontainers = "0.9"
 tokio = { version = "0.2.21", features = ["macros"] }

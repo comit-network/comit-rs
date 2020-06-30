@@ -1,7 +1,7 @@
 use crate::{
     btsieve::{BlockByHash, LatestBlock},
-    ledger,
-    swap_protocols::{state, state::Update},
+    ledger, state,
+    state::Update,
     tracing_ext::InstrumentProtocol,
     LocalSwapId, Role, Side,
 };

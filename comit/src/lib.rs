@@ -12,6 +12,8 @@ pub mod ledger;
 pub mod lightning;
 pub mod lnd;
 pub mod network;
+#[cfg(test)]
+pub mod proptest;
 mod secret;
 mod secret_hash;
 mod swap_id;

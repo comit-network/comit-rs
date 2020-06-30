@@ -1,11 +1,10 @@
 pub use ethbloom::{Bloom as H2048, Input};
-use hex::FromHexError;
 pub use primitive_types::U256;
 use serde::{Deserialize, Serialize};
 use serde_hex::{CompactPfx, SerHex, SerHexSeq, StrictPfx};
 use std::{
     fmt,
-    fmt::{Display, Formatter, LowerHex},
+    fmt::{Display, Formatter},
     str::FromStr,
 };
 
@@ -15,12 +14,6 @@ use std::{
 pub struct Address(#[serde(with = "SerHex::<StrictPfx>")] [u8; 20]);
 
 impl Address {
-    pub fn from_slice(src: &[u8]) -> Self {
-        let mut address = Address([0u8; 20]);
-        address.0.copy_from_slice(src);
-        address
-    }
-
     pub fn as_bytes(&self) -> &[u8; 20] {
         &self.0
     }
@@ -50,20 +43,32 @@ impl From<Address> for [u8; 20] {
 }
 
 impl FromStr for Address {
-    type Err = FromHexError;
+    type Err = FromHexStrError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        hex::decode(s).map(|v| Address::from_slice(v.as_slice()))
+    fn from_str(hex: &str) -> Result<Self, Self::Err> {
+        let bytes = hex::decode(hex.trim_start_matches("0x"))?;
+
+        const EXPECTED_LEN: usize = 20;
+        let len = bytes.len();
+
+        if len != EXPECTED_LEN {
+            return Err(FromHexStrError::InvalidLength {
+                expected: EXPECTED_LEN,
+                got: len,
+            });
+        }
+
+        let mut address = [0u8; EXPECTED_LEN];
+        address.copy_from_slice(&bytes);
+
+        Ok(Address(address))
     }
 }
 
 impl Display for Address {
-    // This is duplicate code from LowerHex, is there a better way to do this?
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if f.alternate() {
-            write!(f, "0x")?;
-        }
-        for i in &self.0[..] {
+        write!(f, "0x")?;
+        for i in &self.0 {
             write!(f, "{:02x}", i)?;
         }
         Ok(())
@@ -75,18 +80,6 @@ impl From<Address> for Hash {
         let mut h256 = Hash([0u8; 32]);
         h256.0[(32 - 20)..32].copy_from_slice(&address.0);
         h256
-    }
-}
-
-impl LowerHex for Address {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if f.alternate() {
-            write!(f, "0x")?;
-        }
-        for i in &self.0[..] {
-            write!(f, "{:02x}", i)?;
-        }
-        Ok(())
     }
 }
 
@@ -108,49 +101,50 @@ impl From<Hash> for [u8; 32] {
 }
 
 impl Hash {
-    pub fn from_slice(src: &[u8]) -> Self {
-        let mut h256 = Hash([0u8; 32]);
-        h256.0.copy_from_slice(src);
-        h256
-    }
-
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
-    }
-}
-
-impl FromStr for Hash {
-    type Err = FromHexError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        hex::decode(s).map(|v| Hash::from_slice(v.as_slice()))
-    }
-}
-
-impl LowerHex for Hash {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        if f.alternate() {
-            write!(f, "0x")?;
-        }
-        for i in &self.0[..] {
-            write!(f, "{:02x}", i)?;
-        }
-        Ok(())
     }
 }
 
 impl Display for Hash {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "0x")?;
-        for i in &self.0[0..2] {
-            write!(f, "{:02x}", i)?;
-        }
-        write!(f, "…")?;
-        for i in &self.0[32 - 2..32] {
+        for i in &self.0 {
             write!(f, "{:02x}", i)?;
         }
         Ok(())
     }
+}
+
+impl FromStr for Hash {
+    type Err = FromHexStrError;
+
+    fn from_str(hex: &str) -> Result<Self, Self::Err> {
+        let bytes = hex::decode(hex.trim_start_matches("0x"))?;
+
+        const EXPECTED_LEN: usize = 32;
+        let len = bytes.len();
+
+        if len != EXPECTED_LEN {
+            return Err(FromHexStrError::InvalidLength {
+                expected: EXPECTED_LEN,
+                got: len,
+            });
+        }
+
+        let mut hash = [0u8; EXPECTED_LEN];
+        hash.copy_from_slice(&bytes);
+
+        Ok(Hash(hash))
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum FromHexStrError {
+    #[error("unable to decode string as hex")]
+    InvalidHex(#[from] hex::FromHexError),
+    #[error("expected a hex string with {expected} bytes but got {got} bytes")]
+    InvalidLength { expected: usize, got: usize },
 }
 
 /// "Receipt" of an executed transaction: details of its execution.
@@ -249,6 +243,8 @@ impl From<u32> for ChainId {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::proptest::*;
+    use proptest::prelude::*;
 
     #[test]
     fn deserialise_address() {
@@ -274,7 +270,7 @@ mod tests {
             serde_json::Value::String("0xc5549e335b2786520f4c5d706c76c9ee69d0a028".to_owned());
         let deserialized: Address = Address::deserialize(&json).unwrap();
 
-        let from_string = Address::from_str("c5549e335b2786520f4c5d706c76c9ee69d0a028").unwrap();
+        let from_string = Address::from_str("0xc5549e335b2786520f4c5d706c76c9ee69d0a028").unwrap();
 
         assert_eq!(from_string, deserialized);
     }
@@ -297,20 +293,6 @@ mod tests {
 
         let deserialized = serde_json::from_value::<Hash>(json);
         matches!(deserialized, Err(_));
-    }
-
-    #[test]
-    fn from_string_hash() {
-        let json = serde_json::Value::String(
-            "0x3ae3b6ffb04204f52dee42000e8b971c0f7c2b4aa8dd9455e41a30ee4b31e8a9".to_owned(),
-        );
-        let deserialized: Hash = Hash::deserialize(&json).unwrap();
-
-        let from_string =
-            Hash::from_str("3ae3b6ffb04204f52dee42000e8b971c0f7c2b4aa8dd9455e41a30ee4b31e8a9")
-                .unwrap();
-
-        assert_eq!(from_string, deserialized);
     }
 
     #[test]
@@ -363,5 +345,39 @@ mod tests {
         let receipt = serde_json::from_str::<TransactionReceipt>(json).unwrap();
 
         assert_eq!(receipt.status, 0);
+    }
+
+    proptest! {
+        #[test]
+        fn address_from_hex_doesnt_panic(string in any::<String>()) {
+            let _ = Address::from_str(&string);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn address_to_string_from_str_is_uniform(address in ethereum::address()) {
+            let displayed = format!("{}", address);
+            let constructed = Address::from_str(&displayed).unwrap();
+
+            assert_eq!(constructed, address);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn hash_from_hex_doesnt_panic(string in any::<String>()) {
+            let _ = Hash::from_str(&string);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn hash_to_string_from_str_is_uniform(hash in ethereum::hash()) {
+            let displayed = format!("{}", hash);
+            let constructed = Hash::from_str(&displayed).unwrap();
+
+            assert_eq!(constructed, hash);
+        }
     }
 }

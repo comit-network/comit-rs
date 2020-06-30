@@ -4,7 +4,8 @@
 //! make sure we don't change the format accidentally!
 
 use crate::{
-    storage::db::wrapper_types::{Erc20Amount, Ether, EthereumAddress, Satoshis},
+    identity,
+    storage::db::wrapper_types::{Erc20Amount, Ether, Satoshis},
     Protocol, SecretHash,
 };
 use std::{fmt, str::FromStr};
@@ -40,7 +41,7 @@ fn bitcoin_public_key() {
 
 #[test]
 fn ethereum_address() {
-    roundtrip_test::<EthereumAddress>("68917b35bacf71dbadf37628b3b7f290f6d88877");
+    roundtrip_test::<identity::Ethereum>("0x68917b35bacf71dbadf37628b3b7f290f6d88877");
 }
 
 #[test]

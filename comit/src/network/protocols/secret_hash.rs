@@ -1,9 +1,10 @@
 use crate::{network::oneshot_protocol, SecretHash, SharedSwapId};
 use serde::{Deserialize, Serialize};
 use serde_hex::{SerHex, Strict};
+use serdebug::SerDebug;
 
 /// The message for the secret hash sharing protocol.
-#[derive(Clone, Copy, Deserialize, Debug, Serialize)]
+#[derive(Clone, Copy, Deserialize, SerDebug, Serialize)]
 pub struct Message {
     pub swap_id: SharedSwapId,
     /// A SHA-256 hash, serialized as hex without a `0x` prefix.

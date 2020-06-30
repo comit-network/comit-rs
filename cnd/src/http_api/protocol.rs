@@ -112,7 +112,7 @@ impl From<herc20::State> for LedgerEvents {
                 deploy_transaction, ..
             } => {
                 let mut transactions = HashMap::new();
-                transactions.insert(ActionName::Deploy, format!("{:x}", deploy_transaction.hash));
+                transactions.insert(ActionName::Deploy, format!("{}", deploy_transaction.hash));
                 LedgerEvents::new(EscrowStatus::Deployed, transactions)
             }
             herc20::State::Funded {
@@ -121,8 +121,8 @@ impl From<herc20::State> for LedgerEvents {
                 ..
             } => {
                 let mut transactions = HashMap::new();
-                transactions.insert(ActionName::Deploy, format!("{:x}", deploy_transaction.hash));
-                transactions.insert(ActionName::Fund, format!("{:x}", fund_transaction.hash));
+                transactions.insert(ActionName::Deploy, format!("{}", deploy_transaction.hash));
+                transactions.insert(ActionName::Fund, format!("{}", fund_transaction.hash));
                 LedgerEvents::new(EscrowStatus::Funded, transactions)
             }
             herc20::State::IncorrectlyFunded {
@@ -131,8 +131,8 @@ impl From<herc20::State> for LedgerEvents {
                 ..
             } => {
                 let mut transactions = HashMap::new();
-                transactions.insert(ActionName::Deploy, format!("{:x}", deploy_transaction.hash));
-                transactions.insert(ActionName::Fund, format!("{:x}", fund_transaction.hash));
+                transactions.insert(ActionName::Deploy, format!("{}", deploy_transaction.hash));
+                transactions.insert(ActionName::Fund, format!("{}", fund_transaction.hash));
                 LedgerEvents::new(EscrowStatus::IncorrectlyFunded, transactions)
             }
             herc20::State::Redeemed {
@@ -142,9 +142,9 @@ impl From<herc20::State> for LedgerEvents {
                 ..
             } => {
                 let mut transactions = HashMap::new();
-                transactions.insert(ActionName::Deploy, format!("{:x}", deploy_transaction.hash));
-                transactions.insert(ActionName::Fund, format!("{:x}", fund_transaction.hash));
-                transactions.insert(ActionName::Redeem, format!("{:x}", redeem_transaction.hash));
+                transactions.insert(ActionName::Deploy, format!("{}", deploy_transaction.hash));
+                transactions.insert(ActionName::Fund, format!("{}", fund_transaction.hash));
+                transactions.insert(ActionName::Redeem, format!("{}", redeem_transaction.hash));
                 LedgerEvents::new(EscrowStatus::Redeemed, transactions)
             }
             herc20::State::Refunded {
@@ -154,9 +154,9 @@ impl From<herc20::State> for LedgerEvents {
                 ..
             } => {
                 let mut transactions = HashMap::new();
-                transactions.insert(ActionName::Deploy, format!("{:x}", deploy_transaction.hash));
-                transactions.insert(ActionName::Fund, format!("{:x}", fund_transaction.hash));
-                transactions.insert(ActionName::Refund, format!("{:x}", refund_transaction.hash));
+                transactions.insert(ActionName::Deploy, format!("{}", deploy_transaction.hash));
+                transactions.insert(ActionName::Fund, format!("{}", fund_transaction.hash));
+                transactions.insert(ActionName::Refund, format!("{}", refund_transaction.hash));
                 LedgerEvents::new(EscrowStatus::Refunded, transactions)
             }
         }

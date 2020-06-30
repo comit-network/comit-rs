@@ -30,7 +30,6 @@ function nActorTest(
     testFn: (actors: Actors) => Promise<void>
 ): ProvidesCallback {
     return async (done) => {
-        // @ts-ignore
         const name = jasmine.currentTestName;
         if (!name.match(/[A-z0-9\-]+/)) {
             // We use the test name as a file name for the log and hence need to restrict it.

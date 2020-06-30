@@ -1,6 +1,6 @@
-// @ts-ignore: Jasmine types are not up to date
+import CustomReporterResult = jasmine.CustomReporterResult;
+
 jasmine.getEnv().addReporter({
-    specStarted: (result: any) =>
-        // @ts-ignore
+    specStarted: (result: CustomReporterResult) =>
         (jasmine.currentTestName = result.description),
 });

@@ -202,8 +202,21 @@ macro_rules! impl_load_tables {
                     .await
                     .context(NoSwapExists(id))?;
 
-                alpha.assert_side(Side::Alpha)?;
-                beta.assert_side(Side::Beta)?;
+                if alpha.side.0 != Side::Alpha {
+                    anyhow::bail!(
+                        "attempted to load {} as side Alpha but it was {}",
+                        stringify!($alpha),
+                        alpha.side.0
+                    );
+                }
+
+                if beta.side.0 != Side::Beta {
+                    anyhow::bail!(
+                        "attempted to load {} as side Beta but it was {}",
+                        stringify!($alpha),
+                        beta.side.0
+                    );
+                }
 
                 Ok(Tables {
                     swap,
@@ -221,11 +234,6 @@ impl_load_tables!(Halbit, Herc20);
 impl_load_tables!(Herc20, Hbit);
 impl_load_tables!(Hbit, Herc20);
 
-/// Assert that a loaded data from a protocol table is for the correct side.
-pub trait AssertSide {
-    fn assert_side(&self, expected: Side) -> anyhow::Result<()>;
-}
-
 impl IntoParams for herc20::Params {
     type ProtocolTable = Herc20;
 
@@ -239,18 +247,16 @@ impl IntoParams for herc20::Params {
         Ok(herc20::Params {
             asset: asset::Erc20 {
                 quantity: herc20.amount.0.into(),
-                token_contract: herc20.token_contract.0.into(),
+                token_contract: herc20.token_contract.0,
             },
             redeem_identity: herc20
                 .redeem_identity
                 .ok_or_else(|| NoHerc20RedeemIdentity(id))?
-                .0
-                .into(),
+                .0,
             refund_identity: herc20
                 .refund_identity
                 .ok_or_else(|| NoHerc20RefundIdentity(id))?
-                .0
-                .into(),
+                .0,
             expiry: herc20.expiry.0.into(),
             secret_hash,
             chain_id: herc20.chain_id.0.into(),

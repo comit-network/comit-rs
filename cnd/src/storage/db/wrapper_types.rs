@@ -1,4 +1,4 @@
-use crate::{asset, identity, ledger};
+use crate::{asset, ledger};
 use std::{fmt, str::FromStr};
 
 pub mod custom_sql_types;
@@ -93,39 +93,6 @@ impl FromStr for Erc20Amount {
 impl fmt::Display for Erc20Amount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0.to_wei_dec())
-    }
-}
-
-/// A wrapper type for ethereum addresses.
-///
-/// Together with the `Text` sql type, this will store an ethereum address in
-/// hex encoding.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct EthereumAddress(identity::Ethereum);
-
-impl FromStr for EthereumAddress {
-    type Err = <identity::Ethereum as FromStr>::Err;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.parse().map(EthereumAddress)
-    }
-}
-
-impl fmt::Display for EthereumAddress {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:x}", self.0)
-    }
-}
-
-impl From<EthereumAddress> for identity::Ethereum {
-    fn from(address: EthereumAddress) -> Self {
-        address.0
-    }
-}
-
-impl From<identity::Ethereum> for EthereumAddress {
-    fn from(address: identity::Ethereum) -> Self {
-        EthereumAddress(address)
     }
 }
 

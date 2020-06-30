@@ -141,7 +141,7 @@ where
         match block_generator.async_resume().await {
             GeneratorState::Yielded(block) => {
                 let span =
-                    tracing::trace_span!("new_block", blockhash = format_args!("{:x}", block.hash));
+                    tracing::trace_span!("new_block", blockhash = format_args!("{}", block.hash));
                 let _enter = span.enter();
 
                 tracing::trace!("checking {} transactions", block.transactions.len());
@@ -150,7 +150,7 @@ where
                     let tx_hash = transaction.hash;
                     let span = tracing::trace_span!(
                         "matching_transaction",
-                        txhash = format_args!("{:x}", tx_hash)
+                        txhash = format_args!("{}", tx_hash)
                     );
                     let _enter = span.enter();
 
@@ -192,7 +192,7 @@ where
         match block_generator.async_resume().await {
             GeneratorState::Yielded(block) => {
                 let span =
-                    tracing::trace_span!("new_block", blockhash = format_args!("{:x}", block.hash));
+                    tracing::trace_span!("new_block", blockhash = format_args!("{}", block.hash));
                 let _enter = span.enter();
 
                 let maybe_contains_transaction = topics.iter().all(|topic| {
@@ -221,7 +221,7 @@ where
 
                     let span = tracing::trace_span!(
                         "matching_transaction",
-                        txhash = format_args!("{:x}", tx_hash)
+                        txhash = format_args!("{}", tx_hash)
                     );
                     let _enter = span.enter();
 
