@@ -261,6 +261,12 @@ impl<T> Swaps<T> {
             .retain(|digest, _| !digests.contains(digest));
     }
 
+    pub fn new_shared_swap_id(&mut self, local_swap_id: LocalSwapId) -> SharedSwapId {
+        let shared_swap_id = SharedSwapId::default();
+        self.swap_ids.insert(local_swap_id, shared_swap_id);
+        shared_swap_id
+    }
+
     /// This does not test external behaviour but the aim is to ensure we are
     /// not consuming memory for no reason.
     #[cfg(test)]

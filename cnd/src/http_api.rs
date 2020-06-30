@@ -5,6 +5,7 @@ pub mod hbit_herc20;
 pub mod herc20;
 pub mod herc20_halbit;
 pub mod herc20_hbit;
+mod orderbook;
 pub mod route_factory;
 pub mod routes;
 #[macro_use]

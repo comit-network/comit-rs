@@ -14,6 +14,8 @@ pub use self::{
     comit::*,
     protocols::{
         announce::{behaviour::*, handler::*, protocol::*, *},
+        orderbook::*,
+        take_order::{behaviour::*, handler::*, protocol::*, *},
         *,
     },
     swap_digest::SwapDigest,

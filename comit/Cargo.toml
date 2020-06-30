@@ -9,6 +9,7 @@ description = "Core components of the COMIT protocol"
 anyhow = "1"
 async-trait = "0.1"
 base64 = "0.12.3"
+bincode = "1.2.1"
 bitcoin = { version = "0.23.0", features = ["rand"] }
 blockchain_contracts = "0.3.2"
 chrono = { version = "0.4", features = ["serde"] }
@@ -20,7 +21,7 @@ genawaiter = { version = "0.99", features = ["futures03"] }
 hex = "0.4"
 lazy_static = "1"
 levenshtein = "1"
-libp2p = { version = "0.20", default-features = false, features = ["tcp-tokio", "secio", "yamux", "mplex"] }
+libp2p = { version = "0.20", default-features = false, features = ["tcp-tokio", "secio", "yamux", "mplex", "gossipsub"] }
 lru = "0.5.2"
 num = "0.3"
 primitive-types = { version = "0.7.2", features = ["serde"] }

@@ -7,7 +7,10 @@ use crate::{
     storage::{Load, LoadAll, Storage},
     LocalSwapId, Role, Save, Timestamp,
 };
-use comit::bitcoin;
+use comit::{
+    bitcoin, identity,
+    network::{NewOrder, Order, OrderId, TradingPair},
+};
 use libp2p::{Multiaddr, PeerId};
 
 /// This is a facade that implements all the required traits and forwards them
@@ -55,6 +58,73 @@ impl Facade {
             .into();
 
         Ok(timestamp)
+    }
+
+    pub async fn make_hbit_herc20_order(
+        &self,
+        order: NewOrder,
+        refund_identity: crate::bitcoin::Address,
+        redeem_identity: identity::Ethereum,
+    ) -> anyhow::Result<OrderId> {
+        self.swarm
+            .make_hbit_herc20_order(order, refund_identity, redeem_identity)
+            .await
+    }
+
+    pub async fn take_hbit_herc20_order(
+        &mut self,
+        id: OrderId,
+        swap_id: LocalSwapId,
+        refund_address: crate::bitcoin::Address,
+        refund_identity: identity::Bitcoin,
+        redeem_identity: identity::Ethereum,
+    ) -> anyhow::Result<()> {
+        self.storage.associate_swap_with_order(id, swap_id).await;
+        self.swarm
+            .take_hbit_herc20_order(
+                id,
+                swap_id,
+                refund_address,
+                refund_identity,
+                redeem_identity,
+            )
+            .await
+    }
+
+    pub async fn get_order(&self, order_id: OrderId) -> Option<Order> {
+        self.swarm.get_order(order_id).await
+    }
+
+    pub async fn get_orders(&self) -> Vec<Order> {
+        self.swarm.get_orders().await
+    }
+
+    pub async fn get_makers(&self) -> Vec<PeerId> {
+        self.swarm.get_makers().await
+    }
+
+    pub async fn subscribe(
+        &self,
+        peer_id: PeerId,
+        trading_pair: TradingPair,
+    ) -> anyhow::Result<()> {
+        self.swarm.subscribe(peer_id, trading_pair).await
+    }
+
+    pub async fn unsubscribe(
+        &self,
+        peer_id: PeerId,
+        trading_pair: TradingPair,
+    ) -> anyhow::Result<()> {
+        self.swarm.unsubscribe(peer_id, trading_pair).await
+    }
+
+    pub async fn dial_addr(&mut self, addr: Multiaddr) {
+        let _ = self.swarm.dial_addr(addr).await;
+    }
+
+    pub async fn announce_trading_pair(&mut self, trading_pair: TradingPair) {
+        self.swarm.announce_trading_pair(trading_pair).await;
     }
 }
 

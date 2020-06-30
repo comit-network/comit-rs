@@ -1,5 +1,9 @@
 use crate::network::protocols::{
-    announce::protocol::{self, Confirmed, InboundConfig, OutboundConfig},
+    orderbook::OrderId,
+    take_order::{
+        protocol,
+        protocol::{InboundConfig, OrderConfirmed, OutboundConfig},
+    },
     ReplySubstream,
 };
 use libp2p::{
@@ -14,7 +18,6 @@ use std::{
     task::{Context, Poll},
 };
 
-/// Protocol handler for sending and receiving announce protocol messages.
 #[derive(derivative::Derivative)]
 #[derivative(Debug)]
 pub struct Handler {
@@ -37,18 +40,11 @@ impl Default for Handler {
 /// Event produced by the `Handler`.
 #[derive(Debug)]
 pub enum HandlerEvent {
-    /// This event created when a confirmation message containing a `swap_id` is
-    /// received in response to an announce message containing a
-    /// `swap_digest`. The Event contains both the swap id and
-    /// the swap digest.
-    ReceivedConfirmation(Confirmed),
-
-    /// The event is created when a remote sends a `swap_digest`. The event
-    /// contains a reply substream for the receiver to send back the
-    /// `swap_id` that corresponds to the swap digest.
-    AwaitingConfirmation(Box<ReplySubstream<NegotiatedSubstream>>),
-
-    /// Failed to announce swap to peer.
+    ReceivedTakeOrderResponse(OrderConfirmed),
+    ReceivedTakeOrderRequest {
+        order_id: OrderId,
+        reply_substream: ReplySubstream<NegotiatedSubstream>,
+    },
     Error(Error),
 }
 
@@ -66,19 +62,22 @@ impl ProtocolsHandler for Handler {
 
     fn inject_fully_negotiated_inbound(
         &mut self,
-        sender: <Self::InboundProtocol as InboundUpgrade<NegotiatedSubstream>>::Output,
+        inbound: <Self::InboundProtocol as InboundUpgrade<NegotiatedSubstream>>::Output,
     ) {
         self.events
-            .push_back(HandlerEvent::AwaitingConfirmation(Box::new(sender)))
+            .push_back(HandlerEvent::ReceivedTakeOrderRequest {
+                order_id: inbound.order_id,
+                reply_substream: inbound.reply_substream,
+            });
     }
 
     fn inject_fully_negotiated_outbound(
         &mut self,
-        confirmed: <Self::OutboundProtocol as OutboundUpgrade<NegotiatedSubstream>>::Output,
+        confirmed_order: <Self::OutboundProtocol as OutboundUpgrade<NegotiatedSubstream>>::Output,
         _info: Self::OutboundOpenInfo,
     ) {
         self.events
-            .push_back(HandlerEvent::ReceivedConfirmation(confirmed));
+            .push_back(HandlerEvent::ReceivedTakeOrderResponse(confirmed_order));
     }
 
     fn inject_event(&mut self, event: Self::InEvent) {

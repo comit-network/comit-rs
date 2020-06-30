@@ -1,24 +1,31 @@
 use crate::{
-    network::{protocols::ReplySubstream, swap_digest::SwapDigest},
+    network::{
+        protocols::{orderbook::OrderId, ReplySubstream},
+        swap_digest::SwapDigest,
+    },
     SharedSwapId,
 };
 use futures::prelude::*;
 use libp2p::core::upgrade::{self, InboundUpgrade, OutboundUpgrade, UpgradeInfo};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{io, iter, pin::Pin};
 
-const INFO: &str = "/comit/swap/announce/1.0.0";
+const INFO: &str = "/comit/dbook/take_order/1.0.0";
 
-/// Configuration for an upgrade to the `Announce` protocol on the outbound
-/// side.
+/// Outbound message containing the order id
 #[derive(Debug, Clone)]
 pub struct OutboundConfig {
+    // why cant the swap_digest be the order_id?
+    pub order_id: OrderId,
     pub swap_digest: SwapDigest,
 }
 
 impl OutboundConfig {
-    pub fn new(swap_digest: SwapDigest) -> Self {
-        OutboundConfig { swap_digest }
+    pub fn new(order_id: OrderId, swap_digest: SwapDigest) -> Self {
+        OutboundConfig {
+            order_id,
+            swap_digest,
+        }
     }
 }
 
@@ -37,7 +44,7 @@ impl<C> OutboundUpgrade<C> for OutboundConfig
 where
     C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
-    type Output = Confirmed;
+    type Output = OrderConfirmed;
     type Error = Error;
     type Future = UpgradeFuture<Result<Self::Output, Self::Error>>;
 
@@ -47,27 +54,38 @@ where
             String::from_utf8_lossy(info)
         );
         Box::pin(async move {
-            let bytes = serde_json::to_vec(&self.swap_digest)?;
+            let message = InboundMessage {
+                order_id: self.order_id,
+                swap_digest: self.swap_digest.clone(),
+            };
+            let bytes = serde_json::to_vec(&message)?;
             upgrade::write_one(&mut socket, &bytes).await?;
             socket.close().await?;
 
             let message = upgrade::read_one(&mut socket, 1024).await?;
             let mut de = serde_json::Deserializer::from_slice(&message);
-            let swap_id = SharedSwapId::deserialize(&mut de)?;
-            tracing::trace!("Received: {}", swap_id);
+            let shared_swap_id = SharedSwapId::deserialize(&mut de)?;
 
-            Ok(Confirmed {
+            let order_confirmation = OrderConfirmed {
                 swap_digest: self.swap_digest.clone(),
-                swap_id,
-            })
+                swap_id: shared_swap_id,
+            };
+            tracing::trace!("Received: {}", order_confirmation.swap_id);
+
+            Ok(order_confirmation)
         })
     }
 }
 
-#[derive(Debug)]
-pub struct Confirmed {
+#[derive(Debug, Deserialize)]
+pub struct OrderConfirmed {
     pub swap_digest: SwapDigest,
     pub swap_id: SharedSwapId,
+}
+
+pub struct InboundTakeOrderRequest<T> {
+    pub order_id: OrderId,
+    pub reply_substream: ReplySubstream<T>,
 }
 
 /// Configuration for an upgrade to the `Announce` protocol on the inbound side.
@@ -89,11 +107,17 @@ impl UpgradeInfo for InboundConfig {
     }
 }
 
+#[derive(Deserialize, Serialize, Clone)]
+pub struct InboundMessage {
+    order_id: OrderId,
+    swap_digest: SwapDigest,
+}
+
 impl<C> InboundUpgrade<C> for InboundConfig
 where
     C: AsyncRead + Unpin + Send + 'static,
 {
-    type Output = ReplySubstream<C>;
+    type Output = InboundTakeOrderRequest<C>;
     type Error = Error;
     type Future = UpgradeFuture<Result<Self::Output, Self::Error>>;
 
@@ -106,10 +130,13 @@ where
         Box::pin(async move {
             let message = upgrade::read_one(&mut socket, 1024).await?;
             let mut de = serde_json::Deserializer::from_slice(&message);
-            let swap_digest = SwapDigest::deserialize(&mut de)?;
-            Ok(ReplySubstream {
-                io: socket,
-                swap_digest,
+            let inbound = InboundMessage::deserialize(&mut de)?;
+            Ok(InboundTakeOrderRequest {
+                order_id: inbound.order_id,
+                reply_substream: ReplySubstream {
+                    io: socket,
+                    swap_digest: inbound.swap_digest,
+                },
             })
         })
     }
