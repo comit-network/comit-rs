@@ -1,6 +1,6 @@
 use crate::dai;
 use crate::dai::ATTOS_IN_DAI_EXP;
-use crate::rate::Rate;
+use crate::Rate;
 
 pub const SATS_IN_BITCOIN_EXP: u16 = 8;
 
