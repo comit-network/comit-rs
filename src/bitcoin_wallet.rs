@@ -12,6 +12,7 @@ pub struct Wallet {
     name: String,
     bitcoind_client: bitcoind::Client,
     private_key: bitcoin::PrivateKey,
+    network: Network,
 }
 
 impl Wallet {
@@ -32,6 +33,7 @@ impl Wallet {
             name,
             bitcoind_client,
             private_key,
+            network,
         })
     }
 
@@ -57,16 +59,22 @@ impl Wallet {
     }
 
     pub async fn info(&self) -> anyhow::Result<WalletInfoResponse> {
+        self.assert_network(self.network).await?;
+
         self.bitcoind_client.get_wallet_info(&self.name).await
     }
 
     pub async fn new_address(&self) -> anyhow::Result<Address> {
+        self.assert_network(self.network).await?;
+
         self.bitcoind_client
             .get_new_address(&self.name, None, Some("bech32".into()))
             .await
     }
 
     pub async fn balance(&self) -> anyhow::Result<Amount> {
+        self.assert_network(self.network).await?;
+
         self.bitcoind_client
             .get_balance(&self.name, None, None, None)
             .await
@@ -111,6 +119,8 @@ impl Wallet {
     }
 
     pub async fn get_raw_transaction(&self, txid: Txid) -> anyhow::Result<Transaction> {
+        self.assert_network(self.network).await?;
+
         let transaction = self
             .bitcoind_client
             .get_raw_transaction(&self.name, txid)
