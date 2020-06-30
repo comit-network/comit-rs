@@ -95,9 +95,6 @@ where
 {
     async fn is_safe_to_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
         let ethereum_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
-        // TODO: Apply a buffer depending on the blocktime and how
-        // safe we want to be
-
         Ok(beta_expiry > ethereum_time)
     }
 }
@@ -110,9 +107,6 @@ where
 {
     async fn is_safe_to_redeem(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
         let ethereum_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
-        // TODO: Apply a buffer depending on the blocktime and how
-        // safe we want to be.
-
         Ok(beta_expiry > ethereum_time)
     }
 }
@@ -237,8 +231,6 @@ pub mod wallet_actor {
     {
         async fn is_safe_to_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
             let ethereum_time = ethereum_latest_time(&self.beta_wallet).await?;
-            // TODO: Apply a buffer depending on the blocktime and how
-            // safe we want to be
 
             Ok(beta_expiry > ethereum_time)
         }
@@ -253,8 +245,6 @@ pub mod wallet_actor {
     {
         async fn is_safe_to_redeem(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
             let ethereum_time = ethereum_latest_time(&self.beta_wallet).await?;
-            // TODO: Apply a buffer depending on the blocktime and how
-            // safe we want to be
 
             Ok(beta_expiry > ethereum_time)
         }
