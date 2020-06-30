@@ -4,7 +4,7 @@ use libp2p::{
     multiaddr::Multiaddr,
     NetworkBehaviour,
 };
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::{hash_map::DefaultHasher, HashMap, HashSet},
     fmt,
@@ -15,6 +15,8 @@ use uuid::Uuid;
 
 use crate::{asset, identity};
 use libp2p::{swarm::NetworkBehaviourEventProcess, PeerId};
+use serde::de::Error;
+use std::str::FromStr;
 
 #[derive(thiserror::Error, Debug)]
 pub enum OrderbookError {
@@ -69,10 +71,54 @@ impl TradingPairTopic {
 
 pub type OrderId = Uuid;
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct MakerId(PeerId);
+
+impl MakerId {
+    pub fn new(peer_id: PeerId) -> Self {
+        MakerId(peer_id)
+    }
+    pub fn peer_id(&self) -> PeerId {
+        self.0.clone()
+    }
+}
+
+impl Serialize for MakerId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let string = self.0.to_string();
+
+        serializer.serialize_str(&string)
+    }
+}
+
+impl<'de> Deserialize<'de> for MakerId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let string = String::deserialize(deserializer)?;
+        let peer_id = PeerId::from_str(&string).map_err(D::Error::custom)?;
+
+        Ok(MakerId(peer_id))
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Order {
     pub id: OrderId,
-    pub maker: Vec<u8>,
+    pub maker: MakerId,
+    pub maker_addr: Multiaddr,
+    pub buy: u64,
+    pub sell: asset::Erc20,
+    pub absolute_expiry: u32,
+}
+
+pub struct OrderWithIdentities {
+    pub id: OrderId,
+    pub maker_id: Vec<u8>,
     pub maker_addr: Multiaddr,
     pub buy: u64,
     pub sell: asset::Erc20,
@@ -87,10 +133,10 @@ pub struct NewOrder {
 }
 
 impl Order {
-    pub fn new(maker_id: Vec<u8>, new_order: NewOrder) -> Self {
+    pub fn new(peer_id: PeerId, new_order: NewOrder) -> Self {
         Order {
             id: Uuid::new_v4(),
-            maker: maker_id,
+            maker: MakerId(peer_id),
             maker_addr: new_order.maker_addr,
             buy: new_order.buy.as_sat(),
             sell: new_order.sell,

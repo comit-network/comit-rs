@@ -12,7 +12,7 @@ use comit::{
     ethereum,
     network::{NewOrder, Order, OrderId, SwapType},
 };
-use libp2p::{Multiaddr, PeerId};
+use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use warp::{http, http::StatusCode, Rejection, Reply};
@@ -62,7 +62,7 @@ impl Herc20HbitOrderResponse {
             sell_token_contract: order.sell.token_contract,
             sell_quantity: order.sell.quantity.clone(),
             absolute_expiry: order.absolute_expiry,
-            maker: PeerId::from_bytes(order.maker.clone()).unwrap().to_string(),
+            maker: order.maker.peer_id().to_string(),
             id: order.id,
         }
     }
@@ -108,8 +108,7 @@ pub async fn post_take_hbit_herc20_order(
             chain_id: ChainId::regtest(),
             absolute_expiry: order.absolute_expiry,
         },
-        // todo: remove the unwrap
-        peer: PeerId::from_bytes(order.maker).unwrap(),
+        peer: order.maker.peer_id(),
         address_hint: Some(order.maker_addr),
         role: Role::Bob,
         start_of_swap,
@@ -277,7 +276,6 @@ pub async fn post_announce_trading_pair(
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
-    // todo: find out if the dial sucessful?
 
     facade
         .announce_trading_pair(::comit::network::TradingPair {

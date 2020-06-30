@@ -285,8 +285,7 @@ impl Comit {
                 .take_with_identities(order_id, refund_identity, redeem_identity)?;
 
         let dial_info = DialInformation {
-            // todo: remove unwrap
-            peer_id: PeerId::from_bytes(order.maker.clone()).unwrap(),
+            peer_id: order.maker.peer_id(),
             address_hint: Some(order.maker_addr),
         };
 
@@ -302,7 +301,8 @@ impl Comit {
 
         let digest = swap_digest::hbit_herc20(swap);
 
-        // this step is not required for the orderbook e2e test to pass
+        // this step is not required for the orderbook e2e test to pass but is most
+        // likely needed for swap execution
         self.swaps
             .create_as_pending_confirmation(digest.clone(), swap_id, local_data)?;
         self.take_order.take(order_id, digest, dial_info);
@@ -316,8 +316,7 @@ impl Comit {
         redeem_identity: identity::Ethereum,
     ) -> anyhow::Result<OrderId> {
         tracing::info!("Making order in orderbook");
-        let peer_id = self.orderbook.peer_id.clone().into_bytes();
-        let order = Order::new(peer_id, new_order);
+        let order = Order::new(self.orderbook.peer_id.clone(), new_order);
 
         self.orderbook.make(order, refund_identity, redeem_identity)
     }
