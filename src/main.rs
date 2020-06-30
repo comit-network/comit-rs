@@ -102,7 +102,12 @@ mod maker {
         /// Confirm with the order book
         /// Re & take & reserve
         pub fn confirm_order(&self, order: BtcDaiOrder) -> anyhow::Result<()> {
-            unimplemented!()
+            // TODO:
+            // 1. Check that rate is still profitable
+            // 2. Check that funds are available
+            // 3. Check there are no ongoing order for this peer
+
+            // Reserve funds if all checks pass <- do that now
         }
     }
 }
@@ -207,7 +212,7 @@ mod tests {
     }
 
     #[test]
-    fn given_order_is_taken_then_order_is_confirmed_and_funds_are_marked_reserved() {
+    fn given_order_is_taken_and_confirmed_then_funds_are_marked_reserved() {
         let mut maker = maker::Maker::new(
             bitcoin::Amount::ZERO,
             MidMarketRate {
