@@ -3,13 +3,13 @@ use crate::dai;
 use crate::{Rate, Spread};
 use std::cmp::min;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Position {
     Buy,
     Sell,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BtcDaiOrder {
     pub position: Position,
     pub base: bitcoin::Amount,

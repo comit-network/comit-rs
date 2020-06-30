@@ -28,15 +28,32 @@ pub enum Event {
 pub struct Orderbook;
 
 impl Orderbook {
-    pub fn publish(&mut self, order: Order) {}
+    pub fn publish(&mut self, order: Order) {
+        // TODO
+    }
+
+    pub fn take(&self, order: Order) {
+        // TODO
+    }
+
+    pub fn ignore(&self, order: Order) {
+        // TODO: does not take the order, close the channel with the taker
+    }
 }
 
 // TODO: Change this, currently placeholder ot the Order as represented in the orderbook
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Order(BtcDaiOrder);
 
 impl From<Order> for BtcDaiOrder {
     fn from(order: Order) -> Self {
         order.0
+    }
+}
+
+impl From<BtcDaiOrder> for Order {
+    fn from(btc_dai_order: BtcDaiOrder) -> Self {
+        Self(btc_dai_order)
     }
 }
 

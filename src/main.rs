@@ -24,8 +24,8 @@ mod maker {
         dai_balance: dai::Amount,
         btc_fee: bitcoin::Amount,
         dai_fee: dai::Amount,
-        btc_locked_funds: bitcoin::Amount,
-        dai_locked_funds: dai::Amount,
+        pub btc_reserved_funds: bitcoin::Amount,
+        pub dai_reserved_funds: dai::Amount,
         btc_max_sell_amount: bitcoin::Amount,
         dai_max_sell_amount: dai::Amount,
         rate: MidMarketRate,
@@ -44,8 +44,8 @@ mod maker {
                 dai_balance: zero_dai.clone(),
                 btc_fee: zero_btc,
                 dai_fee: zero_dai.clone(),
-                btc_locked_funds: zero_btc,
-                dai_locked_funds: zero_dai.clone(),
+                btc_reserved_funds: zero_btc,
+                dai_reserved_funds: zero_dai.clone(),
                 btc_max_sell_amount: zero_btc,
                 dai_max_sell_amount: zero_dai,
                 rate: initial_rate,
@@ -64,7 +64,7 @@ mod maker {
                 Position::Sell => BtcDaiOrder::new_sell(
                     self.btc_balance,
                     self.btc_fee,
-                    self.btc_locked_funds,
+                    self.btc_reserved_funds,
                     self.btc_max_sell_amount,
                     self.rate.value,
                     self.spread,
@@ -76,7 +76,7 @@ mod maker {
             Ok(maker::NewOrder::Created(new_order))
         }
 
-        pub fn lock_funds(&mut self, order: BtcDaiOrder) -> anyhow::Result<()> {
+        pub fn reserve_funds(&mut self, order: BtcDaiOrder) -> anyhow::Result<()> {
             // TODO: Bookkeeping, lock up funds
 
             Ok(())
@@ -95,6 +95,13 @@ mod maker {
         pub fn track_failed_balance_update(&mut self, error: anyhow::Error) {}
 
         pub fn get_order_for_local_swap_id(&self, local_swap_id: LocalSwapId) -> BtcDaiOrder {
+            unimplemented!()
+        }
+
+        /// Decide whether we should proceed with order,
+        /// Confirm with the order book
+        /// Re & take & reserve
+        pub fn confirm_order(&self, order: BtcDaiOrder) -> anyhow::Result<()> {
             unimplemented!()
         }
     }
@@ -131,11 +138,19 @@ async fn main() {
                     network::Event::OrderExpired(order) => {
                         let new_order = maker.expire_order(order.into());
                     }
-                    network::Event::OrderTakeRequest(order) => unimplemented!(),
+                    network::Event::OrderTakeRequest(order) => {
+                        // decide & take & reserve
+                        let res = maker.confirm_order(order.clone().into());
+                        if res.is_ok() {
+                            swarm.orderbook.take(order);
+                        } else {
+                            swarm.orderbook.ignore(order);
+                        }
+                    }
                     network::Event::SwapFinalized(local_swap_id, remote_data) => {
                         let order = maker.get_order_for_local_swap_id(local_swap_id);
 
-                        match maker.lock_funds(order) {
+                        match maker.reserve_funds(order) {
                             Ok(()) => {
                                 // TODO: Add remote_data learned from the other party to the swap and persist the swap
 
@@ -192,27 +207,27 @@ mod tests {
     }
 
     #[test]
-    fn given_swap_finalized_than_start_execution_action() {
-        let zero_dai = dai::Amount::from_dai_trunc(0.0).unwrap();
-        let zero_btc = crate::bitcoin::Amount::from_btc(0.0).unwrap();
-
+    fn given_order_is_taken_then_order_is_confirmed_and_funds_are_marked_reserved() {
         let mut maker = maker::Maker::new(
-            zero_btc,
+            bitcoin::Amount::ZERO,
             MidMarketRate {
                 value: Rate::new(0),
                 timestamp: Utc::now(),
             },
         );
 
-        let local_swap_id = LocalSwapId::random();
-        let remote_data = RemoteData {
-            secret_hash: None,
-            ethereum_identity: None,
-            lightning_identity: None,
-            bitcoin_identity: None,
+        let order_taken = BtcDaiOrder {
+            position: Position::Sell,
+            base: bitcoin::Amount::from_btc(1.5).unwrap(),
+            quote: dai::Amount::zero(),
         };
 
-        // TODO: Additionally assert on the state of the maker (correct bookkeeping)
+        let event = maker.confirm_order(order_taken).unwrap();
+
+        assert_eq!(
+            maker.btc_reserved_funds,
+            bitcoin::Amount::from_btc(1.5).unwrap()
+        )
     }
 
     #[test]
