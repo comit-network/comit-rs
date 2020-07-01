@@ -96,7 +96,10 @@ impl Announce {
                     address_hints.push_back(address);
                 }
 
-                let pending_events = vec![OutboundConfig::new(swap_to_announce)];
+                let pending_events = vec![OutboundConfig::new(
+                    swap_to_announce,
+                    self.incoming_announcements_buffer_expiry,
+                )];
 
                 entry.insert(ConnectionState::Connecting {
                     pending_events,
@@ -111,7 +114,10 @@ impl Announce {
                         pending_events,
                         address_hints,
                     } => {
-                        pending_events.push(OutboundConfig::new(swap_to_announce));
+                        pending_events.push(OutboundConfig::new(
+                            swap_to_announce,
+                            self.incoming_announcements_buffer_expiry,
+                        ));
                         if let Some(address) = peer.address_hint {
                             // We push to the front because we consider the new address to be the
                             // most likely one to succeed. The order of this queue is important
@@ -125,7 +131,10 @@ impl Announce {
                             .push_back(NetworkBehaviourAction::NotifyHandler {
                                 peer_id: peer.peer_id.clone(),
                                 handler: NotifyHandler::Any,
-                                event: OutboundConfig::new(swap_to_announce),
+                                event: OutboundConfig::new(
+                                    swap_to_announce,
+                                    self.incoming_announcements_buffer_expiry,
+                                ),
                             });
                     }
                 }
@@ -140,7 +149,18 @@ impl Announce {
     pub fn await_announcement(&mut self, swap: SwapDigest, _from: PeerId) {
         match self.incoming_announcements_buffer.remove(&swap) {
             Some(announcement) => {
-                self.confirm_swap(announcement.peer, swap, announcement.reply_substream);
+                if Instant::now().duration_since(announcement.received_on)
+                    > self.incoming_announcements_buffer_expiry
+                {
+                    self.events.push_back(NetworkBehaviourAction::GenerateEvent(
+                        BehaviourOutEvent::Timeout {
+                            peer: announcement.peer,
+                            swap_digest: swap,
+                        },
+                    ));
+                } else {
+                    self.confirm_swap(announcement.peer, swap, announcement.reply_substream);
+                }
             }
             None => {
                 self.awaiting_announcements.insert(swap);
@@ -509,8 +529,11 @@ mod tests {
         alice_event: impl Future<Output = BehaviourOutEvent>,
         bob_event: impl Future<Output = BehaviourOutEvent>,
     ) -> (BehaviourOutEvent, BehaviourOutEvent) {
-        tokio::time::timeout(Duration::from_secs(5), future::join(alice_event, bob_event))
-            .await
-            .expect("network behaviours to emit an event within 5 seconds")
+        tokio::time::timeout(
+            Duration::from_secs(10),
+            future::join(alice_event, bob_event),
+        )
+        .await
+        .expect("network behaviours to emit an event within 10 seconds")
     }
 }

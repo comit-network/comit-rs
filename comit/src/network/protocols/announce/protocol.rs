@@ -2,7 +2,7 @@ use crate::{network::SwapDigest, SharedSwapId};
 use futures::prelude::*;
 use libp2p::core::upgrade::{self, InboundUpgrade, OutboundUpgrade, UpgradeInfo};
 use serde::Deserialize;
-use std::{io, iter, pin::Pin};
+use std::{io, iter, pin::Pin, time::Duration};
 
 const INFO: &str = "/comit/swap/announce/1.0.0";
 
@@ -10,12 +10,16 @@ const INFO: &str = "/comit/swap/announce/1.0.0";
 /// side.
 #[derive(Debug, Clone)]
 pub struct OutboundConfig {
-    pub swap_digest: SwapDigest,
+    swap_digest: SwapDigest,
+    response_timeout: Duration,
 }
 
 impl OutboundConfig {
-    pub fn new(swap_digest: SwapDigest) -> Self {
-        OutboundConfig { swap_digest }
+    pub fn new(swap_digest: SwapDigest, response_timeout: Duration) -> Self {
+        OutboundConfig {
+            swap_digest,
+            response_timeout,
+        }
     }
 }
 
@@ -48,7 +52,9 @@ where
             upgrade::write_one(&mut socket, &bytes).await?;
             socket.close().await?;
 
-            let message = upgrade::read_one(&mut socket, 1024).await?;
+            let message =
+                tokio::time::timeout(self.response_timeout, upgrade::read_one(&mut socket, 1024))
+                    .await??;
             let mut de = serde_json::Deserializer::from_slice(&message);
             let swap_id = SharedSwapId::deserialize(&mut de)?;
             tracing::trace!("Received: {}", swap_id);
@@ -142,4 +148,6 @@ pub enum Error {
     Write(#[from] io::Error),
     #[error("failed to serialize/deserialize the message")]
     Serde(#[from] serde_json::Error),
+    #[error("failed to read a response within the specified timeout")]
+    ResponseTimeout(#[from] tokio::time::Elapsed),
 }
