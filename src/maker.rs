@@ -36,29 +36,6 @@ impl Maker {
         todo!()
     }
 
-    pub fn expire_order(&mut self, order: BtcDaiOrder) -> anyhow::Result<NewOrder> {
-        // TODO: Bookkeeping, decision making if new order
-
-        // TODO: creating a new order should not take the wallet / book
-        // let new_order = new_dai_bitcoin_order();
-
-        let new_order = match order.position {
-            Position::Sell => BtcDaiOrder::new_sell(
-                self.btc_balance,
-                self.btc_fee,
-                self.btc_reserved_funds,
-                self.btc_max_sell_amount,
-                self.mid_market_rate.value,
-                self.spread,
-            ),
-            Position::Buy => BtcDaiOrder::new_buy(),
-        }?;
-
-        // Why would we need an Event here anyway?
-        Ok(NewOrder::Created(new_order))
-    }
-
-    //
     pub fn update_rate(&mut self, new_rate: ()) {}
 
     // the balance is to be updated once the trade was actually setteled, i.e. the swap execution is finished
@@ -133,7 +110,6 @@ mod tests {
         order::{BtcDaiOrder, Position},
         MidMarketRate, Rate,
     };
-    use chrono::Utc;
     use std::convert::TryFrom;
 
     impl Default for Maker {
@@ -152,39 +128,6 @@ mod tests {
                 ongoing_takers: OngoingTakers::default(),
             }
         }
-    }
-
-    #[test]
-    fn given_that_an_order_expired_then_new_order_is_created_for_same_position() {
-        let zero_dai = dai::Amount::from_dai_trunc(0.0).unwrap();
-        let zero_btc = bitcoin::Amount::from_btc(0.0).unwrap();
-
-        // Given a maker in a certain state
-        let mut maker = Maker {
-            btc_balance: bitcoin::Amount::from_btc(1.0).unwrap(),
-            mid_market_rate: MidMarketRate {
-                value: Rate::new(9000),
-                timestamp: Utc::now(),
-            },
-            ..Default::default()
-        };
-
-        let expired_order = BtcDaiOrder {
-            position: Position::Sell,
-            base: zero_btc,
-            quote: zero_dai,
-        };
-
-        // When Event happens
-        let event = maker.expire_order(expired_order).unwrap();
-
-        assert!(matches!(
-            event,
-            NewOrder::Created(BtcDaiOrder {
-                position: Position::Sell,
-                ..
-            })
-        ));
     }
 
     #[test]

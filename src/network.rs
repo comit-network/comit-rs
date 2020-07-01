@@ -8,11 +8,6 @@ use std::task::{Context, Poll};
 
 #[derive(Debug)]
 pub enum Event {
-    // When an order expires a new order is published.
-    // New orders are only published after the old one has expired.
-    // We assume that this event is emitted by the orderbook.
-    OrderExpired(Order),
-
     // The orderbook registered that somebody wants to take a specific order.
     // We assume that this event is emitted by the orderbook.
     OrderTakeRequest(Order), // Emitted by orderbook
@@ -115,7 +110,6 @@ impl Nectar {
 /// Handle events from the network layer.
 ///
 /// These are:
-/// - order expired (once orderbook is added)
 /// - order taken (once orderbook is added)
 /// - swap finalized
 impl libp2p::swarm::NetworkBehaviourEventProcess<comit::network::comit::BehaviourOutEvent>

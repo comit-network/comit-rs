@@ -37,9 +37,6 @@ async fn main() {
         match tokio::time::timeout(Duration::from_secs(15), swarm.next()).await {
             Ok(event) => {
                 match event {
-                    network::Event::OrderExpired(order) => {
-                        let new_order = maker.expire_order(order.into());
-                    }
                     network::Event::OrderTakeRequest(order) => {
                         // decide & take & reserve
                         let res = maker.confirm_order(order.clone());
