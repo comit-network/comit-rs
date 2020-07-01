@@ -76,12 +76,6 @@ mod maker {
             Ok(maker::NewOrder::Created(new_order))
         }
 
-        pub fn reserve_funds(&mut self, order: BtcDaiOrder) -> anyhow::Result<()> {
-            // TODO: Bookkeeping, lock up funds
-
-            Ok(())
-        }
-
         //
         pub fn update_rate(&mut self, new_rate: ()) {}
 
@@ -101,13 +95,29 @@ mod maker {
         /// Decide whether we should proceed with order,
         /// Confirm with the order book
         /// Re & take & reserve
-        pub fn confirm_order(&self, order: BtcDaiOrder) -> anyhow::Result<()> {
+        pub fn confirm_order(&mut self, order: BtcDaiOrder) -> anyhow::Result<()> {
             // TODO:
             // 1. Check that rate is still profitable
             // 2. Check that funds are available
             // 3. Check there are no ongoing order for this peer
 
             // Reserve funds if all checks pass <- do that now
+
+            match order {
+                BtcDaiOrder {
+                    position: Position::Buy,
+                    ..
+                } => todo!(),
+                BtcDaiOrder {
+                    position: Position::Sell,
+                    base,
+                    ..
+                } => {
+                    self.btc_reserved_funds = self.btc_reserved_funds + base;
+                }
+            };
+
+            Ok(())
         }
     }
 }
@@ -155,14 +165,8 @@ async fn main() {
                     network::Event::SwapFinalized(local_swap_id, remote_data) => {
                         let order = maker.get_order_for_local_swap_id(local_swap_id);
 
-                        match maker.reserve_funds(order) {
-                            Ok(()) => {
-                                // TODO: Add remote_data learned from the other party to the swap and persist the swap
-
-                                // TODO: Spawn swap execution
-                            }
-                            Err(error) => unimplemented!(),
-                        }
+                        // TODO: Add remote_data learned from the other party to the swap and persist the swap
+                        // TODO: Spawn swap execution
                     }
                 }
             }
