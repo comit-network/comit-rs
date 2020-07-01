@@ -24,7 +24,7 @@ pub enum Event {
 pub struct Orderbook;
 
 impl Orderbook {
-    pub fn publish(&mut self, _order: Order) {
+    pub fn publish(&mut self, _order: PublishOrder) {
         // TODO
     }
 
@@ -56,6 +56,15 @@ impl Taker {
 impl From<Order> for BtcDaiOrder {
     fn from(order: Order) -> Self {
         order.inner
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PublishOrder(BtcDaiOrder);
+
+impl From<BtcDaiOrder> for PublishOrder {
+    fn from(order: BtcDaiOrder) -> Self {
+        Self(order)
     }
 }
 

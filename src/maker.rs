@@ -51,6 +51,17 @@ impl Maker {
         unimplemented!()
     }
 
+    pub fn next_sell_order(&self) -> anyhow::Result<BtcDaiOrder> {
+        BtcDaiOrder::new_sell(
+            self.btc_balance,
+            self.btc_fee,
+            self.btc_reserved_funds,
+            self.btc_max_sell_amount,
+            self.mid_market_rate.value,
+            self.spread,
+        )
+    }
+
     /// Decide whether we should proceed with order,
     /// Confirm with the order book
     /// Re & take & reserve
@@ -90,13 +101,15 @@ impl Maker {
             .insert(order.taker)
             .expect("already checked that we can trade");
 
-        Ok(Reaction::Confirmed)
+        Ok(Reaction::Confirmed {
+            next_order: self.next_sell_order()?,
+        })
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Reaction {
-    Confirmed,
+    Confirmed { next_order: BtcDaiOrder },
     RateSucks,
     InsufficientFunds,
     CannotTradeWithTaker,
@@ -148,7 +161,7 @@ mod tests {
 
         let event = maker.react_to_taken_order(order_taken).unwrap();
 
-        assert_eq!(event, Reaction::Confirmed);
+        assert!(matches!(event, Reaction::Confirmed { .. }));
         assert_eq!(
             maker.btc_reserved_funds,
             bitcoin::Amount::from_btc(1.5).unwrap()
@@ -215,7 +228,7 @@ mod tests {
 
         let event = maker.react_to_taken_order(order_taken.clone()).unwrap();
 
-        assert_eq!(event, Reaction::Confirmed);
+        assert!(matches!(event, Reaction::Confirmed { .. }));
 
         let event = maker.react_to_taken_order(order_taken).unwrap();
 

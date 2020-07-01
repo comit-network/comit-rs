@@ -2,6 +2,7 @@
 
 use nectar::{
     bitcoin_wallet,
+    maker::Reaction,
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, Nectar, Orderbook},
     Maker,
@@ -32,18 +33,31 @@ async fn main() {
             Err(e) => maker.track_failed_balance_update(e),
         }
 
-        // if nothing happens on the network for 15 seconds, loop again
+        // if nothing happens on the network for 15 seconds, loop
+        // again
+
+        // ASSUMPTION: a BtcDaiOrder Sell order and a BtcDaiOrder Buy
+        // order were published before we enter the loop (during
+        // initialization)
         #[allow(clippy::single_match)]
         match tokio::time::timeout(Duration::from_secs(15), swarm.next()).await {
             Ok(event) => {
                 match event {
                     network::Event::OrderTakeRequest(order) => {
                         // decide & take & reserve
-                        let res = maker.react_to_taken_order(order.clone());
-                        if res.is_ok() {
-                            swarm.orderbook.take(order);
-                        } else {
-                            swarm.orderbook.ignore(order);
+                        let reaction = maker.react_to_taken_order(order.clone());
+
+                        match reaction {
+                            Ok(Reaction::Confirmed { next_order }) => {
+                                swarm.orderbook.take(order);
+                                orderbook.publish(next_order.into());
+                            }
+                            Ok(Reaction::RateSucks)
+                            | Ok(Reaction::InsufficientFunds)
+                            | Ok(Reaction::CannotTradeWithTaker)
+                            | Err(_) => {
+                                swarm.orderbook.ignore(order);
+                            }
                         }
                     }
                     network::Event::SwapFinalized(local_swap_id, remote_data) => {
