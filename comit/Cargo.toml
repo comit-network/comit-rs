@@ -16,7 +16,7 @@ chrono = { version = "0.4", features = ["serde"] }
 derivative = "2"
 digest = { path = "../digest" }
 ethbloom = "0.9.1"
-futures = "0.3.5"
+futures = { version = "0.3", default-features = false }
 genawaiter = { version = "0.99", default-features = false, features = ["futures03"] }
 hex = "0.4"
 lazy_static = "1"
