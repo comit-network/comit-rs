@@ -2,10 +2,12 @@
 
 use crate::{
     bitcoin, dai,
+    network::Order,
     order::{BtcDaiOrder, Position},
     rate::Spread,
-    MidMarketRate,
+    MidMarketRate, OngoingTakers,
 };
+use anyhow::Context;
 use comit::LocalSwapId;
 
 #[derive(Debug, PartialEq)]
@@ -26,28 +28,12 @@ pub struct Maker {
     dai_max_sell_amount: dai::Amount,
     rate: MidMarketRate,
     spread: Spread,
+    ongoing_swaps: OngoingTakers,
 }
 
 impl Maker {
-    // TODO: Proper constructor
-    pub fn new(initial_bitcoin_balance: bitcoin::Amount, initial_rate: MidMarketRate) -> Self {
-        //TODO: Get function to return zero
-        let zero_dai = dai::Amount::from_dai_trunc(0.0).unwrap();
-        let zero_btc = bitcoin::Amount::from_btc(0.0).unwrap();
-
-        Maker {
-            btc_balance: initial_bitcoin_balance,
-            dai_balance: zero_dai.clone(),
-            btc_fee: zero_btc,
-            dai_fee: zero_dai.clone(),
-            btc_reserved_funds: zero_btc,
-            dai_reserved_funds: zero_dai.clone(),
-            btc_max_sell_amount: zero_btc,
-            dai_max_sell_amount: zero_dai,
-            rate: initial_rate,
-            // 300 ^= 3.00%
-            spread: Spread::new(300).expect("default spread works"),
-        }
+    pub fn new() -> Self {
+        todo!()
     }
 
     pub fn expire_order(&mut self, order: BtcDaiOrder) -> anyhow::Result<NewOrder> {
@@ -91,15 +77,14 @@ impl Maker {
     /// Decide whether we should proceed with order,
     /// Confirm with the order book
     /// Re & take & reserve
-    pub fn confirm_order(&mut self, order: BtcDaiOrder) -> anyhow::Result<()> {
-        // TODO:
-        // 1. Check that rate is still profitable
-        // 2. Check that funds are available
-        // 3. Check there are no ongoing order for this peer
+    pub fn confirm_order(&mut self, order: Order) -> anyhow::Result<()> {
+        // TODO: Check that rate is still profitable
 
-        // Reserve funds if all checks pass <- do that now
+        self.ongoing_swaps
+            .insert(order.taker)
+            .context("could not confirm order")?;
 
-        match order {
+        match order.into() {
             BtcDaiOrder {
                 position: Position::Buy,
                 ..
@@ -126,6 +111,7 @@ impl Maker {
 mod tests {
     use super::*;
     use crate::{
+        network::Order,
         order::{BtcDaiOrder, Position},
         MidMarketRate, Rate,
     };
@@ -144,6 +130,7 @@ mod tests {
                 dai_max_sell_amount: dai::Amount::default(),
                 rate: MidMarketRate::default(),
                 spread: Spread::default(),
+                ongoing_swaps: OngoingTakers::default(),
             }
         }
     }
@@ -188,10 +175,13 @@ mod tests {
             ..Default::default()
         };
 
-        let order_taken = BtcDaiOrder {
-            position: Position::Sell,
-            base: bitcoin::Amount::from_btc(1.5).unwrap(),
-            quote: dai::Amount::zero(),
+        let order_taken = Order {
+            inner: BtcDaiOrder {
+                position: Position::Sell,
+                base: bitcoin::Amount::from_btc(1.5).unwrap(),
+                quote: dai::Amount::zero(),
+            },
+            ..Default::default()
         };
 
         let res = maker.confirm_order(order_taken).unwrap();
@@ -209,10 +199,13 @@ mod tests {
             ..Default::default()
         };
 
-        let order_taken = BtcDaiOrder {
-            position: Position::Sell,
-            base: bitcoin::Amount::from_btc(1.5).unwrap(),
-            quote: dai::Amount::zero(),
+        let order_taken = Order {
+            inner: BtcDaiOrder {
+                position: Position::Sell,
+                base: bitcoin::Amount::from_btc(1.5).unwrap(),
+                quote: dai::Amount::zero(),
+            },
+            ..Default::default()
         };
 
         let res = maker.confirm_order(order_taken);
@@ -228,14 +221,41 @@ mod tests {
             ..Default::default()
         };
 
-        let order_taken = BtcDaiOrder {
-            position: Position::Sell,
-            base: bitcoin::Amount::from_btc(1.0).unwrap(),
-            quote: dai::Amount::zero(),
+        let order_taken = Order {
+            inner: BtcDaiOrder {
+                position: Position::Sell,
+                base: bitcoin::Amount::from_btc(1.0).unwrap(),
+                quote: dai::Amount::zero(),
+            },
+            ..Default::default()
         };
 
         let res = maker.confirm_order(order_taken);
 
         assert!(res.is_err())
+    }
+
+    #[test]
+    fn fail_to_confirm_order_if_ongoing_swap_with_same_taker_exists() {
+        let mut maker = Maker {
+            ..Default::default()
+        };
+
+        let order_taken = Order {
+            inner: BtcDaiOrder {
+                position: Position::Sell,
+                base: bitcoin::Amount::ZERO,
+                quote: dai::Amount::zero(),
+            },
+            ..Default::default()
+        };
+
+        let res = maker.confirm_order(order_taken.clone());
+
+        assert!(res.is_ok());
+
+        let res = maker.confirm_order(order_taken);
+
+        assert!(res.is_err());
     }
 }

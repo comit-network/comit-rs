@@ -10,8 +10,8 @@ use std::time::Duration;
 
 #[tokio::main]
 async fn main() {
-    let mut maker = Maker::new(unimplemented!(), unimplemented!());
-    let mut orderbook = Orderbook;
+    let maker = Maker::new();
+    let orderbook = Orderbook;
 
     let nectar = Nectar::new(orderbook);
     let wallet =
@@ -42,7 +42,7 @@ async fn main() {
                     }
                     network::Event::OrderTakeRequest(order) => {
                         // decide & take & reserve
-                        let res = maker.confirm_order(order.clone().into());
+                        let res = maker.confirm_order(order.clone());
                         if res.is_ok() {
                             swarm.orderbook.take(order);
                         } else {

@@ -58,6 +58,17 @@ pub trait Fees {
 }
 
 #[cfg(test)]
+impl Default for BtcDaiOrder {
+    fn default() -> Self {
+        Self {
+            position: Position::Buy,
+            base: bitcoin::Amount::default(),
+            quote: dai::Amount::default(),
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::Rate;

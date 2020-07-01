@@ -44,17 +44,33 @@ impl Orderbook {
 
 // TODO: Change this, currently placeholder ot the Order as represented in the orderbook
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Order(BtcDaiOrder);
+pub struct Order {
+    pub inner: BtcDaiOrder,
+    pub taker: Taker,
+}
 
-impl From<Order> for BtcDaiOrder {
-    fn from(order: Order) -> Self {
-        order.0
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Default)]
+pub struct Taker(pub u32);
+
+impl Taker {
+    pub fn new(index: u32) -> Taker {
+        Taker(index)
     }
 }
 
-impl From<BtcDaiOrder> for Order {
-    fn from(btc_dai_order: BtcDaiOrder) -> Self {
-        Self(btc_dai_order)
+impl From<Order> for BtcDaiOrder {
+    fn from(order: Order) -> Self {
+        order.inner
+    }
+}
+
+#[cfg(test)]
+impl Default for Order {
+    fn default() -> Self {
+        Self {
+            inner: BtcDaiOrder::default(),
+            taker: Taker::default(),
+        }
     }
 }
 
