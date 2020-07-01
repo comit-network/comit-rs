@@ -28,7 +28,7 @@ genawaiter = { version = "0.99", features = ["futures03"] }
 hex = "0.4"
 http-api-problem = { version = "0.15", features = ["with_warp"] }
 lazy_static = "1"
-libp2p = { version = "0.20", default-features = false, features = ["tcp-tokio", "secio", "yamux", "mplex", "mdns", "dns"] }
+libp2p = { version = "0.21", default-features = false, features = ["tcp-tokio", "secio", "yamux", "mplex", "mdns", "dns"] }
 libsqlite3-sys = { version = ">=0.8.0, <0.13.0", features = ["bundled"] }
 log = { version = "0.4", features = ["serde"] }
 num = "0.3"

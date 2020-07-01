@@ -21,7 +21,7 @@ genawaiter = { version = "0.99", features = ["futures03"] }
 hex = "0.4"
 lazy_static = "1"
 levenshtein = "1"
-libp2p = { version = "0.20", default-features = false, features = ["tcp-tokio", "secio", "yamux", "mplex", "gossipsub"] }
+libp2p = { version = "0.21", default-features = false, features = ["tcp-tokio", "secio", "yamux", "mplex", "gossipsub"] }
 lru = "0.5.2"
 num = "0.3"
 primitive-types = { version = "0.7.2", features = ["serde"] }
