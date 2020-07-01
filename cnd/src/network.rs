@@ -20,7 +20,6 @@ use chrono::Utc;
 use futures::{stream::StreamExt, Future, TryFutureExt};
 use libp2p::{
     identity::{ed25519, Keypair},
-    mdns::Mdns,
     swarm::{NetworkBehaviour, SwarmBuilder},
     Multiaddr, NetworkBehaviour, PeerId,
 };
@@ -217,8 +216,6 @@ fn derive_key_pair(seed: &RootSeed) -> Keypair {
 #[allow(missing_debug_implementations)]
 pub struct ComitNode {
     comit: Comit,
-    /// Multicast DNS discovery network behaviour.
-    mdns: Mdns,
 
     #[behaviour(ignore)]
     pub seed: RootSeed,
@@ -253,7 +250,6 @@ impl ComitNode {
         peer_id: PeerId,
     ) -> Result<Self, io::Error> {
         Ok(Self {
-            mdns: Mdns::new()?,
             comit: Comit::new(peer_id),
             seed,
             task_executor,
@@ -418,10 +414,6 @@ impl ListenAddresses for Swarm {
             .cloned()
             .collect()
     }
-}
-
-impl libp2p::swarm::NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent> for ComitNode {
-    fn inject_event(&mut self, _event: libp2p::mdns::MdnsEvent) {}
 }
 
 impl libp2p::swarm::NetworkBehaviourEventProcess<()> for ComitNode {
