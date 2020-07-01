@@ -7,7 +7,7 @@ use std::str::FromStr;
 /// Represent a rate. Note this is designed to support Bitcoin/Dai buy and sell rates (Bitcoin being in the range of 10k-100kDai)
 /// A rate has a maximum precision of 9 digits after the decimal
 // rate = self.0 * 10e-9
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub struct Rate(u64);
 
 impl Rate {
@@ -66,7 +66,7 @@ impl TryFrom<f64> for Rate {
 
 /// Spread: percentage to be added on top of a rate or amount with
 /// a maximum precision of 2 decimals
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Spread(u16);
 
 impl Spread {

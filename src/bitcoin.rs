@@ -6,7 +6,7 @@ use crate::Rate;
 
 pub const SATS_IN_BITCOIN_EXP: u16 = 8;
 
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Default)]
 pub struct Amount(::bitcoin::Amount);
 
 impl Amount {
@@ -47,14 +47,6 @@ impl Amount {
         let atto_dai = worth * 10u16.pow(Self::ADJUSTEMENT_EXP.into());
 
         dai::Amount::from_atto(atto_dai)
-    }
-}
-
-impl std::ops::Add for Amount {
-    type Output = Amount;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Amount(self.0 + rhs.0)
     }
 }
 

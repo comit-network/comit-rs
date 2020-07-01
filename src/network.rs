@@ -6,6 +6,7 @@ use libp2p::NetworkBehaviour;
 use std::collections::VecDeque;
 use std::task::{Context, Poll};
 
+#[derive(Debug)]
 pub enum Event {
     // When an order expires a new order is published.
     // New orders are only published after the old one has expired.
@@ -28,15 +29,15 @@ pub enum Event {
 pub struct Orderbook;
 
 impl Orderbook {
-    pub fn publish(&mut self, order: Order) {
+    pub fn publish(&mut self, _order: Order) {
         // TODO
     }
 
-    pub fn take(&self, order: Order) {
+    pub fn take(&self, _order: Order) {
         // TODO
     }
 
-    pub fn ignore(&self, order: Order) {
+    pub fn ignore(&self, _order: Order) {
         // TODO: does not take the order, close the channel with the taker
     }
 }

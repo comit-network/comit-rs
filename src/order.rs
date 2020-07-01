@@ -3,7 +3,7 @@ use crate::dai;
 use crate::{Rate, Spread};
 use std::cmp::min;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Position {
     Buy,
     Sell,

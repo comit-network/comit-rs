@@ -7,7 +7,7 @@ use num::{pow::Pow, BigUint, ToPrimitive, Zero};
 pub const ATTOS_IN_DAI_EXP: u16 = 18;
 pub static DAI_DEC: Lazy<BigUint> = Lazy::new(|| BigUint::from(10u16).pow(ATTOS_IN_DAI_EXP));
 
-#[derive(Clone, Ord, PartialOrd, PartialEq, Eq)]
+#[derive(Clone, Ord, PartialOrd, PartialEq, Eq, Default)]
 pub struct Amount(BigUint);
 
 impl Amount {
