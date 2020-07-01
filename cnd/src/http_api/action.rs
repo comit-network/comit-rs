@@ -1,38 +1,15 @@
 use crate::{
     actions::{
-        bitcoin::{self, SendToAddress, SpendOutput},
+        bitcoin::{self, SendToAddress},
         ethereum, lnd,
         lnd::Chain,
     },
     asset,
     ethereum::ChainId,
-    http_api::{problem, Http, MissingQueryParameters, UnexpectedQueryParameters},
-    identity, transaction, LocalSwapId, RelativeTime, Secret, SecretHash, Timestamp,
+    http_api::Http,
+    identity, transaction, RelativeTime, Secret, SecretHash, Timestamp,
 };
-use anyhow::Context;
-use blockchain_contracts::bitcoin::witness;
-use http_api_problem::HttpApiProblem;
-use serde::{Deserialize, Serialize};
-use std::convert::Infallible;
-use warp::http::StatusCode;
-
-pub trait ToSirenAction {
-    fn to_siren_action(&self, id: &LocalSwapId) -> siren::Action;
-}
-
-pub trait ListRequiredFields {
-    fn list_required_fields() -> Vec<siren::Field>;
-}
-
-#[derive(Clone, Deserialize, Debug, PartialEq)]
-#[serde(untagged)]
-pub enum ActionExecutionParameters {
-    BitcoinAddressAndFee {
-        address: bitcoin::Address,
-        fee_per_wu: String,
-    },
-    None {},
-}
+use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -126,28 +103,6 @@ impl ActionResponseBody {
             hex: ::bitcoin::consensus::encode::serialize_hex(transaction),
             network: Http(network),
             min_median_block_time,
-        }
-    }
-}
-
-pub trait IntoResponsePayload {
-    fn into_response_payload(
-        self,
-        parameters: ActionExecutionParameters,
-    ) -> anyhow::Result<ActionResponseBody>;
-}
-
-impl IntoResponsePayload for SendToAddress {
-    fn into_response_payload(
-        self,
-        query_params: ActionExecutionParameters,
-    ) -> anyhow::Result<ActionResponseBody> {
-        match query_params {
-            ActionExecutionParameters::None {} => Ok(self.into()),
-            _ => Err(anyhow::Error::from(UnexpectedQueryParameters {
-                action: "bitcoin::SendToAddress",
-                parameters: &["address", "fee_per_wu"],
-            })),
         }
     }
 }
@@ -288,161 +243,6 @@ impl From<comit::Never> for ActionResponseBody {
     }
 }
 
-impl ListRequiredFields for SendToAddress {
-    fn list_required_fields() -> Vec<siren::Field> {
-        vec![]
-    }
-}
-
-impl IntoResponsePayload for SpendOutput {
-    fn into_response_payload(
-        self,
-        query_params: ActionExecutionParameters,
-    ) -> anyhow::Result<ActionResponseBody> {
-        match query_params {
-            ActionExecutionParameters::BitcoinAddressAndFee {
-                address,
-                fee_per_wu,
-            } => {
-                let fee_per_wu = fee_per_wu.parse::<usize>().with_context(|| {
-                    HttpApiProblem::new("Invalid query parameter.")
-                        .set_status(StatusCode::BAD_REQUEST)
-                        .set_detail("Query parameter fee-per-byte is not a valid unsigned integer.")
-                })?;
-
-                let network = self.network;
-                let transaction =
-                    self.spend_to(address)
-                        .sign_with_rate(&*crate::SECP, fee_per_wu)
-                        .map_err(|e| {
-                            tracing::error!("Could not sign Bitcoin transaction: {:?}", e);
-                            match e {
-                                witness::Error::FeeHigherThanInputValue => HttpApiProblem::new(
-                                    "Fee is too high.",
-                                )
-                                .set_status(StatusCode::BAD_REQUEST)
-                                .set_detail(
-                                    "The Fee per byte/WU provided makes the total fee higher than the spendable input value.",
-                                ),
-                                witness::Error::OverflowingFee => HttpApiProblem::new(
-                                    "Fee is too high.",
-                                )
-                                    .set_status(StatusCode::BAD_REQUEST)
-                                    .set_detail(
-                                        "The Fee per byte/WU provided makes the total fee higher than the system supports.",
-                                    )
-                            }
-                        })?;
-
-                Ok(ActionResponseBody::bitcoin_broadcast_signed_transaction(
-                    &transaction,
-                    network,
-                ))
-            }
-            _ => Err(anyhow::Error::from(MissingQueryParameters {
-                action: "bitcoin::SpendOutput",
-                parameters: &[
-                    problem::MissingQueryParameter {
-                        name: "address",
-                        data_type: "string",
-                        description: "The bitcoin address to where the funds should be sent.",
-                    },
-                    problem::MissingQueryParameter {
-                        name: "fee_per_wu",
-                        data_type: "uint",
-                        description:
-                        "The fee per weight unit you want to pay for the transaction in satoshis.",
-                    },
-                ]
-            }))
-        }
-    }
-}
-
-impl ListRequiredFields for SpendOutput {
-    fn list_required_fields() -> Vec<siren::Field> {
-        vec![
-            siren::Field {
-                name: "address".to_owned(),
-                class: vec!["bitcoin".to_owned(), "address".to_owned()],
-                _type: Some("text".to_owned()),
-                value: None,
-                title: None,
-            },
-            siren::Field {
-                name: "fee_per_wu".to_owned(),
-                class: vec![
-                    "bitcoin".to_owned(),
-                    // feePerByte is deprecated because it is actually fee per WU
-                    // Have to keep it around until clients are upgraded
-                    "feePerByte".to_owned(),
-                    "feePerWU".to_owned(),
-                ],
-                _type: Some("number".to_owned()),
-                value: None,
-                title: None,
-            },
-        ]
-    }
-}
-
-impl IntoResponsePayload for ethereum::DeployContract {
-    fn into_response_payload(
-        self,
-        query_params: ActionExecutionParameters,
-    ) -> anyhow::Result<ActionResponseBody> {
-        match query_params {
-            ActionExecutionParameters::None {} => Ok(self.into()),
-            _ => Err(anyhow::Error::from(UnexpectedQueryParameters {
-                action: "ethereum::ContractDeploy",
-                parameters: &["address", "fee_per_wu"],
-            })),
-        }
-    }
-}
-
-impl ListRequiredFields for ethereum::DeployContract {
-    fn list_required_fields() -> Vec<siren::Field> {
-        vec![]
-    }
-}
-
-impl IntoResponsePayload for ethereum::CallContract {
-    fn into_response_payload(
-        self,
-        query_params: ActionExecutionParameters,
-    ) -> anyhow::Result<ActionResponseBody> {
-        match query_params {
-            ActionExecutionParameters::None {} => Ok(self.into()),
-            _ => Err(anyhow::Error::from(UnexpectedQueryParameters {
-                action: "ethereum::SendTransaction",
-                parameters: &["address", "fee_per_wu"],
-            })),
-        }
-    }
-}
-
-impl ListRequiredFields for ethereum::CallContract {
-    fn list_required_fields() -> Vec<siren::Field> {
-        vec![]
-    }
-}
-
-impl ListRequiredFields for Infallible {
-    fn list_required_fields() -> Vec<siren::Field> {
-        unreachable!("how did you manage to construct Infallible?")
-    }
-}
-
-impl IntoResponsePayload for Infallible {
-    fn into_response_payload(
-        self,
-        _: ActionExecutionParameters,
-    ) -> anyhow::Result<ActionResponseBody> {
-        unreachable!("how did you manage to construct Infallible?")
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -450,28 +250,6 @@ mod test {
         asset::ethereum::FromWei, bitcoin::Address as BitcoinAddress, ethereum::U256, identity,
     };
     use std::str::FromStr;
-
-    #[test]
-    fn given_no_query_parameters_deserialize_to_none() {
-        let s = "";
-
-        let res = serde_urlencoded::from_str::<ActionExecutionParameters>(s);
-        assert_eq!(res, Ok(ActionExecutionParameters::None {}));
-    }
-
-    #[test]
-    fn given_bitcoin_identity_and_fee_deserialize_to_ditto() {
-        let s = "address=1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa&fee_per_wu=10.59";
-
-        let res = serde_urlencoded::from_str::<ActionExecutionParameters>(s);
-        assert_eq!(
-            res,
-            Ok(ActionExecutionParameters::BitcoinAddressAndFee {
-                address: "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa".parse().unwrap(),
-                fee_per_wu: "10.59".to_string(),
-            })
-        );
-    }
 
     #[test]
     fn call_contract_serializes_correctly_to_json_with_none() {
