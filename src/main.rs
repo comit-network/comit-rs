@@ -39,7 +39,7 @@ async fn main() {
                 match event {
                     network::Event::OrderTakeRequest(order) => {
                         // decide & take & reserve
-                        let res = maker.confirm_order(order.clone());
+                        let res = maker.react_to_taken_order(order.clone());
                         if res.is_ok() {
                             swarm.orderbook.take(order);
                         } else {

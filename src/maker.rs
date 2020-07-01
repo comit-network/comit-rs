@@ -54,9 +54,9 @@ impl Maker {
     /// Decide whether we should proceed with order,
     /// Confirm with the order book
     /// Re & take & reserve
-    pub fn confirm_order(&mut self, order: Order) -> anyhow::Result<Confirmation> {
+    pub fn react_to_taken_order(&mut self, order: Order) -> anyhow::Result<Reaction> {
         if self.ongoing_takers.cannot_trade_with_taker(&order.taker) {
-            return Ok(Confirmation::CannotTradeWithTaker);
+            return Ok(Reaction::CannotTradeWithTaker);
         }
 
         match order.clone().into() {
@@ -74,12 +74,12 @@ impl Maker {
                 let order_rate = Rate::try_from(order.clone())?;
 
                 if current_profitable_rate > order_rate {
-                    return Ok(Confirmation::RateSucks);
+                    return Ok(Reaction::RateSucks);
                 }
 
                 let updated_btc_reserved_funds = self.btc_reserved_funds + order.base;
                 if updated_btc_reserved_funds > self.btc_balance {
-                    return Ok(Confirmation::InsufficientFunds);
+                    return Ok(Reaction::InsufficientFunds);
                 }
 
                 self.btc_reserved_funds = updated_btc_reserved_funds;
@@ -90,12 +90,12 @@ impl Maker {
             .insert(order.taker)
             .expect("already checked that we can trade");
 
-        Ok(Confirmation::Confirmed)
+        Ok(Reaction::Confirmed)
     }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum Confirmation {
+pub enum Reaction {
     Confirmed,
     RateSucks,
     InsufficientFunds,
@@ -146,9 +146,9 @@ mod tests {
             ..Default::default()
         };
 
-        let event = maker.confirm_order(order_taken).unwrap();
+        let event = maker.react_to_taken_order(order_taken).unwrap();
 
-        assert_eq!(event, Confirmation::Confirmed);
+        assert_eq!(event, Reaction::Confirmed);
         assert_eq!(
             maker.btc_reserved_funds,
             bitcoin::Amount::from_btc(1.5).unwrap()
@@ -171,9 +171,9 @@ mod tests {
             ..Default::default()
         };
 
-        let event = maker.confirm_order(order_taken).unwrap();
+        let event = maker.react_to_taken_order(order_taken).unwrap();
 
-        assert_eq!(event, Confirmation::InsufficientFunds);
+        assert_eq!(event, Reaction::InsufficientFunds);
     }
 
     #[test]
@@ -193,9 +193,9 @@ mod tests {
             ..Default::default()
         };
 
-        let event = maker.confirm_order(order_taken).unwrap();
+        let event = maker.react_to_taken_order(order_taken).unwrap();
 
-        assert_eq!(event, Confirmation::InsufficientFunds);
+        assert_eq!(event, Reaction::InsufficientFunds);
     }
 
     #[test]
@@ -213,13 +213,13 @@ mod tests {
             ..Default::default()
         };
 
-        let event = maker.confirm_order(order_taken.clone()).unwrap();
+        let event = maker.react_to_taken_order(order_taken.clone()).unwrap();
 
-        assert_eq!(event, Confirmation::Confirmed);
+        assert_eq!(event, Reaction::Confirmed);
 
-        let event = maker.confirm_order(order_taken).unwrap();
+        let event = maker.react_to_taken_order(order_taken).unwrap();
 
-        assert_eq!(event, Confirmation::CannotTradeWithTaker);
+        assert_eq!(event, Reaction::CannotTradeWithTaker);
     }
 
     #[test]
@@ -241,8 +241,8 @@ mod tests {
             ..Default::default()
         };
 
-        let event = maker.confirm_order(order_taken).unwrap();
+        let event = maker.react_to_taken_order(order_taken).unwrap();
 
-        assert_eq!(event, Confirmation::RateSucks);
+        assert_eq!(event, Reaction::RateSucks);
     }
 }
