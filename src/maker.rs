@@ -219,4 +219,23 @@ mod tests {
 
         assert!(res.is_err())
     }
+
+    #[test]
+    fn fail_if_not_enough_funds_to_reserve_for_an_order_2() {
+        let mut maker = Maker {
+            btc_balance: bitcoin::Amount::from_btc(2.0).unwrap(),
+            btc_reserved_funds: bitcoin::Amount::from_btc(1.5).unwrap(),
+            ..Default::default()
+        };
+
+        let order_taken = BtcDaiOrder {
+            position: Position::Sell,
+            base: bitcoin::Amount::from_btc(1.0).unwrap(),
+            quote: dai::Amount::zero(),
+        };
+
+        let res = maker.confirm_order(order_taken);
+
+        assert!(res.is_err())
+    }
 }
