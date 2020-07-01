@@ -65,7 +65,8 @@ pub enum ActionResponseBody {
         min_block_timestamp: Option<Timestamp>,
     },
     LndAddHoldInvoice {
-        amount: Http<asset::Bitcoin>,
+        #[serde(with = "asset::bitcoin::sats_as_string")]
+        amount: asset::Bitcoin,
         secret_hash: SecretHash,
         expiry: RelativeTime,
         cltv_expiry: RelativeTime,
@@ -75,7 +76,8 @@ pub enum ActionResponseBody {
     },
     LndSendPayment {
         to_public_key: identity::Lightning,
-        amount: Http<asset::Bitcoin>,
+        #[serde(with = "asset::bitcoin::sats_as_string")]
+        amount: asset::Bitcoin,
         secret_hash: SecretHash,
         final_cltv_delta: RelativeTime,
         chain: Http<Chain>,
@@ -191,7 +193,7 @@ impl From<lnd::AddHoldInvoice> for ActionResponseBody {
         } = action;
 
         ActionResponseBody::LndAddHoldInvoice {
-            amount: Http(amount),
+            amount,
             secret_hash,
             expiry,
             cltv_expiry,
@@ -234,7 +236,7 @@ impl From<lnd::SendPayment> for ActionResponseBody {
 
         ActionResponseBody::LndSendPayment {
             to_public_key,
-            amount: amount.into(),
+            amount,
             secret_hash,
             network: network.into(),
             chain: chain.into(),

@@ -56,7 +56,7 @@ impl From<PostBody<Herc20, Halbit>> for swap_digest::Herc20Halbit {
             erc20_amount: body.alpha.amount,
             token_contract: body.alpha.token_contract,
             lightning_cltv_expiry: body.beta.cltv_expiry.into(),
-            lightning_amount: body.beta.amount.0,
+            lightning_amount: body.beta.amount,
         }
     }
 }

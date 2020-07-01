@@ -13,7 +13,8 @@ pub use crate::hbit::*;
 /// serialization/deserialization.
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct Hbit {
-    pub amount: Http<asset::Bitcoin>,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    pub amount: asset::Bitcoin,
     pub final_identity: Http<bitcoin::Address>,
     pub network: Http<bitcoin::Network>,
     pub absolute_expiry: u32,
@@ -22,7 +23,7 @@ pub struct Hbit {
 impl From<Hbit> for CreatedSwap {
     fn from(p: Hbit) -> Self {
         CreatedSwap {
-            amount: *p.amount,
+            amount: p.amount,
             final_identity: p.final_identity.0,
             network: p.network.0.into(),
             absolute_expiry: p.absolute_expiry,

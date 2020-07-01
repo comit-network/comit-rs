@@ -19,6 +19,7 @@ use warp::{http, http::StatusCode, Rejection, Reply};
 
 #[derive(Deserialize)]
 struct MakeHerc20HbitOrderBody {
+    #[serde(with = "asset::bitcoin::sats_as_string")]
     pub buy_quantity: asset::Bitcoin,
     pub sell_token_contract: ethereum::Address,
     pub sell_quantity: asset::Erc20Quantity,
@@ -47,6 +48,7 @@ struct TakeHbitHerc20OrderBody {
 
 #[derive(Serialize)]
 struct Herc20HbitOrderResponse {
+    #[serde(with = "asset::bitcoin::sats_as_string")]
     pub buy_quantity: asset::Bitcoin,
     pub sell_token_contract: ethereum::Address,
     pub sell_quantity: asset::Erc20Quantity,
