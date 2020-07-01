@@ -113,7 +113,12 @@ mod maker {
                     base,
                     ..
                 } => {
-                    self.btc_reserved_funds = self.btc_reserved_funds + base;
+                    let updated_btc_reserved_funds = self.btc_reserved_funds + base;
+                    if updated_btc_reserved_funds > self.btc_balance {
+                        anyhow::bail!("insufficient funds to confirm the order")
+                    }
+
+                    self.btc_reserved_funds = updated_btc_reserved_funds;
                 }
             };
 
@@ -218,6 +223,30 @@ mod tests {
     #[test]
     fn given_order_is_taken_and_confirmed_then_funds_are_marked_reserved() {
         let mut maker = maker::Maker::new(
+            bitcoin::Amount::from_btc(3.0).unwrap(),
+            MidMarketRate {
+                value: Rate::new(0),
+                timestamp: Utc::now(),
+            },
+        );
+
+        let order_taken = BtcDaiOrder {
+            position: Position::Sell,
+            base: bitcoin::Amount::from_btc(1.5).unwrap(),
+            quote: dai::Amount::zero(),
+        };
+
+        let res = maker.confirm_order(order_taken).unwrap();
+
+        assert_eq!(
+            maker.btc_reserved_funds,
+            bitcoin::Amount::from_btc(1.5).unwrap()
+        )
+    }
+
+    #[test]
+    fn fail_if_not_enough_funds_to_reserve_for_an_order() {
+        let mut maker = maker::Maker::new(
             bitcoin::Amount::ZERO,
             MidMarketRate {
                 value: Rate::new(0),
@@ -231,21 +260,8 @@ mod tests {
             quote: dai::Amount::zero(),
         };
 
-        let event = maker.confirm_order(order_taken).unwrap();
+        let res = maker.confirm_order(order_taken);
 
-        assert_eq!(
-            maker.btc_reserved_funds,
-            bitcoin::Amount::from_btc(1.5).unwrap()
-        )
-    }
-
-    #[test]
-    fn given_that_an_order_is_taken_and_acceptable_then_take_action() {
-        // TODO: implement
-    }
-
-    #[test]
-    fn given_that_an_order_is_taken_and_unacceptable_then_decline_action() {
-        // TODO: implement
+        assert!(res.is_err())
     }
 }
