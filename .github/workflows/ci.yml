@@ -85,6 +85,7 @@ jobs:
 
       - name: Cache target directory
         uses: actions/cache@v2
+        if: ${{ matrix.os }} == 'ubuntu-latest'
         with:
           path: target
           # The target directory is only useful with the same Rust version, dependencies and operating system.
