@@ -1,8 +1,6 @@
 use crate::{identity, network::*, LocalSwapId, SecretHash, SharedSwapId, Timestamp};
 use libp2p::{
-    swarm::{
-        NegotiatedSubstream, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters,
-    },
+    swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
     NetworkBehaviour, PeerId,
 };
 use std::{
@@ -59,11 +57,8 @@ struct CommunicationState {
 }
 
 impl ExecutionParameters {
-    pub fn confirm(
-        shared_swap_id: SharedSwapId,
-        io: announce::ReplySubstream<NegotiatedSubstream>,
-    ) {
-        tokio::task::spawn(io.send(shared_swap_id));
+    pub fn confirm(shared_swap_id: SharedSwapId, io: ()) {
+        unimplemented!()
     }
 
     pub fn communicate(

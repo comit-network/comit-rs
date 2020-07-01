@@ -1,5 +1,5 @@
 use crate::{network::*, LocalSwapId, Role, SharedSwapId, Timestamp};
-use libp2p::{swarm::NegotiatedSubstream, PeerId};
+use libp2p::PeerId;
 use std::collections::HashMap;
 
 #[derive(thiserror::Error, Clone, Copy, Debug, PartialEq)]
@@ -21,7 +21,7 @@ pub enum Error {
 /// We use a type parameter for the substream type so we can write unit tests
 /// without creating actual substreams.
 #[derive(Debug)]
-pub struct Swaps<T = announce::ReplySubstream<NegotiatedSubstream>> {
+pub struct Swaps<T = ()> {
     /// In role of Alice; swaps exist in here once a swap is created by Alice
     /// (and up until an announce confirmation is received from Bob).
     pending_confirmation: HashMap<SwapDigest, LocalSwapId>,

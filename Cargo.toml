@@ -1,2 +1,6 @@
 [workspace]
 members = ["cnd", "digest", "digest-macro-derive", "comit"]
+
+[patch.crates-io]
+libp2p = { git = "https://github.com/libp2p/rust-libp2p.git" }
+libp2p-request-response = { git = "https://github.com/libp2p/rust-libp2p.git" }
