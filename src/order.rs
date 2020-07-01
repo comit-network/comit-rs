@@ -62,8 +62,8 @@ impl Default for BtcDaiOrder {
     fn default() -> Self {
         Self {
             position: Position::Buy,
-            base: bitcoin::Amount::default(),
-            quote: dai::Amount::default(),
+            base: bitcoin::Amount::from_sat(1),
+            quote: dai::Amount::from_atto(num::BigUint::from(1u8)),
         }
     }
 }

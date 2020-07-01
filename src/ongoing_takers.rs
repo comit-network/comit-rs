@@ -14,8 +14,10 @@ impl OngoingTakers {
         self.0.insert(taker);
         Ok(())
     }
-    // if balance changed
-    // if rate is not good any more...
+
+    pub fn cannot_trade_with_taker(&self, taker: &Taker) -> bool {
+        self.0.contains(taker)
+    }
 
     fn remove(&mut self, taker: &Taker) {
         self.0.remove(taker);

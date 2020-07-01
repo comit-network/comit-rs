@@ -5,10 +5,10 @@ use crate::{
     network::Order,
     order::{BtcDaiOrder, Position},
     rate::Spread,
-    MidMarketRate, OngoingTakers,
+    MidMarketRate, OngoingTakers, Rate,
 };
-use anyhow::Context;
 use comit::LocalSwapId;
+use std::convert::TryFrom;
 
 #[derive(Debug, PartialEq)]
 pub enum NewOrder {
@@ -26,9 +26,9 @@ pub struct Maker {
     pub dai_reserved_funds: dai::Amount,
     btc_max_sell_amount: bitcoin::Amount,
     dai_max_sell_amount: dai::Amount,
-    rate: MidMarketRate,
+    mid_market_rate: MidMarketRate,
     spread: Spread,
-    ongoing_swaps: OngoingTakers,
+    ongoing_takers: OngoingTakers,
 }
 
 impl Maker {
@@ -48,7 +48,7 @@ impl Maker {
                 self.btc_fee,
                 self.btc_reserved_funds,
                 self.btc_max_sell_amount,
-                self.rate.value,
+                self.mid_market_rate.value,
                 self.spread,
             ),
             Position::Buy => BtcDaiOrder::new_buy(),
@@ -77,34 +77,52 @@ impl Maker {
     /// Decide whether we should proceed with order,
     /// Confirm with the order book
     /// Re & take & reserve
-    pub fn confirm_order(&mut self, order: Order) -> anyhow::Result<()> {
-        // TODO: Check that rate is still profitable
+    pub fn confirm_order(&mut self, order: Order) -> anyhow::Result<Confirmation> {
+        if self.ongoing_takers.cannot_trade_with_taker(&order.taker) {
+            return Ok(Confirmation::CannotTradeWithTaker);
+        }
 
-        self.ongoing_swaps
-            .insert(order.taker)
-            .context("could not confirm order")?;
-
-        match order.into() {
+        match order.clone().into() {
             BtcDaiOrder {
                 position: Position::Buy,
                 ..
             } => todo!(),
+            order
+            @
             BtcDaiOrder {
                 position: Position::Sell,
-                base,
                 ..
             } => {
-                let updated_btc_reserved_funds = self.btc_reserved_funds + base;
+                let current_profitable_rate = self.spread.apply(self.mid_market_rate.value)?;
+                let order_rate = Rate::try_from(order.clone())?;
+
+                if current_profitable_rate > order_rate {
+                    return Ok(Confirmation::RateSucks);
+                }
+
+                let updated_btc_reserved_funds = self.btc_reserved_funds + order.base;
                 if updated_btc_reserved_funds > self.btc_balance {
-                    anyhow::bail!("insufficient funds to confirm the order")
+                    return Ok(Confirmation::InsufficientFunds);
                 }
 
                 self.btc_reserved_funds = updated_btc_reserved_funds;
             }
         };
 
-        Ok(())
+        self.ongoing_takers
+            .insert(order.taker)
+            .expect("already checked that we can trade");
+
+        Ok(Confirmation::Confirmed)
     }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum Confirmation {
+    Confirmed,
+    RateSucks,
+    InsufficientFunds,
+    CannotTradeWithTaker,
 }
 
 #[cfg(test)]
@@ -116,6 +134,7 @@ mod tests {
         MidMarketRate, Rate,
     };
     use chrono::Utc;
+    use std::convert::TryFrom;
 
     impl Default for Maker {
         fn default() -> Self {
@@ -128,9 +147,9 @@ mod tests {
                 dai_reserved_funds: dai::Amount::default(),
                 btc_max_sell_amount: bitcoin::Amount::default(),
                 dai_max_sell_amount: dai::Amount::default(),
-                rate: MidMarketRate::default(),
+                mid_market_rate: MidMarketRate::default(),
                 spread: Spread::default(),
-                ongoing_swaps: OngoingTakers::default(),
+                ongoing_takers: OngoingTakers::default(),
             }
         }
     }
@@ -143,7 +162,7 @@ mod tests {
         // Given a maker in a certain state
         let mut maker = Maker {
             btc_balance: bitcoin::Amount::from_btc(1.0).unwrap(),
-            rate: MidMarketRate {
+            mid_market_rate: MidMarketRate {
                 value: Rate::new(9000),
                 timestamp: Utc::now(),
             },
@@ -184,8 +203,9 @@ mod tests {
             ..Default::default()
         };
 
-        let res = maker.confirm_order(order_taken).unwrap();
+        let event = maker.confirm_order(order_taken).unwrap();
 
+        assert_eq!(event, Confirmation::Confirmed);
         assert_eq!(
             maker.btc_reserved_funds,
             bitcoin::Amount::from_btc(1.5).unwrap()
@@ -193,7 +213,7 @@ mod tests {
     }
 
     #[test]
-    fn fail_if_not_enough_funds_to_reserve_for_an_order() {
+    fn not_enough_funds_to_reserve_for_an_order() {
         let mut maker = Maker {
             btc_balance: bitcoin::Amount::ZERO,
             ..Default::default()
@@ -208,13 +228,13 @@ mod tests {
             ..Default::default()
         };
 
-        let res = maker.confirm_order(order_taken);
+        let event = maker.confirm_order(order_taken).unwrap();
 
-        assert!(res.is_err())
+        assert_eq!(event, Confirmation::InsufficientFunds);
     }
 
     #[test]
-    fn fail_if_not_enough_funds_to_reserve_for_an_order_2() {
+    fn not_enough_funds_to_reserve_for_an_order_2() {
         let mut maker = Maker {
             btc_balance: bitcoin::Amount::from_btc(2.0).unwrap(),
             btc_reserved_funds: bitcoin::Amount::from_btc(1.5).unwrap(),
@@ -230,32 +250,56 @@ mod tests {
             ..Default::default()
         };
 
-        let res = maker.confirm_order(order_taken);
+        let event = maker.confirm_order(order_taken).unwrap();
 
-        assert!(res.is_err())
+        assert_eq!(event, Confirmation::InsufficientFunds);
     }
 
     #[test]
-    fn fail_to_confirm_order_if_ongoing_swap_with_same_taker_exists() {
+    fn cannot_trade_with_taker_if_ongoing_swap_already_exists() {
         let mut maker = Maker {
+            btc_balance: bitcoin::Amount::from_btc(1.0).unwrap(),
             ..Default::default()
         };
 
         let order_taken = Order {
             inner: BtcDaiOrder {
                 position: Position::Sell,
-                base: bitcoin::Amount::ZERO,
-                quote: dai::Amount::zero(),
+                ..Default::default()
             },
             ..Default::default()
         };
 
-        let res = maker.confirm_order(order_taken.clone());
+        let event = maker.confirm_order(order_taken.clone()).unwrap();
 
-        assert!(res.is_ok());
+        assert_eq!(event, Confirmation::Confirmed);
 
-        let res = maker.confirm_order(order_taken);
+        let event = maker.confirm_order(order_taken).unwrap();
 
-        assert!(res.is_err());
+        assert_eq!(event, Confirmation::CannotTradeWithTaker);
+    }
+
+    #[test]
+    fn fail_to_confirm_order_if_rate_is_not_good_enough() {
+        let mut maker = Maker {
+            mid_market_rate: MidMarketRate {
+                value: Rate::try_from(10000.0).unwrap(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let order_taken = Order {
+            inner: BtcDaiOrder {
+                position: Position::Sell,
+                base: bitcoin::Amount::from_btc(1.0).unwrap(),
+                quote: dai::Amount::from_dai_trunc(9000.0).unwrap(),
+            },
+            ..Default::default()
+        };
+
+        let event = maker.confirm_order(order_taken).unwrap();
+
+        assert_eq!(event, Confirmation::RateSucks);
     }
 }

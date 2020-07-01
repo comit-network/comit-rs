@@ -1,3 +1,4 @@
+use crate::{bitcoin, dai, float_maths::divide_pow_ten_trunc, order::BtcDaiOrder};
 use anyhow::Context;
 use num::{BigUint, Integer, ToPrimitive};
 use std::convert::TryFrom;
@@ -7,11 +8,19 @@ use std::str::FromStr;
 /// Represent a rate. Note this is designed to support Bitcoin/Dai buy and sell rates (Bitcoin being in the range of 10k-100kDai)
 /// A rate has a maximum precision of 9 digits after the decimal
 // rate = self.0 * 10e-9
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, PartialOrd)]
 pub struct Rate(u64);
 
 impl Rate {
     pub const PRECISION: u16 = 9;
+
+    // We want to divide dai by bitcoin:
+    // - Divide result by 10e18 to go from atto to dai
+    // - Multiply result by 10e8 to go from satoshi to bitcoin
+    // - Multiply result by 10e9 to have the inner of rate
+    const FROM_ORDER_INV_EXP: usize = dai::ATTOS_IN_DAI_EXP as usize
+        - bitcoin::SATS_IN_BITCOIN_EXP as usize
+        - Self::PRECISION as usize;
 
     /// integer = rate * 10ePRECISION
     pub fn new(integer: u64) -> Self {
@@ -61,6 +70,21 @@ impl TryFrom<f64> for Rate {
         let integer = u64::from_str(&format!("{}{}{}", integer, mantissa, zeros))
             .context("Rate is unexpectedly large")?;
         Ok(Rate::new(integer))
+    }
+}
+
+impl TryFrom<BtcDaiOrder> for Rate {
+    type Error = anyhow::Error;
+    fn try_from(BtcDaiOrder { base, quote, .. }: BtcDaiOrder) -> anyhow::Result<Self> {
+        // Divide atto by satoshi
+        let (quotient, _) = quote.as_atto().div_rem(&BigUint::from(base.as_sat()));
+
+        let rate = divide_pow_ten_trunc(quotient, Self::FROM_ORDER_INV_EXP);
+        let rate = rate
+            .to_u64()
+            .ok_or_else(|| anyhow::anyhow!("unexpectedly large rate"))?;
+
+        Ok(Self(rate))
     }
 }
 
