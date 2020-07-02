@@ -229,17 +229,9 @@ pub mod wallet_actor {
                 tokio::time::delay_for(Duration::from_secs(1)).await;
             }
 
-            let refund_action = params.build_refund_action(
-                &crate::SECP,
-                fund_event.asset,
-                fund_event.location,
-                self.private_protocol_details.transient_refund_sk,
-                self.private_protocol_details.final_refund_identity.clone(),
-            )?;
-            let transaction = self.alpha_wallet.refund(refund_action).await?;
-            let refunded = hbit::Refunded { transaction };
+            let refund_event = self.refund(params, fund_event).await?;
 
-            Ok(refunded)
+            Ok(refund_event)
         }
     }
 
@@ -275,6 +267,24 @@ pub mod wallet_actor {
             let asset = asset::Bitcoin::from_sat(transaction.output[location.vout as usize].value);
 
             Ok(hbit::CorrectlyFunded { asset, location })
+        }
+
+        async fn refund(
+            &self,
+            params: &hbit::Params,
+            fund_event: hbit::CorrectlyFunded,
+        ) -> anyhow::Result<hbit::Refunded> {
+            let refund_action = params.build_refund_action(
+                &crate::SECP,
+                fund_event.asset,
+                fund_event.location,
+                self.private_protocol_details.transient_refund_sk,
+                self.private_protocol_details.final_refund_identity.clone(),
+            )?;
+            let transaction = self.alpha_wallet.refund(refund_action).await?;
+            let refund_event = hbit::Refunded { transaction };
+
+            Ok(refund_event)
         }
     }
 
