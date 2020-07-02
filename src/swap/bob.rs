@@ -26,7 +26,7 @@ pub struct WalletBob<AW, BW, DB, E> {
 impl<AW, DB, E> herc20::Deploy for WalletBob<AW, ethereum::Wallet, DB, E>
 where
     AW: Send + Sync,
-    DB: db::Load<herc20::Deployed> + Send + Sync,
+    DB: db::Load<herc20::Deployed> + db::Save<herc20::Deployed>,
     E: Send + Sync,
 {
     async fn deploy(
@@ -45,6 +45,7 @@ where
             }
 
             let deploy_event = self.deploy(&params).await?;
+            self.db.save(deploy_event.clone(), 0).await?;
 
             Ok(Next::Continue(deploy_event))
         }
@@ -55,7 +56,7 @@ where
 impl<AW, DB, E> herc20::Fund for WalletBob<AW, ethereum::Wallet, DB, E>
 where
     AW: Send + Sync,
-    DB: db::Load<herc20::CorrectlyFunded> + Send + Sync,
+    DB: db::Load<herc20::CorrectlyFunded> + db::Save<herc20::CorrectlyFunded>,
     E: Send + Sync,
 {
     async fn fund(
@@ -74,6 +75,7 @@ where
         }
 
         let fund_event = self.fund(params, deploy_event).await?;
+        self.db.save(fund_event.clone(), 0).await?;
 
         Ok(Next::Continue(fund_event))
     }
@@ -218,7 +220,7 @@ pub mod watch_only_actor {
         BC: LatestBlock<Block = ethereum::Block>
             + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
             + ReceiptByHash,
-        DB: db::Load<herc20::Deployed> + Send + Sync,
+        DB: db::Load<herc20::Deployed> + db::Save<herc20::Deployed>,
     {
         async fn deploy(
             &self,
@@ -241,6 +243,7 @@ pub mod watch_only_actor {
                     self.start_of_swap,
                 )
                 .await?;
+                self.db.save(deploy_event.clone(), 0).await?;
 
                 Ok(Next::Continue(deploy_event))
             }
@@ -254,7 +257,7 @@ pub mod watch_only_actor {
         BC: LatestBlock<Block = ethereum::Block>
             + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
             + ReceiptByHash,
-        DB: db::Load<herc20::CorrectlyFunded> + Send + Sync,
+        DB: db::Load<herc20::CorrectlyFunded> + db::Save<herc20::CorrectlyFunded>,
     {
         async fn fund(
             &self,
@@ -279,6 +282,7 @@ pub mod watch_only_actor {
                     deploy_event,
                 )
                 .await?;
+                self.db.save(fund_event.clone(), 0).await?;
 
                 Ok(Next::Continue(fund_event))
             }

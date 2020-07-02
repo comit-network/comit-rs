@@ -31,7 +31,7 @@ where
     AC: LatestBlock<Block = bitcoin::Block>
         + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
     BC: LatestBlock<Block = ethereum::Block>,
-    DB: db::Load<hbit::CorrectlyFunded> + Send + Sync,
+    DB: db::Load<hbit::CorrectlyFunded> + db::Save<hbit::CorrectlyFunded>,
 {
     async fn fund(
         &self,
@@ -50,6 +50,7 @@ where
         let fund_event =
             hbit::watch_for_funded(self.alpha_connector.as_ref(), &params, self.start_of_swap)
                 .await?;
+        self.db.save(fund_event, 0).await?;
 
         Ok(Next::Continue(fund_event))
     }
@@ -62,7 +63,7 @@ where
     BC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + ReceiptByHash,
-    DB: db::Load<herc20::Redeemed> + Send + Sync,
+    DB: db::Load<herc20::Redeemed> + db::Save<herc20::Redeemed>,
 {
     async fn redeem(
         &self,
@@ -86,6 +87,7 @@ where
                 deploy_event,
             )
             .await?;
+            self.db.save(redeem_event.clone(), 0).await?;
 
             Ok(Next::Continue(redeem_event))
         }
@@ -142,7 +144,7 @@ pub mod wallet_actor {
     impl<BW, DB> hbit::Fund for WalletAlice<bitcoin::Wallet, BW, DB, hbit::PrivateDetailsFunder>
     where
         BW: LatestBlock<Block = ethereum::Block>,
-        DB: db::Load<hbit::CorrectlyFunded> + Send + Sync,
+        DB: db::Load<hbit::CorrectlyFunded> + db::Save<hbit::CorrectlyFunded>,
     {
         async fn fund(
             &self,
@@ -159,6 +161,8 @@ pub mod wallet_actor {
             }
 
             let fund_event = self.fund(&params).await?;
+            self.db.save(fund_event, 0).await?;
+
             Ok(Next::Continue(fund_event))
         }
     }
@@ -167,7 +171,7 @@ pub mod wallet_actor {
     impl<AW, DB, E> herc20::RedeemAsAlice for WalletAlice<AW, ethereum::Wallet, DB, E>
     where
         AW: Send + Sync,
-        DB: db::Load<herc20::Redeemed> + Send + Sync,
+        DB: db::Load<herc20::Redeemed> + db::Save<herc20::Redeemed>,
         E: Send + Sync,
     {
         async fn redeem(
@@ -187,6 +191,7 @@ pub mod wallet_actor {
                 }
 
                 let redeem_event = self.redeem(&params, deploy_event).await?;
+                self.db.save(redeem_event.clone(), 0).await?;
 
                 Ok(Next::Continue(redeem_event))
             }

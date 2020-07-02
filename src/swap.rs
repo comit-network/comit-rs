@@ -234,6 +234,34 @@ mod tests {
         }
     }
 
+    #[async_trait::async_trait]
+    impl db::Save<hbit::CorrectlyFunded> for Database {
+        async fn save(&self, _event: hbit::CorrectlyFunded, _swap_id: u8) -> anyhow::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl db::Save<herc20::Deployed> for Database {
+        async fn save(&self, _event: herc20::Deployed, _swap_id: u8) -> anyhow::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl db::Save<herc20::CorrectlyFunded> for Database {
+        async fn save(&self, _event: herc20::CorrectlyFunded, _swap_id: u8) -> anyhow::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl db::Save<herc20::Redeemed> for Database {
+        async fn save(&self, _event: herc20::Redeemed, _swap_id: u8) -> anyhow::Result<()> {
+            Ok(())
+        }
+    }
+
     #[tokio::test]
     async fn execute_alice_hbit_herc20_swap() -> anyhow::Result<()> {
         let client = clients::Cli::default();
