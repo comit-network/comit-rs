@@ -62,7 +62,7 @@ impl From<PostBody<Herc20, Hbit>> for swap_digest::Herc20Hbit {
             erc20_amount: body.alpha.amount,
             token_contract: body.alpha.token_contract,
             bitcoin_expiry: body.beta.absolute_expiry.into(),
-            bitcoin_amount: *body.beta.amount,
+            bitcoin_amount: body.beta.amount,
         }
     }
 }

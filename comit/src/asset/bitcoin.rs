@@ -1,6 +1,5 @@
 use bitcoin::{util::amount::Denomination, Amount};
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-use std::{fmt, str::FromStr};
+use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Bitcoin(Amount);
@@ -32,51 +31,59 @@ impl fmt::Display for Bitcoin {
     }
 }
 
-impl<'de> Deserialize<'de> for Bitcoin {
-    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct Visitor;
+/// Module specifically desgined for use with the `serde(with)` attribute.
+///
+/// # Usage
+///
+/// ```rust
+/// use comit::asset;
+///
+/// #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
+/// #[serde(transparent)]
+/// struct Container(#[serde(with = "asset::bitcoin::sats_as_string")] asset::Bitcoin);
+///
+/// let container = Container(asset::Bitcoin::from_sat(1000));
+/// let json_sats = r#""1000""#;
+///
+/// assert_eq!(json_sats, serde_json::to_string(&container).unwrap());
+/// assert_eq!(
+///     container,
+///     serde_json::from_str::<Container>(json_sats).unwrap()
+/// )
+/// ```
+pub mod sats_as_string {
+    use super::*;
+    use serde::{de::Error, Deserialize, Deserializer, Serializer};
+    use std::str::FromStr;
 
-        impl<'vde> de::Visitor<'vde> for Visitor {
-            type Value = Bitcoin;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-                formatter.write_str("A string representing an Bitcoin quantity")
-            }
-
-            fn visit_str<E>(self, v: &str) -> Result<Bitcoin, E>
-            where
-                E: de::Error,
-            {
-                let sat = u64::from_str(v).map_err(E::custom)?;
-                let bitcoin = Bitcoin::from_sat(sat);
-                Ok(bitcoin)
-            }
-        }
-
-        deserializer.deserialize_str(Visitor)
-    }
-}
-
-impl Serialize for Bitcoin {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    pub fn serialize<S>(value: &Bitcoin, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        serializer.serialize_str(self.to_string().as_str())
+        serializer.serialize_str(&value.as_sat().to_string())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Bitcoin, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        let value =
+            u64::from_str(value.as_str()).map_err(<D as Deserializer<'de>>::Error::custom)?;
+        let amount = Bitcoin::from_sat(value);
+
+        Ok(amount)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::asset;
+    use super::*;
 
     #[test]
     fn display_bitcoin() {
         assert_eq!(
-            asset::Bitcoin::from_sat(900_000_000_000).to_string(),
+            Bitcoin::from_sat(900_000_000_000).to_string(),
             "9000.00000000 BTC"
         );
     }

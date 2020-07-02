@@ -113,29 +113,6 @@ impl<'de> Deserialize<'de> for Http<Role> {
     }
 }
 
-impl Serialize for Http<asset::Bitcoin> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.0.as_sat().to_string())
-    }
-}
-
-impl<'de> Deserialize<'de> for Http<asset::Bitcoin> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let value = String::deserialize(deserializer)?;
-        let value =
-            u64::from_str(value.as_str()).map_err(<D as Deserializer<'de>>::Error::custom)?;
-        let amount = asset::Bitcoin::from_sat(value);
-
-        Ok(Http(amount))
-    }
-}
-
 impl Serialize for Http<transaction::Bitcoin> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -391,9 +368,10 @@ pub enum HttpAssetParams {
     Erc20(Erc20AssetParams),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct BitcoinAssetParams {
-    quantity: Http<asset::Bitcoin>,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    quantity: asset::Bitcoin,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -492,15 +470,13 @@ impl From<HttpAsset> for HttpAssetParams {
 
 impl From<BitcoinAssetParams> for asset::Bitcoin {
     fn from(params: BitcoinAssetParams) -> Self {
-        *params.quantity
+        params.quantity
     }
 }
 
 impl From<asset::Bitcoin> for BitcoinAssetParams {
     fn from(bitcoin: asset::Bitcoin) -> Self {
-        Self {
-            quantity: Http(bitcoin),
-        }
+        Self { quantity: bitcoin }
     }
 }
 

@@ -1,4 +1,4 @@
-mod bitcoin;
+pub mod bitcoin;
 pub mod ethereum;
 
 pub use self::{

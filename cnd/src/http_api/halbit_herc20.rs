@@ -54,7 +54,7 @@ impl From<PostBody<Halbit, Herc20>> for swap_digest::HalbitHerc20 {
     fn from(body: PostBody<Halbit, Herc20>) -> Self {
         Self {
             lightning_cltv_expiry: body.alpha.cltv_expiry.into(),
-            lightning_amount: body.alpha.amount.0,
+            lightning_amount: body.alpha.amount,
             ethereum_absolute_expiry: body.beta.absolute_expiry.into(),
             erc20_amount: body.beta.amount,
             token_contract: body.beta.token_contract,
