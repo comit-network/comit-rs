@@ -15,6 +15,7 @@ bitcoin = { version = "0.23", features = ["use-serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 comit = { path = "../comit" }
 config = { version = "0.10", features = ["toml"], default-features = false }
+data-encoding = "2.2"
 derivative = "2"
 diesel = { version = "1.4", features = ["sqlite", "chrono"] }
 diesel_migrations = "1.4.0"
@@ -22,8 +23,11 @@ digest = { path = "../digest" }
 directories = "2.0"
 fs2 = "0.4.3"
 futures = { version = "0.3", default-features = false }
+futures-timer = "3.0"
+get_if_addrs = "0.5"
 hex = "0.4"
 http-api-problem = { version = "0.15", features = ["with_warp"] }
+ipnet = "2.3"
 lazy_static = "1"
 libp2p = { version = "0.21", default-features = false, features = ["tcp-tokio", "secio", "yamux", "mplex", "dns"] }
 libsqlite3-sys = { version = ">=0.8.0, <0.13.0", features = ["bundled"] }
@@ -38,11 +42,13 @@ serde_json = "1"
 serdebug = "1"
 sha2 = "0.9"
 siren = { version = "0.2.1", package = "siren-types" }
+socket2 = "0.3"
 structopt = "0.3"
 strum = "0.18"
 strum_macros = "0.18"
 thiserror = "1"
 tokio = { version = "0.2", features = ["rt-threaded", "time", "macros", "sync"] }
+tokio-socks = "0.2"
 toml = "0.5"
 tracing = { version = "0.1", features = ["attributes"] }
 tracing-core = "0.1"

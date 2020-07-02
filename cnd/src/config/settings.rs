@@ -176,6 +176,7 @@ impl Settings {
 
                 Network {
                     listen: vec![default_socket],
+                    use_tor: false,
                 }
             }),
             http_api: http_api
@@ -319,6 +320,7 @@ mod tests {
             .map(|settings| &settings.network)
             .is_equal_to(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
+                use_tor: false,
             })
     }
 

@@ -23,6 +23,7 @@ pub struct Data {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Network {
     pub listen: Vec<Multiaddr>,
+    pub use_tor: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -182,12 +183,14 @@ mod tests {
         let expected = vec![
             Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
+                use_tor: false,
             },
             Network {
                 listen: (vec![
                     "/ip4/0.0.0.0/tcp/9939".parse().unwrap(),
                     "/ip4/127.0.0.1/tcp/9939".parse().unwrap(),
                 ]),
+                use_tor: false,
             },
         ];
 

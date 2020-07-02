@@ -1,6 +1,8 @@
+pub mod tor;
 pub mod transport;
 
 // Export comit network types while maintaining the module abstraction.
+pub use self::tor::TorTokioTcpConfig;
 pub use ::comit::network::*;
 pub use transport::ComitTransport;
 
@@ -24,6 +26,7 @@ use libp2p::{
     Multiaddr, NetworkBehaviour, PeerId,
 };
 use std::{
+    collections::HashMap,
     fmt::Debug,
     io,
     pin::Pin,
@@ -54,7 +57,18 @@ impl Swarm {
         let local_peer_id = PeerId::from(local_key_pair.public());
         tracing::info!("Starting with peer_id: {}", local_peer_id);
 
-        let transport = transport::build_comit_transport(local_key_pair)?;
+        let transport = if settings.network.use_tor {
+            let mut map = HashMap::new();
+            if settings.network.listen.len() != 1 {
+                anyhow::bail!("To use Tor please configure a single onion address")
+            }
+            for addr in settings.network.listen.iter() {
+                map.insert((*addr).clone(), 9939u16);
+            }
+            transport::build_tor_transport(local_key_pair, map)?
+        } else {
+            transport::build_comit_transport(local_key_pair)?
+        };
 
         let behaviour = ComitNode::new(
             seed,
