@@ -55,7 +55,7 @@ where
 impl<AW, DB, E> herc20::Fund for WalletBob<AW, ethereum::Wallet, DB, E>
 where
     AW: Send + Sync,
-    DB: Send + Sync,
+    DB: herc20::FundEvent + Send + Sync,
     E: Send + Sync,
 {
     async fn fund(
@@ -64,14 +64,7 @@ where
         deploy_event: herc20::Deployed,
         beta_expiry: Timestamp,
     ) -> anyhow::Result<Next<herc20::CorrectlyFunded>> {
-        if let Some(fund_event) = herc20::watch_for_funded_in_the_past(
-            &self.beta_wallet,
-            params.clone(),
-            self.start_of_swap,
-            deploy_event.clone(),
-        )
-        .await?
-        {
+        if let Some(fund_event) = self.db.fund_event()? {
             return Ok(Next::Continue(fund_event));
         }
 
@@ -261,7 +254,7 @@ pub mod watch_only_actor {
         BC: LatestBlock<Block = ethereum::Block>
             + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
             + ReceiptByHash,
-        DB: Send + Sync,
+        DB: herc20::FundEvent + Send + Sync,
     {
         async fn fund(
             &self,
@@ -270,14 +263,7 @@ pub mod watch_only_actor {
             beta_expiry: Timestamp,
         ) -> anyhow::Result<Next<herc20::CorrectlyFunded>> {
             {
-                if let Some(fund_event) = herc20::watch_for_funded_in_the_past(
-                    self.beta_connector.as_ref(),
-                    params.clone(),
-                    self.start_of_swap,
-                    deploy_event.clone(),
-                )
-                .await?
-                {
+                if let Some(fund_event) = self.db.fund_event()? {
                     return Ok(Next::Continue(fund_event));
                 }
 

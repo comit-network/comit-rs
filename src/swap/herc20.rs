@@ -83,16 +83,9 @@ pub trait DeployEvent {
     fn deploy_event(&self) -> anyhow::Result<Option<Deployed>>;
 }
 
-pub async fn watch_for_funded_in_the_past<C>(
-    _connector: &C,
-    _params: Params,
-    _start_of_swap: NaiveDateTime,
-    _deployed: Deployed,
-) -> anyhow::Result<Option<CorrectlyFunded>>
-where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
-{
-    todo!()
+/// Obtain Herc20 fund event if we are aware that it has happened.
+pub trait FundEvent {
+    fn fund_event(&self) -> anyhow::Result<Option<CorrectlyFunded>>;
 }
 
 pub async fn watch_for_redeemed_in_the_past<C>(

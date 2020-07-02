@@ -217,6 +217,12 @@ mod tests {
         }
     }
 
+    impl herc20::FundEvent for Database {
+        fn fund_event(&self) -> anyhow::Result<Option<herc20::CorrectlyFunded>> {
+            Ok(None)
+        }
+    }
+
     #[tokio::test]
     async fn execute_alice_hbit_herc20_swap() -> anyhow::Result<()> {
         let client = clients::Cli::default();
