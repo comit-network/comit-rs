@@ -12,7 +12,6 @@ async-trait = "0.1"
 atty = "0.2"
 base64 = "0.12.3"
 bitcoin = { version = "0.23", features = ["use-serde"] }
-blockchain_contracts = "0.3.2"
 chrono = { version = "0.4", features = ["serde"] }
 comit = { path = "../comit" }
 config = { version = "0.10", features = ["toml"], default-features = false }
@@ -20,15 +19,13 @@ derivative = "2"
 diesel = { version = "1.4", features = ["sqlite", "chrono"] }
 diesel_migrations = "1.4.0"
 digest = { path = "../digest" }
-digest-macro-derive = { path = "../digest-macro-derive" }
 directories = "2.0"
 fs2 = "0.4.3"
-futures = { version = "0.3", features = ["async-await"], default-features = false }
-genawaiter = { version = "0.99", features = ["futures03"] }
+futures = { version = "0.3", default-features = false }
 hex = "0.4"
 http-api-problem = { version = "0.15", features = ["with_warp"] }
 lazy_static = "1"
-libp2p = { version = "0.21", default-features = false, features = ["tcp-tokio", "secio", "yamux", "mplex", "mdns", "dns"] }
+libp2p = { version = "0.21", default-features = false, features = ["tcp-tokio", "secio", "yamux", "mplex", "dns"] }
 libsqlite3-sys = { version = ">=0.8.0, <0.13.0", features = ["bundled"] }
 log = { version = "0.4", features = ["serde"] }
 num = "0.3"
@@ -45,7 +42,6 @@ structopt = "0.3"
 strum = "0.18"
 strum_macros = "0.18"
 thiserror = "1"
-tiny-keccak = { version = "2.0", features = ["keccak"] }
 tokio = { version = "0.2", features = ["rt-threaded", "time", "macros", "sync"] }
 toml = "0.5"
 tracing = { version = "0.1", features = ["attributes"] }
@@ -55,7 +51,6 @@ tracing-log = "0.1"
 tracing-subscriber = "0.2"
 url = { version = "2", features = ["serde"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
-void = "1.0.2"
 warp = { version = "0.2", default-features = false }
 
 [dev-dependencies]
