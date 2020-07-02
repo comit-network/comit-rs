@@ -13,7 +13,11 @@ pub use comit::{
 
 #[async_trait::async_trait]
 pub trait Deploy {
-    async fn deploy(&self, params: &Params) -> anyhow::Result<Deployed>;
+    async fn deploy(
+        &self,
+        params: Params,
+        beta_expiry: Timestamp,
+    ) -> anyhow::Result<Next<Deployed>>;
 }
 
 #[async_trait::async_trait]
@@ -50,15 +54,6 @@ pub trait Refund {
 pub struct CorrectlyFunded {
     pub transaction: transaction::Ethereum,
     pub asset: asset::Erc20,
-}
-
-#[async_trait::async_trait]
-pub trait DecideOnDeploy {
-    async fn decide_on_deploy(
-        &self,
-        herc20_params: Params,
-        beta_expiry: Timestamp,
-    ) -> anyhow::Result<Decision<Deployed>>;
 }
 
 #[async_trait::async_trait]

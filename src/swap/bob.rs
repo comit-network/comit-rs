@@ -6,13 +6,10 @@
 use crate::swap::{
     bitcoin,
     ethereum::{self, ethereum_latest_time},
-    Decision, Next, {hbit, herc20},
+    Next, {hbit, herc20},
 };
 use chrono::NaiveDateTime;
-use comit::{
-    btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
-    Secret, SecretHash, Timestamp,
-};
+use comit::{Secret, SecretHash, Timestamp};
 use std::time::Duration;
 
 #[derive(Clone, Debug)]
@@ -25,12 +22,36 @@ pub struct WalletBob<AW, BW, E> {
 }
 
 #[async_trait::async_trait]
-impl herc20::Deploy for WalletBob<bitcoin::Wallet, ethereum::Wallet, hbit::PrivateDetailsRedeemer> {
-    async fn deploy(&self, params: &herc20::Params) -> anyhow::Result<herc20::Deployed> {
-        let deploy_action = params.build_deploy_action();
-        let event = self.beta_wallet.deploy(deploy_action).await?;
+impl<AW, E> herc20::Deploy for WalletBob<AW, ethereum::Wallet, E>
+where
+    AW: Send + Sync,
+    E: Send + Sync,
+{
+    async fn deploy(
+        &self,
+        params: herc20::Params,
+        beta_expiry: Timestamp,
+    ) -> anyhow::Result<Next<herc20::Deployed>> {
+        {
+            if let Some(deploy_event) = herc20::watch_for_deployed_in_the_past(
+                &self.beta_wallet,
+                params.clone(),
+                self.start_of_swap,
+            )
+            .await?
+            {
+                return Ok(Next::Continue(deploy_event));
+            }
 
-        Ok(event)
+            let beta_ledger_time = ethereum_latest_time(&self.beta_wallet).await?;
+            if beta_expiry <= beta_ledger_time {
+                return Ok(Next::Abort);
+            }
+
+            let deploy_event = self.deploy(&params).await?;
+
+            Ok(Next::Continue(deploy_event))
+        }
     }
 }
 
@@ -69,6 +90,13 @@ where
 }
 
 impl<AW, E> WalletBob<AW, ethereum::Wallet, E> {
+    async fn deploy(&self, params: &herc20::Params) -> anyhow::Result<herc20::Deployed> {
+        let deploy_action = params.build_deploy_action();
+        let event = self.beta_wallet.deploy(deploy_action).await?;
+
+        Ok(event)
+    }
+
     async fn fund(
         &self,
         params: herc20::Params,
@@ -147,51 +175,13 @@ impl herc20::Refund for WalletBob<bitcoin::Wallet, ethereum::Wallet, hbit::Priva
     }
 }
 
-#[async_trait::async_trait]
-impl<AW, BW, E> herc20::DecideOnDeploy for WalletBob<AW, BW, E>
-where
-    AW: Send + Sync,
-    BW: LatestBlock<Block = ethereum::Block>
-        + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-        + ReceiptByHash,
-    E: Send + Sync,
-{
-    async fn decide_on_deploy(
-        &self,
-        herc20_params: herc20::Params,
-        beta_expiry: Timestamp,
-    ) -> anyhow::Result<crate::swap::Decision<herc20::Deployed>> {
-        {
-            if let Some(deploy_event) = herc20::watch_for_deployed_in_the_past(
-                &self.beta_wallet,
-                herc20_params,
-                self.start_of_swap,
-            )
-            .await?
-            {
-                return Ok(Decision::Skip(deploy_event));
-            }
-
-            let beta_ledger_time = ethereum_latest_time(&self.beta_wallet).await?;
-            // TODO: Apply a buffer depending on the blocktime and how
-            // safe we want to be
-
-            if beta_expiry > beta_ledger_time {
-                Ok(Decision::Act)
-            } else {
-                Ok(Decision::Stop)
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 pub mod watch_only_actor {
     //! This module is only useful for integration tests, given that
     //! Nectar always executes a swap as Bob.
 
     use super::*;
-    use comit::btsieve::{ethereum::ReceiptByHash, BlockByHash};
+    use comit::btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock};
     use std::sync::Arc;
 
     #[derive(Clone, Debug)]
@@ -205,21 +195,41 @@ pub mod watch_only_actor {
     #[async_trait::async_trait]
     impl<AC, BC> herc20::Deploy for WatchOnlyBob<AC, BC>
     where
-        AC: LatestBlock<Block = bitcoin::Block>
-            + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
+        AC: Send + Sync,
         BC: LatestBlock<Block = ethereum::Block>
             + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
             + ReceiptByHash,
     {
-        async fn deploy(&self, params: &herc20::Params) -> anyhow::Result<herc20::Deployed> {
-            let event = herc20::watch_for_deployed(
-                self.beta_connector.as_ref(),
-                params.clone(),
-                self.start_of_swap,
-            )
-            .await?;
+        async fn deploy(
+            &self,
+            params: herc20::Params,
+            beta_expiry: Timestamp,
+        ) -> anyhow::Result<Next<herc20::Deployed>> {
+            {
+                if let Some(deploy_event) = herc20::watch_for_deployed_in_the_past(
+                    self.beta_connector.as_ref(),
+                    params.clone(),
+                    self.start_of_swap,
+                )
+                .await?
+                {
+                    return Ok(Next::Continue(deploy_event));
+                }
 
-            Ok(event)
+                let beta_ledger_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
+                if beta_expiry <= beta_ledger_time {
+                    return Ok(Next::Abort);
+                }
+
+                let deploy_event = herc20::watch_for_deployed(
+                    self.beta_connector.as_ref(),
+                    params,
+                    self.start_of_swap,
+                )
+                .await?;
+
+                Ok(Next::Continue(deploy_event))
+            }
         }
     }
 
@@ -315,43 +325,6 @@ pub mod watch_only_actor {
             .await?;
 
             Ok(event)
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl<AC, BC> herc20::DecideOnDeploy for WatchOnlyBob<AC, BC>
-    where
-        AC: Send + Sync,
-        BC: LatestBlock<Block = ethereum::Block>
-            + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-            + ReceiptByHash,
-    {
-        async fn decide_on_deploy(
-            &self,
-            herc20_params: herc20::Params,
-            beta_expiry: Timestamp,
-        ) -> anyhow::Result<crate::swap::Decision<herc20::Deployed>> {
-            {
-                if let Some(deploy_event) = herc20::watch_for_deployed_in_the_past(
-                    self.beta_connector.as_ref(),
-                    herc20_params,
-                    self.start_of_swap,
-                )
-                .await?
-                {
-                    return Ok(Decision::Skip(deploy_event));
-                }
-
-                let beta_ledger_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
-                // TODO: Apply a buffer depending on the blocktime and how
-                // safe we want to be
-
-                if beta_expiry > beta_ledger_time {
-                    Ok(Decision::Act)
-                } else {
-                    Ok(Decision::Stop)
-                }
-            }
         }
     }
 }

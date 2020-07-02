@@ -21,12 +21,7 @@ pub async fn hbit_herc20<A, B>(
 ) -> anyhow::Result<()>
 where
     A: herc20::RedeemAsAlice + hbit::Refund + hbit::Fund + herc20::DecideOnRedeem,
-    B: herc20::Deploy
-        + herc20::Fund
-        + hbit::RedeemAsBob
-        + herc20::Refund
-        + herc20::DecideOnDeploy
-        + herc20::Fund,
+    B: herc20::Deploy + herc20::Fund + hbit::RedeemAsBob + herc20::Refund + herc20::Fund,
 {
     let hbit_funded = match alice.fund(&hbit_params, herc20_params.expiry).await? {
         Next::Continue(hbit_funded) => hbit_funded,
@@ -34,12 +29,11 @@ where
     };
 
     let herc20_deployed = match bob
-        .decide_on_deploy(herc20_params.clone(), herc20_params.expiry)
+        .deploy(herc20_params.clone(), herc20_params.expiry)
         .await?
     {
-        Decision::Act => bob.deploy(&herc20_params).await?,
-        Decision::Skip(herc20_deployed) => herc20_deployed,
-        Decision::Stop => {
+        Next::Continue(herc20_deployed) => herc20_deployed,
+        Next::Abort => {
             alice.refund(&hbit_params, hbit_funded).await?;
 
             return Ok(());
