@@ -1,5 +1,5 @@
 use crate::swap::herc20;
-use comit::btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock};
+use comit::btsieve::LatestBlock;
 use comit::Timestamp;
 use std::sync::Arc;
 
@@ -46,33 +46,6 @@ impl Wallet {
     }
 }
 
-#[async_trait::async_trait]
-impl LatestBlock for Wallet {
-    type Block = Block;
-    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
-        self.connector.latest_block().await
-    }
-}
-
-#[async_trait::async_trait]
-impl BlockByHash for Wallet {
-    type Block = Block;
-    type BlockHash = Hash;
-    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
-        self.connector.block_by_hash(block_hash).await
-    }
-}
-
-#[async_trait::async_trait]
-impl ReceiptByHash for Wallet {
-    async fn receipt_by_hash(
-        &self,
-        transaction_hash: Hash,
-    ) -> anyhow::Result<comit::ethereum::TransactionReceipt> {
-        self.connector.receipt_by_hash(transaction_hash).await
-    }
-}
-
 pub async fn ethereum_latest_time<C>(connector: &C) -> anyhow::Result<Timestamp>
 where
     C: LatestBlock<Block = Block>,
@@ -80,4 +53,12 @@ where
     let timestamp = connector.latest_block().await?.timestamp.into();
 
     Ok(timestamp)
+}
+
+#[async_trait::async_trait]
+impl LatestBlock for Wallet {
+    type Block = Block;
+    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
+        self.connector.latest_block().await
+    }
 }

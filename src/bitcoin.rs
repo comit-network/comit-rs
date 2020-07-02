@@ -1,6 +1,6 @@
 use crate::dai;
 use crate::dai::ATTOS_IN_DAI_EXP;
-use crate::rate::Rate;
+use crate::Rate;
 
 pub const SATS_IN_BITCOIN_EXP: u16 = 8;
 
@@ -33,7 +33,7 @@ impl Amount {
 
     /// Allow to know the worth of self in dai using the given conversion rate.
     /// Truncation may be done during the conversion to allow a result in attodai.
-    pub fn worth_in(&self, btc_to_dai_rate: Rate) -> dai::Amount {
+    pub fn worth_in(self, btc_to_dai_rate: Rate) -> dai::Amount {
         // Get the integer part of the rate
         let uint_rate = btc_to_dai_rate.integer();
 
@@ -46,11 +46,37 @@ impl Amount {
     }
 }
 
+impl std::ops::Add for Amount {
+    type Output = Amount;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Amount(self.0 + rhs.0)
+    }
+}
+
 impl std::ops::Sub for Amount {
     type Output = Amount;
 
     fn sub(self, rhs: Self) -> Self::Output {
         Amount(self.0 - rhs.0)
+    }
+}
+
+impl From<::bitcoin::Amount> for Amount {
+    fn from(amount: ::bitcoin::Amount) -> Self {
+        Amount { 0: amount }
+    }
+}
+
+impl From<Amount> for ::bitcoin::Amount {
+    fn from(from: Amount) -> Self {
+        from.0
+    }
+}
+
+impl From<comit::asset::Bitcoin> for Amount {
+    fn from(from: comit::asset::Bitcoin) -> Self {
+        Self(from.into())
     }
 }
 

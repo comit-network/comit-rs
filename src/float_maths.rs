@@ -84,7 +84,7 @@ mod tests {
 
     #[test]
     fn it_truncates() {
-        let float = 1.123456789;
+        let float = 1.123_456_789;
 
         assert_eq!(&truncate(float, 5).to_string(), "1.12345");
     }

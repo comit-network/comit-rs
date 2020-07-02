@@ -9,17 +9,17 @@ use ethereum_types::U256;
 use num::{BigUint, Num};
 use serde_hex::{CompactPfx, SerHex, SerHexSeq, StrictPfx};
 
+pub const JSONRPC_VERSION: &str = "2.0";
+
 #[derive(Debug, Clone)]
 pub struct Client {
     rpc_client: jsonrpc::Client,
-    jsonrpc_version: String,
 }
 
 impl Client {
     pub fn new(url: reqwest::Url) -> Self {
         Client {
             rpc_client: jsonrpc::Client::new(url),
-            jsonrpc_version: String::from("2.0"),
         }
     }
 
@@ -29,7 +29,7 @@ impl Client {
             .send::<Vec<()>, String>(jsonrpc::Request::new(
                 "net_version",
                 vec![],
-                self.jsonrpc_version.clone(),
+                JSONRPC_VERSION.into(),
             ))
             .await
             .context("failed to fetch net version")?;
@@ -45,7 +45,7 @@ impl Client {
             .send(jsonrpc::Request::new(
                 "eth_sendTransaction",
                 vec![jsonrpc::serialize(request)?],
-                self.jsonrpc_version.clone(),
+                JSONRPC_VERSION.into(),
             ))
             .await
             .context("failed to send transaction")?;
@@ -59,7 +59,7 @@ impl Client {
             .send(jsonrpc::Request::new(
                 "eth_sendRawTransaction",
                 vec![transaction_hex],
-                self.jsonrpc_version.clone(),
+                JSONRPC_VERSION.into(),
             ))
             .await
             .context("failed to send raw transaction")?;
@@ -76,7 +76,7 @@ impl Client {
             .send(jsonrpc::Request::new(
                 "eth_getTransactionByHash",
                 vec![jsonrpc::serialize(transaction_hash)?],
-                self.jsonrpc_version.clone(),
+                JSONRPC_VERSION.into(),
             ))
             .await
             .context("failed to get transaction by hash")?;
@@ -93,7 +93,7 @@ impl Client {
             .send(jsonrpc::Request::new(
                 "eth_getTransactionReceipt",
                 vec![jsonrpc::serialize(transaction_hash)?],
-                self.jsonrpc_version.clone(),
+                JSONRPC_VERSION.into(),
             ))
             .await
             .context("failed to get transaction receipt")?;
@@ -107,7 +107,7 @@ impl Client {
             .send(jsonrpc::Request::new(
                 "eth_getTransactionCount",
                 vec![jsonrpc::serialize(account)?, jsonrpc::serialize("latest")?],
-                self.jsonrpc_version.clone(),
+                JSONRPC_VERSION.into(),
             ))
             .await
             .context("failed to get transaction count")?;
@@ -141,7 +141,7 @@ impl Client {
                     jsonrpc::serialize(call_request)?,
                     jsonrpc::serialize("latest")?,
                 ],
-                self.jsonrpc_version.clone(),
+                JSONRPC_VERSION.into(),
             ))
             .await
             .context("failed to get erc20 token balance")?;

@@ -12,6 +12,7 @@
 )]
 #![allow(dead_code)] // To be removed further down the line
 #![forbid(unsafe_code)]
+// TODO: Add no unwrap policy
 
 use conquer_once::Lazy;
 
@@ -23,12 +24,15 @@ pub mod ethereum_wallet;
 pub mod float_maths;
 pub mod geth;
 pub mod jsonrpc;
+pub mod mid_market_rate;
 pub mod ongoing_swaps;
-pub mod publish;
+pub mod order;
 pub mod rate;
 pub mod seed;
 pub mod swap;
 
+pub use mid_market_rate::MidMarketRate;
+pub use rate::{Rate, Spread};
 pub use seed::Seed;
 
 pub static SECP: Lazy<::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All>> =

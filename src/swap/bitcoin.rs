@@ -1,7 +1,7 @@
 use crate::swap::hbit;
-use comit::btsieve::{BlockByHash, LatestBlock};
 use std::sync::Arc;
 
+pub use crate::bitcoin::Amount;
 pub use ::bitcoin::{Address, Block, BlockHash, OutPoint};
 
 #[derive(Debug, Clone)]
@@ -45,22 +45,5 @@ impl Wallet {
             .await?;
 
         Ok(action.transaction)
-    }
-}
-
-#[async_trait::async_trait]
-impl LatestBlock for Wallet {
-    type Block = bitcoin::Block;
-    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
-        self.connector.as_ref().latest_block().await
-    }
-}
-
-#[async_trait::async_trait]
-impl BlockByHash for Wallet {
-    type Block = Block;
-    type BlockHash = BlockHash;
-    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
-        self.connector.as_ref().block_by_hash(block_hash).await
     }
 }

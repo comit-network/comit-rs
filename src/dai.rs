@@ -1,6 +1,6 @@
 use crate::bitcoin::{self, SATS_IN_BITCOIN_EXP};
 use crate::float_maths::{divide_pow_ten_trunc, multiply_pow_ten, truncate};
-use crate::rate::Rate;
+use crate::Rate;
 use conquer_once::Lazy;
 use num::{pow::Pow, BigUint, ToPrimitive};
 

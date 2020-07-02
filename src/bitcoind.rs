@@ -6,17 +6,17 @@ use bitcoin::{
 };
 use serde::Deserialize;
 
+pub const JSONRPC_VERSION: &str = "1.0";
+
 #[derive(Debug, Clone)]
 pub struct Client {
     rpc_client: jsonrpc::Client,
-    jsonrpc_version: String,
 }
 
 impl Client {
     pub fn new(url: reqwest::Url) -> Self {
         Client {
             rpc_client: jsonrpc::Client::new(url),
-            jsonrpc_version: String::from("1.0"),
         }
     }
 
@@ -26,7 +26,7 @@ impl Client {
             .send::<Vec<()>, BlockchainInfo>(jsonrpc::Request::new(
                 "getblockchaininfo",
                 vec![],
-                self.jsonrpc_version.clone(),
+                JSONRPC_VERSION.into(),
             ))
             .await?;
 
@@ -52,7 +52,7 @@ impl Client {
                     jsonrpc::serialize(passphrase)?,
                     jsonrpc::serialize(avoid_reuse)?,
                 ],
-                self.jsonrpc_version.clone(),
+                JSONRPC_VERSION.into(),
             ))
             .await
             .context("failed to create wallet")?;
@@ -78,7 +78,7 @@ impl Client {
                         jsonrpc::serialize(include_watch_only)?,
                         jsonrpc::serialize(avoid_reuse)?,
                     ],
-                    self.jsonrpc_version.clone(),
+                    JSONRPC_VERSION.into(),
                 ),
             )
             .await?;
@@ -101,7 +101,7 @@ impl Client {
                         jsonrpc::serialize(new_key_pool)?,
                         jsonrpc::serialize(wif_private_key)?,
                     ],
-                    self.jsonrpc_version.clone(),
+                    JSONRPC_VERSION.into(),
                 ),
             )
             .await
@@ -126,7 +126,7 @@ impl Client {
                         jsonrpc::serialize(label)?,
                         jsonrpc::serialize(address_type)?,
                     ],
-                    self.jsonrpc_version.clone(),
+                    JSONRPC_VERSION.into(),
                 ),
             )
             .await
@@ -139,7 +139,7 @@ impl Client {
             .rpc_client
             .send_with_path::<Vec<()>, _>(
                 format!("/wallet/{}", wallet_name),
-                jsonrpc::Request::new("getwalletinfo", vec![], self.jsonrpc_version.clone()),
+                jsonrpc::Request::new("getwalletinfo", vec![], JSONRPC_VERSION.into()),
             )
             .await?;
         Ok(response)
@@ -161,7 +161,7 @@ impl Client {
                         jsonrpc::serialize(address)?,
                         jsonrpc::serialize(amount.as_btc())?,
                     ],
-                    self.jsonrpc_version.clone(),
+                    JSONRPC_VERSION.into(),
                 ),
             )
             .await
@@ -183,7 +183,7 @@ impl Client {
                 jsonrpc::Request::new(
                     "sendrawtransaction",
                     vec![serialize_hex(&transaction)],
-                    self.jsonrpc_version.clone(),
+                    JSONRPC_VERSION.into(),
                 ),
             )
             .await
@@ -204,7 +204,7 @@ impl Client {
                 jsonrpc::Request::new(
                     "getrawtransaction",
                     vec![jsonrpc::serialize(txid)?],
-                    self.jsonrpc_version.clone(),
+                    JSONRPC_VERSION.into(),
                 ),
             )
             .await
@@ -231,7 +231,7 @@ impl Client {
                     jsonrpc::serialize(address)?,
                     jsonrpc::serialize(max_tries)?,
                 ],
-                self.jsonrpc_version.clone(),
+                JSONRPC_VERSION.into(),
             ))
             .await
             .context("failed to generate to address")?;
@@ -327,9 +327,9 @@ mod test {
             info,
             WalletInfoResponse {
                 wallet_name: "nectar_7426b018".into(),
-                wallet_version: 169900,
+                wallet_version: 169_900,
                 tx_count: 0,
-                keypool_oldest: 1592792998,
+                keypool_oldest: 1_592_792_998,
                 keypool_size_hd_internal: 1000,
                 unlocked_until: None,
                 pay_tx_fee: 0.0,

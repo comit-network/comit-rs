@@ -100,11 +100,10 @@ mod tests {
     use super::*;
     use crate::{
         bitcoin_wallet, ethereum_wallet,
-        swap::{alice::wallet_actor::WalletAlice, bob::watch_only_actor::WatchOnlyBob},
+        swap::{alice::wallet_actor::WalletAlice, bitcoin, bob::watch_only_actor::WatchOnlyBob},
         test_harness, Seed,
     };
     use ::bitcoin::secp256k1;
-    use anyhow::Context;
 
     use chrono::Utc;
     use comit::{
@@ -121,8 +120,8 @@ mod tests {
     fn hbit_params(
         secret_hash: SecretHash,
         network: ::bitcoin::Network,
-        final_refund_identity: bitcoin::Address,
-        final_redeem_identity: bitcoin::Address,
+        final_refund_identity: ::bitcoin::Address,
+        final_redeem_identity: ::bitcoin::Address,
     ) -> (
         hbit::Params,
         hbit::PrivateDetailsFunder,
@@ -303,18 +302,10 @@ mod tests {
         };
 
         let (alice_bitcoin_wallet, alice_ethereum_wallet) = {
-            let seed = {
-                let mut seed = [0u8; 32];
-                seed.copy_from_slice(b"fd9c4fa50650555b7397edbf69f58aa0");
-                Seed::from(seed)
-            };
+            let seed = Seed::default();
             let bitcoin_wallet = {
-                let wallet = bitcoin_wallet::Wallet::new(
-                    seed,
-                    bitcoind_url.clone(),
-                    bitcoin_network,
-                    "alice".into(),
-                )?;
+                let wallet =
+                    bitcoin_wallet::Wallet::new(seed, bitcoind_url.clone(), bitcoin_network)?;
                 wallet.init().await?;
 
                 bitcoin_blockchain
@@ -341,18 +332,10 @@ mod tests {
         };
 
         let (bob_bitcoin_wallet, bob_ethereum_wallet) = {
-            let seed = {
-                let mut seed = [0u8; 32];
-                seed.copy_from_slice(b"fd9c4fa50650555b7397edbf69f58aa9");
-                Seed::from(seed)
-            };
+            let seed = Seed::default();
             let bitcoin_wallet = {
-                let wallet = bitcoin_wallet::Wallet::new(
-                    seed,
-                    bitcoind_url.clone(),
-                    bitcoin_network,
-                    "bob".into(),
-                )?;
+                let wallet =
+                    bitcoin_wallet::Wallet::new(seed, bitcoind_url.clone(), bitcoin_network)?;
                 wallet.init().await?;
 
                 wallet
@@ -361,7 +344,7 @@ mod tests {
 
             ethereum_blockchain
                 .mint(
-                    ethereum_wallet.account()?,
+                    ethereum_wallet.account(),
                     asset::Erc20::new(token_contract, Erc20Quantity::from_wei(5_000_000_000u64)),
                     ethereum_chain_id,
                 )
@@ -394,8 +377,8 @@ mod tests {
         let herc20_params = herc20_params(
             secret_hash,
             ethereum_chain_id,
-            alice_ethereum_wallet.inner.account()?,
-            bob_ethereum_wallet.inner.account()?,
+            alice_ethereum_wallet.inner.account(),
+            bob_ethereum_wallet.inner.account(),
             token_contract,
         );
 
@@ -445,23 +428,17 @@ mod tests {
         let alice_erc20_starting_balance = alice_ethereum_wallet
             .inner
             .erc20_balance(token_contract)
-            .await
-            .context(anyhow::anyhow!(
-                "failed to get alice's balance before the swap"
-            ))?;
+            .await?;
         let bob_erc20_starting_balance = bob_ethereum_wallet
             .inner
             .erc20_balance(token_contract)
-            .await
-            .context(anyhow::anyhow!(
-                "failed to get bob's balance before the swap"
-            ))?;
+            .await?;
 
         futures::future::try_join(alice_swap, bob_swap).await?;
 
         let alice_bitcoin_final_balance = alice_bitcoin_wallet.inner.balance().await?;
         let bob_bitcoin_final_balance = bob_bitcoin_wallet.inner.balance().await?;
-        let bitcoin_max_fee = asset::Bitcoin::from_sat(100000);
+        let bitcoin_max_fee = bitcoin::Amount::from_sat(100000);
 
         let alice_erc20_final_balance = alice_ethereum_wallet
             .inner
@@ -474,13 +451,11 @@ mod tests {
 
         assert!(
             alice_bitcoin_final_balance
-                >= alice_bitcoin_starting_balance
-                    - hbit_params.asset.into()
-                    - bitcoin_max_fee.into()
+                >= alice_bitcoin_starting_balance - hbit_params.asset.into() - bitcoin_max_fee
         );
         assert!(
             bob_bitcoin_final_balance
-                >= bob_bitcoin_starting_balance + hbit_params.asset.into() - bitcoin_max_fee.into()
+                >= bob_bitcoin_starting_balance + hbit_params.asset.into() - bitcoin_max_fee
         );
 
         assert_eq!(

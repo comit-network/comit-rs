@@ -6,6 +6,7 @@ use comit::{
 };
 use reqwest::Url;
 
+// TODO: Add network; assert network on all calls to geth
 #[derive(Debug, Clone)]
 pub struct Wallet {
     private_key: clarity::PrivateKey,
@@ -14,7 +15,7 @@ pub struct Wallet {
 
 impl Wallet {
     pub fn new(seed: Seed, url: Url) -> anyhow::Result<Self> {
-        let private_key = clarity::PrivateKey::from_slice(&seed.into_inner())
+        let private_key = clarity::PrivateKey::from_slice(&seed.secret_key_bytes())
             .map_err(|_| anyhow::anyhow!("Failed to derive private key from slice"))?;
 
         let geth_client = geth::Client::new(url);
@@ -25,6 +26,7 @@ impl Wallet {
         })
     }
 
+    #[cfg(test)]
     pub fn new_from_private_key(private_key: clarity::PrivateKey, url: Url) -> Self {
         let geth_client = geth::Client::new(url);
 
@@ -34,15 +36,13 @@ impl Wallet {
         }
     }
 
-    pub fn account(&self) -> anyhow::Result<Address> {
-        let address = self
-            .private_key
-            .to_public_key()
-            .map_err(|_| anyhow::anyhow!("Failed to derive public key from private key"))?;
+    pub fn account(&self) -> Address {
+        let address = self.private_key.to_public_key().expect("cannot fail");
+
         let mut bytes = [0u8; 20];
         bytes.copy_from_slice(address.as_bytes());
 
-        Ok(Address::from(bytes))
+        Address::from(bytes)
     }
 
     pub async fn deploy_contract(
@@ -66,7 +66,6 @@ impl Wallet {
             signature: None,
         };
 
-        #[allow(clippy::cast_possible_truncation)]
         let signed_transaction =
             transaction.sign(&self.private_key, Some(u32::from(chain_id) as u64));
         let transaction_hex =
@@ -199,13 +198,11 @@ impl Wallet {
     // QUESTION: Do we need to handle decimal places?
     pub async fn erc20_balance(&self, token_contract: Address) -> anyhow::Result<Erc20> {
         self.geth_client
-            .erc20_balance(self.account()?, token_contract)
+            .erc20_balance(self.account(), token_contract)
             .await
     }
 
     pub async fn get_transaction_count(&self) -> anyhow::Result<u32> {
-        self.geth_client
-            .get_transaction_count(self.account()?)
-            .await
+        self.geth_client.get_transaction_count(self.account()).await
     }
 }
