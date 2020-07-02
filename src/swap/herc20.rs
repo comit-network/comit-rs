@@ -88,14 +88,7 @@ pub trait FundEvent {
     fn fund_event(&self) -> anyhow::Result<Option<CorrectlyFunded>>;
 }
 
-pub async fn watch_for_redeemed_in_the_past<C>(
-    _connector: &C,
-    _params: Params,
-    _start_of_swap: NaiveDateTime,
-    _deployed: Deployed,
-) -> anyhow::Result<Option<Redeemed>>
-where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
-{
-    todo!()
+/// Obtain Herc20 redeem event if we are aware that it has happened.
+pub trait RedeemEvent {
+    fn redeem_event(&self) -> anyhow::Result<Option<Redeemed>>;
 }

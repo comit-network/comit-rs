@@ -61,23 +61,16 @@ where
     BC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + ReceiptByHash,
-    DB: Send + Sync,
+    DB: herc20::RedeemEvent + Send + Sync,
 {
     async fn redeem(
         &self,
-        params: herc20::Params,
+        _params: herc20::Params,
         deploy_event: herc20::Deployed,
         beta_expiry: Timestamp,
     ) -> anyhow::Result<Next<herc20::Redeemed>> {
         {
-            if let Some(redeem_event) = herc20::watch_for_redeemed_in_the_past(
-                self.beta_connector.as_ref(),
-                params,
-                self.start_of_swap,
-                deploy_event.clone(),
-            )
-            .await?
-            {
+            if let Some(redeem_event) = self.db.redeem_event()? {
                 return Ok(Next::Continue(redeem_event));
             }
 
@@ -173,7 +166,7 @@ pub mod wallet_actor {
     impl<AW, DB, E> herc20::RedeemAsAlice for WalletAlice<AW, ethereum::Wallet, DB, E>
     where
         AW: Send + Sync,
-        DB: Send + Sync,
+        DB: herc20::RedeemEvent + Send + Sync,
         E: Send + Sync,
     {
         async fn redeem(
@@ -183,14 +176,7 @@ pub mod wallet_actor {
             beta_expiry: Timestamp,
         ) -> anyhow::Result<Next<herc20::Redeemed>> {
             {
-                if let Some(redeem_event) = herc20::watch_for_redeemed_in_the_past(
-                    &self.beta_wallet,
-                    params.clone(),
-                    self.start_of_swap,
-                    deploy_event.clone(),
-                )
-                .await?
-                {
+                if let Some(redeem_event) = self.db.redeem_event()? {
                     return Ok(Next::Continue(redeem_event));
                 }
 

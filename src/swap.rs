@@ -223,6 +223,12 @@ mod tests {
         }
     }
 
+    impl herc20::RedeemEvent for Database {
+        fn redeem_event(&self) -> anyhow::Result<Option<herc20::Redeemed>> {
+            Ok(None)
+        }
+    }
+
     #[tokio::test]
     async fn execute_alice_hbit_herc20_swap() -> anyhow::Result<()> {
         let client = clients::Cli::default();
