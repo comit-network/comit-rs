@@ -26,7 +26,7 @@ where
         + hbit::RedeemAsBob
         + herc20::Refund
         + herc20::DecideOnDeploy
-        + herc20::DecideOnFund,
+        + herc20::Fund,
 {
     let hbit_funded = match alice.fund(&hbit_params, herc20_params.expiry).await? {
         Next::Continue(hbit_funded) => hbit_funded,
@@ -47,19 +47,15 @@ where
     };
 
     let _herc20_funded = match bob
-        .decide_on_fund(
+        .fund(
             herc20_params.clone(),
             herc20_deployed.clone(),
             herc20_params.expiry,
         )
         .await?
     {
-        Decision::Act => {
-            bob.fund(herc20_params.clone(), herc20_deployed.clone())
-                .await?
-        }
-        Decision::Skip(herc20_funded) => herc20_funded,
-        Decision::Stop => {
+        Next::Continue(herc20_funded) => herc20_funded,
+        Next::Abort => {
             alice.refund(&hbit_params, hbit_funded).await?;
 
             return Ok(());

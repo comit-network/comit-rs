@@ -1,6 +1,6 @@
 //! Wrapper module around COMIT lib's Herc20 module.
 
-use super::Decision;
+use crate::swap::{Decision, Next};
 use chrono::NaiveDateTime;
 pub use comit::{
     actions::ethereum::*,
@@ -18,8 +18,12 @@ pub trait Deploy {
 
 #[async_trait::async_trait]
 pub trait Fund {
-    async fn fund(&self, params: Params, deploy_event: Deployed)
-        -> anyhow::Result<CorrectlyFunded>;
+    async fn fund(
+        &self,
+        params: Params,
+        deploy_event: Deployed,
+        beta_expiry: Timestamp,
+    ) -> anyhow::Result<Next<CorrectlyFunded>>;
 }
 
 #[async_trait::async_trait]
@@ -55,16 +59,6 @@ pub trait DecideOnDeploy {
         herc20_params: Params,
         beta_expiry: Timestamp,
     ) -> anyhow::Result<Decision<Deployed>>;
-}
-
-#[async_trait::async_trait]
-pub trait DecideOnFund {
-    async fn decide_on_fund(
-        &self,
-        herc20_params: Params,
-        deploy_event: Deployed,
-        beta_expiry: Timestamp,
-    ) -> anyhow::Result<Decision<CorrectlyFunded>>;
 }
 
 #[async_trait::async_trait]
