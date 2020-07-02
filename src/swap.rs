@@ -104,7 +104,6 @@ mod tests {
         test_harness, Seed,
     };
     use ::bitcoin::secp256k1;
-
     use chrono::Utc;
     use comit::{
         asset::{
@@ -200,8 +199,7 @@ mod tests {
         Secret::from(*bytes)
     }
 
-    // TODO: Use a real database which can implement these traits. It
-    // should take an identifier for the swap
+    // TODO: Implement these traits on a real database
     #[derive(Clone, Copy)]
     struct Database;
 
