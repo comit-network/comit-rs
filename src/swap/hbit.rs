@@ -1,6 +1,6 @@
 //! Wrapper module around COMIT lib's Hbit module.
 
-use crate::swap::Decision;
+use crate::swap::Next;
 use bitcoin::{secp256k1::SecretKey, Address, Block, BlockHash};
 use chrono::NaiveDateTime;
 use comit::asset;
@@ -26,7 +26,11 @@ pub struct PrivateDetailsRedeemer {
 
 #[async_trait::async_trait]
 pub trait Fund {
-    async fn fund(&self, params: &Params) -> anyhow::Result<CorrectlyFunded>;
+    async fn fund(
+        &self,
+        hbit_params: &Params,
+        beta_expiry: Timestamp,
+    ) -> anyhow::Result<Next<CorrectlyFunded>>;
 }
 
 #[async_trait::async_trait]
@@ -61,15 +65,6 @@ pub trait Refund {
 pub struct CorrectlyFunded {
     pub asset: asset::Bitcoin,
     pub location: htlc_location::Bitcoin,
-}
-
-#[async_trait::async_trait]
-pub trait DecideOnFund {
-    async fn decide_on_fund(
-        &self,
-        hbit_params: &Params,
-        beta_expiry: Timestamp,
-    ) -> anyhow::Result<Decision<CorrectlyFunded>>;
 }
 
 pub async fn watch_for_funded<C>(

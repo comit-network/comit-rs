@@ -6,7 +6,7 @@
 
 use crate::swap::{
     ethereum::{self, ethereum_latest_time},
-    hbit, herc20, Decision,
+    hbit, herc20, Decision, Next,
 };
 use chrono::NaiveDateTime;
 use comit::{
@@ -28,14 +28,33 @@ impl<AC, BC> hbit::Fund for WatchOnlyAlice<AC, BC>
 where
     AC: LatestBlock<Block = bitcoin::Block>
         + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
-    BC: Send + Sync,
+    BC: LatestBlock<Block = ethereum::Block>,
 {
-    async fn fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
-        let event =
+    async fn fund(
+        &self,
+        params: &hbit::Params,
+        beta_expiry: Timestamp,
+    ) -> anyhow::Result<Next<hbit::CorrectlyFunded>> {
+        if let Some(fund_event) = hbit::watch_for_funded_in_the_past(
+            self.alpha_connector.as_ref(),
+            params,
+            self.start_of_swap,
+        )
+        .await?
+        {
+            return Ok(Next::Continue(fund_event));
+        }
+
+        let beta_ledger_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
+        if beta_expiry <= beta_ledger_time {
+            return Ok(Next::Abort);
+        }
+
+        let fund_event =
             hbit::watch_for_funded(self.alpha_connector.as_ref(), &params, self.start_of_swap)
                 .await?;
 
-        Ok(event)
+        Ok(Next::Continue(fund_event))
     }
 }
 
@@ -84,40 +103,6 @@ where
         .await?;
 
         Ok(event)
-    }
-}
-
-#[async_trait::async_trait]
-impl<AC, BC> hbit::DecideOnFund for WatchOnlyAlice<AC, BC>
-where
-    AC: LatestBlock<Block = bitcoin::Block>
-        + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
-    BC: LatestBlock<Block = ethereum::Block>,
-{
-    async fn decide_on_fund(
-        &self,
-        hbit_params: &hbit::Params,
-        beta_expiry: Timestamp,
-    ) -> anyhow::Result<Decision<hbit::CorrectlyFunded>> {
-        if let Some(fund_event) = hbit::watch_for_funded_in_the_past(
-            self.alpha_connector.as_ref(),
-            hbit_params,
-            self.start_of_swap,
-        )
-        .await?
-        {
-            return Ok(Decision::Skip(fund_event));
-        }
-
-        let beta_ledger_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
-        // TODO: Apply a buffer depending on the blocktime and how
-        // safe we want to be
-
-        if beta_expiry > beta_ledger_time {
-            Ok(Decision::Act)
-        } else {
-            Ok(Decision::Stop)
-        }
     }
 }
 
@@ -181,7 +166,33 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl hbit::Fund for WalletAlice<bitcoin::Wallet, ethereum::Wallet, hbit::PrivateDetailsFunder> {
+    impl<BW> hbit::Fund for WalletAlice<bitcoin::Wallet, BW, hbit::PrivateDetailsFunder>
+    where
+        BW: LatestBlock<Block = ethereum::Block>,
+    {
+        async fn fund(
+            &self,
+            params: &hbit::Params,
+            beta_expiry: Timestamp,
+        ) -> anyhow::Result<Next<hbit::CorrectlyFunded>> {
+            if let Some(fund_event) =
+                hbit::watch_for_funded_in_the_past(&self.alpha_wallet, params, self.start_of_swap)
+                    .await?
+            {
+                return Ok(Next::Continue(fund_event));
+            }
+
+            let beta_ledger_time = ethereum_latest_time(&self.beta_wallet).await?;
+            if beta_expiry <= beta_ledger_time {
+                return Ok(Next::Abort);
+            }
+
+            let fund_event = self.fund(&params).await?;
+            Ok(Next::Continue(fund_event))
+        }
+    }
+
+    impl<BW> WalletAlice<bitcoin::Wallet, BW, hbit::PrivateDetailsFunder> {
         async fn fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
             let fund_action = params.build_fund_action();
             let transaction = self
@@ -268,41 +279,6 @@ pub mod wallet_actor {
             let refunded = hbit::Refunded { transaction };
 
             Ok(refunded)
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl<AW, BW, E> hbit::DecideOnFund for WalletAlice<AW, BW, E>
-    where
-        AW: LatestBlock<Block = bitcoin::Block>
-            + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
-        BW: LatestBlock<Block = ethereum::Block>,
-        E: Send + Sync,
-    {
-        async fn decide_on_fund(
-            &self,
-            hbit_params: &hbit::Params,
-            beta_expiry: Timestamp,
-        ) -> anyhow::Result<Decision<hbit::CorrectlyFunded>> {
-            if let Some(fund_event) = hbit::watch_for_funded_in_the_past(
-                &self.alpha_wallet,
-                hbit_params,
-                self.start_of_swap,
-            )
-            .await?
-            {
-                return Ok(Decision::Skip(fund_event));
-            }
-
-            let beta_ledger_time = ethereum_latest_time(&self.beta_wallet).await?;
-            // TODO: Apply a buffer depending on the blocktime and how
-            // safe we want to be
-
-            if beta_expiry > beta_ledger_time {
-                Ok(Decision::Act)
-            } else {
-                Ok(Decision::Stop)
-            }
         }
     }
 

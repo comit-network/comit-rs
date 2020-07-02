@@ -20,11 +20,7 @@ pub async fn hbit_herc20<A, B>(
     herc20_params: herc20::Params,
 ) -> anyhow::Result<()>
 where
-    A: hbit::Fund
-        + herc20::RedeemAsAlice
-        + hbit::Refund
-        + hbit::DecideOnFund
-        + herc20::DecideOnRedeem,
+    A: herc20::RedeemAsAlice + hbit::Refund + hbit::Fund + herc20::DecideOnRedeem,
     B: herc20::Deploy
         + herc20::Fund
         + hbit::RedeemAsBob
@@ -32,13 +28,9 @@ where
         + herc20::DecideOnDeploy
         + herc20::DecideOnFund,
 {
-    let hbit_funded = match alice
-        .decide_on_fund(&hbit_params, herc20_params.expiry)
-        .await?
-    {
-        Decision::Act => alice.fund(&hbit_params).await?,
-        Decision::Skip(hbit_funded) => hbit_funded,
-        Decision::Stop => return Ok(()),
+    let hbit_funded = match alice.fund(&hbit_params, herc20_params.expiry).await? {
+        Next::Continue(hbit_funded) => hbit_funded,
+        Next::Abort => return Ok(()),
     };
 
     let herc20_deployed = match bob
@@ -109,6 +101,12 @@ where
             Err(error)
         }
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Next<E> {
+    Continue(E),
+    Abort,
 }
 
 #[derive(Debug, Clone, Copy)]
