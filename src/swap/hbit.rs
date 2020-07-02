@@ -80,8 +80,3 @@ where
         comit::hbit::Funded::Incorrectly { .. } => anyhow::bail!("Bitcoin HTLC incorrectly funded"),
     }
 }
-
-/// Obtain Hbit fund event if we are aware that it has happened.
-pub trait FundEvent {
-    fn fund_event(&self) -> anyhow::Result<Option<CorrectlyFunded>>;
-}

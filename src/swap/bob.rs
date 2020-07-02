@@ -4,7 +4,7 @@
 //! component has to be prepared to execute actions using wallets.
 
 use crate::swap::{
-    bitcoin,
+    bitcoin, db,
     ethereum::{self, ethereum_latest_time},
     Next, {hbit, herc20},
 };
@@ -26,7 +26,7 @@ pub struct WalletBob<AW, BW, DB, E> {
 impl<AW, DB, E> herc20::Deploy for WalletBob<AW, ethereum::Wallet, DB, E>
 where
     AW: Send + Sync,
-    DB: herc20::DeployEvent + Send + Sync,
+    DB: db::Load<herc20::Deployed> + Send + Sync,
     E: Send + Sync,
 {
     async fn deploy(
@@ -35,7 +35,7 @@ where
         beta_expiry: Timestamp,
     ) -> anyhow::Result<Next<herc20::Deployed>> {
         {
-            if let Some(deploy_event) = self.db.deploy_event()? {
+            if let Some(deploy_event) = self.db.load(0).await? {
                 return Ok(Next::Continue(deploy_event));
             }
 
@@ -55,7 +55,7 @@ where
 impl<AW, DB, E> herc20::Fund for WalletBob<AW, ethereum::Wallet, DB, E>
 where
     AW: Send + Sync,
-    DB: herc20::FundEvent + Send + Sync,
+    DB: db::Load<herc20::CorrectlyFunded> + Send + Sync,
     E: Send + Sync,
 {
     async fn fund(
@@ -64,7 +64,7 @@ where
         deploy_event: herc20::Deployed,
         beta_expiry: Timestamp,
     ) -> anyhow::Result<Next<herc20::CorrectlyFunded>> {
-        if let Some(fund_event) = self.db.fund_event()? {
+        if let Some(fund_event) = self.db.load(0).await? {
             return Ok(Next::Continue(fund_event));
         }
 
@@ -218,7 +218,7 @@ pub mod watch_only_actor {
         BC: LatestBlock<Block = ethereum::Block>
             + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
             + ReceiptByHash,
-        DB: herc20::DeployEvent + Send + Sync,
+        DB: db::Load<herc20::Deployed> + Send + Sync,
     {
         async fn deploy(
             &self,
@@ -226,7 +226,7 @@ pub mod watch_only_actor {
             beta_expiry: Timestamp,
         ) -> anyhow::Result<Next<herc20::Deployed>> {
             {
-                if let Some(deploy_event) = self.db.deploy_event()? {
+                if let Some(deploy_event) = self.db.load(0).await? {
                     return Ok(Next::Continue(deploy_event));
                 }
 
@@ -254,7 +254,7 @@ pub mod watch_only_actor {
         BC: LatestBlock<Block = ethereum::Block>
             + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
             + ReceiptByHash,
-        DB: herc20::FundEvent + Send + Sync,
+        DB: db::Load<herc20::CorrectlyFunded> + Send + Sync,
     {
         async fn fund(
             &self,
@@ -263,7 +263,7 @@ pub mod watch_only_actor {
             beta_expiry: Timestamp,
         ) -> anyhow::Result<Next<herc20::CorrectlyFunded>> {
             {
-                if let Some(fund_event) = self.db.fund_event()? {
+                if let Some(fund_event) = self.db.load(0).await? {
                     return Ok(Next::Continue(fund_event));
                 }
 

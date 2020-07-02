@@ -5,6 +5,7 @@
 //! watches the two blockchains involved in the swap.
 
 use crate::swap::{
+    db,
     ethereum::{self, ethereum_latest_time},
     hbit, herc20, Next,
 };
@@ -30,14 +31,14 @@ where
     AC: LatestBlock<Block = bitcoin::Block>
         + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
     BC: LatestBlock<Block = ethereum::Block>,
-    DB: hbit::FundEvent + Send + Sync,
+    DB: db::Load<hbit::CorrectlyFunded> + Send + Sync,
 {
     async fn fund(
         &self,
         params: &hbit::Params,
         beta_expiry: Timestamp,
     ) -> anyhow::Result<Next<hbit::CorrectlyFunded>> {
-        if let Some(fund_event) = self.db.fund_event()? {
+        if let Some(fund_event) = self.db.load(0).await? {
             return Ok(Next::Continue(fund_event));
         }
 
@@ -61,7 +62,7 @@ where
     BC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + ReceiptByHash,
-    DB: herc20::RedeemEvent + Send + Sync,
+    DB: db::Load<herc20::Redeemed> + Send + Sync,
 {
     async fn redeem(
         &self,
@@ -70,7 +71,7 @@ where
         beta_expiry: Timestamp,
     ) -> anyhow::Result<Next<herc20::Redeemed>> {
         {
-            if let Some(redeem_event) = self.db.redeem_event()? {
+            if let Some(redeem_event) = self.db.load(0).await? {
                 return Ok(Next::Continue(redeem_event));
             }
 
@@ -141,14 +142,14 @@ pub mod wallet_actor {
     impl<BW, DB> hbit::Fund for WalletAlice<bitcoin::Wallet, BW, DB, hbit::PrivateDetailsFunder>
     where
         BW: LatestBlock<Block = ethereum::Block>,
-        DB: hbit::FundEvent + Send + Sync,
+        DB: db::Load<hbit::CorrectlyFunded> + Send + Sync,
     {
         async fn fund(
             &self,
             params: &hbit::Params,
             beta_expiry: Timestamp,
         ) -> anyhow::Result<Next<hbit::CorrectlyFunded>> {
-            if let Some(fund_event) = self.db.fund_event()? {
+            if let Some(fund_event) = self.db.load(0).await? {
                 return Ok(Next::Continue(fund_event));
             }
 
@@ -166,7 +167,7 @@ pub mod wallet_actor {
     impl<AW, DB, E> herc20::RedeemAsAlice for WalletAlice<AW, ethereum::Wallet, DB, E>
     where
         AW: Send + Sync,
-        DB: herc20::RedeemEvent + Send + Sync,
+        DB: db::Load<herc20::Redeemed> + Send + Sync,
         E: Send + Sync,
     {
         async fn redeem(
@@ -176,7 +177,7 @@ pub mod wallet_actor {
             beta_expiry: Timestamp,
         ) -> anyhow::Result<Next<herc20::Redeemed>> {
             {
-                if let Some(redeem_event) = self.db.redeem_event()? {
+                if let Some(redeem_event) = self.db.load(0).await? {
                     return Ok(Next::Continue(redeem_event));
                 }
 

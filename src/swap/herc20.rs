@@ -77,18 +77,3 @@ where
         }
     }
 }
-
-/// Obtain Herc20 deploy event if we are aware that it has happened.
-pub trait DeployEvent {
-    fn deploy_event(&self) -> anyhow::Result<Option<Deployed>>;
-}
-
-/// Obtain Herc20 fund event if we are aware that it has happened.
-pub trait FundEvent {
-    fn fund_event(&self) -> anyhow::Result<Option<CorrectlyFunded>>;
-}
-
-/// Obtain Herc20 redeem event if we are aware that it has happened.
-pub trait RedeemEvent {
-    fn redeem_event(&self) -> anyhow::Result<Option<Redeemed>>;
-}

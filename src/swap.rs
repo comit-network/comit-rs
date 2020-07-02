@@ -3,6 +3,7 @@
 mod alice;
 mod bitcoin;
 mod bob;
+mod db;
 mod ethereum;
 mod hbit;
 mod herc20;
@@ -205,26 +206,30 @@ mod tests {
     #[derive(Clone, Copy)]
     struct Database;
 
-    impl hbit::FundEvent for Database {
-        fn fund_event(&self) -> anyhow::Result<Option<hbit::CorrectlyFunded>> {
+    #[async_trait::async_trait]
+    impl db::Load<hbit::CorrectlyFunded> for Database {
+        async fn load(&self, _swap_id: u8) -> anyhow::Result<Option<hbit::CorrectlyFunded>> {
             Ok(None)
         }
     }
 
-    impl herc20::DeployEvent for Database {
-        fn deploy_event(&self) -> anyhow::Result<Option<herc20::Deployed>> {
+    #[async_trait::async_trait]
+    impl db::Load<herc20::Deployed> for Database {
+        async fn load(&self, _swap_id: u8) -> anyhow::Result<Option<herc20::Deployed>> {
             Ok(None)
         }
     }
 
-    impl herc20::FundEvent for Database {
-        fn fund_event(&self) -> anyhow::Result<Option<herc20::CorrectlyFunded>> {
+    #[async_trait::async_trait]
+    impl db::Load<herc20::CorrectlyFunded> for Database {
+        async fn load(&self, _swap_id: u8) -> anyhow::Result<Option<herc20::CorrectlyFunded>> {
             Ok(None)
         }
     }
 
-    impl herc20::RedeemEvent for Database {
-        fn redeem_event(&self) -> anyhow::Result<Option<herc20::Redeemed>> {
+    #[async_trait::async_trait]
+    impl db::Load<herc20::Redeemed> for Database {
+        async fn load(&self, _swap_id: u8) -> anyhow::Result<Option<herc20::Redeemed>> {
             Ok(None)
         }
     }
