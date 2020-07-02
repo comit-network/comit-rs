@@ -20,8 +20,8 @@ pub async fn hbit_herc20<A, B>(
     herc20_params: herc20::Params,
 ) -> anyhow::Result<()>
 where
-    A: herc20::RedeemAsAlice + hbit::Refund + hbit::Fund + herc20::DecideOnRedeem,
-    B: herc20::Deploy + herc20::Fund + hbit::RedeemAsBob + herc20::Refund + herc20::Fund,
+    A: hbit::Fund + herc20::RedeemAsAlice + hbit::Refund,
+    B: herc20::Deploy + herc20::Fund + hbit::RedeemAsBob + herc20::Refund,
 {
     let hbit_funded = match alice.fund(&hbit_params, herc20_params.expiry).await? {
         Next::Continue(hbit_funded) => hbit_funded,
@@ -57,20 +57,15 @@ where
     };
 
     let herc20_redeemed = match alice
-        .decide_on_redeem(
+        .redeem(
             herc20_params.clone(),
             herc20_deployed.clone(),
             herc20_params.expiry,
         )
         .await?
     {
-        Decision::Act => {
-            alice
-                .redeem(&herc20_params, herc20_deployed.clone())
-                .await?
-        }
-        Decision::Skip(herc20_redeemed) => herc20_redeemed,
-        Decision::Stop => {
+        Next::Continue(herc20_redeemed) => herc20_redeemed,
+        Next::Abort => {
             alice.refund(&hbit_params, hbit_funded).await?;
             bob.refund(&herc20_params, herc20_deployed.clone()).await?;
 
@@ -97,13 +92,6 @@ where
 pub enum Next<E> {
     Continue(E),
     Abort,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Decision<R> {
-    Act,
-    Skip(R),
-    Stop,
 }
 
 #[cfg(all(test, feature = "test-docker"))]

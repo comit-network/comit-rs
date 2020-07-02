@@ -89,34 +89,6 @@ where
     }
 }
 
-impl<AW, E> WalletBob<AW, ethereum::Wallet, E> {
-    async fn deploy(&self, params: &herc20::Params) -> anyhow::Result<herc20::Deployed> {
-        let deploy_action = params.build_deploy_action();
-        let event = self.beta_wallet.deploy(deploy_action).await?;
-
-        Ok(event)
-    }
-
-    async fn fund(
-        &self,
-        params: herc20::Params,
-        deploy_event: herc20::Deployed,
-    ) -> anyhow::Result<herc20::CorrectlyFunded> {
-        let fund_action = params.build_fund_action(deploy_event.location);
-        self.beta_wallet.fund(fund_action).await?;
-
-        let event = herc20::watch_for_funded(
-            self.beta_wallet.connector.as_ref(),
-            params,
-            self.start_of_swap,
-            deploy_event,
-        )
-        .await?;
-
-        Ok(event)
-    }
-}
-
 #[async_trait::async_trait]
 impl hbit::RedeemAsBob
     for WalletBob<bitcoin::Wallet, ethereum::Wallet, hbit::PrivateDetailsRedeemer>
@@ -166,6 +138,34 @@ impl herc20::Refund for WalletBob<bitcoin::Wallet, ethereum::Wallet, hbit::Priva
 
         let event = herc20::watch_for_refunded(
             self.beta_wallet.connector.as_ref(),
+            self.start_of_swap,
+            deploy_event,
+        )
+        .await?;
+
+        Ok(event)
+    }
+}
+
+impl<AW, E> WalletBob<AW, ethereum::Wallet, E> {
+    async fn deploy(&self, params: &herc20::Params) -> anyhow::Result<herc20::Deployed> {
+        let deploy_action = params.build_deploy_action();
+        let event = self.beta_wallet.deploy(deploy_action).await?;
+
+        Ok(event)
+    }
+
+    async fn fund(
+        &self,
+        params: herc20::Params,
+        deploy_event: herc20::Deployed,
+    ) -> anyhow::Result<herc20::CorrectlyFunded> {
+        let fund_action = params.build_fund_action(deploy_event.location);
+        self.beta_wallet.fund(fund_action).await?;
+
+        let event = herc20::watch_for_funded(
+            self.beta_wallet.connector.as_ref(),
+            params,
             self.start_of_swap,
             deploy_event,
         )

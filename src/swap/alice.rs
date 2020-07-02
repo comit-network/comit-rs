@@ -6,7 +6,7 @@
 
 use crate::swap::{
     ethereum::{self, ethereum_latest_time},
-    hbit, herc20, Decision, Next,
+    hbit, herc20, Next,
 };
 use chrono::NaiveDateTime;
 use comit::{
@@ -68,17 +68,36 @@ where
 {
     async fn redeem(
         &self,
-        _params: &herc20::Params,
+        params: herc20::Params,
         deploy_event: herc20::Deployed,
-    ) -> anyhow::Result<herc20::Redeemed> {
-        let event = herc20::watch_for_redeemed(
-            self.beta_connector.as_ref(),
-            self.start_of_swap,
-            deploy_event,
-        )
-        .await?;
+        beta_expiry: Timestamp,
+    ) -> anyhow::Result<Next<herc20::Redeemed>> {
+        {
+            if let Some(redeem_event) = herc20::watch_for_redeemed_in_the_past(
+                self.beta_connector.as_ref(),
+                params,
+                self.start_of_swap,
+                deploy_event.clone(),
+            )
+            .await?
+            {
+                return Ok(Next::Continue(redeem_event));
+            }
 
-        Ok(event)
+            let beta_ledger_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
+            if beta_expiry <= beta_ledger_time {
+                return Ok(Next::Abort);
+            }
+
+            let redeem_event = herc20::watch_for_redeemed(
+                self.beta_connector.as_ref(),
+                self.start_of_swap,
+                deploy_event,
+            )
+            .await?;
+
+            Ok(Next::Continue(redeem_event))
+        }
     }
 }
 
@@ -103,45 +122,6 @@ where
         .await?;
 
         Ok(event)
-    }
-}
-
-#[async_trait::async_trait]
-impl<AC, BC> herc20::DecideOnRedeem for WatchOnlyAlice<AC, BC>
-where
-    AC: Send + Sync,
-    BC: LatestBlock<Block = ethereum::Block>
-        + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-        + ReceiptByHash,
-{
-    async fn decide_on_redeem(
-        &self,
-        herc20_params: herc20::Params,
-        deploy_event: herc20::Deployed,
-        beta_expiry: Timestamp,
-    ) -> anyhow::Result<crate::swap::Decision<herc20::Redeemed>> {
-        {
-            if let Some(redeem_event) = herc20::watch_for_redeemed_in_the_past(
-                self.beta_connector.as_ref(),
-                herc20_params,
-                self.start_of_swap,
-                deploy_event,
-            )
-            .await?
-            {
-                return Ok(Decision::Skip(redeem_event));
-            }
-
-            let beta_ledger_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
-            // TODO: Apply a buffer depending on the blocktime and how
-            // safe we want to be
-
-            if beta_expiry > beta_ledger_time {
-                Ok(Decision::Act)
-            } else {
-                Ok(Decision::Stop)
-            }
-        }
     }
 }
 
@@ -192,61 +172,39 @@ pub mod wallet_actor {
         }
     }
 
-    impl<BW> WalletAlice<bitcoin::Wallet, BW, hbit::PrivateDetailsFunder> {
-        async fn fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
-            let fund_action = params.build_fund_action();
-            let transaction = self
-                .alpha_wallet
-                .fund(fund_action)
-                .await
-                .context("failed to fund bitcoin HTLC")?;
-
-            let txid = transaction.txid();
-            // TODO: This code is copied straight from COMIT lib. We
-            // should find a way of not having to duplicate this logic
-            let location = transaction
-                .output
-                .iter()
-                .enumerate()
-                .map(|(index, txout)| {
-                    // Casting a usize to u32 can lead to truncation on 64bit platforms
-                    // However, bitcoin limits the number of inputs to u32 anyway, so this
-                    // is not a problem for us.
-                    #[allow(clippy::cast_possible_truncation)]
-                    (index as u32, txout)
-                })
-                .find(|(_, txout)| txout.script_pubkey == params.compute_address().script_pubkey())
-                .map(|(vout, _txout)| bitcoin::OutPoint { txid, vout });
-
-            let location = location.ok_or_else(|| {
-                anyhow::anyhow!("Fund transaction does not contain expected outpoint")
-            })?;
-            let asset = asset::Bitcoin::from_sat(transaction.output[location.vout as usize].value);
-
-            Ok(hbit::CorrectlyFunded { asset, location })
-        }
-    }
-
     #[async_trait::async_trait]
-    impl herc20::RedeemAsAlice
-        for WalletAlice<bitcoin::Wallet, ethereum::Wallet, hbit::PrivateDetailsFunder>
+    impl<AW, E> herc20::RedeemAsAlice for WalletAlice<AW, ethereum::Wallet, E>
+    where
+        AW: Send + Sync,
+        E: Send + Sync,
     {
         async fn redeem(
             &self,
-            params: &herc20::Params,
+            params: herc20::Params,
             deploy_event: herc20::Deployed,
-        ) -> anyhow::Result<herc20::Redeemed> {
-            let redeem_action = params.build_redeem_action(deploy_event.location, self.secret);
-            self.beta_wallet.redeem(redeem_action).await?;
+            beta_expiry: Timestamp,
+        ) -> anyhow::Result<Next<herc20::Redeemed>> {
+            {
+                if let Some(redeem_event) = herc20::watch_for_redeemed_in_the_past(
+                    &self.beta_wallet,
+                    params.clone(),
+                    self.start_of_swap,
+                    deploy_event.clone(),
+                )
+                .await?
+                {
+                    return Ok(Next::Continue(redeem_event));
+                }
 
-            let event = herc20::watch_for_redeemed(
-                self.beta_wallet.connector.as_ref(),
-                self.start_of_swap,
-                deploy_event,
-            )
-            .await?;
+                let beta_ledger_time = ethereum_latest_time(&self.beta_wallet).await?;
+                if beta_expiry <= beta_ledger_time {
+                    return Ok(Next::Abort);
+                }
 
-            Ok(event)
+                let redeem_event = self.redeem(&params, deploy_event).await?;
+
+                Ok(Next::Continue(redeem_event))
+            }
         }
     }
 
@@ -282,43 +240,58 @@ pub mod wallet_actor {
         }
     }
 
-    #[async_trait::async_trait]
-    impl<AW, BW, E> herc20::DecideOnRedeem for WalletAlice<AW, BW, E>
-    where
-        AW: Send + Sync,
-        BW: LatestBlock<Block = ethereum::Block>
-            + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-            + ReceiptByHash,
-        E: Send + Sync,
-    {
-        async fn decide_on_redeem(
+    impl<BW> WalletAlice<bitcoin::Wallet, BW, hbit::PrivateDetailsFunder> {
+        async fn fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
+            let fund_action = params.build_fund_action();
+            let transaction = self
+                .alpha_wallet
+                .fund(fund_action)
+                .await
+                .context("failed to fund bitcoin HTLC")?;
+
+            let txid = transaction.txid();
+            // TODO: This code is copied straight from COMIT lib. We
+            // should find a way of not having to duplicate this logic
+            let location = transaction
+                .output
+                .iter()
+                .enumerate()
+                .map(|(index, txout)| {
+                    // Casting a usize to u32 can lead to truncation on 64bit platforms
+                    // However, bitcoin limits the number of inputs to u32 anyway, so this
+                    // is not a problem for us.
+                    #[allow(clippy::cast_possible_truncation)]
+                    (index as u32, txout)
+                })
+                .find(|(_, txout)| txout.script_pubkey == params.compute_address().script_pubkey())
+                .map(|(vout, _txout)| bitcoin::OutPoint { txid, vout });
+
+            let location = location.ok_or_else(|| {
+                anyhow::anyhow!("Fund transaction does not contain expected outpoint")
+            })?;
+            let asset = asset::Bitcoin::from_sat(transaction.output[location.vout as usize].value);
+
+            Ok(hbit::CorrectlyFunded { asset, location })
+        }
+    }
+
+    impl<AW, E> WalletAlice<AW, ethereum::Wallet, E> {
+        async fn redeem(
             &self,
-            herc20_params: herc20::Params,
+            params: &herc20::Params,
             deploy_event: herc20::Deployed,
-            beta_expiry: Timestamp,
-        ) -> anyhow::Result<crate::swap::Decision<herc20::Redeemed>> {
-            {
-                if let Some(redeem_event) = herc20::watch_for_redeemed_in_the_past(
-                    &self.beta_wallet,
-                    herc20_params,
-                    self.start_of_swap,
-                    deploy_event,
-                )
-                .await?
-                {
-                    return Ok(Decision::Skip(redeem_event));
-                }
+        ) -> anyhow::Result<herc20::Redeemed> {
+            let redeem_action = params.build_redeem_action(deploy_event.location, self.secret);
+            self.beta_wallet.redeem(redeem_action).await?;
 
-                let beta_ledger_time = ethereum_latest_time(&self.beta_wallet).await?;
-                // TODO: Apply a buffer depending on the blocktime and how
-                // safe we want to be
+            let event = herc20::watch_for_redeemed(
+                self.beta_wallet.connector.as_ref(),
+                self.start_of_swap,
+                deploy_event,
+            )
+            .await?;
 
-                if beta_expiry > beta_ledger_time {
-                    Ok(Decision::Act)
-                } else {
-                    Ok(Decision::Stop)
-                }
-            }
+            Ok(event)
         }
     }
 }

@@ -39,7 +39,7 @@ pub trait RedeemAsAlice {
         &self,
         params: &Params,
         fund_event: CorrectlyFunded,
-    ) -> anyhow::Result<Redeemed>;
+    ) -> anyhow::Result<Next<Redeemed>>;
 }
 
 #[async_trait::async_trait]

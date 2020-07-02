@@ -1,6 +1,6 @@
 //! Wrapper module around COMIT lib's Herc20 module.
 
-use crate::swap::{Decision, Next};
+use crate::swap::Next;
 use chrono::NaiveDateTime;
 pub use comit::{
     actions::ethereum::*,
@@ -32,7 +32,12 @@ pub trait Fund {
 
 #[async_trait::async_trait]
 pub trait RedeemAsAlice {
-    async fn redeem(&self, params: &Params, deploy_event: Deployed) -> anyhow::Result<Redeemed>;
+    async fn redeem(
+        &self,
+        params: Params,
+        deploy_event: Deployed,
+        beta_expiry: Timestamp,
+    ) -> anyhow::Result<Next<Redeemed>>;
 }
 
 #[async_trait::async_trait]
@@ -54,16 +59,6 @@ pub trait Refund {
 pub struct CorrectlyFunded {
     pub transaction: transaction::Ethereum,
     pub asset: asset::Erc20,
-}
-
-#[async_trait::async_trait]
-pub trait DecideOnRedeem {
-    async fn decide_on_redeem(
-        &self,
-        herc20_params: Params,
-        deploy_event: Deployed,
-        beta_expiry: Timestamp,
-    ) -> anyhow::Result<Decision<Redeemed>>;
 }
 
 pub async fn watch_for_funded<C>(
