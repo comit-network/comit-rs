@@ -209,7 +209,10 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl hbit::Refund for WalletAlice<bitcoin::Wallet, ethereum::Wallet, hbit::PrivateDetailsFunder> {
+    impl<BW> hbit::Refund for WalletAlice<bitcoin::Wallet, BW, hbit::PrivateDetailsFunder>
+    where
+        BW: Send + Sync,
+    {
         async fn refund(
             &self,
             params: &hbit::Params,
