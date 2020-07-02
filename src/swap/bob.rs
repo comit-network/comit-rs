@@ -13,18 +13,20 @@ use comit::{Secret, SecretHash, Timestamp};
 use std::time::Duration;
 
 #[derive(Clone, Debug)]
-pub struct WalletBob<AW, BW, E> {
+pub struct WalletBob<AW, BW, DB, E> {
     pub alpha_wallet: AW,
     pub beta_wallet: BW,
+    pub db: DB,
     pub private_protocol_details: E,
     pub secret_hash: SecretHash,
     pub start_of_swap: NaiveDateTime,
 }
 
 #[async_trait::async_trait]
-impl<AW, E> herc20::Deploy for WalletBob<AW, ethereum::Wallet, E>
+impl<AW, DB, E> herc20::Deploy for WalletBob<AW, ethereum::Wallet, DB, E>
 where
     AW: Send + Sync,
+    DB: herc20::DeployEvent + Send + Sync,
     E: Send + Sync,
 {
     async fn deploy(
@@ -33,13 +35,7 @@ where
         beta_expiry: Timestamp,
     ) -> anyhow::Result<Next<herc20::Deployed>> {
         {
-            if let Some(deploy_event) = herc20::watch_for_deployed_in_the_past(
-                &self.beta_wallet,
-                params.clone(),
-                self.start_of_swap,
-            )
-            .await?
-            {
+            if let Some(deploy_event) = self.db.deploy_event()? {
                 return Ok(Next::Continue(deploy_event));
             }
 
@@ -56,9 +52,10 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AW, E> herc20::Fund for WalletBob<AW, ethereum::Wallet, E>
+impl<AW, DB, E> herc20::Fund for WalletBob<AW, ethereum::Wallet, DB, E>
 where
     AW: Send + Sync,
+    DB: Send + Sync,
     E: Send + Sync,
 {
     async fn fund(
@@ -90,8 +87,10 @@ where
 }
 
 #[async_trait::async_trait]
-impl hbit::RedeemAsBob
-    for WalletBob<bitcoin::Wallet, ethereum::Wallet, hbit::PrivateDetailsRedeemer>
+impl<DB> hbit::RedeemAsBob
+    for WalletBob<bitcoin::Wallet, ethereum::Wallet, DB, hbit::PrivateDetailsRedeemer>
+where
+    DB: Send + Sync,
 {
     async fn redeem(
         &self,
@@ -104,7 +103,11 @@ impl hbit::RedeemAsBob
 }
 
 #[async_trait::async_trait]
-impl herc20::Refund for WalletBob<bitcoin::Wallet, ethereum::Wallet, hbit::PrivateDetailsRedeemer> {
+impl<DB> herc20::Refund
+    for WalletBob<bitcoin::Wallet, ethereum::Wallet, DB, hbit::PrivateDetailsRedeemer>
+where
+    DB: Send + Sync,
+{
     async fn refund(
         &self,
         params: herc20::Params,
@@ -126,7 +129,7 @@ impl herc20::Refund for WalletBob<bitcoin::Wallet, ethereum::Wallet, hbit::Priva
     }
 }
 
-impl<AW, E> WalletBob<AW, ethereum::Wallet, E> {
+impl<AW, DB, E> WalletBob<AW, ethereum::Wallet, DB, E> {
     async fn deploy(&self, params: &herc20::Params) -> anyhow::Result<herc20::Deployed> {
         let deploy_action = params.build_deploy_action();
         let event = self.beta_wallet.deploy(deploy_action).await?;
@@ -172,7 +175,7 @@ impl<AW, E> WalletBob<AW, ethereum::Wallet, E> {
     }
 }
 
-impl<BW> WalletBob<bitcoin::Wallet, BW, hbit::PrivateDetailsRedeemer> {
+impl<BW, DB> WalletBob<bitcoin::Wallet, BW, DB, hbit::PrivateDetailsRedeemer> {
     async fn redeem(
         &self,
         params: hbit::Params,
@@ -207,20 +210,22 @@ pub mod watch_only_actor {
     use std::sync::Arc;
 
     #[derive(Clone, Debug)]
-    pub struct WatchOnlyBob<AC, BC> {
+    pub struct WatchOnlyBob<AC, BC, DB> {
         pub alpha_connector: Arc<AC>,
         pub beta_connector: Arc<BC>,
+        pub db: DB,
         pub secret_hash: SecretHash,
         pub start_of_swap: NaiveDateTime,
     }
 
     #[async_trait::async_trait]
-    impl<AC, BC> herc20::Deploy for WatchOnlyBob<AC, BC>
+    impl<AC, BC, DB> herc20::Deploy for WatchOnlyBob<AC, BC, DB>
     where
         AC: Send + Sync,
         BC: LatestBlock<Block = ethereum::Block>
             + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
             + ReceiptByHash,
+        DB: herc20::DeployEvent + Send + Sync,
     {
         async fn deploy(
             &self,
@@ -228,13 +233,7 @@ pub mod watch_only_actor {
             beta_expiry: Timestamp,
         ) -> anyhow::Result<Next<herc20::Deployed>> {
             {
-                if let Some(deploy_event) = herc20::watch_for_deployed_in_the_past(
-                    self.beta_connector.as_ref(),
-                    params.clone(),
-                    self.start_of_swap,
-                )
-                .await?
-                {
+                if let Some(deploy_event) = self.db.deploy_event()? {
                     return Ok(Next::Continue(deploy_event));
                 }
 
@@ -256,12 +255,13 @@ pub mod watch_only_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AC, BC> herc20::Fund for WatchOnlyBob<AC, BC>
+    impl<AC, BC, DB> herc20::Fund for WatchOnlyBob<AC, BC, DB>
     where
         AC: Send + Sync,
         BC: LatestBlock<Block = ethereum::Block>
             + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
             + ReceiptByHash,
+        DB: Send + Sync,
     {
         async fn fund(
             &self,
@@ -300,13 +300,14 @@ pub mod watch_only_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AC, BC> hbit::RedeemAsBob for WatchOnlyBob<AC, BC>
+    impl<AC, BC, DB> hbit::RedeemAsBob for WatchOnlyBob<AC, BC, DB>
     where
         AC: LatestBlock<Block = bitcoin::Block>
             + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
         BC: LatestBlock<Block = ethereum::Block>
             + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
             + ReceiptByHash,
+        DB: Send + Sync,
     {
         async fn redeem(
             &self,
@@ -327,12 +328,13 @@ pub mod watch_only_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AC, BC> herc20::Refund for WatchOnlyBob<AC, BC>
+    impl<AC, BC, DB> herc20::Refund for WatchOnlyBob<AC, BC, DB>
     where
         AC: Send + Sync,
         BC: LatestBlock<Block = ethereum::Block>
             + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
             + ReceiptByHash,
+        DB: Send + Sync,
     {
         async fn refund(
             &self,

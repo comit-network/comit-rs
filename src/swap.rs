@@ -202,10 +202,17 @@ mod tests {
 
     // TODO: Use a real database which can implement these traits. It
     // should take an identifier for the swap
+    #[derive(Clone, Copy)]
     struct Database;
 
     impl hbit::FundEvent for Database {
         fn fund_event(&self) -> anyhow::Result<Option<hbit::CorrectlyFunded>> {
+            Ok(None)
+        }
+    }
+
+    impl herc20::DeployEvent for Database {
+        fn deploy_event(&self) -> anyhow::Result<Option<herc20::Deployed>> {
             Ok(None)
         }
     }
@@ -359,6 +366,7 @@ mod tests {
             let bob = WatchOnlyBob {
                 alpha_connector: Arc::clone(&bitcoin_connector),
                 beta_connector: Arc::clone(&ethereum_connector),
+                db: alice_db,
                 secret_hash,
                 start_of_swap,
             };
@@ -377,6 +385,7 @@ mod tests {
             let bob = WalletBob {
                 alpha_wallet: bob_bitcoin_wallet.clone(),
                 beta_wallet: bob_ethereum_wallet.clone(),
+                db: bob_db,
                 secret_hash,
                 private_protocol_details: private_details_redeemer,
                 start_of_swap,

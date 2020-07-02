@@ -1,5 +1,3 @@
-//! Wrapper module around COMIT lib's Herc20 module.
-
 use crate::swap::Next;
 use chrono::NaiveDateTime;
 pub use comit::{
@@ -80,15 +78,9 @@ where
     }
 }
 
-pub async fn watch_for_deployed_in_the_past<C>(
-    _connector: &C,
-    _params: Params,
-    _start_of_swap: NaiveDateTime,
-) -> anyhow::Result<Option<Deployed>>
-where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
-{
-    todo!()
+/// Obtain Herc20 deploy event if we are aware that it has happened.
+pub trait DeployEvent {
+    fn deploy_event(&self) -> anyhow::Result<Option<Deployed>>;
 }
 
 pub async fn watch_for_funded_in_the_past<C>(
