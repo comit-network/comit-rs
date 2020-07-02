@@ -16,32 +16,28 @@ use comit::{
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
-pub struct WatchOnlyAlice<AC, BC> {
+pub struct WatchOnlyAlice<AC, BC, DB> {
     pub alpha_connector: Arc<AC>,
     pub beta_connector: Arc<BC>,
+    pub db: DB,
     pub secret_hash: SecretHash,
     pub start_of_swap: NaiveDateTime,
 }
 
 #[async_trait::async_trait]
-impl<AC, BC> hbit::Fund for WatchOnlyAlice<AC, BC>
+impl<AC, BC, DB> hbit::Fund for WatchOnlyAlice<AC, BC, DB>
 where
     AC: LatestBlock<Block = bitcoin::Block>
         + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
     BC: LatestBlock<Block = ethereum::Block>,
+    DB: hbit::FundEvent + Send + Sync,
 {
     async fn fund(
         &self,
         params: &hbit::Params,
         beta_expiry: Timestamp,
     ) -> anyhow::Result<Next<hbit::CorrectlyFunded>> {
-        if let Some(fund_event) = hbit::watch_for_funded_in_the_past(
-            self.alpha_connector.as_ref(),
-            params,
-            self.start_of_swap,
-        )
-        .await?
-        {
+        if let Some(fund_event) = self.db.fund_event()? {
             return Ok(Next::Continue(fund_event));
         }
 
@@ -59,12 +55,13 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AC, BC> herc20::RedeemAsAlice for WatchOnlyAlice<AC, BC>
+impl<AC, BC, DB> herc20::RedeemAsAlice for WatchOnlyAlice<AC, BC, DB>
 where
     AC: Send + Sync,
     BC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + ReceiptByHash,
+    DB: Send + Sync,
 {
     async fn redeem(
         &self,
@@ -102,11 +99,12 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AC, BC> hbit::Refund for WatchOnlyAlice<AC, BC>
+impl<AC, BC, DB> hbit::Refund for WatchOnlyAlice<AC, BC, DB>
 where
     AC: LatestBlock<Block = bitcoin::Block>
         + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
     BC: Send + Sync,
+    DB: Send + Sync,
 {
     async fn refund(
         &self,
@@ -137,28 +135,27 @@ pub mod wallet_actor {
     use std::time::Duration;
 
     #[derive(Clone, Copy, Debug)]
-    pub struct WalletAlice<AW, BW, E> {
+    pub struct WalletAlice<AW, BW, DB, E> {
         pub alpha_wallet: AW,
         pub beta_wallet: BW,
+        pub db: DB,
         pub private_protocol_details: E,
         pub secret: Secret,
         pub start_of_swap: NaiveDateTime,
     }
 
     #[async_trait::async_trait]
-    impl<BW> hbit::Fund for WalletAlice<bitcoin::Wallet, BW, hbit::PrivateDetailsFunder>
+    impl<BW, DB> hbit::Fund for WalletAlice<bitcoin::Wallet, BW, DB, hbit::PrivateDetailsFunder>
     where
         BW: LatestBlock<Block = ethereum::Block>,
+        DB: hbit::FundEvent + Send + Sync,
     {
         async fn fund(
             &self,
             params: &hbit::Params,
             beta_expiry: Timestamp,
         ) -> anyhow::Result<Next<hbit::CorrectlyFunded>> {
-            if let Some(fund_event) =
-                hbit::watch_for_funded_in_the_past(&self.alpha_wallet, params, self.start_of_swap)
-                    .await?
-            {
+            if let Some(fund_event) = self.db.fund_event()? {
                 return Ok(Next::Continue(fund_event));
             }
 
@@ -173,9 +170,10 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AW, E> herc20::RedeemAsAlice for WalletAlice<AW, ethereum::Wallet, E>
+    impl<AW, DB, E> herc20::RedeemAsAlice for WalletAlice<AW, ethereum::Wallet, DB, E>
     where
         AW: Send + Sync,
+        DB: Send + Sync,
         E: Send + Sync,
     {
         async fn redeem(
@@ -209,9 +207,10 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl<BW> hbit::Refund for WalletAlice<bitcoin::Wallet, BW, hbit::PrivateDetailsFunder>
+    impl<BW, DB> hbit::Refund for WalletAlice<bitcoin::Wallet, BW, DB, hbit::PrivateDetailsFunder>
     where
         BW: Send + Sync,
+        DB: Send + Sync,
     {
         async fn refund(
             &self,
@@ -235,7 +234,7 @@ pub mod wallet_actor {
         }
     }
 
-    impl<BW> WalletAlice<bitcoin::Wallet, BW, hbit::PrivateDetailsFunder> {
+    impl<BW, DB> WalletAlice<bitcoin::Wallet, BW, DB, hbit::PrivateDetailsFunder> {
         async fn fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
             let fund_action = params.build_fund_action();
             let transaction = self
@@ -288,7 +287,7 @@ pub mod wallet_actor {
         }
     }
 
-    impl<AW, E> WalletAlice<AW, ethereum::Wallet, E> {
+    impl<AW, DB, E> WalletAlice<AW, ethereum::Wallet, DB, E> {
         async fn redeem(
             &self,
             params: &herc20::Params,

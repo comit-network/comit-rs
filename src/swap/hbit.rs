@@ -1,5 +1,3 @@
-//! Wrapper module around COMIT lib's Hbit module.
-
 use crate::swap::Next;
 use bitcoin::{secp256k1::SecretKey, Address, Block, BlockHash};
 use chrono::NaiveDateTime;
@@ -83,13 +81,7 @@ where
     }
 }
 
-pub async fn watch_for_funded_in_the_past<C>(
-    _connector: &C,
-    _params: &Params,
-    _start_of_swap: NaiveDateTime,
-) -> anyhow::Result<Option<CorrectlyFunded>>
-where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
-{
-    todo!()
+/// Obtain Hbit fund event if we are aware that it has happened.
+pub trait FundEvent {
+    fn fund_event(&self) -> anyhow::Result<Option<CorrectlyFunded>>;
 }

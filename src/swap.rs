@@ -200,9 +200,22 @@ mod tests {
         Secret::from(*bytes)
     }
 
+    // TODO: Use a real database which can implement these traits. It
+    // should take an identifier for the swap
+    struct Database;
+
+    impl hbit::FundEvent for Database {
+        fn fund_event(&self) -> anyhow::Result<Option<hbit::CorrectlyFunded>> {
+            Ok(None)
+        }
+    }
+
     #[tokio::test]
     async fn execute_alice_hbit_herc20_swap() -> anyhow::Result<()> {
         let client = clients::Cli::default();
+
+        let alice_db = Database;
+        let bob_db = Database;
 
         let bitcoin_network = ::bitcoin::Network::Regtest;
         let (bitcoin_connector, bitcoind_url, bitcoin_blockchain) = {
@@ -338,6 +351,7 @@ mod tests {
             let alice = WalletAlice {
                 alpha_wallet: alice_bitcoin_wallet.clone(),
                 beta_wallet: alice_ethereum_wallet.clone(),
+                db: alice_db,
                 private_protocol_details: private_details_funder,
                 secret,
                 start_of_swap,
@@ -356,6 +370,7 @@ mod tests {
             let alice = WatchOnlyAlice {
                 alpha_connector: Arc::clone(&bitcoin_connector),
                 beta_connector: Arc::clone(&ethereum_connector),
+                db: bob_db,
                 secret_hash,
                 start_of_swap,
             };
