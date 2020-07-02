@@ -241,7 +241,6 @@ dir = "/foo/bar"
         let file = File {
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
-                use_tor: false,
             }),
             http_api: Some(HttpApi {
                 socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8000),
