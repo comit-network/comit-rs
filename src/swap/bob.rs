@@ -99,20 +99,7 @@ impl hbit::RedeemAsBob
         fund_event: hbit::CorrectlyFunded,
         secret: Secret,
     ) -> anyhow::Result<hbit::Redeemed> {
-        let redeem_action = params.build_redeem_action(
-            &crate::SECP,
-            fund_event.asset,
-            fund_event.location,
-            self.private_protocol_details.clone().transient_redeem_sk,
-            self.private_protocol_details.clone().final_redeem_identity,
-            secret,
-        )?;
-        let transaction = self.alpha_wallet.redeem(redeem_action).await?;
-
-        Ok(hbit::Redeemed {
-            transaction,
-            secret,
-        })
+        self.redeem(*params, fund_event, secret).await
     }
 }
 
@@ -120,7 +107,7 @@ impl hbit::RedeemAsBob
 impl herc20::Refund for WalletBob<bitcoin::Wallet, ethereum::Wallet, hbit::PrivateDetailsRedeemer> {
     async fn refund(
         &self,
-        params: &herc20::Params,
+        params: herc20::Params,
         deploy_event: herc20::Deployed,
     ) -> anyhow::Result<herc20::Refunded> {
         loop {
@@ -133,17 +120,9 @@ impl herc20::Refund for WalletBob<bitcoin::Wallet, ethereum::Wallet, hbit::Priva
             tokio::time::delay_for(Duration::from_secs(1)).await;
         }
 
-        let refund_action = params.build_refund_action(deploy_event.location);
-        self.beta_wallet.refund(refund_action).await?;
+        let refund_event = self.refund(params, deploy_event).await?;
 
-        let event = herc20::watch_for_refunded(
-            self.beta_wallet.connector.as_ref(),
-            self.start_of_swap,
-            deploy_event,
-        )
-        .await?;
-
-        Ok(event)
+        Ok(refund_event)
     }
 }
 
@@ -172,6 +151,49 @@ impl<AW, E> WalletBob<AW, ethereum::Wallet, E> {
         .await?;
 
         Ok(event)
+    }
+
+    async fn refund(
+        &self,
+        params: herc20::Params,
+        deploy_event: herc20::Deployed,
+    ) -> anyhow::Result<herc20::Refunded> {
+        let refund_action = params.build_refund_action(deploy_event.location);
+        self.beta_wallet.refund(refund_action).await?;
+
+        let refund_event = herc20::watch_for_refunded(
+            self.beta_wallet.connector.as_ref(),
+            self.start_of_swap,
+            deploy_event,
+        )
+        .await?;
+
+        Ok(refund_event)
+    }
+}
+
+impl<BW> WalletBob<bitcoin::Wallet, BW, hbit::PrivateDetailsRedeemer> {
+    async fn redeem(
+        &self,
+        params: hbit::Params,
+        fund_event: hbit::CorrectlyFunded,
+        secret: Secret,
+    ) -> anyhow::Result<hbit::Redeemed> {
+        let redeem_action = params.build_redeem_action(
+            &crate::SECP,
+            fund_event.asset,
+            fund_event.location,
+            self.private_protocol_details.clone().transient_redeem_sk,
+            self.private_protocol_details.clone().final_redeem_identity,
+            secret,
+        )?;
+        let transaction = self.alpha_wallet.redeem(redeem_action).await?;
+        let redeem_event = hbit::Redeemed {
+            transaction,
+            secret,
+        };
+
+        Ok(redeem_event)
     }
 }
 
@@ -314,7 +336,7 @@ pub mod watch_only_actor {
     {
         async fn refund(
             &self,
-            _params: &herc20::Params,
+            _params: herc20::Params,
             deploy_event: herc20::Deployed,
         ) -> anyhow::Result<herc20::Refunded> {
             let event = herc20::watch_for_refunded(

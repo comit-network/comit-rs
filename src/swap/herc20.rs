@@ -52,7 +52,7 @@ pub trait RedeemAsBob {
 
 #[async_trait::async_trait]
 pub trait Refund {
-    async fn refund(&self, params: &Params, deploy_event: Deployed) -> anyhow::Result<Refunded>;
+    async fn refund(&self, params: Params, deploy_event: Deployed) -> anyhow::Result<Refunded>;
 }
 
 #[derive(Debug, Clone)]

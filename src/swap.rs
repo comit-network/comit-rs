@@ -67,7 +67,7 @@ where
         Next::Continue(herc20_redeemed) => herc20_redeemed,
         Next::Abort => {
             alice.refund(&hbit_params, hbit_funded).await?;
-            bob.refund(&herc20_params, herc20_deployed.clone()).await?;
+            bob.refund(herc20_params, herc20_deployed.clone()).await?;
 
             return Ok(());
         }
