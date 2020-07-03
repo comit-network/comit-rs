@@ -95,13 +95,9 @@ impl std::ops::Sub for Amount {
 }
 
 impl From<Erc20> for Amount {
-    fn from(_erc20: Erc20) -> Self {
-        // TODO: inner BigInt is private in comit lib - what is the best way to convert?
-        // Amount {
-        //     0: erc20.quantity.0
-        // }
-
-        unimplemented!()
+    fn from(erc20: Erc20) -> Self {
+        let quantity = BigUint::from_bytes_le(erc20.quantity.to_bytes().as_slice());
+        Amount { 0: quantity }
     }
 }
 

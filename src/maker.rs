@@ -31,6 +31,7 @@ pub struct Maker {
 }
 
 impl Maker {
+    #![allow(clippy::too_many_arguments)]
     pub fn new(
         btc_balance: bitcoin::Amount,
         dai_balance: dai::Amount,

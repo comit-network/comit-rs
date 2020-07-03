@@ -36,7 +36,7 @@ impl Wallet {
         Self {
             private_key,
             geth_client,
-            dai_contract_adr
+            dai_contract_adr,
         }
     }
 
