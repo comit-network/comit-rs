@@ -26,14 +26,15 @@ pub struct WalletBob<AW, BW, DB, E> {
 }
 
 #[async_trait::async_trait]
-impl<AW, BW, DB, E> CheckMemory<herc20::Deployed> for WalletBob<AW, BW, DB, E>
+impl<T, AW, BW, DB, E> CheckMemory<T> for WalletBob<AW, BW, DB, E>
 where
     AW: Send + Sync,
     BW: Send + Sync,
-    DB: db::Load<herc20::Deployed>,
+    DB: db::Load<T>,
     E: Send + Sync,
+    T: 'static,
 {
-    async fn check_memory(&self) -> anyhow::Result<Option<herc20::Deployed>> {
+    async fn check_memory(&self) -> anyhow::Result<Option<T>> {
         self.db.load(self.swap_id).await
     }
 }
@@ -69,28 +70,16 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AW, BW, DB, E> Remember<herc20::Deployed> for WalletBob<AW, BW, DB, E>
+impl<T, AW, BW, DB, E> Remember<T> for WalletBob<AW, BW, DB, E>
 where
     AW: Send + Sync,
     BW: Send + Sync,
-    DB: db::Save<herc20::Deployed>,
+    DB: db::Save<T>,
     E: Send + Sync,
+    T: Send + 'static,
 {
-    async fn remember(&self, event: herc20::Deployed) -> anyhow::Result<()> {
+    async fn remember(&self, event: T) -> anyhow::Result<()> {
         self.db.save(event, self.swap_id).await
-    }
-}
-
-#[async_trait::async_trait]
-impl<AW, BW, DB, E> CheckMemory<herc20::CorrectlyFunded> for WalletBob<AW, BW, DB, E>
-where
-    AW: Send + Sync,
-    BW: Send + Sync,
-    DB: db::Load<herc20::CorrectlyFunded>,
-    E: Send + Sync,
-{
-    async fn check_memory(&self) -> anyhow::Result<Option<herc20::CorrectlyFunded>> {
-        self.db.load(self.swap_id).await
     }
 }
 
@@ -111,19 +100,6 @@ where
         self.beta_wallet
             .execute_fund(params, deploy_event, self.start_of_swap)
             .await
-    }
-}
-
-#[async_trait::async_trait]
-impl<AW, BW, DB, E> Remember<herc20::CorrectlyFunded> for WalletBob<AW, BW, DB, E>
-where
-    AW: Send + Sync,
-    BW: Send + Sync,
-    DB: db::Save<herc20::CorrectlyFunded>,
-    E: Send + Sync,
-{
-    async fn remember(&self, event: herc20::CorrectlyFunded) -> anyhow::Result<()> {
-        self.db.save(event, self.swap_id).await
     }
 }
 
@@ -233,13 +209,14 @@ pub mod watch_only_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AC, BC, DB> CheckMemory<herc20::Deployed> for WatchOnlyBob<AC, BC, DB>
+    impl<T, AC, BC, DB> CheckMemory<T> for WatchOnlyBob<AC, BC, DB>
     where
         AC: Send + Sync,
         BC: Send + Sync,
-        DB: db::Load<herc20::Deployed>,
+        DB: db::Load<T>,
+        T: 'static,
     {
-        async fn check_memory(&self) -> anyhow::Result<Option<herc20::Deployed>> {
+        async fn check_memory(&self) -> anyhow::Result<Option<T>> {
             self.db.load(self.swap_id).await
         }
     }
@@ -276,26 +253,15 @@ pub mod watch_only_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AC, BC, DB> Remember<herc20::Deployed> for WatchOnlyBob<AC, BC, DB>
+    impl<T, AC, BC, DB> Remember<T> for WatchOnlyBob<AC, BC, DB>
     where
         AC: Send + Sync,
         BC: Send + Sync,
-        DB: db::Save<herc20::Deployed>,
+        DB: db::Save<T>,
+        T: Send + 'static,
     {
-        async fn remember(&self, event: herc20::Deployed) -> anyhow::Result<()> {
+        async fn remember(&self, event: T) -> anyhow::Result<()> {
             self.db.save(event, self.swap_id).await
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl<AC, BC, DB> CheckMemory<herc20::CorrectlyFunded> for WatchOnlyBob<AC, BC, DB>
-    where
-        AC: Send + Sync,
-        BC: Send + Sync,
-        DB: db::Load<herc20::CorrectlyFunded>,
-    {
-        async fn check_memory(&self) -> anyhow::Result<Option<herc20::CorrectlyFunded>> {
-            self.db.load(self.swap_id).await
         }
     }
 
@@ -321,18 +287,6 @@ pub mod watch_only_actor {
                 deploy_event,
             )
             .await
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl<AC, BC, DB> Remember<herc20::CorrectlyFunded> for WatchOnlyBob<AC, BC, DB>
-    where
-        AC: Send + Sync,
-        BC: Send + Sync,
-        DB: db::Save<herc20::CorrectlyFunded>,
-    {
-        async fn remember(&self, event: herc20::CorrectlyFunded) -> anyhow::Result<()> {
-            self.db.save(event, self.swap_id).await
         }
     }
 

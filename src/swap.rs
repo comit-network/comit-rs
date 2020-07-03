@@ -137,8 +137,8 @@ pub trait CheckMemory<E> {
     async fn check_memory(&self) -> anyhow::Result<Option<E>>;
 }
 
-// QUESTION: Should each implementation decide what arguments it needs
-// to make a decision?
+// NOTE: Currently, we only implement this trait once per actor, and
+// we reuse its logic for all implementations of the Do trait
 #[async_trait::async_trait]
 pub trait ShouldAbort {
     async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool>;
