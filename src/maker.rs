@@ -105,8 +105,7 @@ impl Maker {
             .spread
             .apply(self.mid_market_rate.value, order.inner.position)?;
         let order_rate = Rate::try_from(order.inner.clone())?;
-
-        match order.clone().into() {
+        let next_order = match order.clone().into() {
             order
             @
             BtcDaiOrder {
@@ -128,6 +127,7 @@ impl Maker {
                 }
 
                 self.dai_reserved_funds = updated_dai_reserved_funds;
+                self.next_buy_order()?
             }
             order
             @
@@ -150,6 +150,7 @@ impl Maker {
                 }
 
                 self.btc_reserved_funds = updated_btc_reserved_funds;
+                self.next_sell_order()?
             }
         };
 
@@ -157,9 +158,7 @@ impl Maker {
             .insert(order.taker)
             .expect("already checked that we can trade");
 
-        Ok(Reaction::Confirmed {
-            next_order: self.next_sell_order()?,
-        })
+        Ok(Reaction::Confirmed { next_order })
     }
 }
 
