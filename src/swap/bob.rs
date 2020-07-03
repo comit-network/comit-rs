@@ -5,9 +5,7 @@
 
 use crate::{
     swap::{
-        bitcoin, db,
-        ethereum::{self, ethereum_latest_time},
-        Next, {hbit, herc20},
+        bitcoin, db, ethereum, BlockchainTime, Next, {hbit, herc20},
     },
     SwapId,
 };
@@ -27,9 +25,10 @@ pub struct WalletBob<AW, BW, DB, E> {
 }
 
 #[async_trait::async_trait]
-impl<AW, DB, E> herc20::Deploy for WalletBob<AW, ethereum::Wallet, DB, E>
+impl<AW, BW, DB, E> herc20::Deploy for WalletBob<AW, BW, DB, E>
 where
     AW: Send + Sync,
+    BW: herc20::ExecuteDeploy + BlockchainTime + Send + Sync,
     DB: db::Load<herc20::Deployed> + db::Save<herc20::Deployed>,
     E: Send + Sync,
 {
@@ -43,12 +42,11 @@ where
                 return Ok(Next::Continue(deploy_event));
             }
 
-            let beta_ledger_time = ethereum_latest_time(&self.beta_wallet).await?;
-            if beta_expiry <= beta_ledger_time {
+            if beta_expiry <= self.beta_wallet.blockchain_time().await? {
                 return Ok(Next::Abort);
             }
 
-            let deploy_event = self.deploy(&params).await?;
+            let deploy_event = self.beta_wallet.execute_deploy(params).await?;
             self.db.save(deploy_event.clone(), self.swap_id).await?;
 
             Ok(Next::Continue(deploy_event))
@@ -73,8 +71,7 @@ where
             return Ok(Next::Continue(fund_event));
         }
 
-        let beta_ledger_time = ethereum_latest_time(&self.beta_wallet).await?;
-        if beta_expiry <= beta_ledger_time {
+        if beta_expiry <= self.beta_wallet.blockchain_time().await? {
             return Ok(Next::Abort);
         }
 
@@ -113,9 +110,7 @@ where
         deploy_event: herc20::Deployed,
     ) -> anyhow::Result<herc20::Refunded> {
         loop {
-            let ethereum_time = ethereum_latest_time(self.beta_wallet.connector.as_ref()).await?;
-
-            if ethereum_time >= params.expiry {
+            if self.beta_wallet.blockchain_time().await? >= params.expiry {
                 break;
             }
 
@@ -129,13 +124,6 @@ where
 }
 
 impl<AW, DB, E> WalletBob<AW, ethereum::Wallet, DB, E> {
-    async fn deploy(&self, params: &herc20::Params) -> anyhow::Result<herc20::Deployed> {
-        let deploy_action = params.build_deploy_action();
-        let event = self.beta_wallet.deploy(deploy_action).await?;
-
-        Ok(event)
-    }
-
     async fn fund(
         &self,
         params: herc20::Params,
@@ -237,8 +225,7 @@ pub mod watch_only_actor {
                     return Ok(Next::Continue(deploy_event));
                 }
 
-                let beta_ledger_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
-                if beta_expiry <= beta_ledger_time {
+                if beta_expiry <= self.beta_connector.as_ref().blockchain_time().await? {
                     return Ok(Next::Abort);
                 }
 
@@ -275,8 +262,7 @@ pub mod watch_only_actor {
                     return Ok(Next::Continue(fund_event));
                 }
 
-                let beta_ledger_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
-                if beta_expiry <= beta_ledger_time {
+                if beta_expiry <= self.beta_connector.as_ref().blockchain_time().await? {
                     return Ok(Next::Abort);
                 }
 
@@ -345,5 +331,174 @@ pub mod watch_only_actor {
 
             Ok(event)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::swap::herc20::Deploy;
+    use comit::{htlc_location, identity, transaction};
+    use primitive_types::U256;
+    use std::{
+        collections::HashMap,
+        sync::{Arc, RwLock},
+    };
+
+    #[derive(Default)]
+    struct MockDatabase {
+        deploy_events: Arc<RwLock<HashMap<SwapId, herc20::Deployed>>>,
+    }
+
+    struct MockBitcoinWallet;
+
+    struct MockEthereumWallet {
+        node: Arc<RwLock<EthereumBlockchain>>,
+    }
+
+    #[derive(Default)]
+    struct EthereumBlockchain {
+        deploy_events: Vec<herc20::Deployed>,
+    }
+
+    struct Lock {
+        secret: Secret,
+        secret_hash: SecretHash,
+    }
+
+    impl Lock {
+        fn new() -> Self {
+            let bytes = b"hello world, you are beautiful!!";
+            let secret = Secret::from(*bytes);
+
+            let secret_hash = SecretHash::new(secret);
+
+            Self {
+                secret,
+                secret_hash,
+            }
+        }
+    }
+
+    struct SwapTimes {
+        start_of_swap: NaiveDateTime,
+        alpha_expiry: Timestamp,
+        beta_expiry: Timestamp,
+    }
+
+    impl SwapTimes {
+        fn live_swap() -> Self {
+            let start_of_swap = Timestamp::now();
+            let beta_expiry = start_of_swap.plus(60 * 60);
+            let alpha_expiry = beta_expiry.plus(60 * 60);
+
+            Self {
+                start_of_swap: start_of_swap.into(),
+                alpha_expiry,
+                beta_expiry,
+            }
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl herc20::ExecuteDeploy for MockEthereumWallet {
+        async fn execute_deploy(
+            &self,
+            _params: herc20::Params,
+        ) -> anyhow::Result<herc20::Deployed> {
+            let deploy_event = herc20::Deployed {
+                transaction: transaction::Ethereum {
+                    hash: ethereum::Hash::from([0u8; 32]),
+                    to: None,
+                    value: U256::from(0u64),
+                    input: Vec::new(),
+                },
+                location: htlc_location::Ethereum::random(),
+            };
+
+            let mut blockchain = self.node.write().unwrap();
+            blockchain.deploy_events.push(deploy_event.clone());
+
+            Ok(deploy_event)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl BlockchainTime for MockEthereumWallet {
+        async fn blockchain_time(&self) -> anyhow::Result<Timestamp> {
+            Ok(Timestamp::now())
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl db::Load<herc20::Deployed> for MockDatabase {
+        async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Deployed>> {
+            let deploy_events = self.deploy_events.read().unwrap();
+
+            Ok(deploy_events.get(&swap_id).cloned())
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl db::Save<herc20::Deployed> for MockDatabase {
+        async fn save(
+            &self,
+            deploy_event: herc20::Deployed,
+            swap_id: SwapId,
+        ) -> anyhow::Result<()> {
+            let mut deploy_events = self.deploy_events.write().unwrap();
+            deploy_events.insert(swap_id, deploy_event);
+
+            Ok(())
+        }
+    }
+
+    #[tokio::test]
+    async fn herc20_deploy_is_idempotent() {
+        let ethereum_blockchain = Arc::new(RwLock::new(EthereumBlockchain::default()));
+        let ethereum_wallet = MockEthereumWallet {
+            node: Arc::clone(&ethereum_blockchain),
+        };
+
+        let db = MockDatabase::default();
+
+        let swap_id = SwapId::random();
+
+        let Lock { secret_hash, .. } = Lock::new();
+
+        let SwapTimes {
+            start_of_swap,
+            beta_expiry,
+            ..
+        } = SwapTimes::live_swap();
+
+        let herc20_params = herc20::params(
+            secret_hash,
+            ethereum::ChainId::regtest(),
+            identity::Ethereum::random(),
+            identity::Ethereum::random(),
+            ethereum::Address::random(),
+            beta_expiry,
+        );
+
+        let bob = WalletBob {
+            alpha_wallet: MockBitcoinWallet,
+            beta_wallet: ethereum_wallet,
+            db,
+            private_protocol_details: (),
+            secret_hash,
+            start_of_swap,
+            swap_id,
+        };
+
+        assert!(ethereum_blockchain.read().unwrap().deploy_events.is_empty());
+        let res = bob.deploy(herc20_params.clone(), beta_expiry).await;
+
+        assert!(matches!(res, Ok(Next::Continue(herc20::Deployed { .. }))));
+        assert_eq!(ethereum_blockchain.read().unwrap().deploy_events.len(), 1);
+
+        let res = bob.deploy(herc20_params, beta_expiry).await;
+        assert!(matches!(res, Ok(Next::Continue(herc20::Deployed { .. }))));
+        assert_eq!(ethereum_blockchain.read().unwrap().deploy_events.len(), 1);
     }
 }

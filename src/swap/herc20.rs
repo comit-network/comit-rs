@@ -19,6 +19,11 @@ pub trait Deploy {
 }
 
 #[async_trait::async_trait]
+pub trait ExecuteDeploy {
+    async fn execute_deploy(&self, params: Params) -> anyhow::Result<Deployed>;
+}
+
+#[async_trait::async_trait]
 pub trait Fund {
     async fn fund(
         &self,
@@ -75,5 +80,27 @@ where
         comit::herc20::Funded::Incorrectly { .. } => {
             anyhow::bail!("Ethereum HTLC incorrectly funded")
         }
+    }
+}
+
+#[cfg(test)]
+pub fn params(
+    secret_hash: SecretHash,
+    chain_id: crate::swap::ethereum::ChainId,
+    redeem_identity: identity::Ethereum,
+    refund_identity: identity::Ethereum,
+    token_contract: crate::swap::ethereum::Address,
+    expiry: Timestamp,
+) -> Params {
+    let quantity = asset::ethereum::FromWei::from_wei(1_000_000_000u64);
+    let asset = asset::Erc20::new(token_contract, quantity);
+
+    Params {
+        asset,
+        redeem_identity,
+        refund_identity,
+        expiry,
+        chain_id,
+        secret_hash,
     }
 }

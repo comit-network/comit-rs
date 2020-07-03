@@ -5,11 +5,7 @@
 //! watches the two blockchains involved in the swap.
 
 use crate::{
-    swap::{
-        db,
-        ethereum::{self, ethereum_latest_time},
-        hbit, herc20, Next,
-    },
+    swap::{db, ethereum, hbit, herc20, BlockchainTime, Next},
     SwapId,
 };
 use chrono::NaiveDateTime;
@@ -46,8 +42,7 @@ where
             return Ok(Next::Continue(fund_event));
         }
 
-        let beta_ledger_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
-        if beta_expiry <= beta_ledger_time {
+        if beta_expiry <= self.beta_connector.as_ref().blockchain_time().await? {
             return Ok(Next::Abort);
         }
 
@@ -80,8 +75,7 @@ where
                 return Ok(Next::Continue(redeem_event));
             }
 
-            let beta_ledger_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
-            if beta_expiry <= beta_ledger_time {
+            if beta_expiry <= self.beta_connector.as_ref().blockchain_time().await? {
                 return Ok(Next::Abort);
             }
 
@@ -160,8 +154,7 @@ pub mod wallet_actor {
                 return Ok(Next::Continue(fund_event));
             }
 
-            let beta_ledger_time = ethereum_latest_time(&self.beta_wallet).await?;
-            if beta_expiry <= beta_ledger_time {
+            if beta_expiry <= self.beta_wallet.blockchain_time().await? {
                 return Ok(Next::Abort);
             }
 
@@ -190,8 +183,7 @@ pub mod wallet_actor {
                     return Ok(Next::Continue(redeem_event));
                 }
 
-                let beta_ledger_time = ethereum_latest_time(&self.beta_wallet).await?;
-                if beta_expiry <= beta_ledger_time {
+                if beta_expiry <= self.beta_wallet.blockchain_time().await? {
                     return Ok(Next::Abort);
                 }
 

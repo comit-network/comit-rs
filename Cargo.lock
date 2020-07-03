@@ -1791,6 +1791,7 @@ dependencies = [
  "libp2p",
  "num 0.3.0",
  "num256",
+ "primitive-types",
  "proptest",
  "rand 0.6.5",
  "reqwest",

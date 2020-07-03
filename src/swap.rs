@@ -12,6 +12,7 @@ use futures::future;
 
 pub use alice::WatchOnlyAlice;
 pub use bob::WalletBob;
+use comit::Timestamp;
 
 /// Execute a Hbit<->Herc20 swap.
 pub async fn hbit_herc20<A, B>(
@@ -95,6 +96,11 @@ pub enum Next<E> {
     Abort,
 }
 
+#[async_trait::async_trait]
+pub trait BlockchainTime {
+    async fn blockchain_time(&self) -> anyhow::Result<Timestamp>;
+}
+
 #[cfg(all(test, feature = "test-docker"))]
 mod tests {
     use super::*;
@@ -171,27 +177,6 @@ mod tests {
         };
 
         (params, private_details_funder, private_details_redeemer)
-    }
-
-    fn herc20_params(
-        secret_hash: SecretHash,
-        chain_id: ethereum::ChainId,
-        redeem_identity: identity::Ethereum,
-        refund_identity: identity::Ethereum,
-        token_contract: ethereum::Address,
-    ) -> herc20::Params {
-        let quantity = Erc20Quantity::from_wei(1_000_000_000u64);
-        let asset = asset::Erc20::new(token_contract, quantity);
-        let expiry = Timestamp::now().plus(60 * 60);
-
-        herc20::Params {
-            asset,
-            redeem_identity,
-            refund_identity,
-            expiry,
-            chain_id,
-            secret_hash,
-        }
     }
 
     fn secret() -> Secret {
@@ -372,6 +357,7 @@ mod tests {
         let secret_hash = SecretHash::new(secret);
 
         let start_of_swap = Utc::now().naive_local();
+        let beta_expiry = Timestamp::now().plus(60 * 60);
 
         let (hbit_params, private_details_funder, private_details_redeemer) = {
             let redeem_address = bob_bitcoin_wallet.inner.new_address().await?;
@@ -380,12 +366,13 @@ mod tests {
             hbit_params(secret_hash, bitcoin_network, refund_address, redeem_address)
         };
 
-        let herc20_params = herc20_params(
+        let herc20_params = herc20::params(
             secret_hash,
             ethereum_chain_id,
             alice_ethereum_wallet.inner.account(),
             bob_ethereum_wallet.inner.account(),
             token_contract,
+            beta_expiry,
         );
 
         let alice_swap = {
