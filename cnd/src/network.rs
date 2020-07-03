@@ -1,6 +1,8 @@
+pub mod tor;
 pub mod transport;
 
 // Export comit network types while maintaining the module abstraction.
+pub use self::tor::TorTokioTcpConfig;
 pub use ::comit::network::*;
 pub use transport::ComitTransport;
 
@@ -54,7 +56,7 @@ impl Swarm {
         let local_peer_id = PeerId::from(local_key_pair.public());
         tracing::info!("Starting with peer_id: {}", local_peer_id);
 
-        let transport = transport::build_comit_transport(local_key_pair)?;
+        let transport = transport::build(local_key_pair, settings.network.listen.clone())?;
 
         let behaviour = ComitNode::new(
             seed,

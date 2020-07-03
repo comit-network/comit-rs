@@ -62,6 +62,21 @@ To run individual end-to-end tests, use `yarn` inside the `api_tests` folder:
 - `yarn run fix`: run prettier and linter to fix format
 - `yarn run check`: run tsc (to check validity of TypeScript code) and verify format
 
+## Tor
+
+If you would like to maintain anonymity while using cnd for atomic swaps we support running cnd over Tor.
+You will need to configure an onion service (previously hidden service), virtual port can be anything but cnd expects the local port to be 9939.
+```
+HiddenServiceDir /var/lib/tor/hidden_service/
+HiddenServicePort 9939 127.0.0.1:9939
+```
+After starting Tor for the first time get the onion service address from your local file system (e.g. `/var/lib/tor/hidden_service/hostname`) and add it to your cnd config file.
+```
+[network]
+listen = ["/onion3/vww6ybal4bd7szmgncyruucpgfkqahzddi37ktceo3ah7ngmcopnpyyd:9939"]
+```
+All cnd traffic will now be routed over the Tor network.
+
 ## Contributing
 
 Contributions are welcome, please visit [CONTRIBUTING](CONTRIBUTING.md) for more details.
