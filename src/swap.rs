@@ -267,65 +267,21 @@ mod tests {
     struct Database;
 
     #[async_trait::async_trait]
-    impl db::Load<hbit::CorrectlyFunded> for Database {
-        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<hbit::CorrectlyFunded>> {
+    impl<T> db::Load<T> for Database
+    where
+        T: 'static,
+    {
+        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<T>> {
             Ok(None)
         }
     }
 
     #[async_trait::async_trait]
-    impl db::Load<herc20::Deployed> for Database {
-        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<herc20::Deployed>> {
-            Ok(None)
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl db::Load<herc20::CorrectlyFunded> for Database {
-        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<herc20::CorrectlyFunded>> {
-            Ok(None)
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl db::Load<herc20::Redeemed> for Database {
-        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<herc20::Redeemed>> {
-            Ok(None)
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl db::Save<hbit::CorrectlyFunded> for Database {
-        async fn save(
-            &self,
-            _event: hbit::CorrectlyFunded,
-            _swap_id: SwapId,
-        ) -> anyhow::Result<()> {
-            Ok(())
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl db::Save<herc20::Deployed> for Database {
-        async fn save(&self, _event: herc20::Deployed, _swap_id: SwapId) -> anyhow::Result<()> {
-            Ok(())
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl db::Save<herc20::CorrectlyFunded> for Database {
-        async fn save(
-            &self,
-            _event: herc20::CorrectlyFunded,
-            _swap_id: SwapId,
-        ) -> anyhow::Result<()> {
-            Ok(())
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl db::Save<herc20::Redeemed> for Database {
-        async fn save(&self, _event: herc20::Redeemed, _swap_id: SwapId) -> anyhow::Result<()> {
+    impl<T> db::Save<T> for Database
+    where
+        T: Send + 'static,
+    {
+        async fn save(&self, _event: T, _swap_id: SwapId) -> anyhow::Result<()> {
             Ok(())
         }
     }
