@@ -4,16 +4,17 @@ mod alice;
 mod bitcoin;
 mod bob;
 mod db;
+mod do_action;
 mod ethereum;
 mod hbit;
 mod herc20;
 
-use comit::{Secret, Timestamp};
+use comit::Secret;
 use futures::future;
 
-use crate::SwapId;
 pub use alice::WatchOnlyAlice;
 pub use bob::WalletBob;
+pub use do_action::{BetaLedgerTime, Do, Execute, Next};
 
 /// Execute a Hbit<->Herc20 swap.
 pub async fn hbit_herc20<A, B>(
@@ -108,108 +109,6 @@ where
             Err(error)
         }
     }
-}
-
-#[async_trait::async_trait]
-pub trait Do<E>
-where
-    Self: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
-    E: Clone + Send + Sync + 'static,
-    <Self as Execute<E>>::Args: Send + Sync,
-{
-    async fn r#do(
-        &self,
-        beta_expiry: Timestamp,
-        execution_args: <Self as Execute<E>>::Args,
-    ) -> anyhow::Result<Next<E>> {
-        if let Some(event) = self.check_memory().await? {
-            return Ok(Next::Continue(event));
-        }
-
-        if self.should_abort(beta_expiry).await? {
-            return Ok(Next::Abort);
-        }
-
-        let event = Execute::<E>::execute(self, execution_args).await?;
-        self.remember(event.clone()).await?;
-
-        Ok(Next::Continue(event))
-    }
-}
-
-#[async_trait::async_trait]
-impl<E, A> Do<E> for A
-where
-    A: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
-    E: Clone + Send + Sync + 'static,
-    <Self as Execute<E>>::Args: Send + Sync,
-{
-}
-
-#[async_trait::async_trait]
-pub trait CheckMemory<E> {
-    async fn check_memory(&self) -> anyhow::Result<Option<E>>;
-}
-
-#[async_trait::async_trait]
-impl<E, A> CheckMemory<E> for A
-where
-    A: db::Load<E> + std::ops::Deref<Target = SwapId>,
-    E: 'static,
-{
-    async fn check_memory(&self) -> anyhow::Result<Option<E>> {
-        self.load(**self).await
-    }
-}
-
-#[async_trait::async_trait]
-pub trait ShouldAbort {
-    async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool>;
-}
-
-#[async_trait::async_trait]
-impl<A> ShouldAbort for A
-where
-    A: BetaLedgerTime + Sync,
-{
-    async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
-        let beta_ledger_time = self.beta_ledger_time().await?;
-
-        Ok(beta_expiry <= beta_ledger_time)
-    }
-}
-
-#[async_trait::async_trait]
-pub trait Execute<E> {
-    type Args;
-    async fn execute(&self, args: Self::Args) -> anyhow::Result<E>;
-}
-
-#[async_trait::async_trait]
-pub trait Remember<E> {
-    async fn remember(&self, event: E) -> anyhow::Result<()>;
-}
-
-#[async_trait::async_trait]
-impl<E, A> Remember<E> for A
-where
-    A: db::Save<E> + std::ops::Deref<Target = SwapId>,
-    E: Send + 'static,
-{
-    async fn remember(&self, event: E) -> anyhow::Result<()> {
-        self.save(event, **self).await
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Next<E> {
-    Continue(E),
-    Abort,
-}
-
-#[async_trait::async_trait]
-pub trait BetaLedgerTime {
-    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp>;
 }
 
 #[cfg(all(test, feature = "test-docker"))]
