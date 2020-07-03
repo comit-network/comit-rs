@@ -37,10 +37,10 @@ impl Wallet {
     }
 
     pub fn account(&self) -> Address {
-        let address = self.private_key.to_public_key().expect("cannot fail");
+        let pk = self.private_key.to_public_key().expect("cannot fail");
 
         let mut bytes = [0u8; 20];
-        bytes.copy_from_slice(address.as_bytes());
+        bytes.copy_from_slice(pk.as_bytes());
 
         Address::from(bytes)
     }
