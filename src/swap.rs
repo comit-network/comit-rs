@@ -372,7 +372,7 @@ mod tests {
         );
 
         let alice_swap = {
-            let swap_id = SwapId::random();
+            let swap_id = SwapId::default();
             let alice = WalletAlice {
                 alpha_wallet: alice_bitcoin_wallet.clone(),
                 beta_wallet: alice_ethereum_wallet.clone(),
@@ -398,7 +398,7 @@ mod tests {
         };
 
         let bob_swap = {
-            let swap_id = SwapId::random();
+            let swap_id = SwapId::default();
             let alice = WatchOnlyAlice {
                 alpha_connector: Arc::clone(&bitcoin_connector),
                 beta_connector: Arc::clone(&ethereum_connector),
