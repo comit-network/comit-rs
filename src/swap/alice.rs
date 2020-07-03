@@ -4,10 +4,13 @@
 //! representation of the other party, Alice, is a component that
 //! watches the two blockchains involved in the swap.
 
-use crate::swap::{
-    db,
-    ethereum::{self, ethereum_latest_time},
-    hbit, herc20, Next,
+use crate::{
+    swap::{
+        db,
+        ethereum::{self, ethereum_latest_time},
+        hbit, herc20, Next,
+    },
+    SwapId,
 };
 use chrono::NaiveDateTime;
 use comit::{
@@ -23,6 +26,7 @@ pub struct WatchOnlyAlice<AC, BC, DB> {
     pub db: DB,
     pub secret_hash: SecretHash,
     pub start_of_swap: NaiveDateTime,
+    pub swap_id: SwapId,
 }
 
 #[async_trait::async_trait]
@@ -38,7 +42,7 @@ where
         params: &hbit::Params,
         beta_expiry: Timestamp,
     ) -> anyhow::Result<Next<hbit::CorrectlyFunded>> {
-        if let Some(fund_event) = self.db.load(0).await? {
+        if let Some(fund_event) = self.db.load(self.swap_id).await? {
             return Ok(Next::Continue(fund_event));
         }
 
@@ -50,7 +54,7 @@ where
         let fund_event =
             hbit::watch_for_funded(self.alpha_connector.as_ref(), &params, self.start_of_swap)
                 .await?;
-        self.db.save(fund_event, 0).await?;
+        self.db.save(fund_event, self.swap_id).await?;
 
         Ok(Next::Continue(fund_event))
     }
@@ -72,7 +76,7 @@ where
         beta_expiry: Timestamp,
     ) -> anyhow::Result<Next<herc20::Redeemed>> {
         {
-            if let Some(redeem_event) = self.db.load(0).await? {
+            if let Some(redeem_event) = self.db.load(self.swap_id).await? {
                 return Ok(Next::Continue(redeem_event));
             }
 
@@ -87,7 +91,7 @@ where
                 deploy_event,
             )
             .await?;
-            self.db.save(redeem_event.clone(), 0).await?;
+            self.db.save(redeem_event.clone(), self.swap_id).await?;
 
             Ok(Next::Continue(redeem_event))
         }
@@ -138,6 +142,7 @@ pub mod wallet_actor {
         pub private_protocol_details: E,
         pub secret: Secret,
         pub start_of_swap: NaiveDateTime,
+        pub swap_id: SwapId,
     }
 
     #[async_trait::async_trait]
@@ -151,7 +156,7 @@ pub mod wallet_actor {
             params: &hbit::Params,
             beta_expiry: Timestamp,
         ) -> anyhow::Result<Next<hbit::CorrectlyFunded>> {
-            if let Some(fund_event) = self.db.load(0).await? {
+            if let Some(fund_event) = self.db.load(self.swap_id).await? {
                 return Ok(Next::Continue(fund_event));
             }
 
@@ -161,7 +166,7 @@ pub mod wallet_actor {
             }
 
             let fund_event = self.fund(&params).await?;
-            self.db.save(fund_event, 0).await?;
+            self.db.save(fund_event, self.swap_id).await?;
 
             Ok(Next::Continue(fund_event))
         }
@@ -181,7 +186,7 @@ pub mod wallet_actor {
             beta_expiry: Timestamp,
         ) -> anyhow::Result<Next<herc20::Redeemed>> {
             {
-                if let Some(redeem_event) = self.db.load(0).await? {
+                if let Some(redeem_event) = self.db.load(self.swap_id).await? {
                     return Ok(Next::Continue(redeem_event));
                 }
 
@@ -191,7 +196,7 @@ pub mod wallet_actor {
                 }
 
                 let redeem_event = self.redeem(&params, deploy_event).await?;
-                self.db.save(redeem_event.clone(), 0).await?;
+                self.db.save(redeem_event.clone(), self.swap_id).await?;
 
                 Ok(Next::Continue(redeem_event))
             }

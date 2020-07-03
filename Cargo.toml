@@ -30,6 +30,7 @@ tiny-bip39 = "0.7"
 thiserror = "1.0"
 tokio = { version = "0.2", features = ["time"] }
 tracing = "0.1.15"
+uuid = { version = "0.8", features = ["serde", "v4"] }
 
 [dependencies.rand]
 default-features = false

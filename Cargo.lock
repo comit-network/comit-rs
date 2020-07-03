@@ -1759,6 +1759,7 @@ dependencies = [
  "tiny-bip39",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

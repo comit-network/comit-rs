@@ -101,7 +101,7 @@ mod tests {
     use crate::{
         bitcoin_wallet, ethereum_wallet,
         swap::{alice::wallet_actor::WalletAlice, bitcoin, bob::watch_only_actor::WatchOnlyBob},
-        test_harness, Seed,
+        test_harness, Seed, SwapId,
     };
     use ::bitcoin::secp256k1;
     use chrono::Utc;
@@ -205,56 +205,64 @@ mod tests {
 
     #[async_trait::async_trait]
     impl db::Load<hbit::CorrectlyFunded> for Database {
-        async fn load(&self, _swap_id: u8) -> anyhow::Result<Option<hbit::CorrectlyFunded>> {
+        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<hbit::CorrectlyFunded>> {
             Ok(None)
         }
     }
 
     #[async_trait::async_trait]
     impl db::Load<herc20::Deployed> for Database {
-        async fn load(&self, _swap_id: u8) -> anyhow::Result<Option<herc20::Deployed>> {
+        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<herc20::Deployed>> {
             Ok(None)
         }
     }
 
     #[async_trait::async_trait]
     impl db::Load<herc20::CorrectlyFunded> for Database {
-        async fn load(&self, _swap_id: u8) -> anyhow::Result<Option<herc20::CorrectlyFunded>> {
+        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<herc20::CorrectlyFunded>> {
             Ok(None)
         }
     }
 
     #[async_trait::async_trait]
     impl db::Load<herc20::Redeemed> for Database {
-        async fn load(&self, _swap_id: u8) -> anyhow::Result<Option<herc20::Redeemed>> {
+        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<herc20::Redeemed>> {
             Ok(None)
         }
     }
 
     #[async_trait::async_trait]
     impl db::Save<hbit::CorrectlyFunded> for Database {
-        async fn save(&self, _event: hbit::CorrectlyFunded, _swap_id: u8) -> anyhow::Result<()> {
+        async fn save(
+            &self,
+            _event: hbit::CorrectlyFunded,
+            _swap_id: SwapId,
+        ) -> anyhow::Result<()> {
             Ok(())
         }
     }
 
     #[async_trait::async_trait]
     impl db::Save<herc20::Deployed> for Database {
-        async fn save(&self, _event: herc20::Deployed, _swap_id: u8) -> anyhow::Result<()> {
+        async fn save(&self, _event: herc20::Deployed, _swap_id: SwapId) -> anyhow::Result<()> {
             Ok(())
         }
     }
 
     #[async_trait::async_trait]
     impl db::Save<herc20::CorrectlyFunded> for Database {
-        async fn save(&self, _event: herc20::CorrectlyFunded, _swap_id: u8) -> anyhow::Result<()> {
+        async fn save(
+            &self,
+            _event: herc20::CorrectlyFunded,
+            _swap_id: SwapId,
+        ) -> anyhow::Result<()> {
             Ok(())
         }
     }
 
     #[async_trait::async_trait]
     impl db::Save<herc20::Redeemed> for Database {
-        async fn save(&self, _event: herc20::Redeemed, _swap_id: u8) -> anyhow::Result<()> {
+        async fn save(&self, _event: herc20::Redeemed, _swap_id: SwapId) -> anyhow::Result<()> {
             Ok(())
         }
     }
@@ -381,6 +389,7 @@ mod tests {
         );
 
         let alice_swap = {
+            let swap_id = SwapId::random();
             let alice = WalletAlice {
                 alpha_wallet: alice_bitcoin_wallet.clone(),
                 beta_wallet: alice_ethereum_wallet.clone(),
@@ -388,6 +397,7 @@ mod tests {
                 private_protocol_details: private_details_funder,
                 secret,
                 start_of_swap,
+                swap_id,
             };
             let bob = WatchOnlyBob {
                 alpha_connector: Arc::clone(&bitcoin_connector),
@@ -395,18 +405,21 @@ mod tests {
                 db: alice_db,
                 secret_hash,
                 start_of_swap,
+                swap_id,
             };
 
             hbit_herc20(alice, bob, hbit_params, herc20_params.clone())
         };
 
         let bob_swap = {
+            let swap_id = SwapId::random();
             let alice = WatchOnlyAlice {
                 alpha_connector: Arc::clone(&bitcoin_connector),
                 beta_connector: Arc::clone(&ethereum_connector),
                 db: bob_db,
                 secret_hash,
                 start_of_swap,
+                swap_id,
             };
             let bob = WalletBob {
                 alpha_wallet: bob_bitcoin_wallet.clone(),
@@ -415,6 +428,7 @@ mod tests {
                 secret_hash,
                 private_protocol_details: private_details_redeemer,
                 start_of_swap,
+                swap_id,
             };
 
             hbit_herc20(alice, bob, hbit_params, herc20_params.clone())

@@ -3,10 +3,13 @@
 //! In Nectar we always take the role of Bob in the swap, so this
 //! component has to be prepared to execute actions using wallets.
 
-use crate::swap::{
-    bitcoin, db,
-    ethereum::{self, ethereum_latest_time},
-    Next, {hbit, herc20},
+use crate::{
+    swap::{
+        bitcoin, db,
+        ethereum::{self, ethereum_latest_time},
+        Next, {hbit, herc20},
+    },
+    SwapId,
 };
 use chrono::NaiveDateTime;
 use comit::{Secret, SecretHash, Timestamp};
@@ -20,6 +23,7 @@ pub struct WalletBob<AW, BW, DB, E> {
     pub private_protocol_details: E,
     pub secret_hash: SecretHash,
     pub start_of_swap: NaiveDateTime,
+    pub swap_id: SwapId,
 }
 
 #[async_trait::async_trait]
@@ -35,7 +39,7 @@ where
         beta_expiry: Timestamp,
     ) -> anyhow::Result<Next<herc20::Deployed>> {
         {
-            if let Some(deploy_event) = self.db.load(0).await? {
+            if let Some(deploy_event) = self.db.load(self.swap_id).await? {
                 return Ok(Next::Continue(deploy_event));
             }
 
@@ -45,7 +49,7 @@ where
             }
 
             let deploy_event = self.deploy(&params).await?;
-            self.db.save(deploy_event.clone(), 0).await?;
+            self.db.save(deploy_event.clone(), self.swap_id).await?;
 
             Ok(Next::Continue(deploy_event))
         }
@@ -65,7 +69,7 @@ where
         deploy_event: herc20::Deployed,
         beta_expiry: Timestamp,
     ) -> anyhow::Result<Next<herc20::CorrectlyFunded>> {
-        if let Some(fund_event) = self.db.load(0).await? {
+        if let Some(fund_event) = self.db.load(self.swap_id).await? {
             return Ok(Next::Continue(fund_event));
         }
 
@@ -75,7 +79,7 @@ where
         }
 
         let fund_event = self.fund(params, deploy_event).await?;
-        self.db.save(fund_event.clone(), 0).await?;
+        self.db.save(fund_event.clone(), self.swap_id).await?;
 
         Ok(Next::Continue(fund_event))
     }
@@ -211,6 +215,7 @@ pub mod watch_only_actor {
         pub db: DB,
         pub secret_hash: SecretHash,
         pub start_of_swap: NaiveDateTime,
+        pub swap_id: SwapId,
     }
 
     #[async_trait::async_trait]
@@ -228,7 +233,7 @@ pub mod watch_only_actor {
             beta_expiry: Timestamp,
         ) -> anyhow::Result<Next<herc20::Deployed>> {
             {
-                if let Some(deploy_event) = self.db.load(0).await? {
+                if let Some(deploy_event) = self.db.load(self.swap_id).await? {
                     return Ok(Next::Continue(deploy_event));
                 }
 
@@ -243,7 +248,7 @@ pub mod watch_only_actor {
                     self.start_of_swap,
                 )
                 .await?;
-                self.db.save(deploy_event.clone(), 0).await?;
+                self.db.save(deploy_event.clone(), self.swap_id).await?;
 
                 Ok(Next::Continue(deploy_event))
             }
@@ -266,7 +271,7 @@ pub mod watch_only_actor {
             beta_expiry: Timestamp,
         ) -> anyhow::Result<Next<herc20::CorrectlyFunded>> {
             {
-                if let Some(fund_event) = self.db.load(0).await? {
+                if let Some(fund_event) = self.db.load(self.swap_id).await? {
                     return Ok(Next::Continue(fund_event));
                 }
 
@@ -282,7 +287,7 @@ pub mod watch_only_actor {
                     deploy_event,
                 )
                 .await?;
-                self.db.save(fund_event.clone(), 0).await?;
+                self.db.save(fund_event.clone(), self.swap_id).await?;
 
                 Ok(Next::Continue(fund_event))
             }
