@@ -6,8 +6,7 @@
 
 use crate::{
     swap::{
-        db, ethereum, hbit, herc20, BlockchainTime, CheckMemory, Execute, Next, Remember,
-        ShouldAbort,
+        db, ethereum, hbit, herc20, BlockchainTime, CheckMemory, Execute, Remember, ShouldAbort,
     },
     SwapId,
 };
@@ -29,33 +28,6 @@ pub struct WatchOnlyAlice<AC, BC, DB> {
 }
 
 #[async_trait::async_trait]
-impl<T, AC, BC, DB> CheckMemory<T> for WatchOnlyAlice<AC, BC, DB>
-where
-    AC: Send + Sync,
-    BC: Send + Sync,
-    DB: db::Load<T>,
-    T: 'static,
-{
-    async fn check_memory(&self) -> anyhow::Result<Option<T>> {
-        self.db.load(self.swap_id).await
-    }
-}
-
-#[async_trait::async_trait]
-impl<AC, BC, DB> ShouldAbort for WatchOnlyAlice<AC, BC, DB>
-where
-    AC: Send + Sync,
-    BC: BlockchainTime + Send + Sync,
-    DB: Send + Sync,
-{
-    async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
-        let beta_blockchain_time = self.beta_connector.as_ref().blockchain_time().await?;
-
-        Ok(beta_expiry <= beta_blockchain_time)
-    }
-}
-
-#[async_trait::async_trait]
 impl<AC, BC, DB> Execute<hbit::CorrectlyFunded> for WatchOnlyAlice<AC, BC, DB>
 where
     AC: LatestBlock<Block = bitcoin::Block>
@@ -71,52 +43,26 @@ where
 }
 
 #[async_trait::async_trait]
-impl<T, AC, BC, DB> Remember<T> for WatchOnlyAlice<AC, BC, DB>
-where
-    AC: Send + Sync,
-    BC: Send + Sync,
-    DB: db::Save<T>,
-    T: Send + 'static,
-{
-    async fn remember(&self, event: T) -> anyhow::Result<()> {
-        self.db.save(event, self.swap_id).await
-    }
-}
-
-#[async_trait::async_trait]
-impl<AC, BC, DB> herc20::RedeemAsAlice for WatchOnlyAlice<AC, BC, DB>
+impl<AC, BC, DB> Execute<herc20::Redeemed> for WatchOnlyAlice<AC, BC, DB>
 where
     AC: Send + Sync,
     BC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + ReceiptByHash,
-    DB: db::Load<herc20::Redeemed> + db::Save<herc20::Redeemed>,
+    DB: Send + Sync,
 {
-    async fn redeem(
+    type Args = (herc20::Params, herc20::Deployed);
+
+    async fn execute(
         &self,
-        _params: herc20::Params,
-        deploy_event: herc20::Deployed,
-        beta_expiry: Timestamp,
-    ) -> anyhow::Result<Next<herc20::Redeemed>> {
-        {
-            if let Some(redeem_event) = self.db.load(self.swap_id).await? {
-                return Ok(Next::Continue(redeem_event));
-            }
-
-            if beta_expiry <= self.beta_connector.as_ref().blockchain_time().await? {
-                return Ok(Next::Abort);
-            }
-
-            let redeem_event = herc20::watch_for_redeemed(
-                self.beta_connector.as_ref(),
-                self.start_of_swap,
-                deploy_event,
-            )
-            .await?;
-            self.db.save(redeem_event.clone(), self.swap_id).await?;
-
-            Ok(Next::Continue(redeem_event))
-        }
+        (_, deploy_event): (herc20::Params, herc20::Deployed),
+    ) -> anyhow::Result<herc20::Redeemed> {
+        herc20::watch_for_redeemed(
+            self.beta_connector.as_ref(),
+            self.start_of_swap,
+            deploy_event,
+        )
+        .await
     }
 }
 
@@ -142,6 +88,46 @@ where
         .await?;
 
         Ok(event)
+    }
+}
+
+#[async_trait::async_trait]
+impl<T, AC, BC, DB> CheckMemory<T> for WatchOnlyAlice<AC, BC, DB>
+where
+    AC: Send + Sync,
+    BC: Send + Sync,
+    DB: db::Load<T>,
+    T: 'static,
+{
+    async fn check_memory(&self) -> anyhow::Result<Option<T>> {
+        self.db.load(self.swap_id).await
+    }
+}
+
+#[async_trait::async_trait]
+impl<T, AC, BC, DB> Remember<T> for WatchOnlyAlice<AC, BC, DB>
+where
+    AC: Send + Sync,
+    BC: Send + Sync,
+    DB: db::Save<T>,
+    T: Send + 'static,
+{
+    async fn remember(&self, event: T) -> anyhow::Result<()> {
+        self.db.save(event, self.swap_id).await
+    }
+}
+
+#[async_trait::async_trait]
+impl<AC, BC, DB> ShouldAbort for WatchOnlyAlice<AC, BC, DB>
+where
+    AC: Send + Sync,
+    BC: BlockchainTime + Send + Sync,
+    DB: Send + Sync,
+{
+    async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+        let beta_blockchain_time = self.beta_connector.as_ref().blockchain_time().await?;
+
+        Ok(beta_expiry <= beta_blockchain_time)
     }
 }
 
@@ -182,32 +168,22 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AW, DB, E> herc20::RedeemAsAlice for WalletAlice<AW, ethereum::Wallet, DB, E>
+    impl<AW, BW, DB, E> Execute<herc20::Redeemed> for WalletAlice<AW, BW, DB, E>
     where
         AW: Send + Sync,
-        DB: db::Load<herc20::Redeemed> + db::Save<herc20::Redeemed>,
+        BW: herc20::ExecuteRedeem + Send + Sync,
+        DB: Send + Sync,
         E: Send + Sync,
     {
-        async fn redeem(
+        type Args = (herc20::Params, herc20::Deployed);
+
+        async fn execute(
             &self,
-            params: herc20::Params,
-            deploy_event: herc20::Deployed,
-            beta_expiry: Timestamp,
-        ) -> anyhow::Result<Next<herc20::Redeemed>> {
-            {
-                if let Some(redeem_event) = self.db.load(self.swap_id).await? {
-                    return Ok(Next::Continue(redeem_event));
-                }
-
-                if beta_expiry <= self.beta_wallet.blockchain_time().await? {
-                    return Ok(Next::Abort);
-                }
-
-                let redeem_event = self.redeem(&params, deploy_event).await?;
-                self.db.save(redeem_event.clone(), self.swap_id).await?;
-
-                Ok(Next::Continue(redeem_event))
-            }
+            (params, deploy_event): (herc20::Params, herc20::Deployed),
+        ) -> anyhow::Result<herc20::Redeemed> {
+            self.beta_wallet
+                .execute_redeem(params, self.secret, deploy_event, self.start_of_swap)
+                .await
         }
     }
 
@@ -256,26 +232,6 @@ pub mod wallet_actor {
             let refund_event = hbit::Refunded { transaction };
 
             Ok(refund_event)
-        }
-    }
-
-    impl<AW, DB, E> WalletAlice<AW, ethereum::Wallet, DB, E> {
-        async fn redeem(
-            &self,
-            params: &herc20::Params,
-            deploy_event: herc20::Deployed,
-        ) -> anyhow::Result<herc20::Redeemed> {
-            let redeem_action = params.build_redeem_action(deploy_event.location, self.secret);
-            self.beta_wallet.redeem(redeem_action).await?;
-
-            let event = herc20::watch_for_redeemed(
-                self.beta_wallet.connector.as_ref(),
-                self.start_of_swap,
-                deploy_event,
-            )
-            .await?;
-
-            Ok(event)
         }
     }
 

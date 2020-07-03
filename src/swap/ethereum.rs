@@ -3,7 +3,10 @@ use comit::{btsieve::LatestBlock, Timestamp};
 use std::sync::Arc;
 
 use chrono::NaiveDateTime;
-pub use comit::ethereum::{Address, Block, ChainId, Hash};
+pub use comit::{
+    ethereum::{Address, Block, ChainId, Hash},
+    Secret,
+};
 
 #[derive(Debug, Clone)]
 pub struct Wallet {
@@ -12,12 +15,6 @@ pub struct Wallet {
 }
 
 impl Wallet {
-    pub async fn redeem(&self, action: herc20::CallContract) -> anyhow::Result<()> {
-        let _ = self.inner.call_contract(action).await?;
-
-        Ok(())
-    }
-
     pub async fn refund(&self, action: herc20::CallContract) -> anyhow::Result<()> {
         let _ = self.inner.call_contract(action).await?;
 
@@ -53,10 +50,30 @@ impl herc20::ExecuteFund for Wallet {
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<herc20::CorrectlyFunded> {
         let action = params.build_fund_action(deploy_event.location);
-        let _transaction_hash = self.inner.call_contract(action).await?;
+        let _data = self.inner.call_contract(action).await?;
 
         let event =
             herc20::watch_for_funded(self.connector.as_ref(), params, start_of_swap, deploy_event)
+                .await?;
+
+        Ok(event)
+    }
+}
+
+#[async_trait::async_trait]
+impl herc20::ExecuteRedeem for Wallet {
+    async fn execute_redeem(
+        &self,
+        params: herc20::Params,
+        secret: Secret,
+        deploy_event: herc20::Deployed,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<herc20::Redeemed> {
+        let action = params.build_redeem_action(deploy_event.location, secret);
+        let _data = self.inner.call_contract(action).await?;
+
+        let event =
+            herc20::watch_for_redeemed(self.connector.as_ref(), start_of_swap, deploy_event)
                 .await?;
 
         Ok(event)

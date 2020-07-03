@@ -44,6 +44,17 @@ pub trait ExecuteFund {
 }
 
 #[async_trait::async_trait]
+pub trait ExecuteRedeem {
+    async fn execute_redeem(
+        &self,
+        params: Params,
+        secret: Secret,
+        deploy_event: Deployed,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<Redeemed>;
+}
+
+#[async_trait::async_trait]
 pub trait RedeemAsAlice {
     async fn redeem(
         &self,
