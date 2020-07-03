@@ -11,10 +11,11 @@ use reqwest::Url;
 pub struct Wallet {
     private_key: clarity::PrivateKey,
     geth_client: geth::Client,
+    dai_contract_adr: Address,
 }
 
 impl Wallet {
-    pub fn new(seed: Seed, url: Url) -> anyhow::Result<Self> {
+    pub fn new(seed: Seed, url: Url, dai_contract_adr: Address) -> anyhow::Result<Self> {
         let private_key = clarity::PrivateKey::from_slice(&seed.secret_key_bytes())
             .map_err(|_| anyhow::anyhow!("Failed to derive private key from slice"))?;
 
@@ -23,16 +24,19 @@ impl Wallet {
         Ok(Self {
             private_key,
             geth_client,
+            dai_contract_adr,
         })
     }
 
     #[cfg(test)]
     pub fn new_from_private_key(private_key: clarity::PrivateKey, url: Url) -> Self {
         let geth_client = geth::Client::new(url);
+        let dai_contract_adr = Address::random();
 
         Self {
             private_key,
             geth_client,
+            dai_contract_adr
         }
     }
 
@@ -200,6 +204,10 @@ impl Wallet {
         self.geth_client
             .erc20_balance(self.account(), token_contract)
             .await
+    }
+
+    pub async fn dai_balance(&self) -> anyhow::Result<Erc20> {
+        self.erc20_balance(self.dai_contract_adr).await
     }
 
     pub async fn get_transaction_count(&self) -> anyhow::Result<u32> {

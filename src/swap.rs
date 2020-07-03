@@ -323,7 +323,7 @@ mod tests {
 
                 wallet
             };
-            let ethereum_wallet = ethereum_wallet::Wallet::new(seed, ethereum_node_url.clone())?;
+            let ethereum_wallet = ethereum_wallet::Wallet::new(seed, ethereum_node_url.clone(), token_contract)?;
 
             (
                 bitcoin::Wallet {
@@ -346,7 +346,7 @@ mod tests {
 
                 wallet
             };
-            let ethereum_wallet = ethereum_wallet::Wallet::new(seed, ethereum_node_url)?;
+            let ethereum_wallet = ethereum_wallet::Wallet::new(seed, ethereum_node_url, token_contract)?;
 
             ethereum_blockchain
                 .mint(

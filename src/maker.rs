@@ -58,9 +58,12 @@ impl Maker {
 
     pub fn update_rate(&mut self, mid_market_rate: ()) {}
 
-    // the balance is to be updated once the trade was actually setteled, i.e. the swap execution is finished
-    pub fn update_bitcoin_balance(&mut self, balance: crate::bitcoin::Amount) {
+    pub fn update_bitcoin_balance(&mut self, balance: bitcoin::Amount) {
         self.btc_balance = balance;
+    }
+
+    pub fn update_dai_balance(&mut self, balance: dai::Amount) {
+        self.dai_balance = balance;
     }
 
     pub fn track_failed_rate(&mut self, error: anyhow::Error) {}

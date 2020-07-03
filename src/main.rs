@@ -1,14 +1,21 @@
 #![allow(unreachable_code, unused_variables, clippy::unit_arg)]
 
-use nectar::{bitcoin, bitcoin_wallet, dai, maker::Reaction, mid_market_rate::get_btc_dai_mid_market_rate, network::{self, Nectar, Orderbook}, Maker, Spread, ethereum_wallet};
+use nectar::{
+    bitcoin, bitcoin_wallet, dai, ethereum_wallet,
+    maker::Reaction,
+    mid_market_rate::get_btc_dai_mid_market_rate,
+    network::{self, Nectar, Orderbook},
+    Maker, Spread,
+};
 use std::time::Duration;
 
-async fn init_maker(bitcoin_wallet: bitcoin_wallet::Wallet, ethereum_wallet: ethereum_wallet::Wallet) -> Maker {
+async fn init_maker(
+    bitcoin_wallet: bitcoin_wallet::Wallet,
+    ethereum_wallet: ethereum_wallet::Wallet,
+) -> Maker {
     let initial_btc_balance = bitcoin_wallet.balance().await;
 
-    // TODO: from config or hardcoded
-    let dai_contract_addr: comit::ethereum::Address = unimplemented!();
-    let initial_dai_balance = ethereum_wallet.erc20_balance(dai_contract_addr).await;
+    let initial_dai_balance = ethereum_wallet.dai_balance().await;
 
     // TODO: from config
     let btc_max_sell: anyhow::Result<bitcoin::Amount> = unimplemented!();
@@ -55,11 +62,14 @@ async fn init_maker(bitcoin_wallet: bitcoin_wallet::Wallet, ethereum_wallet: eth
 
 #[tokio::main]
 async fn main() {
+    // TODO: from config or hardcoded
+    let dai_contract_addr: comit::ethereum::Address = unimplemented!();
 
     // TODO: Proper wallet initialisation from config
     let bitcoin_wallet =
         bitcoin_wallet::Wallet::new(unimplemented!(), unimplemented!(), unimplemented!()).unwrap();
-    let ethereum_wallet = ethereum_wallet::Wallet::new(unimplemented!(), unimplemented!()).unwrap();
+    let ethereum_wallet =
+        ethereum_wallet::Wallet::new(unimplemented!(), unimplemented!(), unimplemented!()).unwrap();
 
     let maker = init_maker(bitcoin_wallet, ethereum_wallet).await;
 
@@ -89,6 +99,11 @@ async fn main() {
         let bitcoin_balance = bitcoin_wallet.balance().await;
         match bitcoin_balance {
             Ok(new_balance) => maker.update_bitcoin_balance(new_balance), // maker should record timestamp of this
+            Err(e) => maker.track_failed_balance_update(e),
+        }
+        let dai_balance = ethereum_wallet.dai_balance().await;
+        match dai_balance {
+            Ok(new_balance) => maker.update_dai_balance(new_balance.into()), // maker should record timestamp of this
             Err(e) => maker.track_failed_balance_update(e),
         }
 
