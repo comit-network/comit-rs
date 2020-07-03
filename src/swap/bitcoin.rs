@@ -1,9 +1,9 @@
 use crate::swap::hbit;
+use comit::{asset, Secret};
 use std::sync::Arc;
 
 pub use crate::bitcoin::Amount;
-pub use ::bitcoin::{Address, Block, BlockHash, OutPoint};
-use comit::asset;
+pub use ::bitcoin::{secp256k1::SecretKey, Address, Block, BlockHash, OutPoint};
 
 #[derive(Debug, Clone)]
 pub struct Wallet {
@@ -47,6 +47,34 @@ impl hbit::ExecuteFund for Wallet {
         let asset = asset::Bitcoin::from_sat(transaction.output[location.vout as usize].value);
 
         Ok(hbit::CorrectlyFunded { asset, location })
+    }
+}
+
+#[async_trait::async_trait]
+impl hbit::ExecuteRedeem for Wallet {
+    async fn execute_redeem(
+        &self,
+        params: hbit::Params,
+        fund_event: hbit::CorrectlyFunded,
+        secret: Secret,
+        transient_redeem_sk: SecretKey,
+    ) -> anyhow::Result<hbit::Redeemed> {
+        let redeem_address = self.inner.new_address().await?;
+
+        let action = params.build_redeem_action(
+            &crate::SECP,
+            fund_event.asset,
+            fund_event.location,
+            transient_redeem_sk,
+            redeem_address,
+            secret,
+        )?;
+        let transaction = self.spend(action).await?;
+
+        Ok(hbit::Redeemed {
+            transaction,
+            secret,
+        })
     }
 }
 

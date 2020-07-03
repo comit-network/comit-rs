@@ -8,11 +8,11 @@ mod ethereum;
 mod hbit;
 mod herc20;
 
+use comit::{Secret, Timestamp};
 use futures::future;
 
 pub use alice::WatchOnlyAlice;
 pub use bob::WalletBob;
-use comit::Timestamp;
 
 /// Execute a Hbit<->Herc20 swap.
 pub async fn hbit_herc20<A, B>(
@@ -32,7 +32,7 @@ where
         + Execute<herc20::Deployed, Args = herc20::Params>
         + Do<herc20::CorrectlyFunded>
         + Execute<herc20::CorrectlyFunded, Args = (herc20::Params, herc20::Deployed)>
-        + hbit::RedeemAsBob
+        + Execute<hbit::Redeemed, Args = (hbit::Params, hbit::CorrectlyFunded, Secret)>
         + herc20::Refund
         + Sync,
 {
@@ -84,7 +84,17 @@ where
         }
     };
 
-    let hbit_redeem = bob.redeem(&hbit_params, hbit_funded, herc20_redeemed.secret);
+    // TODO: Prevent Bob from trying to redeem again (applies to the
+    // all the refunds too). Reusing the Do trait seems wrong since we
+    // should never abort at this stage, which is why we used the
+    // Execute trait directly. There is no risk in doing this action
+    // more than once, but it's a bit wasteful. We should probably
+    // introduce another trait which composes CheckMemory, Execute and
+    // Remember to solve this problem (P.S. naming is hard)
+    let hbit_redeem = Execute::<hbit::Redeemed>::execute(
+        &bob,
+        (hbit_params, hbit_funded, herc20_redeemed.secret),
+    );
     let hbit_refund = alice.refund(&hbit_params, hbit_funded);
 
     // It's always safe for Bob to redeem, he just has to do it before

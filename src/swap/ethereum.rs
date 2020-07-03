@@ -1,8 +1,8 @@
 use crate::swap::{herc20, BlockchainTime};
+use chrono::NaiveDateTime;
 use comit::{btsieve::LatestBlock, Timestamp};
 use std::sync::Arc;
 
-use chrono::NaiveDateTime;
 pub use comit::{
     ethereum::{Address, Block, ChainId, Hash},
     Secret,

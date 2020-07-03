@@ -104,18 +104,26 @@ where
 }
 
 #[async_trait::async_trait]
-impl<DB> hbit::RedeemAsBob
-    for WalletBob<bitcoin::Wallet, ethereum::Wallet, DB, hbit::PrivateDetailsRedeemer>
+impl<AW, BW, DB> Execute<hbit::Redeemed> for WalletBob<AW, BW, DB, hbit::PrivateDetailsRedeemer>
 where
+    AW: hbit::ExecuteRedeem + Send + Sync,
+    BW: Send + Sync,
     DB: Send + Sync,
 {
-    async fn redeem(
+    type Args = (hbit::Params, hbit::CorrectlyFunded, Secret);
+
+    async fn execute(
         &self,
-        params: &hbit::Params,
-        fund_event: hbit::CorrectlyFunded,
-        secret: Secret,
+        (params, fund_event, secret): (hbit::Params, hbit::CorrectlyFunded, Secret),
     ) -> anyhow::Result<hbit::Redeemed> {
-        self.redeem(*params, fund_event, secret).await
+        self.alpha_wallet
+            .execute_redeem(
+                params,
+                fund_event,
+                secret,
+                self.private_protocol_details.transient_redeem_sk,
+            )
+            .await
     }
 }
 
@@ -161,31 +169,6 @@ impl<AW, DB, E> WalletBob<AW, ethereum::Wallet, DB, E> {
         .await?;
 
         Ok(refund_event)
-    }
-}
-
-impl<BW, DB> WalletBob<bitcoin::Wallet, BW, DB, hbit::PrivateDetailsRedeemer> {
-    async fn redeem(
-        &self,
-        params: hbit::Params,
-        fund_event: hbit::CorrectlyFunded,
-        secret: Secret,
-    ) -> anyhow::Result<hbit::Redeemed> {
-        let redeem_action = params.build_redeem_action(
-            &crate::SECP,
-            fund_event.asset,
-            fund_event.location,
-            self.private_protocol_details.clone().transient_redeem_sk,
-            self.private_protocol_details.clone().final_redeem_identity,
-            secret,
-        )?;
-        let transaction = self.alpha_wallet.redeem(redeem_action).await?;
-        let redeem_event = hbit::Redeemed {
-            transaction,
-            secret,
-        };
-
-        Ok(redeem_event)
     }
 }
 
@@ -291,30 +274,26 @@ pub mod watch_only_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AC, BC, DB> hbit::RedeemAsBob for WatchOnlyBob<AC, BC, DB>
+    impl<AC, BC, DB> Execute<hbit::Redeemed> for WatchOnlyBob<AC, BC, DB>
     where
         AC: LatestBlock<Block = bitcoin::Block>
             + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
-        BC: LatestBlock<Block = ethereum::Block>
-            + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-            + ReceiptByHash,
+        BC: Send + Sync,
         DB: Send + Sync,
     {
-        async fn redeem(
+        type Args = (hbit::Params, hbit::CorrectlyFunded, Secret);
+
+        async fn execute(
             &self,
-            params: &hbit::Params,
-            fund_event: hbit::CorrectlyFunded,
-            _secret: Secret,
+            (params, fund_event, _): (hbit::Params, hbit::CorrectlyFunded, Secret),
         ) -> anyhow::Result<hbit::Redeemed> {
-            let event = hbit::watch_for_redeemed(
+            hbit::watch_for_redeemed(
                 self.alpha_connector.as_ref(),
                 &params,
                 fund_event.location,
                 self.start_of_swap,
             )
-            .await?;
-
-            Ok(event)
+            .await
         }
     }
 

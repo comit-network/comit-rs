@@ -27,12 +27,13 @@ pub trait ExecuteFund {
 }
 
 #[async_trait::async_trait]
-pub trait RedeemAsBob {
-    async fn redeem(
+pub trait ExecuteRedeem {
+    async fn execute_redeem(
         &self,
-        params: &Params,
+        params: Params,
         fund_event: CorrectlyFunded,
         secret: Secret,
+        transient_redeem_sk: SecretKey,
     ) -> anyhow::Result<Redeemed>;
 }
 
