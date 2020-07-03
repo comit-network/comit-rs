@@ -22,20 +22,24 @@ pub async fn hbit_herc20<A, B>(
     herc20_params: herc20::Params,
 ) -> anyhow::Result<()>
 where
-    A: hbit::Fund + herc20::RedeemAsAlice + hbit::Refund,
+    A: Do<hbit::CorrectlyFunded>
+        + Execute<hbit::CorrectlyFunded, Args = hbit::Params>
+        + herc20::RedeemAsAlice
+        + hbit::Refund
+        + Sync,
     B: Do<herc20::Deployed>
         + Execute<herc20::Deployed, Args = herc20::Params>
         + Do<herc20::CorrectlyFunded>
         + Execute<herc20::CorrectlyFunded, Args = (herc20::Params, herc20::Deployed)>
         + hbit::RedeemAsBob
         + herc20::Refund
-        + Send
         + Sync,
 {
-    let hbit_funded = match alice.fund(&hbit_params, herc20_params.expiry).await? {
-        Next::Continue(hbit_funded) => hbit_funded,
-        Next::Abort => return Ok(()),
-    };
+    let hbit_funded =
+        match Do::<hbit::CorrectlyFunded>::r#do(&alice, herc20_params.expiry, hbit_params).await? {
+            Next::Continue(hbit_funded) => hbit_funded,
+            Next::Abort => return Ok(()),
+        };
 
     let herc20_deployed =
         match Do::<herc20::Deployed>::r#do(&bob, herc20_params.expiry, herc20_params.clone())

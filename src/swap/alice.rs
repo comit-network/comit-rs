@@ -5,7 +5,10 @@
 //! watches the two blockchains involved in the swap.
 
 use crate::{
-    swap::{db, ethereum, hbit, herc20, BlockchainTime, Next},
+    swap::{
+        db, ethereum, hbit, herc20, BlockchainTime, CheckMemory, Execute, Next, Remember,
+        ShouldAbort,
+    },
     SwapId,
 };
 use chrono::NaiveDateTime;
@@ -26,32 +29,57 @@ pub struct WatchOnlyAlice<AC, BC, DB> {
 }
 
 #[async_trait::async_trait]
-impl<AC, BC, DB> hbit::Fund for WatchOnlyAlice<AC, BC, DB>
+impl<T, AC, BC, DB> CheckMemory<T> for WatchOnlyAlice<AC, BC, DB>
+where
+    AC: Send + Sync,
+    BC: Send + Sync,
+    DB: db::Load<T>,
+    T: 'static,
+{
+    async fn check_memory(&self) -> anyhow::Result<Option<T>> {
+        self.db.load(self.swap_id).await
+    }
+}
+
+#[async_trait::async_trait]
+impl<AC, BC, DB> ShouldAbort for WatchOnlyAlice<AC, BC, DB>
+where
+    AC: Send + Sync,
+    BC: BlockchainTime + Send + Sync,
+    DB: Send + Sync,
+{
+    async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+        let beta_blockchain_time = self.beta_connector.as_ref().blockchain_time().await?;
+
+        Ok(beta_expiry <= beta_blockchain_time)
+    }
+}
+
+#[async_trait::async_trait]
+impl<AC, BC, DB> Execute<hbit::CorrectlyFunded> for WatchOnlyAlice<AC, BC, DB>
 where
     AC: LatestBlock<Block = bitcoin::Block>
         + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
-    BC: LatestBlock<Block = ethereum::Block>,
-    DB: db::Load<hbit::CorrectlyFunded> + db::Save<hbit::CorrectlyFunded>,
+    BC: Send + Sync,
+    DB: Send + Sync,
 {
-    async fn fund(
-        &self,
-        params: &hbit::Params,
-        beta_expiry: Timestamp,
-    ) -> anyhow::Result<Next<hbit::CorrectlyFunded>> {
-        if let Some(fund_event) = self.db.load(self.swap_id).await? {
-            return Ok(Next::Continue(fund_event));
-        }
+    type Args = hbit::Params;
 
-        if beta_expiry <= self.beta_connector.as_ref().blockchain_time().await? {
-            return Ok(Next::Abort);
-        }
+    async fn execute(&self, params: hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
+        hbit::watch_for_funded(self.alpha_connector.as_ref(), &params, self.start_of_swap).await
+    }
+}
 
-        let fund_event =
-            hbit::watch_for_funded(self.alpha_connector.as_ref(), &params, self.start_of_swap)
-                .await?;
-        self.db.save(fund_event, self.swap_id).await?;
-
-        Ok(Next::Continue(fund_event))
+#[async_trait::async_trait]
+impl<T, AC, BC, DB> Remember<T> for WatchOnlyAlice<AC, BC, DB>
+where
+    AC: Send + Sync,
+    BC: Send + Sync,
+    DB: db::Save<T>,
+    T: Send + 'static,
+{
+    async fn remember(&self, event: T) -> anyhow::Result<()> {
+        self.db.save(event, self.swap_id).await
     }
 }
 
@@ -124,8 +152,7 @@ pub mod wallet_actor {
 
     use super::*;
     use crate::swap::bitcoin;
-    use anyhow::Context;
-    use comit::{asset, Secret};
+    use comit::Secret;
     use std::time::Duration;
 
     #[derive(Clone, Copy, Debug)]
@@ -140,28 +167,17 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl<BW, DB> hbit::Fund for WalletAlice<bitcoin::Wallet, BW, DB, hbit::PrivateDetailsFunder>
+    impl<AW, BW, DB, E> Execute<hbit::CorrectlyFunded> for WalletAlice<AW, BW, DB, E>
     where
-        BW: LatestBlock<Block = ethereum::Block>,
-        DB: db::Load<hbit::CorrectlyFunded> + db::Save<hbit::CorrectlyFunded>,
+        AW: hbit::ExecuteFund + Send + Sync,
+        BW: Send + Sync,
+        DB: Send + Sync,
+        E: Send + Sync,
     {
-        async fn fund(
-            &self,
-            params: &hbit::Params,
-            beta_expiry: Timestamp,
-        ) -> anyhow::Result<Next<hbit::CorrectlyFunded>> {
-            if let Some(fund_event) = self.db.load(self.swap_id).await? {
-                return Ok(Next::Continue(fund_event));
-            }
+        type Args = hbit::Params;
 
-            if beta_expiry <= self.beta_wallet.blockchain_time().await? {
-                return Ok(Next::Abort);
-            }
-
-            let fund_event = self.fund(&params).await?;
-            self.db.save(fund_event, self.swap_id).await?;
-
-            Ok(Next::Continue(fund_event))
+        async fn execute(&self, params: hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
+            self.alpha_wallet.execute_fund(&params).await
         }
     }
 
@@ -224,39 +240,6 @@ pub mod wallet_actor {
     }
 
     impl<BW, DB> WalletAlice<bitcoin::Wallet, BW, DB, hbit::PrivateDetailsFunder> {
-        async fn fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
-            let fund_action = params.build_fund_action();
-            let transaction = self
-                .alpha_wallet
-                .fund(fund_action)
-                .await
-                .context("failed to fund bitcoin HTLC")?;
-
-            let txid = transaction.txid();
-            // TODO: This code is copied straight from COMIT lib. We
-            // should find a way of not having to duplicate this logic
-            let location = transaction
-                .output
-                .iter()
-                .enumerate()
-                .map(|(index, txout)| {
-                    // Casting a usize to u32 can lead to truncation on 64bit platforms
-                    // However, bitcoin limits the number of inputs to u32 anyway, so this
-                    // is not a problem for us.
-                    #[allow(clippy::cast_possible_truncation)]
-                    (index as u32, txout)
-                })
-                .find(|(_, txout)| txout.script_pubkey == params.compute_address().script_pubkey())
-                .map(|(vout, _txout)| bitcoin::OutPoint { txid, vout });
-
-            let location = location.ok_or_else(|| {
-                anyhow::anyhow!("Fund transaction does not contain expected outpoint")
-            })?;
-            let asset = asset::Bitcoin::from_sat(transaction.output[location.vout as usize].value);
-
-            Ok(hbit::CorrectlyFunded { asset, location })
-        }
-
         async fn refund(
             &self,
             params: &hbit::Params,
@@ -293,6 +276,49 @@ pub mod wallet_actor {
             .await?;
 
             Ok(event)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<T, AW, BW, DB, E> CheckMemory<T> for WalletAlice<AW, BW, DB, E>
+    where
+        AW: Send + Sync,
+        BW: Send + Sync,
+        DB: db::Load<T>,
+        E: Send + Sync,
+        T: 'static,
+    {
+        async fn check_memory(&self) -> anyhow::Result<Option<T>> {
+            self.db.load(self.swap_id).await
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<T, AW, BW, DB, E> Remember<T> for WalletAlice<AW, BW, DB, E>
+    where
+        AW: Send + Sync,
+        BW: Send + Sync,
+        DB: db::Save<T>,
+        E: Send + Sync,
+        T: Send + 'static,
+    {
+        async fn remember(&self, event: T) -> anyhow::Result<()> {
+            self.db.save(event, self.swap_id).await
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<AW, BW, DB, E> ShouldAbort for WalletAlice<AW, BW, DB, E>
+    where
+        AW: Send + Sync,
+        BW: BlockchainTime + Send + Sync,
+        DB: Send + Sync,
+        E: Send + Sync,
+    {
+        async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+            let beta_blockchain_time = self.beta_wallet.blockchain_time().await?;
+
+            Ok(beta_expiry <= beta_blockchain_time)
         }
     }
 }
