@@ -1,5 +1,4 @@
-//! Wrapper module around COMIT lib's Hbit module.
-
+use crate::swap::Next;
 use bitcoin::{secp256k1::SecretKey, Address, Block, BlockHash};
 use chrono::NaiveDateTime;
 use comit::asset;
@@ -8,7 +7,7 @@ pub use comit::{
     actions::bitcoin::{BroadcastSignedTransaction, SendToAddress},
     btsieve::{BlockByHash, LatestBlock},
     hbit::*,
-    htlc_location, transaction, Secret, SecretHash,
+    htlc_location, transaction, Secret, SecretHash, Timestamp,
 };
 
 #[derive(Clone, Debug)]
@@ -25,7 +24,11 @@ pub struct PrivateDetailsRedeemer {
 
 #[async_trait::async_trait]
 pub trait Fund {
-    async fn fund(&self, params: &Params) -> anyhow::Result<CorrectlyFunded>;
+    async fn fund(
+        &self,
+        hbit_params: &Params,
+        beta_expiry: Timestamp,
+    ) -> anyhow::Result<Next<CorrectlyFunded>>;
 }
 
 #[async_trait::async_trait]
@@ -34,7 +37,7 @@ pub trait RedeemAsAlice {
         &self,
         params: &Params,
         fund_event: CorrectlyFunded,
-    ) -> anyhow::Result<Redeemed>;
+    ) -> anyhow::Result<Next<Redeemed>>;
 }
 
 #[async_trait::async_trait]

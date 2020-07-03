@@ -3,11 +3,11 @@
 mod alice;
 mod bitcoin;
 mod bob;
+mod db;
 mod ethereum;
 mod hbit;
 mod herc20;
 
-use comit::Timestamp;
 use futures::future;
 
 pub use alice::WatchOnlyAlice;
@@ -21,41 +21,58 @@ pub async fn hbit_herc20<A, B>(
     herc20_params: herc20::Params,
 ) -> anyhow::Result<()>
 where
-    A: hbit::Fund + herc20::RedeemAsAlice + hbit::Refund + SafeToFund + SafeToRedeem,
-    B: herc20::Deploy + herc20::Fund + hbit::RedeemAsBob + herc20::Refund + SafeToFund,
+    A: hbit::Fund + herc20::RedeemAsAlice + hbit::Refund,
+    B: herc20::Deploy + herc20::Fund + hbit::RedeemAsBob + herc20::Refund,
 {
-    if !alice.is_safe_to_fund(herc20_params.expiry).await? {
-        return Ok(());
-    }
+    let hbit_funded = match alice.fund(&hbit_params, herc20_params.expiry).await? {
+        Next::Continue(hbit_funded) => hbit_funded,
+        Next::Abort => return Ok(()),
+    };
 
-    let hbit_funded = alice.fund(&hbit_params).await?;
+    let herc20_deployed = match bob
+        .deploy(herc20_params.clone(), herc20_params.expiry)
+        .await?
+    {
+        Next::Continue(herc20_deployed) => herc20_deployed,
+        Next::Abort => {
+            alice.refund(&hbit_params, hbit_funded).await?;
 
-    if !bob.is_safe_to_fund(herc20_params.expiry).await? {
-        alice.refund(&hbit_params, hbit_funded).await?;
+            return Ok(());
+        }
+    };
 
-        return Ok(());
-    }
+    let _herc20_funded = match bob
+        .fund(
+            herc20_params.clone(),
+            herc20_deployed.clone(),
+            herc20_params.expiry,
+        )
+        .await?
+    {
+        Next::Continue(herc20_funded) => herc20_funded,
+        Next::Abort => {
+            alice.refund(&hbit_params, hbit_funded).await?;
 
-    let herc20_deployed = bob.deploy(&herc20_params).await?;
+            return Ok(());
+        }
+    };
 
-    if !bob.is_safe_to_fund(herc20_params.expiry).await? {
-        alice.refund(&hbit_params, hbit_funded).await?;
+    let herc20_redeemed = match alice
+        .redeem(
+            herc20_params.clone(),
+            herc20_deployed.clone(),
+            herc20_params.expiry,
+        )
+        .await?
+    {
+        Next::Continue(herc20_redeemed) => herc20_redeemed,
+        Next::Abort => {
+            alice.refund(&hbit_params, hbit_funded).await?;
+            bob.refund(herc20_params, herc20_deployed.clone()).await?;
 
-        return Ok(());
-    }
-
-    let _herc20_funded = bob
-        .fund(herc20_params.clone(), herc20_deployed.clone())
-        .await?;
-
-    if !alice.is_safe_to_redeem(herc20_params.expiry).await? {
-        alice.refund(&hbit_params, hbit_funded).await?;
-        bob.refund(&herc20_params, herc20_deployed.clone()).await?;
-
-        return Ok(());
-    }
-
-    let herc20_redeemed = alice.redeem(&herc20_params, herc20_deployed).await?;
+            return Ok(());
+        }
+    };
 
     let hbit_redeem = bob.redeem(&hbit_params, hbit_funded, herc20_redeemed.secret);
     let hbit_refund = alice.refund(&hbit_params, hbit_funded);
@@ -72,22 +89,10 @@ where
     }
 }
 
-/// Determine whether funding a smart contract is safe.
-///
-/// Implementations should decide based on blockchain time and
-/// Beta expiry, the shorter of the two expiries.
-#[async_trait::async_trait]
-pub trait SafeToFund {
-    async fn is_safe_to_fund(&self, beta_expiry: Timestamp) -> anyhow::Result<bool>;
-}
-
-/// Determine whether redeeming a smart contract is safe.
-///
-/// Implementations should decide based on blockchain time and
-/// expiries.
-#[async_trait::async_trait]
-pub trait SafeToRedeem {
-    async fn is_safe_to_redeem(&self, beta_expiry: Timestamp) -> anyhow::Result<bool>;
+#[derive(Debug, Clone, Copy)]
+pub enum Next<E> {
+    Continue(E),
+    Abort,
 }
 
 #[cfg(all(test, feature = "test-docker"))]
@@ -96,7 +101,7 @@ mod tests {
     use crate::{
         bitcoin_wallet, ethereum_wallet,
         swap::{alice::wallet_actor::WalletAlice, bitcoin, bob::watch_only_actor::WatchOnlyBob},
-        test_harness, Seed,
+        test_harness, Seed, SwapId,
     };
     use ::bitcoin::secp256k1;
     use chrono::Utc;
@@ -194,9 +199,80 @@ mod tests {
         Secret::from(*bytes)
     }
 
+    // TODO: Implement these traits on a real database
+    #[derive(Clone, Copy)]
+    struct Database;
+
+    #[async_trait::async_trait]
+    impl db::Load<hbit::CorrectlyFunded> for Database {
+        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<hbit::CorrectlyFunded>> {
+            Ok(None)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl db::Load<herc20::Deployed> for Database {
+        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<herc20::Deployed>> {
+            Ok(None)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl db::Load<herc20::CorrectlyFunded> for Database {
+        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<herc20::CorrectlyFunded>> {
+            Ok(None)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl db::Load<herc20::Redeemed> for Database {
+        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<herc20::Redeemed>> {
+            Ok(None)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl db::Save<hbit::CorrectlyFunded> for Database {
+        async fn save(
+            &self,
+            _event: hbit::CorrectlyFunded,
+            _swap_id: SwapId,
+        ) -> anyhow::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl db::Save<herc20::Deployed> for Database {
+        async fn save(&self, _event: herc20::Deployed, _swap_id: SwapId) -> anyhow::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl db::Save<herc20::CorrectlyFunded> for Database {
+        async fn save(
+            &self,
+            _event: herc20::CorrectlyFunded,
+            _swap_id: SwapId,
+        ) -> anyhow::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl db::Save<herc20::Redeemed> for Database {
+        async fn save(&self, _event: herc20::Redeemed, _swap_id: SwapId) -> anyhow::Result<()> {
+            Ok(())
+        }
+    }
+
     #[tokio::test]
     async fn execute_alice_hbit_herc20_swap() -> anyhow::Result<()> {
         let client = clients::Cli::default();
+
+        let alice_db = Database;
+        let bob_db = Database;
 
         let bitcoin_network = ::bitcoin::Network::Regtest;
         let (bitcoin_connector, bitcoind_url, bitcoin_blockchain) = {
@@ -313,36 +389,46 @@ mod tests {
         );
 
         let alice_swap = {
+            let swap_id = SwapId::random();
             let alice = WalletAlice {
                 alpha_wallet: alice_bitcoin_wallet.clone(),
                 beta_wallet: alice_ethereum_wallet.clone(),
+                db: alice_db,
                 private_protocol_details: private_details_funder,
                 secret,
                 start_of_swap,
+                swap_id,
             };
             let bob = WatchOnlyBob {
                 alpha_connector: Arc::clone(&bitcoin_connector),
                 beta_connector: Arc::clone(&ethereum_connector),
+                db: alice_db,
                 secret_hash,
                 start_of_swap,
+                swap_id,
             };
 
             hbit_herc20(alice, bob, hbit_params, herc20_params.clone())
         };
 
         let bob_swap = {
+            let swap_id = SwapId::random();
             let alice = WatchOnlyAlice {
                 alpha_connector: Arc::clone(&bitcoin_connector),
                 beta_connector: Arc::clone(&ethereum_connector),
+                db: bob_db,
                 secret_hash,
                 start_of_swap,
+                swap_id,
             };
             let bob = WalletBob {
                 alpha_wallet: bob_bitcoin_wallet.clone(),
                 beta_wallet: bob_ethereum_wallet.clone(),
+                db: bob_db,
                 secret_hash,
                 private_protocol_details: private_details_redeemer,
                 start_of_swap,
+                swap_id,
             };
 
             hbit_herc20(alice, bob, hbit_params, herc20_params.clone())

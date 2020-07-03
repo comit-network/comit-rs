@@ -46,14 +46,6 @@ impl Wallet {
     }
 }
 
-#[async_trait::async_trait]
-impl LatestBlock for Wallet {
-    type Block = Block;
-    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
-        self.connector.latest_block().await
-    }
-}
-
 pub async fn ethereum_latest_time<C>(connector: &C) -> anyhow::Result<Timestamp>
 where
     C: LatestBlock<Block = Block>,
@@ -61,4 +53,12 @@ where
     let timestamp = connector.latest_block().await?.timestamp.into();
 
     Ok(timestamp)
+}
+
+#[async_trait::async_trait]
+impl LatestBlock for Wallet {
+    type Block = Block;
+    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
+        self.connector.latest_block().await
+    }
 }

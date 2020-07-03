@@ -17,7 +17,7 @@ ethereum-types = "0.9.0"
 futures = "0.3.5"
 hex = "0.4"
 lazy_static = "1.4"
-num = "0.2"
+num = "0.3"
 num256 = "0.2"
 reqwest = "0.10.6"
 serde = { version = "1.0", features = ["derive"] }
@@ -30,6 +30,7 @@ thiserror = "1.0"
 tiny-bip39 = "0.7"
 tokio = { version = "0.2", features = ["time"] }
 tracing = "0.1.15"
+uuid = { version = "0.8", features = ["serde", "v4"] }
 
 [dependencies.rand]
 default-features = false

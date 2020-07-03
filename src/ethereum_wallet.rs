@@ -37,9 +37,12 @@ impl Wallet {
     }
 
     pub fn account(&self) -> Address {
-        let address = self.private_key.to_public_key().expect("cannot fail");
+        let pk = self.private_key.to_public_key().expect("cannot fail");
 
-        Address::from_slice(&address.as_bytes())
+        let mut bytes = [0u8; 20];
+        bytes.copy_from_slice(pk.as_bytes());
+
+        Address::from(bytes)
     }
 
     pub async fn deploy_contract(
@@ -59,7 +62,7 @@ impl Wallet {
             gas_limit: gas_limit.into(),
             to: clarity::Address::default(),
             value: 0u64.into(),
-            data: data.0,
+            data,
             signature: None,
         };
 
@@ -148,7 +151,7 @@ impl Wallet {
                 anyhow::anyhow!("Failed to deserialize slice into clarity::Address")
             })?,
             value: 0u32.into(),
-            data: data.unwrap_or_default().0,
+            data: data.unwrap_or_default(),
             signature: None,
         };
 
