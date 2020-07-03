@@ -45,15 +45,15 @@ async fn init_maker(bitcoin_wallet: bitcoin_wallet::Wallet) -> Maker {
             Ok(dai_max_sell),
             Ok(initial_rate),
         ) => Maker::new(
-                initial_btc_balance,
-                initial_dai_balance,
-                btc_fee_reserve,
-                dai_fee_reserve,
-                btc_max_sell,
-                dai_max_sell,
-                initial_rate,
-                spread,
-            ),
+            initial_btc_balance,
+            initial_dai_balance,
+            btc_fee_reserve,
+            dai_fee_reserve,
+            btc_max_sell,
+            dai_max_sell,
+            initial_rate,
+            spread,
+        ),
         _ => panic!("Maker initialisation failed!"),
     }
 }
@@ -122,8 +122,6 @@ async fn main() {
                         }
                     }
                     network::Event::SwapFinalized(local_swap_id, remote_data) => {
-                        let order = maker.get_order_for_local_swap_id(local_swap_id);
-
                         // TODO: Add remote_data learned from the other party to the swap and persist the swap
                         // TODO: Spawn swap execution
                     }

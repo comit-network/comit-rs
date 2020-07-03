@@ -7,7 +7,6 @@ use crate::{
     rate::Spread,
     MidMarketRate, OngoingTakers, Rate,
 };
-use comit::LocalSwapId;
 use std::convert::TryFrom;
 
 #[derive(Debug, PartialEq)]
@@ -67,10 +66,6 @@ impl Maker {
     pub fn track_failed_rate(&mut self, error: anyhow::Error) {}
 
     pub fn track_failed_balance_update(&mut self, error: anyhow::Error) {}
-
-    pub fn get_order_for_local_swap_id(&self, local_swap_id: LocalSwapId) -> BtcDaiOrder {
-        unimplemented!()
-    }
 
     pub fn next_sell_order(&self) -> anyhow::Result<BtcDaiOrder> {
         BtcDaiOrder::new_sell(
