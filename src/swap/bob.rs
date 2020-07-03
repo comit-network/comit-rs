@@ -5,7 +5,7 @@
 
 use crate::{
     swap::{
-        bitcoin, db, ethereum, BlockchainTime, Execute, Remember, ShouldAbort, {hbit, herc20},
+        bitcoin, db, ethereum, BlockchainTime, Execute, ShouldAbort, {hbit, herc20},
     },
     SwapId,
 };
@@ -51,20 +51,6 @@ where
 
     async fn execute(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {
         self.beta_wallet.execute_deploy(params).await
-    }
-}
-
-#[async_trait::async_trait]
-impl<T, AW, BW, DB, E> Remember<T> for WalletBob<AW, BW, DB, E>
-where
-    AW: Send + Sync,
-    BW: Send + Sync,
-    DB: db::Save<T>,
-    E: Send + Sync,
-    T: Send + 'static,
-{
-    async fn remember(&self, event: T) -> anyhow::Result<()> {
-        self.db.save(event, self.swap_id).await
     }
 }
 
@@ -171,6 +157,20 @@ where
     }
 }
 
+#[async_trait::async_trait]
+impl<T, AW, BW, DB, E> db::Save<T> for WalletBob<AW, BW, DB, E>
+where
+    AW: Send + Sync + 'static,
+    BW: Send + Sync + 'static,
+    DB: db::Save<T>,
+    E: Send + Sync + 'static,
+    T: Send + 'static,
+{
+    async fn save(&self, event: T, swap_id: SwapId) -> anyhow::Result<()> {
+        self.db.save(event, swap_id).await
+    }
+}
+
 impl<AW, BW, DB, E> std::ops::Deref for WalletBob<AW, BW, DB, E> {
     type Target = SwapId;
     fn deref(&self) -> &Self::Target {
@@ -225,19 +225,6 @@ pub mod watch_only_actor {
         async fn execute(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {
             herc20::watch_for_deployed(self.beta_connector.as_ref(), params, self.start_of_swap)
                 .await
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl<T, AC, BC, DB> Remember<T> for WatchOnlyBob<AC, BC, DB>
-    where
-        AC: Send + Sync,
-        BC: Send + Sync,
-        DB: db::Save<T>,
-        T: Send + 'static,
-    {
-        async fn remember(&self, event: T) -> anyhow::Result<()> {
-            self.db.save(event, self.swap_id).await
         }
     }
 
@@ -325,6 +312,19 @@ pub mod watch_only_actor {
     {
         async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<T>> {
             self.db.load(swap_id).await
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<T, AC, BC, DB> db::Save<T> for WatchOnlyBob<AC, BC, DB>
+    where
+        AC: Send + Sync + 'static,
+        BC: Send + Sync + 'static,
+        DB: db::Save<T>,
+        T: Send + 'static,
+    {
+        async fn save(&self, event: T, swap_id: SwapId) -> anyhow::Result<()> {
+            self.db.save(event, swap_id).await
         }
     }
 

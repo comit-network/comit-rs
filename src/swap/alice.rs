@@ -5,7 +5,7 @@
 //! watches the two blockchains involved in the swap.
 
 use crate::{
-    swap::{db, ethereum, hbit, herc20, BlockchainTime, Execute, Remember, ShouldAbort},
+    swap::{db, ethereum, hbit, herc20, BlockchainTime, Execute, ShouldAbort},
     SwapId,
 };
 use chrono::NaiveDateTime;
@@ -90,19 +90,6 @@ where
 }
 
 #[async_trait::async_trait]
-impl<T, AC, BC, DB> Remember<T> for WatchOnlyAlice<AC, BC, DB>
-where
-    AC: Send + Sync,
-    BC: Send + Sync,
-    DB: db::Save<T>,
-    T: Send + 'static,
-{
-    async fn remember(&self, event: T) -> anyhow::Result<()> {
-        self.db.save(event, self.swap_id).await
-    }
-}
-
-#[async_trait::async_trait]
 impl<AC, BC, DB> ShouldAbort for WatchOnlyAlice<AC, BC, DB>
 where
     AC: Send + Sync,
@@ -126,6 +113,19 @@ where
 {
     async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<T>> {
         self.db.load(swap_id).await
+    }
+}
+
+#[async_trait::async_trait]
+impl<T, AC, BC, DB> db::Save<T> for WatchOnlyAlice<AC, BC, DB>
+where
+    AC: Send + Sync + 'static,
+    BC: Send + Sync + 'static,
+    DB: db::Save<T>,
+    T: Send + 'static,
+{
+    async fn save(&self, event: T, swap_id: SwapId) -> anyhow::Result<()> {
+        self.db.save(event, swap_id).await
     }
 }
 
@@ -241,20 +241,6 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl<T, AW, BW, DB, E> Remember<T> for WalletAlice<AW, BW, DB, E>
-    where
-        AW: Send + Sync,
-        BW: Send + Sync,
-        DB: db::Save<T>,
-        E: Send + Sync,
-        T: Send + 'static,
-    {
-        async fn remember(&self, event: T) -> anyhow::Result<()> {
-            self.db.save(event, self.swap_id).await
-        }
-    }
-
-    #[async_trait::async_trait]
     impl<AW, BW, DB, E> ShouldAbort for WalletAlice<AW, BW, DB, E>
     where
         AW: Send + Sync,
@@ -280,6 +266,20 @@ pub mod wallet_actor {
     {
         async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<T>> {
             self.db.load(swap_id).await
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<T, AW, BW, DB, E> db::Save<T> for WalletAlice<AW, BW, DB, E>
+    where
+        AW: Send + Sync + 'static,
+        BW: Send + Sync + 'static,
+        DB: db::Save<T>,
+        E: Send + Sync + 'static,
+        T: Send + 'static,
+    {
+        async fn save(&self, event: T, swap_id: SwapId) -> anyhow::Result<()> {
+            self.db.save(event, swap_id).await
         }
     }
 

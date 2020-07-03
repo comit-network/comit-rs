@@ -152,13 +152,12 @@ pub trait CheckMemory<E> {
 }
 
 #[async_trait::async_trait]
-impl<T, A> CheckMemory<T> for A
+impl<E, A> CheckMemory<E> for A
 where
-    A: db::Load<T>,
-    T: 'static,
-    A: std::ops::Deref<Target = SwapId>,
+    A: db::Load<E> + std::ops::Deref<Target = SwapId>,
+    E: 'static,
 {
-    async fn check_memory(&self) -> anyhow::Result<Option<T>> {
+    async fn check_memory(&self) -> anyhow::Result<Option<E>> {
         self.load(**self).await
     }
 }
@@ -179,6 +178,17 @@ pub trait Execute<E> {
 #[async_trait::async_trait]
 pub trait Remember<E> {
     async fn remember(&self, event: E) -> anyhow::Result<()>;
+}
+
+#[async_trait::async_trait]
+impl<E, A> Remember<E> for A
+where
+    A: db::Save<E> + std::ops::Deref<Target = SwapId>,
+    E: Send + 'static,
+{
+    async fn remember(&self, event: E) -> anyhow::Result<()> {
+        self.save(event, **self).await
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
