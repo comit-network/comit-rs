@@ -5,8 +5,7 @@
 
 use crate::{
     swap::{
-        bitcoin, db, ethereum, BlockchainTime, CheckMemory, Execute, Remember, ShouldAbort,
-        {hbit, herc20},
+        bitcoin, db, ethereum, BlockchainTime, Execute, Remember, ShouldAbort, {hbit, herc20},
     },
     SwapId,
 };
@@ -23,20 +22,6 @@ pub struct WalletBob<AW, BW, DB, E> {
     pub secret_hash: SecretHash,
     pub start_of_swap: NaiveDateTime,
     pub swap_id: SwapId,
-}
-
-#[async_trait::async_trait]
-impl<T, AW, BW, DB, E> CheckMemory<T> for WalletBob<AW, BW, DB, E>
-where
-    AW: Send + Sync,
-    BW: Send + Sync,
-    DB: db::Load<T>,
-    E: Send + Sync,
-    T: 'static,
-{
-    async fn check_memory(&self) -> anyhow::Result<Option<T>> {
-        self.db.load(self.swap_id).await
-    }
 }
 
 #[async_trait::async_trait]
@@ -172,6 +157,27 @@ impl<AW, DB, E> WalletBob<AW, ethereum::Wallet, DB, E> {
     }
 }
 
+#[async_trait::async_trait]
+impl<T, AW, BW, DB, E> db::Load<T> for WalletBob<AW, BW, DB, E>
+where
+    AW: Send + Sync + 'static,
+    BW: Send + Sync + 'static,
+    DB: db::Load<T>,
+    E: Send + Sync + 'static,
+    T: 'static,
+{
+    async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<T>> {
+        self.db.load(swap_id).await
+    }
+}
+
+impl<AW, BW, DB, E> std::ops::Deref for WalletBob<AW, BW, DB, E> {
+    type Target = SwapId;
+    fn deref(&self) -> &Self::Target {
+        &self.swap_id
+    }
+}
+
 #[cfg(test)]
 pub mod watch_only_actor {
     //! This module is only useful for integration tests, given that
@@ -189,19 +195,6 @@ pub mod watch_only_actor {
         pub secret_hash: SecretHash,
         pub start_of_swap: NaiveDateTime,
         pub swap_id: SwapId,
-    }
-
-    #[async_trait::async_trait]
-    impl<T, AC, BC, DB> CheckMemory<T> for WatchOnlyBob<AC, BC, DB>
-    where
-        AC: Send + Sync,
-        BC: Send + Sync,
-        DB: db::Load<T>,
-        T: 'static,
-    {
-        async fn check_memory(&self) -> anyhow::Result<Option<T>> {
-            self.db.load(self.swap_id).await
-        }
     }
 
     #[async_trait::async_trait]
@@ -319,6 +312,26 @@ pub mod watch_only_actor {
             .await?;
 
             Ok(event)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<T, AC, BC, DB> db::Load<T> for WatchOnlyBob<AC, BC, DB>
+    where
+        AC: Send + Sync + 'static,
+        BC: Send + Sync + 'static,
+        DB: db::Load<T>,
+        T: 'static,
+    {
+        async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<T>> {
+            self.db.load(swap_id).await
+        }
+    }
+
+    impl<AC, BC, DB> std::ops::Deref for WatchOnlyBob<AC, BC, DB> {
+        type Target = SwapId;
+        fn deref(&self) -> &Self::Target {
+            &self.swap_id
         }
     }
 }

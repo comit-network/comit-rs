@@ -5,9 +5,7 @@
 //! watches the two blockchains involved in the swap.
 
 use crate::{
-    swap::{
-        db, ethereum, hbit, herc20, BlockchainTime, CheckMemory, Execute, Remember, ShouldAbort,
-    },
+    swap::{db, ethereum, hbit, herc20, BlockchainTime, Execute, Remember, ShouldAbort},
     SwapId,
 };
 use chrono::NaiveDateTime;
@@ -92,19 +90,6 @@ where
 }
 
 #[async_trait::async_trait]
-impl<T, AC, BC, DB> CheckMemory<T> for WatchOnlyAlice<AC, BC, DB>
-where
-    AC: Send + Sync,
-    BC: Send + Sync,
-    DB: db::Load<T>,
-    T: 'static,
-{
-    async fn check_memory(&self) -> anyhow::Result<Option<T>> {
-        self.db.load(self.swap_id).await
-    }
-}
-
-#[async_trait::async_trait]
 impl<T, AC, BC, DB> Remember<T> for WatchOnlyAlice<AC, BC, DB>
 where
     AC: Send + Sync,
@@ -128,6 +113,26 @@ where
         let beta_blockchain_time = self.beta_connector.as_ref().blockchain_time().await?;
 
         Ok(beta_expiry <= beta_blockchain_time)
+    }
+}
+
+#[async_trait::async_trait]
+impl<T, AC, BC, DB> db::Load<T> for WatchOnlyAlice<AC, BC, DB>
+where
+    AC: Send + Sync + 'static,
+    BC: Send + Sync + 'static,
+    DB: db::Load<T>,
+    T: 'static,
+{
+    async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<T>> {
+        self.db.load(swap_id).await
+    }
+}
+
+impl<AC, BC, DB> std::ops::Deref for WatchOnlyAlice<AC, BC, DB> {
+    type Target = SwapId;
+    fn deref(&self) -> &Self::Target {
+        &self.swap_id
     }
 }
 
@@ -236,20 +241,6 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl<T, AW, BW, DB, E> CheckMemory<T> for WalletAlice<AW, BW, DB, E>
-    where
-        AW: Send + Sync,
-        BW: Send + Sync,
-        DB: db::Load<T>,
-        E: Send + Sync,
-        T: 'static,
-    {
-        async fn check_memory(&self) -> anyhow::Result<Option<T>> {
-            self.db.load(self.swap_id).await
-        }
-    }
-
-    #[async_trait::async_trait]
     impl<T, AW, BW, DB, E> Remember<T> for WalletAlice<AW, BW, DB, E>
     where
         AW: Send + Sync,
@@ -275,6 +266,27 @@ pub mod wallet_actor {
             let beta_blockchain_time = self.beta_wallet.blockchain_time().await?;
 
             Ok(beta_expiry <= beta_blockchain_time)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<T, AW, BW, DB, E> db::Load<T> for WalletAlice<AW, BW, DB, E>
+    where
+        AW: Send + Sync + 'static,
+        BW: Send + Sync + 'static,
+        DB: db::Load<T>,
+        E: Send + Sync + 'static,
+        T: 'static,
+    {
+        async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<T>> {
+            self.db.load(swap_id).await
+        }
+    }
+
+    impl<AW, BW, DB, E> std::ops::Deref for WalletAlice<AW, BW, DB, E> {
+        type Target = SwapId;
+        fn deref(&self) -> &Self::Target {
+            &self.swap_id
         }
     }
 }

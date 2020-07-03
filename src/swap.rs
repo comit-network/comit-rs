@@ -11,6 +11,7 @@ mod herc20;
 use comit::{Secret, Timestamp};
 use futures::future;
 
+use crate::SwapId;
 pub use alice::WatchOnlyAlice;
 pub use bob::WalletBob;
 
@@ -148,6 +149,18 @@ where
 #[async_trait::async_trait]
 pub trait CheckMemory<E> {
     async fn check_memory(&self) -> anyhow::Result<Option<E>>;
+}
+
+#[async_trait::async_trait]
+impl<T, A> CheckMemory<T> for A
+where
+    A: db::Load<T>,
+    T: 'static,
+    A: std::ops::Deref<Target = SwapId>,
+{
+    async fn check_memory(&self) -> anyhow::Result<Option<T>> {
+        self.load(**self).await
+    }
 }
 
 // NOTE: Currently, we only implement this trait once per actor, and
