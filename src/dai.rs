@@ -3,6 +3,7 @@ use crate::float_maths::{divide_pow_ten_trunc, multiply_pow_ten, truncate};
 use crate::Rate;
 use conquer_once::Lazy;
 use num::{pow::Pow, BigUint, ToPrimitive, Zero};
+use comit::asset::Erc20;
 
 pub const ATTOS_IN_DAI_EXP: u16 = 18;
 pub static DAI_DEC: Lazy<BigUint> = Lazy::new(|| BigUint::from(10u16).pow(ATTOS_IN_DAI_EXP));
@@ -90,6 +91,17 @@ impl std::ops::Sub for Amount {
 
     fn sub(self, rhs: Self) -> Self::Output {
         Amount(self.0 - rhs.0)
+    }
+}
+
+impl From<Erc20> for Amount {
+    fn from(_erc20: Erc20) -> Self {
+        // TODO: inner BigInt is private in comit lib - what is the best way to convert?
+        // Amount {
+        //     0: erc20.quantity.0
+        // }
+
+        unimplemented!()
     }
 }
 

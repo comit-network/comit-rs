@@ -1,19 +1,14 @@
 #![allow(unreachable_code, unused_variables, clippy::unit_arg)]
 
-use nectar::{
-    bitcoin, bitcoin_wallet, dai,
-    maker::Reaction,
-    mid_market_rate::get_btc_dai_mid_market_rate,
-    network::{self, Nectar, Orderbook},
-    Maker, Spread,
-};
+use nectar::{bitcoin, bitcoin_wallet, dai, maker::Reaction, mid_market_rate::get_btc_dai_mid_market_rate, network::{self, Nectar, Orderbook}, Maker, Spread, ethereum_wallet};
 use std::time::Duration;
 
-async fn init_maker(bitcoin_wallet: bitcoin_wallet::Wallet) -> Maker {
+async fn init_maker(bitcoin_wallet: bitcoin_wallet::Wallet, ethereum_wallet: ethereum_wallet::Wallet) -> Maker {
     let initial_btc_balance = bitcoin_wallet.balance().await;
 
-    // TODO ethereum wallet (passed in)
-    let initial_dai_balance: anyhow::Result<dai::Amount> = unimplemented!();
+    // TODO: from config or hardcoded
+    let dai_contract_addr: comit::ethereum::Address = unimplemented!();
+    let initial_dai_balance = ethereum_wallet.erc20_balance(dai_contract_addr).await;
 
     // TODO: from config
     let btc_max_sell: anyhow::Result<bitcoin::Amount> = unimplemented!();
@@ -24,7 +19,7 @@ async fn init_maker(bitcoin_wallet: bitcoin_wallet::Wallet) -> Maker {
     let initial_rate = get_btc_dai_mid_market_rate().await;
 
     // TODO from config
-    let spread = Spread::default();
+    let spread: Spread = unimplemented!();
 
     match (
         initial_btc_balance,
@@ -35,7 +30,6 @@ async fn init_maker(bitcoin_wallet: bitcoin_wallet::Wallet) -> Maker {
         dai_max_sell,
         initial_rate,
     ) {
-        // TODO better error handling
         (
             Ok(initial_btc_balance),
             Ok(initial_dai_balance),
@@ -46,7 +40,7 @@ async fn init_maker(bitcoin_wallet: bitcoin_wallet::Wallet) -> Maker {
             Ok(initial_rate),
         ) => Maker::new(
             initial_btc_balance,
-            initial_dai_balance,
+            initial_dai_balance.into(),
             btc_fee_reserve,
             dai_fee_reserve,
             btc_max_sell,
@@ -54,16 +48,20 @@ async fn init_maker(bitcoin_wallet: bitcoin_wallet::Wallet) -> Maker {
             initial_rate,
             spread,
         ),
+        // TODO better error handling
         _ => panic!("Maker initialisation failed!"),
     }
 }
 
 #[tokio::main]
 async fn main() {
+
+    // TODO: Proper wallet initialisation from config
     let bitcoin_wallet =
         bitcoin_wallet::Wallet::new(unimplemented!(), unimplemented!(), unimplemented!()).unwrap();
+    let ethereum_wallet = ethereum_wallet::Wallet::new(unimplemented!(), unimplemented!()).unwrap();
 
-    let maker = init_maker(bitcoin_wallet).await;
+    let maker = init_maker(bitcoin_wallet, ethereum_wallet).await;
 
     let orderbook = Orderbook;
     let nectar = Nectar::new(orderbook);
