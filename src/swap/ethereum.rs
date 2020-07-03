@@ -2,6 +2,7 @@ use crate::swap::{herc20, BlockchainTime};
 use comit::{btsieve::LatestBlock, Timestamp};
 use std::sync::Arc;
 
+use chrono::NaiveDateTime;
 pub use comit::ethereum::{Address, Block, ChainId, Hash};
 
 #[derive(Debug, Clone)]
@@ -11,12 +12,6 @@ pub struct Wallet {
 }
 
 impl Wallet {
-    pub async fn fund(&self, action: herc20::CallContract) -> anyhow::Result<()> {
-        let _ = self.inner.call_contract(action).await?;
-
-        Ok(())
-    }
-
     pub async fn redeem(&self, action: herc20::CallContract) -> anyhow::Result<()> {
         let _ = self.inner.call_contract(action).await?;
 
@@ -34,11 +29,10 @@ impl Wallet {
 impl herc20::ExecuteDeploy for Wallet {
     async fn execute_deploy(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {
         let action = params.build_deploy_action();
-
         let transaction_hash = self.inner.deploy_contract(action).await?;
         let transaction = self.inner.get_transaction_by_hash(transaction_hash).await?;
-        let receipt = self.inner.get_transaction_receipt(transaction_hash).await?;
 
+        let receipt = self.inner.get_transaction_receipt(transaction_hash).await?;
         let location = receipt
             .contract_address
             .ok_or_else(|| anyhow::anyhow!("Contract address missing from receipt"))?;
@@ -47,6 +41,25 @@ impl herc20::ExecuteDeploy for Wallet {
             transaction,
             location,
         })
+    }
+}
+
+#[async_trait::async_trait]
+impl herc20::ExecuteFund for Wallet {
+    async fn execute_fund(
+        &self,
+        params: herc20::Params,
+        deploy_event: herc20::Deployed,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<herc20::CorrectlyFunded> {
+        let action = params.build_fund_action(deploy_event.location);
+        let _transaction_hash = self.inner.call_contract(action).await?;
+
+        let event =
+            herc20::watch_for_funded(self.connector.as_ref(), params, start_of_swap, deploy_event)
+                .await?;
+
+        Ok(event)
     }
 }
 

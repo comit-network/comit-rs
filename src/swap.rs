@@ -25,7 +25,8 @@ where
     A: hbit::Fund + herc20::RedeemAsAlice + hbit::Refund,
     B: Do<herc20::Deployed>
         + Execute<herc20::Deployed, Args = herc20::Params>
-        + herc20::Fund
+        + Do<herc20::CorrectlyFunded>
+        + Execute<herc20::CorrectlyFunded, Args = (herc20::Params, herc20::Deployed)>
         + hbit::RedeemAsBob
         + herc20::Refund
         + Send
@@ -36,25 +37,24 @@ where
         Next::Abort => return Ok(()),
     };
 
-    let herc20_deployed = match bob
-        .r#do(herc20_params.expiry, herc20_params.clone())
-        .await?
-    {
-        Next::Continue(herc20_deployed) => herc20_deployed,
-        Next::Abort => {
-            alice.refund(&hbit_params, hbit_funded).await?;
+    let herc20_deployed =
+        match Do::<herc20::Deployed>::r#do(&bob, herc20_params.expiry, herc20_params.clone())
+            .await?
+        {
+            Next::Continue(herc20_deployed) => herc20_deployed,
+            Next::Abort => {
+                alice.refund(&hbit_params, hbit_funded).await?;
 
-            return Ok(());
-        }
-    };
+                return Ok(());
+            }
+        };
 
-    let _herc20_funded = match bob
-        .fund(
-            herc20_params.clone(),
-            herc20_deployed.clone(),
-            herc20_params.expiry,
-        )
-        .await?
+    let _herc20_funded = match Do::<herc20::CorrectlyFunded>::r#do(
+        &bob,
+        herc20_params.expiry,
+        (herc20_params.clone(), herc20_deployed.clone()),
+    )
+    .await?
     {
         Next::Continue(herc20_funded) => herc20_funded,
         Next::Abort => {

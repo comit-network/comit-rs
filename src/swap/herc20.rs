@@ -34,6 +34,16 @@ pub trait Fund {
 }
 
 #[async_trait::async_trait]
+pub trait ExecuteFund {
+    async fn execute_fund(
+        &self,
+        params: Params,
+        deploy_event: Deployed,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<CorrectlyFunded>;
+}
+
+#[async_trait::async_trait]
 pub trait RedeemAsAlice {
     async fn redeem(
         &self,
