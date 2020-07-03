@@ -10,7 +10,7 @@ use std::task::{Context, Poll};
 pub enum Event {
     // The orderbook registered that somebody wants to take a specific order.
     // We assume that this event is emitted by the orderbook.
-    OrderTakeRequest(Order), // Emitted by orderbook
+    TakeRequest(Order), // Emitted by orderbook
 
     // Message from the network that is emitted at the end of the announce protocol when the
     // swap is finalized.

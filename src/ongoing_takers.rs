@@ -3,9 +3,9 @@ use std::collections::HashSet;
 
 // TODO: Find a better name
 #[derive(Default, Debug)]
-pub struct OngoingTakers(HashSet<Taker>);
+pub struct PeersWithOngoingTrades(HashSet<Taker>);
 
-impl OngoingTakers {
+impl PeersWithOngoingTrades {
     pub fn insert(&mut self, taker: Taker) -> anyhow::Result<()> {
         if self.0.contains(&taker) {
             anyhow::bail!("taker {} is already part of ongoing takers", taker.0)
@@ -15,7 +15,7 @@ impl OngoingTakers {
         Ok(())
     }
 
-    pub fn cannot_trade_with_taker(&self, taker: &Taker) -> bool {
+    pub fn has_an_ongoing_trade(&self, taker: &Taker) -> bool {
         self.0.contains(taker)
     }
 
@@ -30,7 +30,7 @@ mod tests {
 
     #[test]
     fn insert_new_taker_is_ok() {
-        let mut state = OngoingTakers::default();
+        let mut state = PeersWithOngoingTrades::default();
         let taker = Taker::default();
 
         let insertion = state.insert(taker);
@@ -40,7 +40,7 @@ mod tests {
 
     #[test]
     fn insert_taker_a_second_time_fails() {
-        let mut state = OngoingTakers::default();
+        let mut state = PeersWithOngoingTrades::default();
         let taker = Taker::default();
 
         let insertion_1 = state.insert(taker);
@@ -52,7 +52,7 @@ mod tests {
 
     #[test]
     fn insert_two_different_takers_is_ok() {
-        let mut state = OngoingTakers::default();
+        let mut state = PeersWithOngoingTrades::default();
         let taker_1 = Taker::new(1);
         let taker_2 = Taker::new(2);
 
@@ -65,7 +65,7 @@ mod tests {
 
     #[test]
     fn insert_remove_and_insert_same_taker_is_ok() {
-        let mut state = OngoingTakers::default();
+        let mut state = PeersWithOngoingTrades::default();
         let taker = Taker::default();
 
         let insertion_1 = state.insert(taker);

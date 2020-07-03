@@ -36,7 +36,7 @@ pub mod swap_id;
 
 pub use maker::Maker;
 pub use mid_market_rate::MidMarketRate;
-pub use ongoing_takers::OngoingTakers;
+pub use ongoing_takers::PeersWithOngoingTrades;
 pub use rate::{Rate, Spread};
 pub use seed::Seed;
 pub use swap_id::SwapId;

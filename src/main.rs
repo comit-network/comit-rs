@@ -2,7 +2,7 @@
 
 use nectar::{
     bitcoin, bitcoin_wallet, dai, ethereum_wallet,
-    maker::Reaction,
+    maker::TakeRequestDecision,
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, Nectar, Orderbook},
     Maker, Spread,
@@ -17,16 +17,14 @@ async fn init_maker(
 
     let initial_dai_balance = ethereum_wallet.dai_balance().await;
 
-    // TODO: from config
-    let btc_max_sell: anyhow::Result<bitcoin::Amount> = unimplemented!();
-    let dai_max_sell: anyhow::Result<dai::Amount> = unimplemented!();
-    let btc_fee_reserve: anyhow::Result<bitcoin::Amount> = unimplemented!();
-    let dai_fee_reserve: anyhow::Result<dai::Amount> = unimplemented!();
+    let btc_max_sell: anyhow::Result<bitcoin::Amount> = todo!("from config");
+    let dai_max_sell: anyhow::Result<dai::Amount> = todo!("from config");
+    let btc_fee_reserve: anyhow::Result<bitcoin::Amount> = todo!("from config");
+    let dai_fee_reserve: anyhow::Result<dai::Amount> = todo!("from config");
 
     let initial_rate = get_btc_dai_mid_market_rate().await;
 
-    // TODO from config
-    let spread: Spread = unimplemented!();
+    let spread: Spread = todo!("from config");
 
     match (
         initial_btc_balance,
@@ -68,8 +66,7 @@ async fn main() {
     // TODO: Proper wallet initialisation from config
     let bitcoin_wallet =
         bitcoin_wallet::Wallet::new(unimplemented!(), unimplemented!(), unimplemented!()).unwrap();
-    let ethereum_wallet =
-        ethereum_wallet::Wallet::new(unimplemented!(), unimplemented!(), unimplemented!()).unwrap();
+    let ethereum_wallet = ethereum_wallet::Wallet::new(unimplemented!(), unimplemented!()).unwrap();
 
     let maker = init_maker(bitcoin_wallet, ethereum_wallet).await;
 
@@ -78,8 +75,8 @@ async fn main() {
 
     let mut swarm: libp2p::Swarm<Nectar> = unimplemented!();
 
-    let initial_sell_order = maker.next_sell_order();
-    let initial_buy_order = maker.next_buy_order();
+    let initial_sell_order = maker.new_sell_order();
+    let initial_buy_order = maker.new_buy_order();
 
     match (initial_sell_order, initial_buy_order) {
         (Ok(sell_order), Ok(buy_order)) => {
@@ -89,21 +86,22 @@ async fn main() {
         _ => panic!("Unable to publish initial orders!"),
     }
 
+    let network_event_timeout_secs: u64 = todo!("from config");
     loop {
         let rate = get_btc_dai_mid_market_rate().await;
         match rate {
-            Ok(new_rate) => maker.update_rate(unimplemented!()), // maker should record timestamp of this
+            Ok(new_rate) => maker.update_rate(unimplemented!()),
             Err(e) => maker.track_failed_rate(e),
         }
 
         let bitcoin_balance = bitcoin_wallet.balance().await;
         match bitcoin_balance {
-            Ok(new_balance) => maker.update_bitcoin_balance(new_balance), // maker should record timestamp of this
+            Ok(new_balance) => maker.update_bitcoin_balance(new_balance),
             Err(e) => maker.track_failed_balance_update(e),
         }
         let dai_balance = ethereum_wallet.dai_balance().await;
         match dai_balance {
-            Ok(new_balance) => maker.update_dai_balance(new_balance.into()), // maker should record timestamp of this
+            Ok(new_balance) => maker.update_dai_balance(new_balance.into()),
             Err(e) => maker.track_failed_balance_update(e),
         }
 
@@ -114,21 +112,26 @@ async fn main() {
         // order were published before we enter the loop (during
         // initialization)
         #[allow(clippy::single_match)]
-        match tokio::time::timeout(Duration::from_secs(15), swarm.next()).await {
+        match tokio::time::timeout(
+            Duration::from_secs(network_event_timeout_secs),
+            swarm.next(),
+        )
+        .await
+        {
             Ok(event) => {
                 match event {
-                    network::Event::OrderTakeRequest(order) => {
+                    network::Event::TakeRequest(order) => {
                         // decide & take & reserve
-                        let reaction = maker.react_to_taken_order(order.clone());
+                        let result = maker.process_taken_order(order.clone());
 
-                        match reaction {
-                            Ok(Reaction::Confirmed { next_order }) => {
+                        match result {
+                            Ok(TakeRequestDecision::GoForSwap { next_order }) => {
                                 swarm.orderbook.take(order);
                                 orderbook.publish(next_order.into());
                             }
-                            Ok(Reaction::RateSucks)
-                            | Ok(Reaction::InsufficientFunds)
-                            | Ok(Reaction::CannotTradeWithTaker)
+                            Ok(TakeRequestDecision::RateSucks)
+                            | Ok(TakeRequestDecision::InsufficientFunds)
+                            | Ok(TakeRequestDecision::CannotTradeWithTaker)
                             | Err(_) => {
                                 swarm.orderbook.ignore(order);
                             }

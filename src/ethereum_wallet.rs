@@ -5,6 +5,7 @@ use comit::{
     ethereum::{Address, ChainId, Hash, TransactionReceipt},
 };
 use reqwest::Url;
+use std::str::FromStr;
 
 // TODO: Add network; assert network on all calls to geth
 #[derive(Debug, Clone)]
@@ -15,11 +16,15 @@ pub struct Wallet {
 }
 
 impl Wallet {
-    pub fn new(seed: Seed, url: Url, dai_contract_adr: Address) -> anyhow::Result<Self> {
+    pub fn new(seed: Seed, url: Url) -> anyhow::Result<Self> {
         let private_key = clarity::PrivateKey::from_slice(&seed.secret_key_bytes())
             .map_err(|_| anyhow::anyhow!("Failed to derive private key from slice"))?;
 
         let geth_client = geth::Client::new(url);
+
+        // TODO: Properly deal with address according to chain-id (currently set to mainnet address)
+        let dai_contract_adr = Address::from_str("6b175474e89094c44da98b954eedeac495271d0f")
+            .expect("dai contract address");
 
         Ok(Self {
             private_key,

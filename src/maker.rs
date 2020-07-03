@@ -5,7 +5,7 @@ use crate::{
     network::Order,
     order::{BtcDaiOrder, Position},
     rate::Spread,
-    MidMarketRate, OngoingTakers, Rate,
+    MidMarketRate, PeersWithOngoingTrades, Rate,
 };
 use std::convert::TryFrom;
 
@@ -27,7 +27,7 @@ pub struct Maker {
     dai_max_sell_amount: dai::Amount,
     mid_market_rate: MidMarketRate,
     spread: Spread,
-    ongoing_takers: OngoingTakers,
+    ongoing_takers: PeersWithOngoingTrades,
 }
 
 impl Maker {
@@ -71,7 +71,7 @@ impl Maker {
 
     pub fn track_failed_balance_update(&mut self, error: anyhow::Error) {}
 
-    pub fn next_sell_order(&self) -> anyhow::Result<BtcDaiOrder> {
+    pub fn new_sell_order(&self) -> anyhow::Result<BtcDaiOrder> {
         BtcDaiOrder::new_sell(
             self.btc_balance,
             self.btc_fee,
@@ -82,7 +82,7 @@ impl Maker {
         )
     }
 
-    pub fn next_buy_order(&self) -> anyhow::Result<BtcDaiOrder> {
+    pub fn new_buy_order(&self) -> anyhow::Result<BtcDaiOrder> {
         BtcDaiOrder::new_buy(
             self.dai_balance.clone(),
             self.dai_fee.clone(),
@@ -96,9 +96,9 @@ impl Maker {
     /// Decide whether we should proceed with order,
     /// Confirm with the order book
     /// Re & take & reserve
-    pub fn react_to_taken_order(&mut self, order: Order) -> anyhow::Result<Reaction> {
-        if self.ongoing_takers.cannot_trade_with_taker(&order.taker) {
-            return Ok(Reaction::CannotTradeWithTaker);
+    pub fn process_taken_order(&mut self, order: Order) -> anyhow::Result<TakeRequestDecision> {
+        if self.ongoing_takers.has_an_ongoing_trade(&order.taker) {
+            return Ok(TakeRequestDecision::CannotTradeWithTaker);
         }
 
         let current_profitable_rate = self
@@ -118,16 +118,16 @@ impl Maker {
                 // 1:8800 -> We give less DAI for getting BTC -> Good.
                 // 1:9200 -> We have to give more DAI for getting BTC -> Sucks.
                 if order_rate > current_profitable_rate {
-                    return Ok(Reaction::RateSucks);
+                    return Ok(TakeRequestDecision::RateSucks);
                 }
 
                 let updated_dai_reserved_funds = self.dai_reserved_funds.clone() + order.quote;
                 if updated_dai_reserved_funds > self.dai_balance {
-                    return Ok(Reaction::InsufficientFunds);
+                    return Ok(TakeRequestDecision::InsufficientFunds);
                 }
 
                 self.dai_reserved_funds = updated_dai_reserved_funds;
-                self.next_buy_order()?
+                self.new_buy_order()?
             }
             order
             @
@@ -141,16 +141,16 @@ impl Maker {
                 // 1:8800 -> We get less DAI for our BTC -> Sucks.
                 // 1:9200 -> We get more DAI for our BTC -> Good.
                 if order_rate < current_profitable_rate {
-                    return Ok(Reaction::RateSucks);
+                    return Ok(TakeRequestDecision::RateSucks);
                 }
 
                 let updated_btc_reserved_funds = self.btc_reserved_funds + order.base;
                 if updated_btc_reserved_funds > self.btc_balance {
-                    return Ok(Reaction::InsufficientFunds);
+                    return Ok(TakeRequestDecision::InsufficientFunds);
                 }
 
                 self.btc_reserved_funds = updated_btc_reserved_funds;
-                self.next_sell_order()?
+                self.new_sell_order()?
             }
         };
 
@@ -158,13 +158,13 @@ impl Maker {
             .insert(order.taker)
             .expect("already checked that we can trade");
 
-        Ok(Reaction::Confirmed { next_order })
+        Ok(TakeRequestDecision::GoForSwap { next_order })
     }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum Reaction {
-    Confirmed { next_order: BtcDaiOrder },
+pub enum TakeRequestDecision {
+    GoForSwap { next_order: BtcDaiOrder },
     RateSucks,
     InsufficientFunds,
     CannotTradeWithTaker,
@@ -193,7 +193,7 @@ mod tests {
                 dai_max_sell_amount: dai::Amount::default(),
                 mid_market_rate: MidMarketRate::default(),
                 spread: Spread::default(),
-                ongoing_takers: OngoingTakers::default(),
+                ongoing_takers: PeersWithOngoingTrades::default(),
             }
         }
     }
@@ -214,9 +214,9 @@ mod tests {
             ..Default::default()
         };
 
-        let event = maker.react_to_taken_order(order_taken).unwrap();
+        let event = maker.process_taken_order(order_taken).unwrap();
 
-        assert!(matches!(event, Reaction::Confirmed { .. }));
+        assert!(matches!(event, TakeRequestDecision::GoForSwap { .. }));
         assert_eq!(
             maker.btc_reserved_funds,
             bitcoin::Amount::from_btc(1.5).unwrap()
@@ -243,9 +243,9 @@ mod tests {
             ..Default::default()
         };
 
-        let event = maker.react_to_taken_order(order_taken).unwrap();
+        let result = maker.process_taken_order(order_taken).unwrap();
 
-        assert!(matches!(event, Reaction::Confirmed { .. }));
+        assert!(matches!(result, TakeRequestDecision::GoForSwap { .. }));
         assert_eq!(
             maker.dai_reserved_funds,
             dai::Amount::from_dai_trunc(1.5).unwrap()
@@ -268,9 +268,9 @@ mod tests {
             ..Default::default()
         };
 
-        let event = maker.react_to_taken_order(order_taken).unwrap();
+        let result = maker.process_taken_order(order_taken).unwrap();
 
-        assert_eq!(event, Reaction::InsufficientFunds);
+        assert_eq!(result, TakeRequestDecision::InsufficientFunds);
     }
 
     #[test]
@@ -293,9 +293,9 @@ mod tests {
             ..Default::default()
         };
 
-        let event = maker.react_to_taken_order(order_taken).unwrap();
+        let result = maker.process_taken_order(order_taken).unwrap();
 
-        assert_eq!(event, Reaction::InsufficientFunds);
+        assert_eq!(result, TakeRequestDecision::InsufficientFunds);
     }
 
     #[test]
@@ -315,9 +315,9 @@ mod tests {
             ..Default::default()
         };
 
-        let event = maker.react_to_taken_order(order_taken).unwrap();
+        let result = maker.process_taken_order(order_taken).unwrap();
 
-        assert_eq!(event, Reaction::InsufficientFunds);
+        assert_eq!(result, TakeRequestDecision::InsufficientFunds);
     }
 
     #[test]
@@ -335,13 +335,13 @@ mod tests {
             ..Default::default()
         };
 
-        let event = maker.react_to_taken_order(order_taken.clone()).unwrap();
+        let result = maker.process_taken_order(order_taken.clone()).unwrap();
 
-        assert!(matches!(event, Reaction::Confirmed { .. }));
+        assert!(matches!(result, TakeRequestDecision::GoForSwap { .. }));
 
-        let event = maker.react_to_taken_order(order_taken).unwrap();
+        let result = maker.process_taken_order(order_taken).unwrap();
 
-        assert_eq!(event, Reaction::CannotTradeWithTaker);
+        assert_eq!(result, TakeRequestDecision::CannotTradeWithTaker);
     }
 
     #[test]
@@ -363,9 +363,9 @@ mod tests {
             ..Default::default()
         };
 
-        let event = maker.react_to_taken_order(order_taken).unwrap();
+        let result = maker.process_taken_order(order_taken).unwrap();
 
-        assert_eq!(event, Reaction::RateSucks);
+        assert_eq!(result, TakeRequestDecision::RateSucks);
     }
 
     #[test]
@@ -387,8 +387,8 @@ mod tests {
             ..Default::default()
         };
 
-        let event = maker.react_to_taken_order(order_taken).unwrap();
+        let result = maker.process_taken_order(order_taken).unwrap();
 
-        assert_eq!(event, Reaction::RateSucks);
+        assert_eq!(result, TakeRequestDecision::RateSucks);
     }
 }
