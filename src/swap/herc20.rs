@@ -1,4 +1,3 @@
-use crate::swap::Next;
 use chrono::NaiveDateTime;
 pub use comit::{
     actions::ethereum::*,
@@ -10,27 +9,8 @@ pub use comit::{
 };
 
 #[async_trait::async_trait]
-pub trait Deploy {
-    async fn deploy(
-        &self,
-        params: Params,
-        beta_expiry: Timestamp,
-    ) -> anyhow::Result<Next<Deployed>>;
-}
-
-#[async_trait::async_trait]
 pub trait ExecuteDeploy {
     async fn execute_deploy(&self, params: Params) -> anyhow::Result<Deployed>;
-}
-
-#[async_trait::async_trait]
-pub trait Fund {
-    async fn fund(
-        &self,
-        params: Params,
-        deploy_event: Deployed,
-        beta_expiry: Timestamp,
-    ) -> anyhow::Result<Next<CorrectlyFunded>>;
 }
 
 #[async_trait::async_trait]
@@ -51,26 +31,6 @@ pub trait ExecuteRedeem {
         secret: Secret,
         deploy_event: Deployed,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Redeemed>;
-}
-
-#[async_trait::async_trait]
-pub trait RedeemAsAlice {
-    async fn redeem(
-        &self,
-        params: Params,
-        deploy_event: Deployed,
-        beta_expiry: Timestamp,
-    ) -> anyhow::Result<Next<Redeemed>>;
-}
-
-#[async_trait::async_trait]
-pub trait RedeemAsBob {
-    async fn redeem(
-        &self,
-        params: &Params,
-        deploy_event: Deployed,
-        secret: Secret,
     ) -> anyhow::Result<Redeemed>;
 }
 
