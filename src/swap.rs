@@ -162,11 +162,21 @@ where
     }
 }
 
-// NOTE: Currently, we only implement this trait once per actor, and
-// we reuse its logic for all implementations of the Do trait
 #[async_trait::async_trait]
 pub trait ShouldAbort {
     async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool>;
+}
+
+#[async_trait::async_trait]
+impl<A> ShouldAbort for A
+where
+    A: BetaLedgerTime + Sync,
+{
+    async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+        let beta_ledger_time = self.beta_ledger_time().await?;
+
+        Ok(beta_expiry <= beta_ledger_time)
+    }
 }
 
 #[async_trait::async_trait]
@@ -198,8 +208,8 @@ pub enum Next<E> {
 }
 
 #[async_trait::async_trait]
-pub trait BlockchainTime {
-    async fn blockchain_time(&self) -> anyhow::Result<Timestamp>;
+pub trait BetaLedgerTime {
+    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp>;
 }
 
 #[cfg(all(test, feature = "test-docker"))]

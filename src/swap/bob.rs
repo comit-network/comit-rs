@@ -5,7 +5,7 @@
 
 use crate::{
     swap::{
-        bitcoin, db, ethereum, BlockchainTime, Execute, ShouldAbort, {hbit, herc20},
+        bitcoin, db, ethereum, BetaLedgerTime, Execute, {hbit, herc20},
     },
     SwapId,
 };
@@ -25,17 +25,15 @@ pub struct WalletBob<AW, BW, DB, E> {
 }
 
 #[async_trait::async_trait]
-impl<AW, BW, DB, E> ShouldAbort for WalletBob<AW, BW, DB, E>
+impl<AW, BW, DB, E> BetaLedgerTime for WalletBob<AW, BW, DB, E>
 where
     AW: Send + Sync,
-    BW: BlockchainTime + Send + Sync,
+    BW: BetaLedgerTime + Send + Sync,
     DB: Send + Sync,
     E: Send + Sync,
 {
-    async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
-        let beta_blockchain_time = self.beta_wallet.blockchain_time().await?;
-
-        Ok(beta_expiry <= beta_blockchain_time)
+    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
+        self.beta_wallet.beta_ledger_time().await
     }
 }
 
@@ -110,7 +108,7 @@ where
         deploy_event: herc20::Deployed,
     ) -> anyhow::Result<herc20::Refunded> {
         loop {
-            if self.beta_wallet.blockchain_time().await? >= params.expiry {
+            if self.beta_wallet.beta_ledger_time().await? >= params.expiry {
                 break;
             }
 
@@ -198,16 +196,14 @@ pub mod watch_only_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AC, BC, DB> ShouldAbort for WatchOnlyBob<AC, BC, DB>
+    impl<AC, BC, DB> BetaLedgerTime for WatchOnlyBob<AC, BC, DB>
     where
         AC: Send + Sync,
-        BC: BlockchainTime + Send + Sync,
+        BC: BetaLedgerTime + Send + Sync,
         DB: Send + Sync,
     {
-        async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
-            let beta_blockchain_time = self.beta_connector.as_ref().blockchain_time().await?;
-
-            Ok(beta_expiry <= beta_blockchain_time)
+        async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
+            self.beta_connector.as_ref().beta_ledger_time().await
         }
     }
 
@@ -426,8 +422,8 @@ mod tests {
     }
 
     #[async_trait::async_trait]
-    impl BlockchainTime for MockEthereumWallet {
-        async fn blockchain_time(&self) -> anyhow::Result<Timestamp> {
+    impl BetaLedgerTime for MockEthereumWallet {
+        async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
             Ok(Timestamp::now())
         }
     }

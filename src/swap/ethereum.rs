@@ -1,4 +1,4 @@
-use crate::swap::{herc20, BlockchainTime};
+use crate::swap::{herc20, BetaLedgerTime};
 use chrono::NaiveDateTime;
 use comit::{btsieve::LatestBlock, Timestamp};
 use std::sync::Arc;
@@ -81,11 +81,11 @@ impl herc20::ExecuteRedeem for Wallet {
 }
 
 #[async_trait::async_trait]
-impl<C> BlockchainTime for C
+impl<C> BetaLedgerTime for C
 where
     C: LatestBlock<Block = Block>,
 {
-    async fn blockchain_time(&self) -> anyhow::Result<Timestamp> {
+    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
         ethereum_latest_time(self).await
     }
 }

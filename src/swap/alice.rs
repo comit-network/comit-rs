@@ -5,7 +5,7 @@
 //! watches the two blockchains involved in the swap.
 
 use crate::{
-    swap::{db, ethereum, hbit, herc20, BlockchainTime, Execute, ShouldAbort},
+    swap::{db, ethereum, hbit, herc20, BetaLedgerTime, Execute},
     SwapId,
 };
 use chrono::NaiveDateTime;
@@ -90,16 +90,14 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AC, BC, DB> ShouldAbort for WatchOnlyAlice<AC, BC, DB>
+impl<AC, BC, DB> BetaLedgerTime for WatchOnlyAlice<AC, BC, DB>
 where
     AC: Send + Sync,
-    BC: BlockchainTime + Send + Sync,
+    BC: BetaLedgerTime + Send + Sync,
     DB: Send + Sync,
 {
-    async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
-        let beta_blockchain_time = self.beta_connector.as_ref().blockchain_time().await?;
-
-        Ok(beta_expiry <= beta_blockchain_time)
+    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
+        self.beta_connector.beta_ledger_time().await
     }
 }
 
@@ -241,17 +239,15 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AW, BW, DB, E> ShouldAbort for WalletAlice<AW, BW, DB, E>
+    impl<AW, BW, DB, E> BetaLedgerTime for WalletAlice<AW, BW, DB, E>
     where
         AW: Send + Sync,
-        BW: BlockchainTime + Send + Sync,
+        BW: BetaLedgerTime + Send + Sync,
         DB: Send + Sync,
         E: Send + Sync,
     {
-        async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
-            let beta_blockchain_time = self.beta_wallet.blockchain_time().await?;
-
-            Ok(beta_expiry <= beta_blockchain_time)
+        async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
+            self.beta_wallet.beta_ledger_time().await
         }
     }
 
