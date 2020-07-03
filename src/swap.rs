@@ -23,7 +23,13 @@ pub async fn hbit_herc20<A, B>(
 ) -> anyhow::Result<()>
 where
     A: hbit::Fund + herc20::RedeemAsAlice + hbit::Refund,
-    B: herc20::Deploy + herc20::Fund + hbit::RedeemAsBob + herc20::Refund,
+    B: Do<herc20::Deployed>
+        + Execute<herc20::Deployed, Args = herc20::Params>
+        + herc20::Fund
+        + hbit::RedeemAsBob
+        + herc20::Refund
+        + Send
+        + Sync,
 {
     let hbit_funded = match alice.fund(&hbit_params, herc20_params.expiry).await? {
         Next::Continue(hbit_funded) => hbit_funded,
@@ -31,7 +37,7 @@ where
     };
 
     let herc20_deployed = match bob
-        .deploy(herc20_params.clone(), herc20_params.expiry)
+        .r#do(herc20_params.expiry, herc20_params.clone())
         .await?
     {
         Next::Continue(herc20_deployed) => herc20_deployed,
@@ -88,6 +94,65 @@ where
             Err(error)
         }
     }
+}
+
+#[async_trait::async_trait]
+pub trait Do<E>
+where
+    Self: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
+    E: Clone + Send + Sync + 'static,
+    <Self as Execute<E>>::Args: Send + Sync,
+{
+    async fn r#do(
+        &self,
+        beta_expiry: Timestamp,
+        execution_args: <Self as Execute<E>>::Args,
+    ) -> anyhow::Result<Next<E>> {
+        if let Some(event) = self.check_memory().await? {
+            return Ok(Next::Continue(event));
+        }
+
+        if self.should_abort(beta_expiry).await? {
+            return Ok(Next::Abort);
+        }
+
+        let event = Execute::<E>::execute(self, execution_args).await?;
+        self.remember(event.clone()).await?;
+
+        Ok(Next::Continue(event))
+    }
+}
+
+#[async_trait::async_trait]
+impl<E, A> Do<E> for A
+where
+    A: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
+    E: Clone + Send + Sync + 'static,
+    <Self as Execute<E>>::Args: Send + Sync,
+{
+}
+
+#[async_trait::async_trait]
+pub trait CheckMemory<E> {
+    async fn check_memory(&self) -> anyhow::Result<Option<E>>;
+}
+
+// QUESTION: Should each implementation decide what arguments it needs
+// to make a decision?
+#[async_trait::async_trait]
+pub trait ShouldAbort {
+    async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool>;
+}
+
+#[async_trait::async_trait]
+pub trait Execute<E> {
+    type Args;
+    async fn execute(&self, args: Self::Args) -> anyhow::Result<E>;
+}
+
+#[async_trait::async_trait]
+pub trait Remember<E> {
+    async fn remember(&self, event: E) -> anyhow::Result<()>;
 }
 
 #[derive(Debug, Clone, Copy)]

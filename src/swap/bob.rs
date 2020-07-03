@@ -5,7 +5,8 @@
 
 use crate::{
     swap::{
-        bitcoin, db, ethereum, BlockchainTime, Next, {hbit, herc20},
+        bitcoin, db, ethereum, BlockchainTime, CheckMemory, Execute, Next, Remember, ShouldAbort,
+        {hbit, herc20},
     },
     SwapId,
 };
@@ -25,32 +26,58 @@ pub struct WalletBob<AW, BW, DB, E> {
 }
 
 #[async_trait::async_trait]
-impl<AW, BW, DB, E> herc20::Deploy for WalletBob<AW, BW, DB, E>
+impl<AW, BW, DB, E> CheckMemory<herc20::Deployed> for WalletBob<AW, BW, DB, E>
 where
     AW: Send + Sync,
-    BW: herc20::ExecuteDeploy + BlockchainTime + Send + Sync,
-    DB: db::Load<herc20::Deployed> + db::Save<herc20::Deployed>,
+    BW: Send + Sync,
+    DB: db::Load<herc20::Deployed>,
     E: Send + Sync,
 {
-    async fn deploy(
-        &self,
-        params: herc20::Params,
-        beta_expiry: Timestamp,
-    ) -> anyhow::Result<Next<herc20::Deployed>> {
-        {
-            if let Some(deploy_event) = self.db.load(self.swap_id).await? {
-                return Ok(Next::Continue(deploy_event));
-            }
+    async fn check_memory(&self) -> anyhow::Result<Option<herc20::Deployed>> {
+        self.db.load(self.swap_id).await
+    }
+}
 
-            if beta_expiry <= self.beta_wallet.blockchain_time().await? {
-                return Ok(Next::Abort);
-            }
+#[async_trait::async_trait]
+impl<AW, BW, DB, E> ShouldAbort for WalletBob<AW, BW, DB, E>
+where
+    AW: Send + Sync,
+    BW: BlockchainTime + Send + Sync,
+    DB: Send + Sync,
+    E: Send + Sync,
+{
+    async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+        let beta_blockchain_time = self.beta_wallet.blockchain_time().await?;
 
-            let deploy_event = self.beta_wallet.execute_deploy(params).await?;
-            self.db.save(deploy_event.clone(), self.swap_id).await?;
+        Ok(beta_expiry <= beta_blockchain_time)
+    }
+}
 
-            Ok(Next::Continue(deploy_event))
-        }
+#[async_trait::async_trait]
+impl<AW, BW, DB, E> Execute<herc20::Deployed> for WalletBob<AW, BW, DB, E>
+where
+    AW: Send + Sync,
+    BW: herc20::ExecuteDeploy + Send + Sync,
+    DB: Send + Sync,
+    E: Send + Sync,
+{
+    type Args = herc20::Params;
+
+    async fn execute(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {
+        self.beta_wallet.execute_deploy(params).await
+    }
+}
+
+#[async_trait::async_trait]
+impl<AW, BW, DB, E> Remember<herc20::Deployed> for WalletBob<AW, BW, DB, E>
+where
+    AW: Send + Sync,
+    BW: Send + Sync,
+    DB: db::Save<herc20::Deployed>,
+    E: Send + Sync,
+{
+    async fn remember(&self, event: herc20::Deployed) -> anyhow::Result<()> {
+        self.db.save(event, self.swap_id).await
     }
 }
 
@@ -207,38 +234,57 @@ pub mod watch_only_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AC, BC, DB> herc20::Deploy for WatchOnlyBob<AC, BC, DB>
+    impl<AC, BC, DB> CheckMemory<herc20::Deployed> for WatchOnlyBob<AC, BC, DB>
+    where
+        AC: Send + Sync,
+        BC: Send + Sync,
+        DB: db::Load<herc20::Deployed>,
+    {
+        async fn check_memory(&self) -> anyhow::Result<Option<herc20::Deployed>> {
+            self.db.load(self.swap_id).await
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<AC, BC, DB> ShouldAbort for WatchOnlyBob<AC, BC, DB>
+    where
+        AC: Send + Sync,
+        BC: BlockchainTime + Send + Sync,
+        DB: Send + Sync,
+    {
+        async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+            let beta_blockchain_time = self.beta_connector.as_ref().blockchain_time().await?;
+
+            Ok(beta_expiry <= beta_blockchain_time)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<AC, BC, DB> Execute<herc20::Deployed> for WatchOnlyBob<AC, BC, DB>
     where
         AC: Send + Sync,
         BC: LatestBlock<Block = ethereum::Block>
             + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
             + ReceiptByHash,
-        DB: db::Load<herc20::Deployed> + db::Save<herc20::Deployed>,
+        DB: Send + Sync,
     {
-        async fn deploy(
-            &self,
-            params: herc20::Params,
-            beta_expiry: Timestamp,
-        ) -> anyhow::Result<Next<herc20::Deployed>> {
-            {
-                if let Some(deploy_event) = self.db.load(self.swap_id).await? {
-                    return Ok(Next::Continue(deploy_event));
-                }
+        type Args = herc20::Params;
 
-                if beta_expiry <= self.beta_connector.as_ref().blockchain_time().await? {
-                    return Ok(Next::Abort);
-                }
+        async fn execute(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {
+            herc20::watch_for_deployed(self.beta_connector.as_ref(), params, self.start_of_swap)
+                .await
+        }
+    }
 
-                let deploy_event = herc20::watch_for_deployed(
-                    self.beta_connector.as_ref(),
-                    params,
-                    self.start_of_swap,
-                )
-                .await?;
-                self.db.save(deploy_event.clone(), self.swap_id).await?;
-
-                Ok(Next::Continue(deploy_event))
-            }
+    #[async_trait::async_trait]
+    impl<AC, BC, DB> Remember<herc20::Deployed> for WatchOnlyBob<AC, BC, DB>
+    where
+        AC: Send + Sync,
+        BC: Send + Sync,
+        DB: db::Save<herc20::Deployed>,
+    {
+        async fn remember(&self, event: herc20::Deployed) -> anyhow::Result<()> {
+            self.db.save(event, self.swap_id).await
         }
     }
 
@@ -337,7 +383,7 @@ pub mod watch_only_actor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::swap::herc20::Deploy;
+    use crate::swap::Do;
     use comit::{htlc_location, identity, transaction};
     use primitive_types::U256;
     use std::{
@@ -492,12 +538,12 @@ mod tests {
         };
 
         assert!(ethereum_blockchain.read().unwrap().deploy_events.is_empty());
-        let res = bob.deploy(herc20_params.clone(), beta_expiry).await;
+        let res = bob.r#do(beta_expiry, herc20_params.clone()).await;
 
         assert!(matches!(res, Ok(Next::Continue(herc20::Deployed { .. }))));
         assert_eq!(ethereum_blockchain.read().unwrap().deploy_events.len(), 1);
 
-        let res = bob.deploy(herc20_params, beta_expiry).await;
+        let res = bob.r#do(beta_expiry, herc20_params).await;
         assert!(matches!(res, Ok(Next::Continue(herc20::Deployed { .. }))));
         assert_eq!(ethereum_blockchain.read().unwrap().deploy_events.len(), 1);
     }
