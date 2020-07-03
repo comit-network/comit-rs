@@ -1,3 +1,4 @@
+use crate::order::Position;
 use crate::{bitcoin, dai, float_maths::divide_pow_ten_trunc, order::BtcDaiOrder};
 use anyhow::Context;
 use num::{BigUint, Integer, ToPrimitive};
@@ -107,9 +108,16 @@ impl Spread {
         Ok(Spread(permyriad))
     }
 
-    pub fn apply(self, rate: Rate) -> anyhow::Result<Rate> {
+    pub fn apply(self, rate: Rate, position: Position) -> anyhow::Result<Rate> {
         let ten_thousand = BigUint::from(10_000u16);
-        let integer = rate.integer() * (ten_thousand.clone() + self.0);
+
+        let spread = match position {
+            Position::Sell => ten_thousand.clone() + self.0,
+            Position::Buy => ten_thousand.clone() - self.0,
+        };
+
+        let integer = rate.integer() * (spread);
+
         // Now divide by 10e4 because of the spread
         let (rate, _remainder) = integer.div_rem(&ten_thousand);
         let rate = rate
@@ -160,25 +168,35 @@ mod tests {
     fn apply_spread_20() {
         let spread = Spread::new(2000).unwrap();
         let rate = Rate::try_from(25.0).unwrap();
-        let new_rate = spread.apply(rate).unwrap();
 
-        assert_eq!(new_rate, Rate::try_from(30.0).unwrap())
+        let new_rate = spread.apply(rate, Position::Sell).unwrap();
+        assert_eq!(new_rate, Rate::try_from(30.0).unwrap());
+
+        let new_rate = spread.apply(rate, Position::Buy).unwrap();
+        assert_eq!(new_rate, Rate::try_from(20.0).unwrap());
     }
 
     #[test]
     fn apply_spread_3() {
-        let spread = Spread::new(2000).unwrap();
-        let rate = Rate::try_from(25.0).unwrap();
-        let new_rate = spread.apply(rate).unwrap();
+        let spread = Spread::new(300).unwrap();
+        let rate = Rate::try_from(10.0).unwrap();
 
-        assert_eq!(new_rate, Rate::try_from(30.0).unwrap())
+        let sell_rate = spread.apply(rate, Position::Sell).unwrap();
+        assert_eq!(sell_rate, Rate::try_from(10.3).unwrap());
+
+        let buy_rate = spread.apply(rate, Position::Buy).unwrap();
+        assert_eq!(buy_rate, Rate::try_from(9.7).unwrap());
     }
 
     #[test]
     fn apply_spread_zero_doesnt_change_rate() {
         let spread = Spread::new(0).unwrap();
         let rate = Rate::try_from(123_456.789).unwrap();
-        let res = spread.apply(rate).unwrap();
+
+        let res = spread.apply(rate, Position::Sell).unwrap();
+        assert_eq!(rate, res);
+
+        let res = spread.apply(rate, Position::Buy).unwrap();
         assert_eq!(rate, res);
     }
 
@@ -219,7 +237,8 @@ mod tests {
         #[test]
         fn spread_apply_doesnt_panic(rate in new_rate(), spread in new_spread()) {
             if let (Ok(rate), Ok(spread)) = (rate, spread) {
-                let _ = spread.apply(rate);
+                let _ = spread.apply(rate, Position::Sell);
+                let _ = spread.apply(rate, Position::Buy);
             }
         }
     }
@@ -229,8 +248,11 @@ mod tests {
         fn spread_zero_doesnt_change_rate(rate in new_rate()) {
             let spread = Spread::new(0).unwrap();
             if let Ok(rate) = rate {
-                let res = spread.apply(rate).unwrap();
-                assert_eq!(res, rate)
+                let res = spread.apply(rate, Position::Sell).unwrap();
+                assert_eq!(res, rate);
+
+                let res = spread.apply(rate, Position::Buy).unwrap();
+                assert_eq!(res, rate);
             }
         }
     }

@@ -1,24 +1,85 @@
 #![allow(unreachable_code, unused_variables, clippy::unit_arg)]
 
 use nectar::{
-    bitcoin_wallet,
+    bitcoin, bitcoin_wallet, dai,
     maker::Reaction,
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, Nectar, Orderbook},
-    Maker,
+    Maker, Spread,
 };
 use std::time::Duration;
 
+async fn init_maker(bitcoin_wallet: bitcoin_wallet::Wallet) -> Maker {
+    let initial_btc_balance = bitcoin_wallet.balance().await;
+
+    // TODO ethereum wallet (passed in)
+    let initial_dai_balance: anyhow::Result<dai::Amount> = unimplemented!();
+
+    // TODO: from config
+    let btc_max_sell: anyhow::Result<bitcoin::Amount> = unimplemented!();
+    let dai_max_sell: anyhow::Result<dai::Amount> = unimplemented!();
+    let btc_fee_reserve: anyhow::Result<bitcoin::Amount> = unimplemented!();
+    let dai_fee_reserve: anyhow::Result<dai::Amount> = unimplemented!();
+
+    let initial_rate = get_btc_dai_mid_market_rate().await;
+
+    // TODO from config
+    let spread = Spread::default();
+
+    match (
+        initial_btc_balance,
+        initial_dai_balance,
+        btc_fee_reserve,
+        dai_fee_reserve,
+        btc_max_sell,
+        dai_max_sell,
+        initial_rate,
+    ) {
+        // TODO better error handling
+        (
+            Ok(initial_btc_balance),
+            Ok(initial_dai_balance),
+            Ok(btc_fee_reserve),
+            Ok(dai_fee_reserve),
+            Ok(btc_max_sell),
+            Ok(dai_max_sell),
+            Ok(initial_rate),
+        ) => Maker::new(
+                initial_btc_balance,
+                initial_dai_balance,
+                btc_fee_reserve,
+                dai_fee_reserve,
+                btc_max_sell,
+                dai_max_sell,
+                initial_rate,
+                spread,
+            ),
+        _ => panic!("Maker initialisation failed!"),
+    }
+}
+
 #[tokio::main]
 async fn main() {
-    let maker = Maker::new();
-    let orderbook = Orderbook;
-
-    let nectar = Nectar::new(orderbook);
-    let wallet =
+    let bitcoin_wallet =
         bitcoin_wallet::Wallet::new(unimplemented!(), unimplemented!(), unimplemented!()).unwrap();
 
+    let maker = init_maker(bitcoin_wallet).await;
+
+    let orderbook = Orderbook;
+    let nectar = Nectar::new(orderbook);
+
     let mut swarm: libp2p::Swarm<Nectar> = unimplemented!();
+
+    let initial_sell_order = maker.next_sell_order();
+    let initial_buy_order = maker.next_buy_order();
+
+    match (initial_sell_order, initial_buy_order) {
+        (Ok(sell_order), Ok(buy_order)) => {
+            swarm.orderbook.publish(sell_order.into());
+            swarm.orderbook.publish(buy_order.into());
+        }
+        _ => panic!("Unable to publish initial orders!"),
+    }
 
     loop {
         let rate = get_btc_dai_mid_market_rate().await;
@@ -27,7 +88,7 @@ async fn main() {
             Err(e) => maker.track_failed_rate(e),
         }
 
-        let bitcoin_balance = wallet.balance().await;
+        let bitcoin_balance = bitcoin_wallet.balance().await;
         match bitcoin_balance {
             Ok(new_balance) => maker.update_bitcoin_balance(new_balance), // maker should record timestamp of this
             Err(e) => maker.track_failed_balance_update(e),
