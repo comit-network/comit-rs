@@ -5,12 +5,14 @@ use comit::{
     ethereum::{Address, ChainId, Hash, TransactionReceipt},
 };
 use reqwest::Url;
+use std::str::FromStr;
 
 // TODO: Add network; assert network on all calls to geth
 #[derive(Debug, Clone)]
 pub struct Wallet {
     private_key: clarity::PrivateKey,
     geth_client: geth::Client,
+    dai_contract_adr: Address,
 }
 
 impl Wallet {
@@ -20,19 +22,26 @@ impl Wallet {
 
         let geth_client = geth::Client::new(url);
 
+        // TODO: Properly deal with address according to chain-id (currently set to mainnet address)
+        let dai_contract_adr = Address::from_str("6b175474e89094c44da98b954eedeac495271d0f")
+            .expect("dai contract address");
+
         Ok(Self {
             private_key,
             geth_client,
+            dai_contract_adr,
         })
     }
 
     #[cfg(test)]
     pub fn new_from_private_key(private_key: clarity::PrivateKey, url: Url) -> Self {
         let geth_client = geth::Client::new(url);
+        let dai_contract_adr = Address::random();
 
         Self {
             private_key,
             geth_client,
+            dai_contract_adr,
         }
     }
 
@@ -200,6 +209,10 @@ impl Wallet {
         self.geth_client
             .erc20_balance(self.account(), token_contract)
             .await
+    }
+
+    pub async fn dai_balance(&self) -> anyhow::Result<Erc20> {
+        self.erc20_balance(self.dai_contract_adr).await
     }
 
     pub async fn get_transaction_count(&self) -> anyhow::Result<u32> {

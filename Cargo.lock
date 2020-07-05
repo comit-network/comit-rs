@@ -702,6 +702,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dns-parser"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4d33be9473d06f75f58220f71f7a9317aca647dc061dbd3c361b0bef505fbea"
+dependencies = [
+ "byteorder",
+ "quick-error",
+]
+
+[[package]]
 name = "dtoa"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1402,6 +1412,8 @@ dependencies = [
  "lazy_static",
  "libp2p-core",
  "libp2p-core-derive",
+ "libp2p-dns",
+ "libp2p-mdns",
  "libp2p-mplex",
  "libp2p-secio",
  "libp2p-swarm",
@@ -1457,6 +1469,39 @@ checksum = "329127858e4728db5ab60c33d5ae352a999325fdf190ed022ec7d3a4685ae2e6"
 dependencies = [
  "quote 1.0.7",
  "syn 1.0.31",
+]
+
+[[package]]
+name = "libp2p-dns"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0d0993481203d68e5ce2f787d033fb0cac6b850659ed6c784612db678977c71"
+dependencies = [
+ "futures",
+ "libp2p-core",
+ "log",
+]
+
+[[package]]
+name = "libp2p-mdns"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41e908d2aaf8ff0ec6ad1f02fe1844fd777fb0b03a68a226423630750ab99471"
+dependencies = [
+ "async-std",
+ "data-encoding",
+ "dns-parser",
+ "either",
+ "futures",
+ "lazy_static",
+ "libp2p-core",
+ "libp2p-swarm",
+ "log",
+ "net2",
+ "rand 0.7.3",
+ "smallvec 1.4.0",
+ "void",
+ "wasm-timer",
 ]
 
 [[package]]
@@ -1743,6 +1788,7 @@ dependencies = [
  "futures",
  "hex 0.4.2",
  "lazy_static",
+ "libp2p",
  "num 0.3.0",
  "num256",
  "proptest",

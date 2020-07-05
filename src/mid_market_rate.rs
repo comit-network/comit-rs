@@ -16,6 +16,16 @@ pub async fn get_btc_dai_mid_market_rate() -> anyhow::Result<MidMarketRate> {
     kraken::get_btc_dai_mid_market_rate().await
 }
 
+#[cfg(test)]
+impl Default for MidMarketRate {
+    fn default() -> Self {
+        Self {
+            value: Rate::default(),
+            timestamp: Utc::now(),
+        }
+    }
+}
+
 mod kraken {
     use super::*;
     use serde::de::Error;

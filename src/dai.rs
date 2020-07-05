@@ -1,16 +1,21 @@
 use crate::bitcoin::{self, SATS_IN_BITCOIN_EXP};
 use crate::float_maths::{divide_pow_ten_trunc, multiply_pow_ten, truncate};
 use crate::Rate;
+use comit::asset::Erc20;
 use conquer_once::Lazy;
-use num::{pow::Pow, BigUint, ToPrimitive};
+use num::{pow::Pow, BigUint, ToPrimitive, Zero};
 
 pub const ATTOS_IN_DAI_EXP: u16 = 18;
 pub static DAI_DEC: Lazy<BigUint> = Lazy::new(|| BigUint::from(10u16).pow(ATTOS_IN_DAI_EXP));
 
-#[derive(Clone, Ord, PartialOrd, PartialEq, Eq)]
+#[derive(Clone, Ord, PartialOrd, PartialEq, Eq, Default)]
 pub struct Amount(BigUint);
 
 impl Amount {
+    pub fn zero() -> Self {
+        Self(BigUint::zero())
+    }
+
     // The rate input is for dai to bitcoin but we applied it to attodai so we need to:
     // - divide to get dai (18)
     // - divide to adjust for rate (9)
@@ -74,11 +79,25 @@ impl std::fmt::Display for Amount {
     }
 }
 
+impl std::ops::Add for Amount {
+    type Output = Amount;
+    fn add(self, rhs: Self) -> Self::Output {
+        Amount(self.0 + rhs.0)
+    }
+}
+
 impl std::ops::Sub for Amount {
     type Output = Amount;
 
     fn sub(self, rhs: Self) -> Self::Output {
         Amount(self.0 - rhs.0)
+    }
+}
+
+impl From<Erc20> for Amount {
+    fn from(erc20: Erc20) -> Self {
+        let quantity = BigUint::from_bytes_le(erc20.quantity.to_bytes().as_slice());
+        Amount { 0: quantity }
     }
 }
 
