@@ -20,7 +20,7 @@ derivative = "2"
 diesel = { version = "1.4", features = ["sqlite", "chrono"] }
 diesel_migrations = "1.4.0"
 digest = { path = "../digest" }
-directories = "2.0"
+directories = "3.0"
 fs2 = "0.4.3"
 futures = { version = "0.3", default-features = false }
 futures-timer = "3.0"
