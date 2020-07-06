@@ -8,7 +8,6 @@ use crate::{
     MidMarketRate, PeersWithOngoingTrades, Rate,
 };
 use std::convert::TryFrom;
-use chrono::{DateTime, Utc};
 
 #[derive(Debug, PartialEq)]
 pub enum NewOrder {
@@ -26,11 +25,9 @@ pub struct Maker {
     pub dai_reserved_funds: dai::Amount,
     btc_max_sell_amount: bitcoin::Amount,
     dai_max_sell_amount: dai::Amount,
-    mid_market_rate: MidMarketRate,
+    mid_market_rate: Option<MidMarketRate>,
     spread: Spread,
     ongoing_takers: PeersWithOngoingTrades,
-
-    max_rate_ticker_interval_secs: i64,
 }
 
 impl Maker {
@@ -44,7 +41,6 @@ impl Maker {
         dai_max_sell_amount: dai::Amount,
         mid_market_rate: MidMarketRate,
         spread: Spread,
-        max_rate_ticker_interval_secs: i64,
     ) -> Self {
         Maker {
             btc_balance,
@@ -55,10 +51,9 @@ impl Maker {
             dai_reserved_funds: Default::default(),
             btc_max_sell_amount,
             dai_max_sell_amount,
-            mid_market_rate,
+            mid_market_rate: Some(mid_market_rate),
             spread,
             ongoing_takers: Default::default(),
-            max_rate_ticker_interval_secs
         }
     }
 
@@ -66,17 +61,16 @@ impl Maker {
         &mut self,
         mid_market_rate: MidMarketRate,
     ) -> anyhow::Result<RateUpdateDecision> {
-        // if rate did not change don't create new orders
-        if self.mid_market_rate.value == mid_market_rate.value {
-            // if value did not change update to have newest timestamp
-            self.mid_market_rate = mid_market_rate;
-            return Ok(RateUpdateDecision::RateUpdated);
+        if let Some(previous_mid_market_rate) = self.mid_market_rate {
+            if previous_mid_market_rate.value == mid_market_rate.value {
+                return Ok(RateUpdateDecision::NoRateChange);
+            }
         }
 
-        self.mid_market_rate = mid_market_rate;
-        Ok(RateUpdateDecision::RateUpdatedWithNewValue {
-            next_sell_order: self.new_sell_order()?,
-            next_buy_order: self.new_buy_order()?,
+        self.mid_market_rate = Some(mid_market_rate);
+        Ok(RateUpdateDecision::RateChange {
+            new_sell_order: self.new_sell_order()?,
+            new_buy_order: self.new_buy_order()?,
         })
     }
 
@@ -88,44 +82,38 @@ impl Maker {
         self.dai_balance = balance;
     }
 
-    pub fn track_failed_balance_update(&mut self, error: anyhow::Error) {}
-
-    fn rate_is_up_to_date(&self) -> bool {
-        let current_timestamp = Utc::now().timestamp();
-        let mid_market_rate_timestamp = self.mid_market_rate.timestamp.timestamp();
-        let acceptable_timestamp = (current_timestamp - self.max_rate_ticker_interval_secs);
-
-        mid_market_rate_timestamp >= acceptable_timestamp
+    pub fn track_failed_rate_update(&mut self) {
+        self.mid_market_rate = None;
     }
 
-    pub fn new_sell_order(&self) -> anyhow::Result<BtcDaiOrder> {
-        if !self.rate_is_up_to_date() {
-            anyhow::bail!("Rate outdated")
-        }
+    pub fn track_failed_balance_update(&mut self, error: anyhow::Error) {}
 
-        BtcDaiOrder::new_sell(
-            self.btc_balance,
-            self.btc_fee,
-            self.btc_reserved_funds,
-            self.btc_max_sell_amount,
-            self.mid_market_rate.value,
-            self.spread,
-        )
+    pub fn new_sell_order(&self) -> anyhow::Result<BtcDaiOrder> {
+        match self.mid_market_rate {
+            Some(mid_market_rate) => BtcDaiOrder::new_sell(
+                self.btc_balance,
+                self.btc_fee,
+                self.btc_reserved_funds,
+                self.btc_max_sell_amount,
+                mid_market_rate.value,
+                self.spread,
+            ),
+            None => anyhow::bail!(RateNotAvailable(Position::Sell)),
+        }
     }
 
     pub fn new_buy_order(&self) -> anyhow::Result<BtcDaiOrder> {
-        if !self.rate_is_up_to_date() {
-            anyhow::bail!("Rate outdated")
+        match self.mid_market_rate {
+            Some(mid_market_rate) => BtcDaiOrder::new_buy(
+                self.dai_balance.clone(),
+                self.dai_fee.clone(),
+                self.dai_reserved_funds.clone(),
+                self.dai_max_sell_amount.clone(),
+                mid_market_rate.value,
+                self.spread,
+            ),
+            None => anyhow::bail!(RateNotAvailable(Position::Buy)),
         }
-
-        BtcDaiOrder::new_buy(
-            self.dai_balance.clone(),
-            self.dai_fee.clone(),
-            self.dai_reserved_funds.clone(),
-            self.dai_max_sell_amount.clone(),
-            self.mid_market_rate.value,
-            self.spread,
-        )
     }
 
     /// Decide whether we should proceed with order,
@@ -136,9 +124,14 @@ impl Maker {
             return Ok(TakeRequestDecision::CannotTradeWithTaker);
         }
 
+        if self.mid_market_rate.is_none() {
+            anyhow::bail!(RateNotAvailable(order.inner.position))
+        }
+
+        let current_mid_market_rate = self.mid_market_rate.unwrap();
         let current_profitable_rate = self
             .spread
-            .apply(self.mid_market_rate.value, order.inner.position)?;
+            .apply(current_mid_market_rate.value, order.inner.position)?;
         let order_rate = Rate::try_from(order.inner.clone())?;
         let next_order = match order.clone().into() {
             order
@@ -207,12 +200,16 @@ pub enum TakeRequestDecision {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RateUpdateDecision {
-    RateUpdatedWithNewValue {
-        next_sell_order: BtcDaiOrder,
-        next_buy_order: BtcDaiOrder,
+    RateChange {
+        new_sell_order: BtcDaiOrder,
+        new_buy_order: BtcDaiOrder,
     },
-    RateUpdated,
+    NoRateChange,
 }
+
+#[derive(Debug, Copy, Clone, thiserror::Error)]
+#[error("Rate not available when trying to create new {0} order.")]
+pub struct RateNotAvailable(Position);
 
 #[cfg(test)]
 mod tests {
@@ -222,7 +219,6 @@ mod tests {
         order::{BtcDaiOrder, Position},
         MidMarketRate, Rate,
     };
-    use chrono::Utc;
     use std::convert::TryFrom;
 
     impl Default for Maker {
@@ -236,10 +232,9 @@ mod tests {
                 dai_reserved_funds: dai::Amount::default(),
                 btc_max_sell_amount: bitcoin::Amount::default(),
                 dai_max_sell_amount: dai::Amount::default(),
-                mid_market_rate: MidMarketRate::default(),
+                mid_market_rate: Some(MidMarketRate::default()),
                 spread: Spread::default(),
                 ongoing_takers: PeersWithOngoingTrades::default(),
-                max_rate_ticker_interval_secs: 0,
             }
         }
     }
@@ -273,10 +268,9 @@ mod tests {
     fn dai_funds_reserved_upon_taking_buy_order() {
         let mut maker = Maker {
             dai_balance: dai::Amount::from_dai_trunc(10000.0).unwrap(),
-            mid_market_rate: MidMarketRate {
+            mid_market_rate: Some(MidMarketRate {
                 value: Rate::try_from(1.5).unwrap(),
-                ..Default::default()
-            },
+            }),
             ..Default::default()
         };
 
@@ -323,10 +317,9 @@ mod tests {
     fn not_enough_btc_funds_to_reserve_for_a_buy_order() {
         let mut maker = Maker {
             dai_balance: dai::Amount::zero(),
-            mid_market_rate: MidMarketRate {
+            mid_market_rate: Some(MidMarketRate {
                 value: Rate::try_from(1.5).unwrap(),
-                ..Default::default()
-            },
+            }),
             ..Default::default()
         };
 
@@ -391,12 +384,32 @@ mod tests {
     }
 
     #[test]
+    fn yield_error_if_rate_is_not_available() {
+        let mut maker = Maker {
+            mid_market_rate: None,
+            ..Default::default()
+        };
+
+        let order_taken = Order {
+            ..Default::default()
+        };
+
+        let result = maker.process_taken_order(order_taken);
+        assert!(result.is_err());
+
+        let result = maker.new_buy_order();
+        assert!(result.is_err());
+
+        let result = maker.new_sell_order();
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn fail_to_confirm_sell_order_if_sell_rate_is_not_good_enough() {
         let mut maker = Maker {
-            mid_market_rate: MidMarketRate {
+            mid_market_rate: Some(MidMarketRate {
                 value: Rate::try_from(10000.0).unwrap(),
-                ..Default::default()
-            },
+            }),
             ..Default::default()
         };
 
@@ -417,10 +430,9 @@ mod tests {
     #[test]
     fn fail_to_confirm_buy_order_if_buy_rate_is_not_good_enough() {
         let mut maker = Maker {
-            mid_market_rate: MidMarketRate {
+            mid_market_rate: Some(MidMarketRate {
                 value: Rate::try_from(10000.0).unwrap(),
-                ..Default::default()
-            },
+            }),
             ..Default::default()
         };
 
@@ -441,40 +453,36 @@ mod tests {
     #[test]
     fn rate_updated_if_rate_update_with_same_value() {
         let mut maker = Maker {
-            mid_market_rate: MidMarketRate {
+            mid_market_rate: Some(MidMarketRate {
                 value: Rate::try_from(1.0).unwrap(),
-                ..Default::default()
-            },
+            }),
             ..Default::default()
         };
 
         let new_mid_market_rate = MidMarketRate {
             value: Rate::try_from(1.0).unwrap(),
-            timestamp: Utc::now(),
         };
 
         let reaction = maker.update_rate(new_mid_market_rate).unwrap();
-        assert_eq!(reaction, RateUpdateDecision::RateUpdated);
-        assert_eq!(maker.mid_market_rate, new_mid_market_rate)
+        assert_eq!(reaction, RateUpdateDecision::NoRateChange);
+        assert_eq!(maker.mid_market_rate.unwrap(), new_mid_market_rate)
     }
 
     #[test]
     fn rate_updated_and_new_orders_if_rate_update_with_new_value() {
         let mut maker = Maker {
-            mid_market_rate: MidMarketRate {
+            mid_market_rate: Some(MidMarketRate {
                 value: Rate::try_from(1.0).unwrap(),
-                ..Default::default()
-            },
+            }),
             ..Default::default()
         };
 
         let new_mid_market_rate = MidMarketRate {
             value: Rate::try_from(2.0).unwrap(),
-            timestamp: Utc::now(),
         };
 
         let reaction = maker.update_rate(new_mid_market_rate).unwrap();
-        assert!(matches!(reaction, RateUpdateDecision::RateUpdatedWithNewValue {..}));
-        assert_eq!(maker.mid_market_rate, new_mid_market_rate)
+        assert!(matches!(reaction, RateUpdateDecision::RateChange {..}));
+        assert_eq!(maker.mid_market_rate.unwrap(), new_mid_market_rate)
     }
 }

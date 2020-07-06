@@ -26,7 +26,6 @@ async fn init_maker(
     let initial_rate = get_btc_dai_mid_market_rate().await;
 
     let spread: Spread = todo!("from config");
-    let max_rate_ticker_interval_secs = todo!("from config");
 
     match (
         initial_btc_balance,
@@ -54,7 +53,6 @@ async fn init_maker(
             dai_max_sell,
             initial_rate,
             spread,
-            max_rate_ticker_interval_secs
         ),
         // TODO better error handling
         _ => panic!("Maker initialisation failed!"),
@@ -97,18 +95,24 @@ async fn main() {
             Ok(new_rate) => {
                 let reaction = maker.update_rate(new_rate); // maker should record timestamp of this
                 match reaction {
-                    Ok(RateUpdateDecision::RateUpdatedWithNewValue {
-                        next_sell_order,
-                        next_buy_order,
+                    Ok(RateUpdateDecision::RateChange {
+                        new_sell_order,
+                        new_buy_order,
                     }) => {
-                        swarm.orderbook.publish(next_sell_order.into());
-                        swarm.orderbook.publish(next_buy_order.into());
+                        swarm.orderbook.publish(new_sell_order.into());
+                        swarm.orderbook.publish(new_buy_order.into());
                     }
-                    Ok(RateUpdateDecision::RateUpdated) => (),
-                    Err(err) => tracing::warn!("Rate update yielded error: {}", err),
+                    Ok(RateUpdateDecision::NoRateChange) => (),
+                    Err(e) => tracing::warn!("Rate update yielded error: {}", e),
                 }
             }
-            Err(err) => tracing::warn!("Fetching rate yielded error: {}", err),
+            Err(e) => {
+                maker.track_failed_rate_update();
+                tracing::error!(
+                    "Unable to fetch latest rate! Fetching rate yielded error: {}",
+                    e
+                );
+            }
         }
 
         let bitcoin_balance = bitcoin_wallet.balance().await;
@@ -148,9 +152,12 @@ async fn main() {
                             }
                             Ok(TakeRequestDecision::RateSucks)
                             | Ok(TakeRequestDecision::InsufficientFunds)
-                            | Ok(TakeRequestDecision::CannotTradeWithTaker)
-                            | Err(_) => {
+                            | Ok(TakeRequestDecision::CannotTradeWithTaker) => {
                                 swarm.orderbook.ignore(order);
+                            }
+                            Err(e) => {
+                                swarm.orderbook.ignore(order);
+                                tracing::error!("Processing rate take request yielded error: {}", e)
                             }
                         }
                     }

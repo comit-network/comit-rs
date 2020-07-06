@@ -1,11 +1,9 @@
 use crate::Rate;
-use chrono::{DateTime, Utc};
 use std::convert::TryInto;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct MidMarketRate {
     pub value: Rate,
-    pub timestamp: DateTime<Utc>,
 }
 
 /// Get mid-market rate for the trading pair BTC-DAI.
@@ -21,7 +19,6 @@ impl Default for MidMarketRate {
     fn default() -> Self {
         Self {
             value: Rate::default(),
-            timestamp: Utc::now(),
         }
     }
 }
@@ -62,10 +59,7 @@ mod kraken {
             let value = (bid + ask) / 2f64;
             let value = Rate::try_from(value).unwrap();
 
-            Ok(Self {
-                value,
-                timestamp: Utc::now(),
-            })
+            Ok(Self { value })
         }
     }
 
