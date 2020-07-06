@@ -1,9 +1,8 @@
 use crate::{
-    config::settings::AllowedOrigins,
+    config::AllowedOrigins,
     http_api,
     http_api::{
-        halbit_herc20, hbit_herc20, herc20_halbit, herc20_hbit, orderbook,
-        routes::{self, peers, swaps},
+        halbit_herc20, hbit_herc20, herc20_halbit, herc20_hbit, info, orderbook, peers, swaps,
     },
     network::OrderId,
     Facade, LocalSwapId,
@@ -34,13 +33,13 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
     let get_info = warp::get()
         .and(warp::path::end())
         .and(facade.clone())
-        .and_then(routes::get_info);
+        .and_then(info::get_info);
 
     let get_info_siren = warp::get()
         .and(warp::path::end())
         .and(warp::header::exact("accept", "application/vnd.siren+json"))
         .and(facade.clone())
-        .and_then(routes::get_info_siren);
+        .and_then(info::get_info_siren);
 
     let get_peers = warp::get()
         .and(warp::path("peers"))

@@ -19,44 +19,40 @@ extern crate diesel;
 extern crate diesel_migrations;
 
 #[macro_use]
-pub mod network;
+mod network;
 #[cfg(test)]
-pub mod proptest;
+mod proptest;
 #[cfg(test)]
-pub mod spectral_ext;
+mod spectral_ext;
 #[macro_use]
-pub mod with_swap_types;
-
+mod with_swap_types;
 mod actions;
 mod cli;
-pub mod config;
-pub mod connectors;
+mod config;
+mod connectors;
 mod facade;
-pub mod file_lock;
-pub mod halbit;
-pub mod hbit;
-pub mod herc20;
-pub mod http_api;
-pub mod protocol_spawner;
-pub mod respawn;
-pub mod spawn;
-pub mod state;
-pub mod storage;
+mod file_lock;
+mod halbit;
+mod hbit;
+mod herc20;
+mod http_api;
+mod protocol_spawner;
+mod respawn;
+mod spawn;
+mod state;
+mod storage;
 mod trace;
 mod tracing_ext;
-pub mod htlc_location {
+mod htlc_location {
     pub use comit::htlc_location::*;
 }
-
-pub mod identity {
+mod identity {
     pub use comit::identity::*;
 }
-
-pub mod transaction {
+mod transaction {
     pub use comit::transaction::*;
 }
-
-pub mod asset {
+mod asset {
     pub use comit::asset::*;
     use derivative::Derivative;
 
@@ -86,20 +82,16 @@ pub mod asset {
         }
     }
 }
-
-pub mod ethereum {
+mod ethereum {
     pub use comit::ethereum::*;
 }
-
-pub mod bitcoin {
+mod bitcoin {
     pub use comit::bitcoin::{Address, PublicKey};
 }
-
-pub mod lightning {
+mod lightning {
     pub use comit::lightning::PublicKey;
 }
-
-pub mod btsieve {
+mod btsieve {
     pub use comit::btsieve::*;
 }
 
@@ -107,11 +99,10 @@ use self::{
     actions::*,
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
     cli::Options,
-    config::{validation::validate_connection_to_network, Settings},
+    config::{validate_connection_to_network, Settings},
     connectors::Connectors,
     facade::Facade,
     file_lock::TryLockExclusive,
-    http_api::route_factory,
     network::{Swarm, SwarmWorker},
     protocol_spawner::{ProtocolSpawner, *},
     respawn::respawn,
@@ -324,7 +315,7 @@ async fn make_http_api_worker(
     facade: Facade,
     incoming_requests: tokio::net::TcpListener,
 ) {
-    let routes = route_factory::create(facade, &settings.http_api.cors.allowed_origins);
+    let routes = http_api::create_routes(facade, &settings.http_api.cors.allowed_origins);
 
     match incoming_requests.local_addr() {
         Ok(socket) => {

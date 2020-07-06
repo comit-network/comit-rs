@@ -1,7 +1,7 @@
-pub mod file;
+mod file;
 mod serde_bitcoin_network;
-pub mod settings;
-pub mod validation;
+mod settings;
+mod validation;
 
 use crate::ethereum::ChainId;
 use libp2p::Multiaddr;
@@ -9,7 +9,11 @@ use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-pub use self::{file::File, settings::Settings};
+pub use self::{
+    file::File,
+    settings::{AllowedOrigins, Settings},
+    validation::validate_connection_to_network,
+};
 
 lazy_static::lazy_static! {
     pub static ref LND_URL: Url = Url::parse("https://localhost:8080").expect("static string to be a valid url");

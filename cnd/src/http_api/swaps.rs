@@ -17,9 +17,7 @@ use crate::{
             ActionName, AlphaAbsoluteExpiry, AlphaEvents, AlphaLedger, AlphaParams,
             BetaAbsoluteExpiry, BetaEvents, BetaLedger, BetaParams, GetRole, Ledger, LedgerEvents,
         },
-        route_factory,
-        routes::into_rejection,
-        Http,
+        route_factory, Http,
     },
     storage::Load,
     DeployAction, Facade, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role,
@@ -33,7 +31,7 @@ pub async fn get_swap(id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rej
         .await
         .map(|swap_resource| warp::reply::json(&swap_resource))
         .map_err(problem::from_anyhow)
-        .map_err(into_rejection)
+        .map_err(warp::reject::custom)
 }
 
 async fn handle_get_swap(id: LocalSwapId, facade: Facade) -> anyhow::Result<siren::Entity> {
@@ -257,7 +255,7 @@ pub async fn action_init(id: LocalSwapId, facade: Facade) -> Result<impl Reply, 
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
-        .map_err(into_rejection)
+        .map_err(warp::reject::custom)
 }
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
@@ -278,7 +276,7 @@ pub async fn action_deploy(id: LocalSwapId, facade: Facade) -> Result<impl Reply
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
-        .map_err(into_rejection)
+        .map_err(warp::reject::custom)
 }
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
@@ -302,7 +300,7 @@ pub async fn action_fund(id: LocalSwapId, facade: Facade) -> Result<impl Reply, 
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
-        .map_err(into_rejection)
+        .map_err(warp::reject::custom)
 }
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
@@ -323,7 +321,7 @@ pub async fn action_redeem(id: LocalSwapId, facade: Facade) -> Result<impl Reply
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
-        .map_err(into_rejection)
+        .map_err(warp::reject::custom)
 }
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
@@ -347,7 +345,7 @@ pub async fn action_refund(id: LocalSwapId, facade: Facade) -> Result<impl Reply
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
-        .map_err(into_rejection)
+        .map_err(warp::reject::custom)
 }
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]

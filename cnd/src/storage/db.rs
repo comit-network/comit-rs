@@ -3,7 +3,7 @@ mod errors;
 mod integration_tests;
 pub mod schema;
 pub mod tables;
-pub mod wrapper_types;
+mod wrapper_types;
 embed_migrations!("./migrations");
 
 pub use self::{errors::*, tables::*, wrapper_types::custom_sql_types::Text};
