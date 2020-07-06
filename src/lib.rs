@@ -19,6 +19,7 @@ use conquer_once::Lazy;
 pub mod bitcoin;
 pub mod bitcoin_wallet;
 pub mod bitcoind;
+pub mod config;
 pub mod dai;
 pub mod ethereum_wallet;
 pub mod float_maths;
@@ -43,6 +44,13 @@ pub use swap_id::SwapId;
 
 pub static SECP: Lazy<::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All>> =
     Lazy::new(::bitcoin::secp256k1::Secp256k1::new);
+
+// Linux: /home/<user>/.local/share/nectar/
+// OSX: /Users/<user>/Library/Application Support/nectar/
+pub fn data_dir() -> Option<std::path::PathBuf> {
+    directories::ProjectDirs::from("", "", "nectar")
+        .map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
+}
 
 #[cfg(all(test, feature = "test-docker"))]
 pub mod test_harness;

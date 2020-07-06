@@ -4,7 +4,7 @@ use crate::bitcoind::WalletInfoResponse;
 use crate::seed::Seed;
 use ::bitcoin::{hash_types::PubkeyHash, hashes::Hash, Address, Network, Transaction, Txid};
 use bitcoin::PrivateKey;
-use reqwest::Url;
+use url::Url;
 
 #[derive(Debug, Clone)]
 pub struct Wallet {

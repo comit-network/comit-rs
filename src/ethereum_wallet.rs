@@ -4,8 +4,8 @@ use comit::{
     asset::Erc20,
     ethereum::{Address, ChainId, Hash, TransactionReceipt},
 };
-use reqwest::Url;
 use std::str::FromStr;
+use url::Url;
 
 // TODO: Add network; assert network on all calls to geth
 #[derive(Debug, Clone)]
