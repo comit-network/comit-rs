@@ -20,13 +20,13 @@ use warp::{http, http::StatusCode, Rejection, Reply};
 #[derive(Deserialize)]
 struct MakeHerc20HbitOrderBody {
     #[serde(with = "asset::bitcoin::sats_as_string")]
-    pub buy_quantity: asset::Bitcoin,
-    pub sell_token_contract: ethereum::Address,
-    pub sell_quantity: asset::Erc20Quantity,
-    pub absolute_expiry: u32,
-    pub refund_identity: bitcoin::Address,
-    pub redeem_identity: identity::Ethereum,
-    pub maker_addr: Multiaddr,
+    buy_quantity: asset::Bitcoin,
+    sell_token_contract: ethereum::Address,
+    sell_quantity: asset::Erc20Quantity,
+    absolute_expiry: u32,
+    refund_identity: bitcoin::Address,
+    redeem_identity: identity::Ethereum,
+    maker_addr: Multiaddr,
 }
 
 impl MakeHerc20HbitOrderBody {
@@ -49,16 +49,16 @@ struct TakeHbitHerc20OrderBody {
 #[derive(Serialize)]
 struct Herc20HbitOrderResponse {
     #[serde(with = "asset::bitcoin::sats_as_string")]
-    pub buy_quantity: asset::Bitcoin,
-    pub sell_token_contract: ethereum::Address,
-    pub sell_quantity: asset::Erc20Quantity,
-    pub absolute_expiry: u32,
-    pub maker: String,
-    pub id: Uuid,
+    buy_quantity: asset::Bitcoin,
+    sell_token_contract: ethereum::Address,
+    sell_quantity: asset::Erc20Quantity,
+    absolute_expiry: u32,
+    maker: String,
+    id: Uuid,
 }
 
 impl Herc20HbitOrderResponse {
-    pub fn from_order(order: &Order) -> Self {
+    fn from_order(order: &Order) -> Self {
         Herc20HbitOrderResponse {
             buy_quantity: asset::Bitcoin::from_sat(order.buy),
             sell_token_contract: order.sell.token_contract,
