@@ -54,33 +54,6 @@ mod transaction {
 }
 mod asset {
     pub use comit::asset::*;
-    use derivative::Derivative;
-
-    #[derive(Clone, Derivative, PartialEq)]
-    #[derivative(Debug = "transparent")]
-    pub enum AssetKind {
-        Bitcoin(Bitcoin),
-        Ether(Ether),
-        Erc20(Erc20),
-    }
-
-    impl From<Bitcoin> for AssetKind {
-        fn from(amount: Bitcoin) -> Self {
-            AssetKind::Bitcoin(amount)
-        }
-    }
-
-    impl From<Ether> for AssetKind {
-        fn from(quantity: Ether) -> Self {
-            AssetKind::Ether(quantity)
-        }
-    }
-
-    impl From<Erc20> for AssetKind {
-        fn from(quantity: Erc20) -> Self {
-            AssetKind::Erc20(quantity)
-        }
-    }
 }
 mod ethereum {
     pub use comit::ethereum::*;

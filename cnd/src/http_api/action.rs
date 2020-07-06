@@ -67,7 +67,6 @@ pub enum ActionResponseBody {
         network: Http<bitcoin::Network>,
         self_public_key: identity::Lightning,
     },
-    None,
 }
 
 /// A wrapper type for serializing bytes to hex with a `0x` prefix.

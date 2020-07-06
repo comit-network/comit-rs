@@ -69,16 +69,6 @@ impl RootSeed {
         Ok(RootSeed(Seed(arr)))
     }
 
-    /// Read the seed from the default location if it exists, otherwise
-    /// generate a random seed and write it to the default location.
-    pub fn from_default_dir_or_generate<R>(rand: R) -> Result<RootSeed, Error>
-    where
-        R: Rng,
-    {
-        let path = default_seed_path()?;
-        RootSeed::from_dir_or_generate(&path, rand)
-    }
-
     /// Read the seed from the directory if it exists, otherwise
     /// generate a random seed and write it to that location.
     pub fn from_dir_or_generate<D, R>(data_dir: D, rand: R) -> Result<RootSeed, Error>
@@ -217,11 +207,6 @@ fn ensure_directory_exists(file: PathBuf) -> Result<(), Error> {
     Ok(())
 }
 
-fn default_seed_path() -> Result<PathBuf, Error> {
-    let default_path = crate::data_dir().ok_or(Error::NoDefaultPath)?;
-    Ok(seed_path_from_dir(&default_path))
-}
-
 fn seed_path_from_dir(dir: &Path) -> PathBuf {
     let path = dir.to_path_buf();
     path.join("seed.pem")
@@ -237,8 +222,6 @@ pub enum Error {
     IncorrectLength(usize),
     #[error("RNG: ")]
     Rand(#[from] rand::Error),
-    #[error("no default path")]
-    NoDefaultPath,
 }
 
 impl From<[u8; SEED_LENGTH]> for RootSeed {
