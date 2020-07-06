@@ -1,9 +1,10 @@
-use crate::config::{Bitcoind, Data, Geth, Network};
+use crate::config::{Bitcoind, Data, Network};
 use comit::ethereum::ChainId;
 use config as config_rs;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
 use std::{ffi::OsStr, net::SocketAddr, path::Path};
+use url::Url;
 
 /// This struct aims to represent the configuration file as it appears on disk.
 ///
@@ -29,7 +30,7 @@ pub struct Bitcoin {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Ethereum {
     pub chain_id: ChainId,
-    pub geth: Option<Geth>,
+    pub node_url: Option<Url>,
 }
 
 impl File {
@@ -128,10 +129,9 @@ pub enum None {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{Bitcoind, Geth, Settings};
+    use crate::config::{Bitcoind, Settings};
     use spectral::prelude::*;
     use std::path::PathBuf;
-    use url::Url;
 
     #[derive(serde::Deserialize, PartialEq, Debug)]
     struct LoggingOnlyConfig {
@@ -183,7 +183,7 @@ mod tests {
 listen = ["/ip4/0.0.0.0/tcp/9939"]
 
 [data]
-dir = "/tmp/comit/nectar/"
+dir = "/tmp/nectar/"
 
 [logging]
 level = "Debug"
@@ -196,8 +196,6 @@ node_url = "http://localhost:18443/"
 
 [ethereum]
 chain_id = 1337
-
-[ethereum.geth]
 node_url = "http://localhost:8545/"
 "#;
         let file = File {
@@ -205,7 +203,7 @@ node_url = "http://localhost:8545/"
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
             }),
             data: Some(Data {
-                dir: PathBuf::from("/tmp/comit/"),
+                dir: PathBuf::from("/tmp/nectar/"),
             }),
             logging: Some(Logging {
                 level: Some(Level::Debug),
@@ -218,9 +216,7 @@ node_url = "http://localhost:8545/"
             }),
             ethereum: Some(Ethereum {
                 chain_id: ChainId::regtest(),
-                geth: Some(Geth {
-                    node_url: "http://localhost:8545".parse().unwrap(),
-                }),
+                node_url: Some("http://localhost:8545".parse().unwrap()),
             }),
         };
 
@@ -300,17 +296,14 @@ node_url = "http://localhost:8545/"
         let file_contents = vec![
             r#"
             chain_id = 1337
-            [geth]
             node_url = "http://example.com:8545"
             "#,
             r#"
             chain_id = 3
-            [geth]
             node_url = "http://example.com:8545"
             "#,
             r#"
             chain_id = 1
-            [geth]
             node_url = "http://example.com:8545"
             "#,
         ];
@@ -318,21 +311,15 @@ node_url = "http://localhost:8545/"
         let expected = vec![
             Ethereum {
                 chain_id: ChainId::regtest(),
-                geth: Some(Geth {
-                    node_url: Url::parse("http://example.com:8545").unwrap(),
-                }),
+                node_url: Some(Url::parse("http://example.com:8545").unwrap()),
             },
             Ethereum {
                 chain_id: ChainId::ropsten(),
-                geth: Some(Geth {
-                    node_url: Url::parse("http://example.com:8545").unwrap(),
-                }),
+                node_url: Some(Url::parse("http://example.com:8545").unwrap()),
             },
             Ethereum {
                 chain_id: ChainId::mainnet(),
-                geth: Some(Geth {
-                    node_url: Url::parse("http://example.com:8545").unwrap(),
-                }),
+                node_url: Some(Url::parse("http://example.com:8545").unwrap()),
             },
         ];
 

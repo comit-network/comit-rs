@@ -1,4 +1,4 @@
-use crate::config::{file, Bitcoin, Bitcoind, Data, Ethereum, File, Geth, Network};
+use crate::config::{file, Bitcoin, Bitcoind, Data, Ethereum, File, Network};
 use anyhow::Context;
 use log::LevelFilter;
 
@@ -41,18 +41,18 @@ fn derive_url_ethereum(ethereum: Option<file::Ethereum>) -> Ethereum {
     match ethereum {
         None => Ethereum::default(),
         Some(ethereum) => {
-            let node_url = match ethereum.geth {
+            let node_url = match ethereum.node_url {
                 None => {
                     // default is always localhost:8545
                     "http://localhost:8545"
                         .parse()
                         .expect("to be valid static string")
                 }
-                Some(geth) => geth.node_url,
+                Some(node_url) => node_url,
             };
             Ethereum {
                 chain_id: ethereum.chain_id,
-                geth: Geth { node_url },
+                node_url,
             }
         }
     }
@@ -233,9 +233,7 @@ mod tests {
             .map(|settings| &settings.ethereum)
             .is_equal_to(Ethereum {
                 chain_id: ChainId::regtest(),
-                geth: Geth {
-                    node_url: "http://localhost:8545".parse().unwrap(),
-                },
+                node_url: "http://localhost:8545".parse().unwrap(),
             })
     }
 
@@ -250,7 +248,7 @@ mod tests {
         for (chain_id, url) in defaults {
             let ethereum = Some(file::Ethereum {
                 chain_id,
-                geth: None,
+                node_url: None,
             });
             let config_file = File {
                 ethereum,
@@ -264,9 +262,7 @@ mod tests {
                 .map(|settings| &settings.ethereum)
                 .is_equal_to(Ethereum {
                     chain_id,
-                    geth: Geth {
-                        node_url: url.parse().unwrap(),
-                    },
+                    node_url: url.parse().unwrap(),
                 })
         }
     }

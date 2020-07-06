@@ -61,14 +61,14 @@ impl From<Bitcoin> for file::Bitcoin {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Ethereum {
     pub chain_id: ChainId,
-    pub geth: Geth,
+    pub node_url: Url,
 }
 
 impl From<Ethereum> for file::Ethereum {
     fn from(ethereum: Ethereum) -> Self {
         file::Ethereum {
             chain_id: ethereum.chain_id,
-            geth: Some(ethereum.geth),
+            node_url: Some(ethereum.node_url),
         }
     }
 }
@@ -77,17 +77,9 @@ impl Default for Ethereum {
     fn default() -> Self {
         Self {
             chain_id: ChainId::regtest(),
-            geth: Geth {
-                node_url: Url::parse("http://localhost:8545")
-                    .expect("static string to be a valid url"),
-            },
+            node_url: Url::parse("http://localhost:8545").expect("static string to be a valid url"),
         }
     }
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Geth {
-    pub node_url: Url,
 }
 
 #[cfg(test)]
