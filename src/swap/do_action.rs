@@ -8,16 +8,12 @@ where
     E: Clone + Send + Sync + 'static,
     <Self as Execute<E>>::Args: Send + Sync,
 {
-    async fn r#do(
-        &self,
-        beta_expiry: Timestamp,
-        execution_args: <Self as Execute<E>>::Args,
-    ) -> anyhow::Result<Next<E>> {
+    async fn r#do(&self, execution_args: <Self as Execute<E>>::Args) -> anyhow::Result<Next<E>> {
         if let Some(event) = self.check_memory().await? {
             return Ok(Next::Continue(event));
         }
 
-        if self.should_abort(beta_expiry).await? {
+        if self.should_abort().await? {
             return Ok(Next::Abort);
         }
 
@@ -53,20 +49,24 @@ where
     }
 }
 
+/// Determine if we should abort before `Do`-ing an action.
 #[async_trait::async_trait]
 pub trait ShouldAbort {
-    async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool>;
+    async fn should_abort(&self) -> anyhow::Result<bool>;
 }
 
+/// For Nectar, we should abort if Beta has expired, meaning that Beta
+/// ledger has reached or surpassed the expiry time of the Beta
+/// contract.
 #[async_trait::async_trait]
 impl<A> ShouldAbort for A
 where
-    A: BetaLedgerTime + Sync,
+    A: BetaLedgerTime + BetaExpiry + Sync,
 {
-    async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+    async fn should_abort(&self) -> anyhow::Result<bool> {
         let beta_ledger_time = self.beta_ledger_time().await?;
 
-        Ok(beta_expiry <= beta_ledger_time)
+        Ok(self.beta_expiry() <= beta_ledger_time)
     }
 }
 
@@ -96,6 +96,15 @@ where
 pub enum Next<E> {
     Continue(E),
     Abort,
+}
+
+pub trait BetaExpiry {
+    fn beta_expiry(&self) -> Timestamp;
+}
+
+#[async_trait::async_trait]
+pub trait AlphaLedgerTime {
+    async fn alpha_ledger_time(&self) -> anyhow::Result<Timestamp>;
 }
 
 #[async_trait::async_trait]
@@ -148,9 +157,9 @@ mod tests {
     }
 
     #[async_trait::async_trait]
-    impl BetaLedgerTime for FakeActor {
-        async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
-            Ok(Timestamp::now())
+    impl ShouldAbort for FakeActor {
+        async fn should_abort(&self) -> anyhow::Result<bool> {
+            Ok(false)
         }
     }
 
@@ -197,15 +206,13 @@ mod tests {
             swap_id,
         };
 
-        let beta_expiry = Timestamp::now().plus(60 * 60);
-
         assert!(blockchain.read().unwrap().events.is_empty());
-        let res = actor.r#do(beta_expiry, ()).await;
+        let res = actor.r#do(()).await;
 
         assert!(matches!(res, Ok(Next::Continue(ArbitraryEvent))));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
 
-        let res = actor.r#do(beta_expiry, ()).await;
+        let res = actor.r#do(()).await;
         assert!(matches!(res, Ok(Next::Continue(ArbitraryEvent))));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
     }

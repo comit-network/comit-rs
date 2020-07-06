@@ -5,7 +5,7 @@
 //! watches the two blockchains involved in the swap.
 
 use crate::{
-    swap::{db, ethereum, hbit, herc20, BetaLedgerTime, Execute},
+    swap::{db, ethereum, hbit, herc20, BetaExpiry, BetaLedgerTime, Execute},
     SwapId,
 };
 use chrono::NaiveDateTime;
@@ -16,22 +16,25 @@ use comit::{
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
-pub struct WatchOnlyAlice<AC, BC, DB> {
+pub struct WatchOnlyAlice<AC, BC, DB, AP, BP> {
     pub alpha_connector: Arc<AC>,
     pub beta_connector: Arc<BC>,
     pub db: DB,
+    pub alpha_params: AP,
+    pub beta_params: BP,
     pub secret_hash: SecretHash,
     pub start_of_swap: NaiveDateTime,
     pub swap_id: SwapId,
 }
 
 #[async_trait::async_trait]
-impl<AC, BC, DB> Execute<hbit::CorrectlyFunded> for WatchOnlyAlice<AC, BC, DB>
+impl<AC, BC, DB, BP> Execute<hbit::CorrectlyFunded> for WatchOnlyAlice<AC, BC, DB, hbit::Params, BP>
 where
     AC: LatestBlock<Block = bitcoin::Block>
         + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
     BC: Send + Sync,
     DB: Send + Sync,
+    BP: Send + Sync,
 {
     type Args = hbit::Params;
 
@@ -41,13 +44,14 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AC, BC, DB> Execute<herc20::Redeemed> for WatchOnlyAlice<AC, BC, DB>
+impl<AC, BC, DB, AP> Execute<herc20::Redeemed> for WatchOnlyAlice<AC, BC, DB, AP, herc20::Params>
 where
     AC: Send + Sync,
     BC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + ReceiptByHash,
     DB: Send + Sync,
+    AP: Send + Sync,
 {
     type Args = (herc20::Params, herc20::Deployed);
 
@@ -65,12 +69,13 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AC, BC, DB> hbit::Refund for WatchOnlyAlice<AC, BC, DB>
+impl<AC, BC, DB, BP> hbit::Refund for WatchOnlyAlice<AC, BC, DB, hbit::Params, BP>
 where
     AC: LatestBlock<Block = bitcoin::Block>
         + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
     BC: Send + Sync,
     DB: Send + Sync,
+    BP: Send + Sync,
 {
     async fn refund(
         &self,
@@ -90,11 +95,20 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AC, BC, DB> BetaLedgerTime for WatchOnlyAlice<AC, BC, DB>
+impl<AC, BC, DB, AP> BetaExpiry for WatchOnlyAlice<AC, BC, DB, AP, herc20::Params> {
+    fn beta_expiry(&self) -> Timestamp {
+        self.beta_params.expiry
+    }
+}
+
+#[async_trait::async_trait]
+impl<AC, BC, DB, AP, BP> BetaLedgerTime for WatchOnlyAlice<AC, BC, DB, AP, BP>
 where
     AC: Send + Sync,
     BC: BetaLedgerTime + Send + Sync,
     DB: Send + Sync,
+    AP: Send + Sync,
+    BP: Send + Sync,
 {
     async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
         self.beta_connector.beta_ledger_time().await
@@ -102,12 +116,14 @@ where
 }
 
 #[async_trait::async_trait]
-impl<T, AC, BC, DB> db::Load<T> for WatchOnlyAlice<AC, BC, DB>
+impl<T, AC, BC, DB, AP, BP> db::Load<T> for WatchOnlyAlice<AC, BC, DB, AP, BP>
 where
+    T: 'static,
     AC: Send + Sync + 'static,
     BC: Send + Sync + 'static,
     DB: db::Load<T>,
-    T: 'static,
+    AP: Send + Sync + 'static,
+    BP: Send + Sync + 'static,
 {
     async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<T>> {
         self.db.load(swap_id).await
@@ -115,19 +131,21 @@ where
 }
 
 #[async_trait::async_trait]
-impl<T, AC, BC, DB> db::Save<T> for WatchOnlyAlice<AC, BC, DB>
+impl<T, AC, BC, DB, AP, BP> db::Save<T> for WatchOnlyAlice<AC, BC, DB, AP, BP>
 where
+    T: Send + 'static,
     AC: Send + Sync + 'static,
     BC: Send + Sync + 'static,
     DB: db::Save<T>,
-    T: Send + 'static,
+    AP: Send + Sync + 'static,
+    BP: Send + Sync + 'static,
 {
     async fn save(&self, event: T, swap_id: SwapId) -> anyhow::Result<()> {
         self.db.save(event, swap_id).await
     }
 }
 
-impl<AC, BC, DB> std::ops::Deref for WatchOnlyAlice<AC, BC, DB> {
+impl<AC, BC, DB, AP, BP> std::ops::Deref for WatchOnlyAlice<AC, BC, DB, AP, BP> {
     type Target = SwapId;
     fn deref(&self) -> &Self::Target {
         &self.swap_id
@@ -145,10 +163,12 @@ pub mod wallet_actor {
     use std::time::Duration;
 
     #[derive(Clone, Copy, Debug)]
-    pub struct WalletAlice<AW, BW, DB, E> {
+    pub struct WalletAlice<AW, BW, DB, AP, BP, E> {
         pub alpha_wallet: AW,
         pub beta_wallet: BW,
         pub db: DB,
+        pub alpha_params: AP,
+        pub beta_params: BP,
         pub private_protocol_details: E,
         pub secret: Secret,
         pub start_of_swap: NaiveDateTime,
@@ -156,11 +176,13 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AW, BW, DB, E> Execute<hbit::CorrectlyFunded> for WalletAlice<AW, BW, DB, E>
+    impl<AW, BW, DB, BP, E> Execute<hbit::CorrectlyFunded>
+        for WalletAlice<AW, BW, DB, hbit::Params, BP, E>
     where
         AW: hbit::ExecuteFund + Send + Sync,
         BW: Send + Sync,
         DB: Send + Sync,
+        BP: Send + Sync,
         E: Send + Sync,
     {
         type Args = hbit::Params;
@@ -171,11 +193,12 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AW, BW, DB, E> Execute<herc20::Redeemed> for WalletAlice<AW, BW, DB, E>
+    impl<AW, BW, DB, AP, E> Execute<herc20::Redeemed> for WalletAlice<AW, BW, DB, AP, herc20::Params, E>
     where
         AW: Send + Sync,
         BW: herc20::ExecuteRedeem + Send + Sync,
         DB: Send + Sync,
+        AP: Send + Sync,
         E: Send + Sync,
     {
         type Args = (herc20::Params, herc20::Deployed);
@@ -191,10 +214,12 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl<BW, DB> hbit::Refund for WalletAlice<bitcoin::Wallet, BW, DB, hbit::PrivateDetailsFunder>
+    impl<BW, DB, BP> hbit::Refund
+        for WalletAlice<bitcoin::Wallet, BW, DB, hbit::Params, BP, hbit::PrivateDetailsFunder>
     where
         BW: Send + Sync,
         DB: Send + Sync,
+        BP: Send + Sync,
     {
         async fn refund(
             &self,
@@ -218,7 +243,9 @@ pub mod wallet_actor {
         }
     }
 
-    impl<BW, DB> WalletAlice<bitcoin::Wallet, BW, DB, hbit::PrivateDetailsFunder> {
+    impl<BW, DB, BP>
+        WalletAlice<bitcoin::Wallet, BW, DB, hbit::Params, BP, hbit::PrivateDetailsFunder>
+    {
         async fn refund(
             &self,
             params: &hbit::Params,
@@ -238,12 +265,20 @@ pub mod wallet_actor {
         }
     }
 
+    impl<AW, BW, DB, AP, E> BetaExpiry for WalletAlice<AW, BW, DB, AP, herc20::Params, E> {
+        fn beta_expiry(&self) -> Timestamp {
+            self.beta_params.expiry
+        }
+    }
+
     #[async_trait::async_trait]
-    impl<AW, BW, DB, E> BetaLedgerTime for WalletAlice<AW, BW, DB, E>
+    impl<AW, BW, DB, AP, BP, E> BetaLedgerTime for WalletAlice<AW, BW, DB, AP, BP, E>
     where
         AW: Send + Sync,
         BW: BetaLedgerTime + Send + Sync,
         DB: Send + Sync,
+        AP: Send + Sync,
+        BP: Send + Sync,
         E: Send + Sync,
     {
         async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
@@ -252,11 +287,13 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl<T, AW, BW, DB, E> db::Load<T> for WalletAlice<AW, BW, DB, E>
+    impl<T, AW, BW, DB, AP, BP, E> db::Load<T> for WalletAlice<AW, BW, DB, AP, BP, E>
     where
         AW: Send + Sync + 'static,
         BW: Send + Sync + 'static,
         DB: db::Load<T>,
+        AP: Send + Sync + 'static,
+        BP: Send + Sync + 'static,
         E: Send + Sync + 'static,
         T: 'static,
     {
@@ -266,12 +303,14 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl<T, AW, BW, DB, E> db::Save<T> for WalletAlice<AW, BW, DB, E>
+    impl<T, AW, BW, DB, AP, BP, E> db::Save<T> for WalletAlice<AW, BW, DB, AP, BP, E>
     where
         AW: Send + Sync + 'static,
         BW: Send + Sync + 'static,
         DB: db::Save<T>,
         E: Send + Sync + 'static,
+        AP: Send + Sync + 'static,
+        BP: Send + Sync + 'static,
         T: Send + 'static,
     {
         async fn save(&self, event: T, swap_id: SwapId) -> anyhow::Result<()> {
@@ -279,7 +318,7 @@ pub mod wallet_actor {
         }
     }
 
-    impl<AW, BW, DB, E> std::ops::Deref for WalletAlice<AW, BW, DB, E> {
+    impl<AW, BW, DB, AP, BP, E> std::ops::Deref for WalletAlice<AW, BW, DB, AP, BP, E> {
         type Target = SwapId;
         fn deref(&self) -> &Self::Target {
             &self.swap_id

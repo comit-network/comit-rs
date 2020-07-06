@@ -14,7 +14,7 @@ use futures::future;
 
 pub use alice::WatchOnlyAlice;
 pub use bob::WalletBob;
-pub use do_action::{BetaLedgerTime, Do, Execute, Next};
+pub use do_action::{AlphaLedgerTime, BetaExpiry, BetaLedgerTime, Do, Execute, Next};
 
 /// Execute a Hbit<->Herc20 swap.
 pub async fn hbit_herc20<A, B>(
@@ -38,26 +38,22 @@ where
         + herc20::Refund
         + Sync,
 {
-    let beta_expiry = herc20_params.expiry;
-    let hbit_funded =
-        match Do::<hbit::CorrectlyFunded>::r#do(&alice, beta_expiry, hbit_params).await? {
-            Next::Continue(hbit_funded) => hbit_funded,
-            Next::Abort => return Ok(()),
-        };
+    let hbit_funded = match Do::<hbit::CorrectlyFunded>::r#do(&alice, hbit_params).await? {
+        Next::Continue(hbit_funded) => hbit_funded,
+        Next::Abort => return Ok(()),
+    };
 
-    let herc20_deployed =
-        match Do::<herc20::Deployed>::r#do(&bob, beta_expiry, herc20_params.clone()).await? {
-            Next::Continue(herc20_deployed) => herc20_deployed,
-            Next::Abort => {
-                alice.refund(&hbit_params, hbit_funded).await?;
+    let herc20_deployed = match Do::<herc20::Deployed>::r#do(&bob, herc20_params.clone()).await? {
+        Next::Continue(herc20_deployed) => herc20_deployed,
+        Next::Abort => {
+            alice.refund(&hbit_params, hbit_funded).await?;
 
-                return Ok(());
-            }
-        };
+            return Ok(());
+        }
+    };
 
     let _herc20_funded = match Do::<herc20::CorrectlyFunded>::r#do(
         &bob,
-        beta_expiry,
         (herc20_params.clone(), herc20_deployed.clone()),
     )
     .await?
@@ -72,7 +68,6 @@ where
 
     let herc20_redeemed = match Do::<herc20::Redeemed>::r#do(
         &alice,
-        beta_expiry,
         (herc20_params.clone(), herc20_deployed.clone()),
     )
     .await?
@@ -347,6 +342,8 @@ mod tests {
                 alpha_wallet: alice_bitcoin_wallet.clone(),
                 beta_wallet: alice_ethereum_wallet.clone(),
                 db: alice_db,
+                alpha_params: hbit_params,
+                beta_params: herc20_params.clone(),
                 private_protocol_details: private_details_funder,
                 secret,
                 start_of_swap,
@@ -356,6 +353,8 @@ mod tests {
                 alpha_connector: Arc::clone(&bitcoin_connector),
                 beta_connector: Arc::clone(&ethereum_connector),
                 db: alice_db,
+                alpha_params: hbit_params,
+                beta_params: herc20_params.clone(),
                 secret_hash,
                 start_of_swap,
                 swap_id,
@@ -370,6 +369,8 @@ mod tests {
                 alpha_connector: Arc::clone(&bitcoin_connector),
                 beta_connector: Arc::clone(&ethereum_connector),
                 db: bob_db,
+                alpha_params: hbit_params,
+                beta_params: herc20_params.clone(),
                 secret_hash,
                 start_of_swap,
                 swap_id,
@@ -378,6 +379,8 @@ mod tests {
                 alpha_wallet: bob_bitcoin_wallet.clone(),
                 beta_wallet: bob_ethereum_wallet.clone(),
                 db: bob_db,
+                alpha_params: hbit_params,
+                beta_params: herc20_params.clone(),
                 secret_hash,
                 private_protocol_details: private_details_redeemer,
                 start_of_swap,
