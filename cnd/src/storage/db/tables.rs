@@ -1,7 +1,7 @@
 use crate::{
     asset, bitcoin, halbit, hbit, herc20, identity, lightning,
     storage::db::{
-        schema::{address_book, halbits, hbits, herc20s, secret_hashes, swaps},
+        schema::{halbits, hbits, herc20s, secret_hashes, swaps},
         wrapper_types::{
             custom_sql_types::{Text, U32},
             BitcoinNetwork, Erc20Amount, Satoshis,
@@ -468,40 +468,6 @@ impl Sqlite {
             })?;
         Ok(())
     }
-
-    pub fn insert_address_for_peer(
-        &self,
-        connection: &SqliteConnection,
-        peer_id: PeerId,
-        address: libp2p::Multiaddr,
-    ) -> anyhow::Result<()> {
-        diesel::insert_into(address_book::table)
-            .values((
-                address_book::peer_id.eq(Text(peer_id)),
-                address_book::multi_address.eq(Text(address)),
-            ))
-            .execute(connection)?;
-
-        Ok(())
-    }
-
-    pub async fn load_address_for_peer(
-        &self,
-        peer_id: &PeerId,
-    ) -> anyhow::Result<Vec<libp2p::Multiaddr>> {
-        let addresses = self
-            .do_in_transaction(|connection| {
-                let key = Text(peer_id);
-
-                address_book::table
-                    .select(address_book::multi_address)
-                    .filter(address_book::peer_id.eq(key))
-                    .load::<Text<libp2p::Multiaddr>>(connection)
-            })
-            .await?;
-
-        Ok(addresses.into_iter().map(|text| text.0).collect())
-    }
 }
 
 #[cfg(test)]
@@ -510,74 +476,6 @@ mod tests {
     use crate::proptest::*;
     use proptest::prelude::*;
     use tokio::runtime::Runtime;
-
-    proptest! {
-        #[test]
-        fn save_addresses_for_single_peer(
-            peer_id in libp2p::peer_id(),
-            address1 in libp2p::multiaddr(),
-            address2 in libp2p::multiaddr(),
-        ) {
-            let db = Sqlite::test();
-            let mut runtime = Runtime::new().unwrap();
-
-            let loaded = runtime.block_on(async {
-                db.do_in_transaction::<_, _, anyhow::Error>(|conn| {
-                    db.insert_address_for_peer(conn, peer_id.clone(), address1.clone())?;
-                    db.insert_address_for_peer(conn, peer_id.clone(), address2.clone())?;
-
-                    Ok(())
-                })
-                .await
-                .expect("to be able to save addresses");
-
-                db
-                    .load_address_for_peer(&peer_id)
-                    .await
-                    .expect("to be able to load a previously saved addresses")
-            });
-
-            assert_eq!(loaded, vec![address1, address2])
-        }
-    }
-
-    proptest! {
-        #[test]
-        fn addresses_are_separated_by_peer(
-            peer1 in libp2p::peer_id(),
-            peer2 in libp2p::peer_id(),
-            address1 in libp2p::multiaddr(),
-            address2 in libp2p::multiaddr(),
-        ) {
-            let db = Sqlite::test();
-            let mut runtime = Runtime::new().unwrap();
-
-            let (loaded_peer1, loaded_peer2) = runtime.block_on(async {
-                db.do_in_transaction::<_, _, anyhow::Error>(|conn| {
-                    db.insert_address_for_peer(conn, peer1.clone(), address1.clone())?;
-                    db.insert_address_for_peer(conn, peer2.clone(), address2.clone())?;
-
-                    Ok(())
-                })
-                .await
-                .expect("to be able to save addresses");
-
-                let loaded_peer1 = db
-                    .load_address_for_peer(&peer1)
-                    .await
-                    .expect("to be able to load a previously saved addresses");
-                let loaded_peer2 = db
-                    .load_address_for_peer(&peer2)
-                    .await
-                    .expect("to be able to load a previously saved addresses");
-
-                (loaded_peer1, loaded_peer2)
-            });
-
-            assert_eq!(loaded_peer1, vec![address1]);
-            assert_eq!(loaded_peer2, vec![address2])
-        }
-    }
 
     proptest! {
         /// Verify that our database enforces foreign key relations
