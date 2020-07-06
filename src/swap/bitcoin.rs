@@ -13,11 +13,8 @@ pub struct Wallet {
 
 #[async_trait::async_trait]
 impl hbit::ExecuteFund for Wallet {
-    async fn execute_fund(
-        &self,
-        params: &comit::hbit::Params,
-    ) -> anyhow::Result<hbit::CorrectlyFunded> {
-        let action = params.build_fund_action();
+    async fn execute_fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
+        let action = params.shared.build_fund_action();
 
         let txid = self
             .inner
@@ -38,7 +35,9 @@ impl hbit::ExecuteFund for Wallet {
                 #[allow(clippy::cast_possible_truncation)]
                 (index as u32, txout)
             })
-            .find(|(_, txout)| txout.script_pubkey == params.compute_address().script_pubkey())
+            .find(|(_, txout)| {
+                txout.script_pubkey == params.shared.compute_address().script_pubkey()
+            })
             .map(|(vout, _txout)| bitcoin::OutPoint { txid, vout });
 
         let location = location.ok_or_else(|| {
@@ -57,15 +56,14 @@ impl hbit::ExecuteRedeem for Wallet {
         params: hbit::Params,
         fund_event: hbit::CorrectlyFunded,
         secret: Secret,
-        transient_redeem_sk: SecretKey,
     ) -> anyhow::Result<hbit::Redeemed> {
         let redeem_address = self.inner.new_address().await?;
 
-        let action = params.build_redeem_action(
+        let action = params.shared.build_redeem_action(
             &crate::SECP,
             fund_event.asset,
             fund_event.location,
-            transient_redeem_sk,
+            params.transient_sk,
             redeem_address,
             secret,
         )?;

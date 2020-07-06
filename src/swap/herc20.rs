@@ -36,8 +36,13 @@ pub trait ExecuteRedeem {
 }
 
 #[async_trait::async_trait]
-pub trait Refund {
-    async fn refund(&self, deploy_event: Deployed) -> anyhow::Result<Refunded>;
+pub trait ExecuteRefund {
+    async fn execute_refund(
+        &self,
+        params: Params,
+        deploy_event: Deployed,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<Refunded>;
 }
 
 #[derive(Debug, Clone)]

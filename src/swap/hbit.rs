@@ -1,4 +1,4 @@
-use bitcoin::{secp256k1::SecretKey, Address, Block, BlockHash};
+use bitcoin::{secp256k1::SecretKey, Block, BlockHash};
 use chrono::NaiveDateTime;
 use comit::asset;
 
@@ -9,16 +9,21 @@ pub use comit::{
     htlc_location, transaction, Secret, SecretHash, Timestamp,
 };
 
-#[derive(Clone, Debug)]
-pub struct PrivateDetailsFunder {
-    pub transient_refund_sk: SecretKey,
-    pub final_refund_identity: Address,
+pub type SharedParams = comit::hbit::Params;
+
+#[derive(Clone, Copy, Debug)]
+pub struct Params {
+    pub shared: SharedParams,
+    pub transient_sk: SecretKey,
 }
 
-#[derive(Clone, Debug)]
-pub struct PrivateDetailsRedeemer {
-    pub transient_redeem_sk: SecretKey,
-    pub final_redeem_identity: Address,
+impl Params {
+    pub fn new(shared: SharedParams, transient_sk: SecretKey) -> Self {
+        Self {
+            shared,
+            transient_sk,
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -33,13 +38,16 @@ pub trait ExecuteRedeem {
         params: Params,
         fund_event: CorrectlyFunded,
         secret: Secret,
-        transient_redeem_sk: SecretKey,
     ) -> anyhow::Result<Redeemed>;
 }
 
 #[async_trait::async_trait]
-pub trait Refund {
-    async fn refund(&self, fund_event: CorrectlyFunded) -> anyhow::Result<Refunded>;
+pub trait ExecuteRefund {
+    async fn execute_refund(
+        &self,
+        params: Params,
+        fund_event: CorrectlyFunded,
+    ) -> anyhow::Result<Refunded>;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -50,13 +58,13 @@ pub struct CorrectlyFunded {
 
 pub async fn watch_for_funded<C>(
     connector: &C,
-    params: &Params,
+    params: &SharedParams,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<CorrectlyFunded>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
 {
-    match comit::hbit::watch_for_funded(connector, params, start_of_swap).await? {
+    match comit::hbit::watch_for_funded(connector, &params, start_of_swap).await? {
         comit::hbit::Funded::Correctly {
             asset, location, ..
         } => Ok(CorrectlyFunded { asset, location }),
