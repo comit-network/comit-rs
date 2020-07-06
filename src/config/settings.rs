@@ -1,9 +1,10 @@
-use crate::config::{file, Bitcoin, Bitcoind, Data, Ethereum, File, Network};
+use crate::config::{file, Bitcoin, Bitcoind, Data, Ethereum, File, MaxSell, Nectar, Network};
 use anyhow::Context;
 use log::LevelFilter;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Settings {
+    pub nectar: Nectar,
     pub network: Network,
     pub data: Data,
     pub logging: Logging,
@@ -18,13 +19,13 @@ fn derive_url_bitcoin(bitcoin: Option<file::Bitcoin>) -> Bitcoin {
             let node_url = match bitcoin.bitcoind {
                 Some(bitcoind) => bitcoind.node_url,
                 None => match bitcoin.network {
-                    bitcoin::Network::Bitcoin => "http://localhost:8332"
+                    ::bitcoin::Network::Bitcoin => "http://localhost:8332"
                         .parse()
                         .expect("to be valid static string"),
-                    bitcoin::Network::Testnet => "http://localhost:18332"
+                    ::bitcoin::Network::Testnet => "http://localhost:18332"
                         .parse()
                         .expect("to be valid static string"),
-                    bitcoin::Network::Regtest => "http://localhost:18443"
+                    ::bitcoin::Network::Regtest => "http://localhost:18443"
                         .parse()
                         .expect("to be valid static string"),
                 },
@@ -61,6 +62,7 @@ fn derive_url_ethereum(ethereum: Option<file::Ethereum>) -> Ethereum {
 impl From<Settings> for File {
     fn from(settings: Settings) -> Self {
         let Settings {
+            nectar,
             network,
             data,
             logging: Logging { level },
@@ -69,6 +71,9 @@ impl From<Settings> for File {
         } = settings;
 
         File {
+            nectar: Some(file::Nectar {
+                max_sell: Some(nectar.max_sell),
+            }),
             network: Some(network),
             data: Some(data),
             logging: Some(file::Logging {
@@ -90,6 +95,7 @@ pub struct Logging {
 impl Settings {
     pub fn from_config_file_and_defaults(config_file: File) -> anyhow::Result<Self> {
         let File {
+            nectar,
             network,
             data,
             logging,
@@ -98,6 +104,16 @@ impl Settings {
         } = config_file;
 
         Ok(Self {
+            nectar: Nectar {
+                max_sell: {
+                    match nectar {
+                        Some(file::Nectar {
+                            max_sell: Some(max_sell),
+                        }) => max_sell,
+                        _ => MaxSell { bitcoin: None },
+                    }
+                },
+            },
             network: network.unwrap_or_else(|| {
                 let default_socket = "/ip4/0.0.0.0/tcp/9939"
                     .parse()
@@ -184,7 +200,7 @@ mod tests {
             .is_ok()
             .map(|settings| &settings.bitcoin)
             .is_equal_to(Bitcoin {
-                network: bitcoin::Network::Regtest,
+                network: ::bitcoin::Network::Regtest,
                 bitcoind: Bitcoind {
                     node_url: "http://localhost:18443".parse().unwrap(),
                 },
@@ -194,9 +210,9 @@ mod tests {
     #[test]
     fn bitcoin_defaults_network_only() {
         let defaults = vec![
-            (bitcoin::Network::Bitcoin, "http://localhost:8332"),
-            (bitcoin::Network::Testnet, "http://localhost:18332"),
-            (bitcoin::Network::Regtest, "http://localhost:18443"),
+            (::bitcoin::Network::Bitcoin, "http://localhost:8332"),
+            (::bitcoin::Network::Testnet, "http://localhost:18332"),
+            (::bitcoin::Network::Regtest, "http://localhost:18443"),
         ];
 
         for (network, url) in defaults {

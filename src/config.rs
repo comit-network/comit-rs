@@ -1,8 +1,10 @@
 pub mod file;
+mod serde_bitcoin_amount;
 mod serde_bitcoin_network;
 pub mod settings;
 pub mod validation;
 
+use crate::bitcoin;
 use comit::ethereum::ChainId;
 use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
@@ -28,7 +30,7 @@ pub struct Network {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Bitcoin {
     #[serde(with = "crate::config::serde_bitcoin_network")]
-    pub network: bitcoin::Network,
+    pub network: ::bitcoin::Network,
     pub bitcoind: Bitcoind,
 }
 
@@ -40,7 +42,7 @@ pub struct Bitcoind {
 impl Default for Bitcoin {
     fn default() -> Self {
         Self {
-            network: bitcoin::Network::Regtest,
+            network: ::bitcoin::Network::Regtest,
             bitcoind: Bitcoind {
                 node_url: Url::parse("http://localhost:18443")
                     .expect("static string to be a valid url"),
@@ -80,6 +82,21 @@ impl Default for Ethereum {
             node_url: Url::parse("http://localhost:8545").expect("static string to be a valid url"),
         }
     }
+}
+
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Nectar {
+    pub max_sell: MaxSell,
+}
+
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct MaxSell {
+    #[serde(default)]
+    #[serde(with = "crate::config::serde_bitcoin_amount")]
+    bitcoin: Option<bitcoin::Amount>,
+    // #[serde(default)]
+    // #[serde(with = "crate::config::serde_dai_amount")]
+    // dai: Option<dai::Amount>,
 }
 
 #[cfg(test)]

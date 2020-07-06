@@ -1,9 +1,9 @@
-use crate::config::{Bitcoind, Data, Network};
+use crate::config::{Bitcoind, Data, MaxSell, Network};
 use comit::ethereum::ChainId;
 use config as config_rs;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
-use std::{ffi::OsStr, net::SocketAddr, path::Path};
+use std::{ffi::OsStr, path::Path};
 use url::Url;
 
 /// This struct aims to represent the configuration file as it appears on disk.
@@ -13,11 +13,17 @@ use url::Url;
 /// for filling in default values for absent configuration options.
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct File {
+    pub nectar: Option<Nectar>,
     pub network: Option<Network>,
     pub data: Option<Data>,
     pub logging: Option<Logging>,
     pub bitcoin: Option<Bitcoin>,
     pub ethereum: Option<Ethereum>,
+}
+
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Nectar {
+    pub max_sell: Option<MaxSell>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -36,11 +42,12 @@ pub struct Ethereum {
 impl File {
     pub fn default() -> Self {
         File {
-            network: Option::None,
-            data: Option::None,
-            logging: Option::None,
-            bitcoin: Option::None,
-            ethereum: Option::None,
+            nectar: None,
+            network: None,
+            data: None,
+            logging: None,
+            bitcoin: None,
+            ethereum: None,
         }
     }
 
@@ -96,17 +103,6 @@ impl From<Level> for LevelFilter {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct HttpApi {
-    pub socket: SocketAddr,
-    pub cors: Option<Cors>,
-}
-
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct Cors {
-    pub allowed_origins: AllowedOrigins,
-}
-
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum AllowedOrigins {
     All(All),
@@ -129,6 +125,7 @@ pub enum None {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bitcoin;
     use crate::config::{Bitcoind, Settings};
     use spectral::prelude::*;
     use std::path::PathBuf;
@@ -139,46 +136,11 @@ mod tests {
     }
 
     #[test]
-    fn cors_deserializes_correctly() {
-        let file_contents = vec![
-            r#"
-            allowed_origins = "all"
-            "#,
-            r#"
-             allowed_origins = "none"
-            "#,
-            r#"
-             allowed_origins = ["http://localhost:8000", "https://192.168.1.55:3000"]
-            "#,
-        ];
-
-        let expected = vec![
-            Cors {
-                allowed_origins: AllowedOrigins::All(All::All),
-            },
-            Cors {
-                allowed_origins: AllowedOrigins::None(None::None),
-            },
-            Cors {
-                allowed_origins: AllowedOrigins::Some(vec![
-                    String::from("http://localhost:8000"),
-                    String::from("https://192.168.1.55:3000"),
-                ]),
-            },
-        ];
-
-        let actual = file_contents
-            .into_iter()
-            .map(toml::from_str)
-            .collect::<Result<Vec<Cors>, toml::de::Error>>()
-            .unwrap();
-
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
     fn full_config_deserializes_correctly() {
         let contents = r#"
+[nectar.max_sell]
+bitcoin = 1.23456
+
 [network]
 listen = ["/ip4/0.0.0.0/tcp/9939"]
 
@@ -199,6 +161,11 @@ chain_id = 1337
 node_url = "http://localhost:8545/"
 "#;
         let file = File {
+            nectar: Some(Nectar {
+                max_sell: Some(MaxSell {
+                    bitcoin: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
+                }),
+            }),
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
             }),
@@ -209,7 +176,7 @@ node_url = "http://localhost:8545/"
                 level: Some(Level::Debug),
             }),
             bitcoin: Some(Bitcoin {
-                network: bitcoin::Network::Regtest,
+                network: ::bitcoin::Network::Regtest,
                 bitcoind: Some(Bitcoind {
                     node_url: "http://localhost:18443".parse().unwrap(),
                 }),
@@ -263,19 +230,19 @@ node_url = "http://localhost:8545/"
 
         let expected = vec![
             Bitcoin {
-                network: bitcoin::Network::Bitcoin,
+                network: ::bitcoin::Network::Bitcoin,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:8332").unwrap(),
                 }),
             },
             Bitcoin {
-                network: bitcoin::Network::Testnet,
+                network: ::bitcoin::Network::Testnet,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:18332").unwrap(),
                 }),
             },
             Bitcoin {
-                network: bitcoin::Network::Regtest,
+                network: ::bitcoin::Network::Regtest,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:18443").unwrap(),
                 }),
