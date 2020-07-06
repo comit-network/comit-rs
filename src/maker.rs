@@ -8,6 +8,7 @@ use crate::{
     MidMarketRate, PeersWithOngoingTrades, Rate,
 };
 use std::convert::TryFrom;
+use chrono::{DateTime, Utc};
 
 #[derive(Debug, PartialEq)]
 pub enum NewOrder {
@@ -28,6 +29,8 @@ pub struct Maker {
     mid_market_rate: MidMarketRate,
     spread: Spread,
     ongoing_takers: PeersWithOngoingTrades,
+
+    max_rate_ticker_interval_secs: i64,
 }
 
 impl Maker {
@@ -41,6 +44,7 @@ impl Maker {
         dai_max_sell_amount: dai::Amount,
         mid_market_rate: MidMarketRate,
         spread: Spread,
+        max_rate_ticker_interval_secs: i64,
     ) -> Self {
         Maker {
             btc_balance,
@@ -54,6 +58,7 @@ impl Maker {
             mid_market_rate,
             spread,
             ongoing_takers: Default::default(),
+            max_rate_ticker_interval_secs
         }
     }
 
@@ -83,11 +88,21 @@ impl Maker {
         self.dai_balance = balance;
     }
 
-    pub fn track_failed_rate(&mut self, error: anyhow::Error) {}
-
     pub fn track_failed_balance_update(&mut self, error: anyhow::Error) {}
 
+    fn rate_is_up_to_date(&self) -> bool {
+        let current_timestamp = Utc::now().timestamp();
+        let mid_market_rate_timestamp = self.mid_market_rate.timestamp.timestamp();
+        let acceptable_timestamp = (current_timestamp - self.max_rate_ticker_interval_secs);
+
+        mid_market_rate_timestamp >= acceptable_timestamp
+    }
+
     pub fn new_sell_order(&self) -> anyhow::Result<BtcDaiOrder> {
+        if !self.rate_is_up_to_date() {
+            anyhow::bail!("Rate outdated")
+        }
+
         BtcDaiOrder::new_sell(
             self.btc_balance,
             self.btc_fee,
@@ -99,6 +114,10 @@ impl Maker {
     }
 
     pub fn new_buy_order(&self) -> anyhow::Result<BtcDaiOrder> {
+        if !self.rate_is_up_to_date() {
+            anyhow::bail!("Rate outdated")
+        }
+
         BtcDaiOrder::new_buy(
             self.dai_balance.clone(),
             self.dai_fee.clone(),
@@ -220,6 +239,7 @@ mod tests {
                 mid_market_rate: MidMarketRate::default(),
                 spread: Spread::default(),
                 ongoing_takers: PeersWithOngoingTrades::default(),
+                max_rate_ticker_interval_secs: 0,
             }
         }
     }

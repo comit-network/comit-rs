@@ -26,6 +26,7 @@ async fn init_maker(
     let initial_rate = get_btc_dai_mid_market_rate().await;
 
     let spread: Spread = todo!("from config");
+    let max_rate_ticker_interval_secs = todo!("from config");
 
     match (
         initial_btc_balance,
@@ -53,6 +54,7 @@ async fn init_maker(
             dai_max_sell,
             initial_rate,
             spread,
+            max_rate_ticker_interval_secs
         ),
         // TODO better error handling
         _ => panic!("Maker initialisation failed!"),
@@ -106,7 +108,7 @@ async fn main() {
                     Err(err) => tracing::warn!("Rate update yielded error: {}", err),
                 }
             }
-            Err(e) => maker.track_failed_rate(e),
+            Err(err) => tracing::warn!("Fetching rate yielded error: {}", err),
         }
 
         let bitcoin_balance = bitcoin_wallet.balance().await;
