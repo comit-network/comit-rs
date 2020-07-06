@@ -1,10 +1,11 @@
 pub mod file;
 mod serde_bitcoin_amount;
 mod serde_bitcoin_network;
+mod serde_dai_amount;
 pub mod settings;
 pub mod validation;
 
-use crate::bitcoin;
+use crate::{bitcoin, dai};
 use comit::ethereum::ChainId;
 use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
@@ -84,19 +85,19 @@ impl Default for Ethereum {
     }
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Nectar {
     pub max_sell: MaxSell,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct MaxSell {
     #[serde(default)]
     #[serde(with = "crate::config::serde_bitcoin_amount")]
     bitcoin: Option<bitcoin::Amount>,
-    // #[serde(default)]
-    // #[serde(with = "crate::config::serde_dai_amount")]
-    // dai: Option<dai::Amount>,
+    #[serde(default)]
+    #[serde(with = "crate::config::serde_dai_amount")]
+    dai: Option<dai::Amount>,
 }
 
 #[cfg(test)]

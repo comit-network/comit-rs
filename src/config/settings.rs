@@ -110,7 +110,10 @@ impl Settings {
                         Some(file::Nectar {
                             max_sell: Some(max_sell),
                         }) => max_sell,
-                        _ => MaxSell { bitcoin: None },
+                        _ => MaxSell {
+                            bitcoin: None,
+                            dai: None,
+                        },
                     }
                 },
             },

@@ -21,7 +21,7 @@ pub struct File {
     pub ethereum: Option<Ethereum>,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Nectar {
     pub max_sell: Option<MaxSell>,
 }
@@ -125,8 +125,8 @@ pub enum None {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bitcoin;
     use crate::config::{Bitcoind, Settings};
+    use crate::{bitcoin, dai};
     use spectral::prelude::*;
     use std::path::PathBuf;
 
@@ -140,6 +140,7 @@ mod tests {
         let contents = r#"
 [nectar.max_sell]
 bitcoin = 1.23456
+dai = 9876.54321
 
 [network]
 listen = ["/ip4/0.0.0.0/tcp/9939"]
@@ -164,6 +165,7 @@ node_url = "http://localhost:8545/"
             nectar: Some(Nectar {
                 max_sell: Some(MaxSell {
                     bitcoin: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
+                    dai: Some(dai::Amount::from_dai_trunc(9876.54321).unwrap()),
                 }),
             }),
             network: Some(Network {
