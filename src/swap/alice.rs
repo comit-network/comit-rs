@@ -27,6 +27,7 @@ pub struct WatchOnlyAlice<AC, BC, DB, AP, BP> {
     pub swap_id: SwapId,
 }
 
+#[allow(clippy::unit_arg)]
 #[async_trait::async_trait]
 impl<AC, BC, DB, BP> Execute<hbit::CorrectlyFunded> for WatchOnlyAlice<AC, BC, DB, hbit::Params, BP>
 where
@@ -36,10 +37,15 @@ where
     DB: Send + Sync,
     BP: Send + Sync,
 {
-    type Args = hbit::Params;
+    type Args = ();
 
-    async fn execute(&self, params: hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
-        hbit::watch_for_funded(self.alpha_connector.as_ref(), &params, self.start_of_swap).await
+    async fn execute(&self, (): ()) -> anyhow::Result<hbit::CorrectlyFunded> {
+        hbit::watch_for_funded(
+            self.alpha_connector.as_ref(),
+            &self.alpha_params,
+            self.start_of_swap,
+        )
+        .await
     }
 }
 
@@ -53,12 +59,9 @@ where
     DB: Send + Sync,
     AP: Send + Sync,
 {
-    type Args = (herc20::Params, herc20::Deployed);
+    type Args = herc20::Deployed;
 
-    async fn execute(
-        &self,
-        (_, deploy_event): (herc20::Params, herc20::Deployed),
-    ) -> anyhow::Result<herc20::Redeemed> {
+    async fn execute(&self, deploy_event: herc20::Deployed) -> anyhow::Result<herc20::Redeemed> {
         herc20::watch_for_redeemed(
             self.beta_connector.as_ref(),
             self.start_of_swap,
@@ -77,14 +80,10 @@ where
     DB: Send + Sync,
     BP: Send + Sync,
 {
-    async fn refund(
-        &self,
-        params: &hbit::Params,
-        fund_event: hbit::CorrectlyFunded,
-    ) -> anyhow::Result<hbit::Refunded> {
+    async fn refund(&self, fund_event: hbit::CorrectlyFunded) -> anyhow::Result<hbit::Refunded> {
         let event = hbit::watch_for_refunded(
             self.alpha_connector.as_ref(),
-            params,
+            &self.alpha_params,
             fund_event.location,
             self.start_of_swap,
         )
@@ -175,6 +174,7 @@ pub mod wallet_actor {
         pub swap_id: SwapId,
     }
 
+    #[allow(clippy::unit_arg)]
     #[async_trait::async_trait]
     impl<AW, BW, DB, BP, E> Execute<hbit::CorrectlyFunded>
         for WalletAlice<AW, BW, DB, hbit::Params, BP, E>
@@ -185,10 +185,10 @@ pub mod wallet_actor {
         BP: Send + Sync,
         E: Send + Sync,
     {
-        type Args = hbit::Params;
+        type Args = ();
 
-        async fn execute(&self, params: hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
-            self.alpha_wallet.execute_fund(&params).await
+        async fn execute(&self, (): ()) -> anyhow::Result<hbit::CorrectlyFunded> {
+            self.alpha_wallet.execute_fund(&self.alpha_params).await
         }
     }
 
@@ -201,14 +201,19 @@ pub mod wallet_actor {
         AP: Send + Sync,
         E: Send + Sync,
     {
-        type Args = (herc20::Params, herc20::Deployed);
+        type Args = herc20::Deployed;
 
         async fn execute(
             &self,
-            (params, deploy_event): (herc20::Params, herc20::Deployed),
+            deploy_event: herc20::Deployed,
         ) -> anyhow::Result<herc20::Redeemed> {
             self.beta_wallet
-                .execute_redeem(params, self.secret, deploy_event, self.start_of_swap)
+                .execute_redeem(
+                    self.beta_params.clone(),
+                    self.secret,
+                    deploy_event,
+                    self.start_of_swap,
+                )
                 .await
         }
     }
@@ -223,21 +228,20 @@ pub mod wallet_actor {
     {
         async fn refund(
             &self,
-            params: &hbit::Params,
             fund_event: hbit::CorrectlyFunded,
         ) -> anyhow::Result<hbit::Refunded> {
             loop {
                 let bitcoin_time =
                     comit::bitcoin::median_time_past(self.alpha_wallet.connector.as_ref()).await?;
 
-                if bitcoin_time >= params.expiry {
+                if bitcoin_time >= self.alpha_params.expiry {
                     break;
                 }
 
                 tokio::time::delay_for(Duration::from_secs(1)).await;
             }
 
-            let refund_event = self.refund(params, fund_event).await?;
+            let refund_event = self.refund(&self.alpha_params, fund_event).await?;
 
             Ok(refund_event)
         }

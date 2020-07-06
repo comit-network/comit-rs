@@ -17,69 +17,56 @@ pub use bob::WalletBob;
 pub use do_action::{AlphaLedgerTime, BetaExpiry, BetaLedgerTime, Do, Execute, Next};
 
 /// Execute a Hbit<->Herc20 swap.
-pub async fn hbit_herc20<A, B>(
-    alice: A,
-    bob: B,
-    hbit_params: hbit::Params,
-    herc20_params: herc20::Params,
-) -> anyhow::Result<()>
+pub async fn hbit_herc20<A, B>(alice: A, bob: B) -> anyhow::Result<()>
 where
     A: Do<hbit::CorrectlyFunded>
-        + Execute<hbit::CorrectlyFunded, Args = hbit::Params>
+        + Execute<hbit::CorrectlyFunded, Args = ()>
         + Do<herc20::Redeemed>
-        + Execute<herc20::Redeemed, Args = (herc20::Params, herc20::Deployed)>
+        + Execute<herc20::Redeemed, Args = herc20::Deployed>
         + hbit::Refund
         + Sync,
     B: Do<herc20::Deployed>
-        + Execute<herc20::Deployed, Args = herc20::Params>
+        + Execute<herc20::Deployed, Args = ()>
         + Do<herc20::CorrectlyFunded>
-        + Execute<herc20::CorrectlyFunded, Args = (herc20::Params, herc20::Deployed)>
-        + Execute<hbit::Redeemed, Args = (hbit::Params, hbit::CorrectlyFunded, Secret)>
+        + Execute<herc20::CorrectlyFunded, Args = herc20::Deployed>
+        + Execute<hbit::Redeemed, Args = (hbit::CorrectlyFunded, Secret)>
         + herc20::Refund
         + Sync,
 {
-    let hbit_funded = match Do::<hbit::CorrectlyFunded>::r#do(&alice, hbit_params).await? {
+    let hbit_funded = match Do::<hbit::CorrectlyFunded>::r#do(&alice, ()).await? {
         Next::Continue(hbit_funded) => hbit_funded,
         Next::Abort => return Ok(()),
     };
 
-    let herc20_deployed = match Do::<herc20::Deployed>::r#do(&bob, herc20_params.clone()).await? {
+    let herc20_deployed = match Do::<herc20::Deployed>::r#do(&bob, ()).await? {
         Next::Continue(herc20_deployed) => herc20_deployed,
         Next::Abort => {
-            alice.refund(&hbit_params, hbit_funded).await?;
+            alice.refund(hbit_funded).await?;
 
             return Ok(());
         }
     };
 
-    let _herc20_funded = match Do::<herc20::CorrectlyFunded>::r#do(
-        &bob,
-        (herc20_params.clone(), herc20_deployed.clone()),
-    )
-    .await?
-    {
-        Next::Continue(herc20_funded) => herc20_funded,
-        Next::Abort => {
-            alice.refund(&hbit_params, hbit_funded).await?;
+    let _herc20_funded =
+        match Do::<herc20::CorrectlyFunded>::r#do(&bob, herc20_deployed.clone()).await? {
+            Next::Continue(herc20_funded) => herc20_funded,
+            Next::Abort => {
+                alice.refund(hbit_funded).await?;
 
-            return Ok(());
-        }
-    };
+                return Ok(());
+            }
+        };
 
-    let herc20_redeemed = match Do::<herc20::Redeemed>::r#do(
-        &alice,
-        (herc20_params.clone(), herc20_deployed.clone()),
-    )
-    .await?
-    {
-        Next::Continue(herc20_redeemed) => herc20_redeemed,
-        Next::Abort => {
-            alice.refund(&hbit_params, hbit_funded).await?;
-            bob.refund(herc20_params, herc20_deployed.clone()).await?;
+    let herc20_redeemed =
+        match Do::<herc20::Redeemed>::r#do(&alice, herc20_deployed.clone()).await? {
+            Next::Continue(herc20_redeemed) => herc20_redeemed,
+            Next::Abort => {
+                alice.refund(hbit_funded).await?;
+                bob.refund(herc20_deployed.clone()).await?;
 
-            return Ok(());
-        }
-    };
+                return Ok(());
+            }
+        };
 
     // TODO: Prevent Bob from trying to redeem again (applies to the
     // all the refunds too). Reusing the Do trait seems wrong since we
@@ -88,11 +75,9 @@ where
     // more than once, but it's a bit wasteful. We should probably
     // introduce another trait which composes CheckMemory, Execute and
     // Remember to solve this problem (P.S. naming is hard)
-    let hbit_redeem = Execute::<hbit::Redeemed>::execute(
-        &bob,
-        (hbit_params, hbit_funded, herc20_redeemed.secret),
-    );
-    let hbit_refund = alice.refund(&hbit_params, hbit_funded);
+    let hbit_redeem =
+        Execute::<hbit::Redeemed>::execute(&bob, (hbit_funded, herc20_redeemed.secret));
+    let hbit_refund = alice.refund(hbit_funded);
 
     // It's always safe for Bob to redeem, he just has to do it before
     // Alice refunds
@@ -360,7 +345,7 @@ mod tests {
                 swap_id,
             };
 
-            hbit_herc20(alice, bob, hbit_params, herc20_params.clone())
+            hbit_herc20(alice, bob)
         };
 
         let bob_swap = {
@@ -387,7 +372,7 @@ mod tests {
                 swap_id,
             };
 
-            hbit_herc20(alice, bob, hbit_params, herc20_params.clone())
+            hbit_herc20(alice, bob)
         };
 
         let alice_bitcoin_starting_balance = alice_bitcoin_wallet.inner.balance().await?;

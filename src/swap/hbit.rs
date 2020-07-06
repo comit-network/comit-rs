@@ -39,11 +39,7 @@ pub trait ExecuteRedeem {
 
 #[async_trait::async_trait]
 pub trait Refund {
-    async fn refund(
-        &self,
-        params: &Params,
-        fund_event: CorrectlyFunded,
-    ) -> anyhow::Result<Refunded>;
+    async fn refund(&self, fund_event: CorrectlyFunded) -> anyhow::Result<Refunded>;
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -26,6 +26,7 @@ pub struct WalletBob<AW, BW, DB, AP, BP, E> {
     pub swap_id: SwapId,
 }
 
+#[allow(clippy::unit_arg)]
 #[async_trait::async_trait]
 impl<AW, BW, DB, AP, E> Execute<herc20::Deployed> for WalletBob<AW, BW, DB, AP, herc20::Params, E>
 where
@@ -35,10 +36,12 @@ where
     AP: Send + Sync,
     E: Send + Sync,
 {
-    type Args = herc20::Params;
+    type Args = ();
 
-    async fn execute(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {
-        self.beta_wallet.execute_deploy(params).await
+    async fn execute(&self, (): Self::Args) -> anyhow::Result<herc20::Deployed> {
+        self.beta_wallet
+            .execute_deploy(self.beta_params.clone())
+            .await
     }
 }
 
@@ -52,14 +55,14 @@ where
     AP: Send + Sync,
     E: Send + Sync,
 {
-    type Args = (herc20::Params, herc20::Deployed);
+    type Args = herc20::Deployed;
 
     async fn execute(
         &self,
-        (params, deploy_event): (herc20::Params, herc20::Deployed),
+        deploy_event: herc20::Deployed,
     ) -> anyhow::Result<herc20::CorrectlyFunded> {
         self.beta_wallet
-            .execute_fund(params, deploy_event, self.start_of_swap)
+            .execute_fund(self.beta_params.clone(), deploy_event, self.start_of_swap)
             .await
     }
 }
@@ -73,15 +76,15 @@ where
     DB: Send + Sync,
     BP: Send + Sync,
 {
-    type Args = (hbit::Params, hbit::CorrectlyFunded, Secret);
+    type Args = (hbit::CorrectlyFunded, Secret);
 
     async fn execute(
         &self,
-        (params, fund_event, secret): (hbit::Params, hbit::CorrectlyFunded, Secret),
+        (fund_event, secret): (hbit::CorrectlyFunded, Secret),
     ) -> anyhow::Result<hbit::Redeemed> {
         self.alpha_wallet
             .execute_redeem(
-                params,
+                self.alpha_params,
                 fund_event,
                 secret,
                 self.private_protocol_details.transient_redeem_sk,
@@ -91,28 +94,23 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AW, BW, DB, AP, E> herc20::Refund for WalletBob<AW, BW, DB, AP, herc20::Params, E>
+impl<AW, DB, AP, E> herc20::Refund for WalletBob<AW, ethereum::Wallet, DB, AP, herc20::Params, E>
 where
     AW: Send + Sync,
-    BW: BetaLedgerTime + Send + Sync,
     DB: Send + Sync,
     AP: Send + Sync,
     E: Send + Sync,
 {
-    async fn refund(
-        &self,
-        params: herc20::Params,
-        deploy_event: herc20::Deployed,
-    ) -> anyhow::Result<herc20::Refunded> {
+    async fn refund(&self, deploy_event: herc20::Deployed) -> anyhow::Result<herc20::Refunded> {
         loop {
-            if self.beta_wallet.beta_ledger_time().await? >= params.expiry {
+            if self.beta_wallet.beta_ledger_time().await? >= self.beta_params.expiry {
                 break;
             }
 
             tokio::time::delay_for(Duration::from_secs(1)).await;
         }
 
-        let refund_event = self.refund(params, deploy_event).await?;
+        let refund_event = self.refund(self.beta_params.clone(), deploy_event).await?;
 
         Ok(refund_event)
     }
@@ -219,6 +217,7 @@ pub mod watch_only_actor {
         pub swap_id: SwapId,
     }
 
+    #[allow(clippy::unit_arg)]
     #[async_trait::async_trait]
     impl<AC, BC, DB, AP> Execute<herc20::Deployed> for WatchOnlyBob<AC, BC, DB, AP, herc20::Params>
     where
@@ -229,11 +228,15 @@ pub mod watch_only_actor {
         DB: Send + Sync,
         AP: Send + Sync,
     {
-        type Args = herc20::Params;
+        type Args = ();
 
-        async fn execute(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {
-            herc20::watch_for_deployed(self.beta_connector.as_ref(), params, self.start_of_swap)
-                .await
+        async fn execute(&self, (): Self::Args) -> anyhow::Result<herc20::Deployed> {
+            herc20::watch_for_deployed(
+                self.beta_connector.as_ref(),
+                self.beta_params.clone(),
+                self.start_of_swap,
+            )
+            .await
         }
     }
 
@@ -248,15 +251,15 @@ pub mod watch_only_actor {
         DB: Send + Sync,
         AP: Send + Sync,
     {
-        type Args = (herc20::Params, herc20::Deployed);
+        type Args = herc20::Deployed;
 
         async fn execute(
             &self,
-            (params, deploy_event): (herc20::Params, herc20::Deployed),
+            deploy_event: herc20::Deployed,
         ) -> anyhow::Result<herc20::CorrectlyFunded> {
             herc20::watch_for_funded(
                 self.beta_connector.as_ref(),
-                params,
+                self.beta_params.clone(),
                 self.start_of_swap,
                 deploy_event,
             )
@@ -273,15 +276,15 @@ pub mod watch_only_actor {
         DB: Send + Sync,
         BP: Send + Sync,
     {
-        type Args = (hbit::Params, hbit::CorrectlyFunded, Secret);
+        type Args = (hbit::CorrectlyFunded, Secret);
 
         async fn execute(
             &self,
-            (params, fund_event, _): (hbit::Params, hbit::CorrectlyFunded, Secret),
+            (fund_event, _): (hbit::CorrectlyFunded, Secret),
         ) -> anyhow::Result<hbit::Redeemed> {
             hbit::watch_for_redeemed(
                 self.alpha_connector.as_ref(),
-                &params,
+                &self.alpha_params,
                 fund_event.location,
                 self.start_of_swap,
             )
@@ -299,11 +302,7 @@ pub mod watch_only_actor {
         DB: Send + Sync,
         AP: Send + Sync,
     {
-        async fn refund(
-            &self,
-            _params: herc20::Params,
-            deploy_event: herc20::Deployed,
-        ) -> anyhow::Result<herc20::Refunded> {
+        async fn refund(&self, deploy_event: herc20::Deployed) -> anyhow::Result<herc20::Refunded> {
             let event = herc20::watch_for_refunded(
                 self.beta_connector.as_ref(),
                 self.start_of_swap,
