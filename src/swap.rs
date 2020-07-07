@@ -14,72 +14,66 @@ use futures::future;
 
 pub use alice::WatchOnlyAlice;
 pub use bob::WalletBob;
-pub use do_action::{AlphaLedgerTime, BetaExpiry, BetaLedgerTime, Do, Execute, Next};
+pub use do_action::{AlphaLedgerTime, BetaExpiry, BetaLedgerTime, Do, Execute, Next, TryDo};
 
 /// Execute a Hbit<->Herc20 swap.
 pub async fn hbit_herc20<A, B>(alice: A, bob: B) -> anyhow::Result<()>
 where
-    A: Do<hbit::Funded>
+    A: TryDo<hbit::Funded>
         + Execute<hbit::Funded, Args = ()>
-        + Do<herc20::Redeemed>
+        + TryDo<herc20::Redeemed>
         + Execute<herc20::Redeemed, Args = herc20::Deployed>
+        + Do<hbit::Refunded>
         + Execute<hbit::Refunded, Args = hbit::Funded>
         + Sync,
-    B: Do<herc20::Deployed>
+    B: TryDo<herc20::Deployed>
         + Execute<herc20::Deployed, Args = ()>
-        + Do<herc20::Funded>
+        + TryDo<herc20::Funded>
         + Execute<herc20::Funded, Args = herc20::Deployed>
+        + Do<hbit::Redeemed>
         + Execute<hbit::Redeemed, Args = (hbit::Funded, Secret)>
+        + Do<herc20::Refunded>
         + Execute<herc20::Refunded, Args = herc20::Deployed>
         + Sync,
 {
-    let hbit_funded = match Do::<hbit::Funded>::r#do(&alice, ()).await? {
+    let hbit_funded = match TryDo::<hbit::Funded>::try_do(&alice, ()).await? {
         Next::Continue(hbit_funded) => hbit_funded,
         Next::Abort => return Ok(()),
     };
 
-    let herc20_deployed = match Do::<herc20::Deployed>::r#do(&bob, ()).await? {
+    let herc20_deployed = match TryDo::<herc20::Deployed>::try_do(&bob, ()).await? {
         Next::Continue(herc20_deployed) => herc20_deployed,
         Next::Abort => {
-            Execute::<hbit::Refunded>::execute(&alice, hbit_funded).await?;
+            Do::<hbit::Refunded>::r#do(&alice, hbit_funded).await?;
 
             return Ok(());
         }
     };
 
-    let _herc20_funded = match Do::<herc20::Funded>::r#do(&bob, herc20_deployed.clone()).await? {
-        Next::Continue(herc20_funded) => herc20_funded,
-        Next::Abort => {
-            Execute::<hbit::Refunded>::execute(&alice, hbit_funded).await?;
-
-            return Ok(());
-        }
-    };
-
-    let herc20_redeemed =
-        match Do::<herc20::Redeemed>::r#do(&alice, herc20_deployed.clone()).await? {
-            Next::Continue(herc20_redeemed) => herc20_redeemed,
+    let _herc20_funded =
+        match TryDo::<herc20::Funded>::try_do(&bob, herc20_deployed.clone()).await? {
+            Next::Continue(herc20_funded) => herc20_funded,
             Next::Abort => {
-                Execute::<hbit::Refunded>::execute(&alice, hbit_funded).await?;
-                Execute::<herc20::Refunded>::execute(&bob, herc20_deployed.clone()).await?;
+                Do::<hbit::Refunded>::r#do(&alice, hbit_funded).await?;
 
                 return Ok(());
             }
         };
 
-    // TODO: Prevent Bob from trying to redeem again (applies to the
-    // all the refunds too). Reusing the Do trait seems wrong since we
-    // should never abort at this stage, which is why we used the
-    // Execute trait directly. There is no risk in doing this action
-    // more than once, but it's a bit wasteful. We should probably
-    // introduce another trait which composes CheckMemory, Execute and
-    // Remember to solve this problem (P.S. naming is hard)
-    let hbit_redeem =
-        Execute::<hbit::Redeemed>::execute(&bob, (hbit_funded, herc20_redeemed.secret));
-    let hbit_refund = Execute::<hbit::Refunded>::execute(&alice, hbit_funded);
+    let herc20_redeemed =
+        match TryDo::<herc20::Redeemed>::try_do(&alice, herc20_deployed.clone()).await? {
+            Next::Continue(herc20_redeemed) => herc20_redeemed,
+            Next::Abort => {
+                Do::<hbit::Refunded>::r#do(&alice, hbit_funded).await?;
+                Do::<herc20::Refunded>::r#do(&bob, herc20_deployed.clone()).await?;
 
-    // It's always safe for Bob to redeem, he just has to do it before
-    // Alice refunds
+                return Ok(());
+            }
+        };
+
+    let hbit_redeem = Do::<hbit::Redeemed>::r#do(&bob, (hbit_funded, herc20_redeemed.secret));
+    let hbit_refund = Do::<hbit::Refunded>::r#do(&alice, hbit_funded);
+
     match future::try_select(hbit_redeem, hbit_refund).await {
         Ok(future::Either::Left((_hbit_redeemed, _))) => Ok(()),
         Ok(future::Either::Right((_hbit_refunded, _))) => Ok(()),
@@ -93,67 +87,61 @@ where
 /// Execute a Hbit<->Herc20 swap.
 pub async fn herc20_hbit<A, B>(alice: A, bob: B) -> anyhow::Result<()>
 where
-    A: Do<herc20::Deployed>
+    A: TryDo<herc20::Deployed>
         + Execute<herc20::Deployed, Args = ()>
-        + Do<herc20::Funded>
+        + TryDo<herc20::Funded>
         + Execute<herc20::Funded, Args = herc20::Deployed>
-        + Do<hbit::Redeemed>
+        + TryDo<hbit::Redeemed>
         + Execute<hbit::Redeemed, Args = hbit::Funded>
+        + Do<herc20::Refunded>
         + Execute<herc20::Refunded, Args = herc20::Deployed>
         + Sync,
-    B: Do<hbit::Funded>
+    B: TryDo<hbit::Funded>
         + Execute<hbit::Funded, Args = ()>
         + Do<herc20::Redeemed>
         + Execute<herc20::Redeemed, Args = (herc20::Deployed, Secret)>
+        + Do<hbit::Refunded>
         + Execute<hbit::Refunded, Args = hbit::Funded>
         + Sync,
 {
-    let herc20_deployed = match Do::<herc20::Deployed>::r#do(&alice, ()).await? {
+    let herc20_deployed = match TryDo::<herc20::Deployed>::try_do(&alice, ()).await? {
         Next::Continue(herc20_deployed) => herc20_deployed,
         Next::Abort => {
             return Ok(());
         }
     };
 
-    let _herc20_funded = match Do::<herc20::Funded>::r#do(&alice, herc20_deployed.clone()).await? {
-        Next::Continue(herc20_funded) => herc20_funded,
-        Next::Abort => {
-            return Ok(());
-        }
-    };
+    let _herc20_funded =
+        match TryDo::<herc20::Funded>::try_do(&alice, herc20_deployed.clone()).await? {
+            Next::Continue(herc20_funded) => herc20_funded,
+            Next::Abort => {
+                return Ok(());
+            }
+        };
 
-    let hbit_funded = match Do::<hbit::Funded>::r#do(&bob, ()).await? {
+    let hbit_funded = match TryDo::<hbit::Funded>::try_do(&bob, ()).await? {
         Next::Continue(hbit_funded) => hbit_funded,
         Next::Abort => {
-            Execute::<herc20::Refunded>::execute(&alice, herc20_deployed.clone()).await?;
+            Do::<herc20::Refunded>::r#do(&alice, herc20_deployed.clone()).await?;
 
             return Ok(());
         }
     };
 
-    let hbit_redeemed = match Do::<hbit::Redeemed>::r#do(&alice, hbit_funded).await? {
+    let hbit_redeemed = match TryDo::<hbit::Redeemed>::try_do(&alice, hbit_funded).await? {
         Next::Continue(hbit_redeemed) => hbit_redeemed,
         Next::Abort => {
-            Execute::<herc20::Refunded>::execute(&alice, herc20_deployed.clone()).await?;
-            Execute::<hbit::Refunded>::execute(&bob, hbit_funded).await?;
+            Do::<herc20::Refunded>::r#do(&alice, herc20_deployed.clone()).await?;
+            Do::<hbit::Refunded>::r#do(&bob, hbit_funded).await?;
 
             return Ok(());
         }
     };
 
-    // TODO: Prevent Bob from trying to redeem again (applies to the
-    // all the refunds too). Reusing the Do trait seems wrong since we
-    // should never abort at this stage, which is why we used the
-    // Execute trait directly. There is no risk in doing this action
-    // more than once, but it's a bit wasteful. We should probably
-    // introduce another trait which composes CheckMemory, Execute and
-    // Remember to solve this problem (P.S. naming is hard)
     let herc20_redeem =
-        Execute::<herc20::Redeemed>::execute(&bob, (herc20_deployed.clone(), hbit_redeemed.secret));
-    let herc20_refund = Execute::<herc20::Refunded>::execute(&alice, herc20_deployed.clone());
+        Do::<herc20::Redeemed>::r#do(&bob, (herc20_deployed.clone(), hbit_redeemed.secret));
+    let herc20_refund = Do::<herc20::Refunded>::r#do(&alice, herc20_deployed.clone());
 
-    // It's always safe for Bob to redeem, he just has to do it before
-    // Alice refunds
     match future::try_select(herc20_redeem, herc20_refund).await {
         Ok(future::Either::Left((_herc20_redeemed, _))) => Ok(()),
         Ok(future::Either::Right((_herc20_refunded, _))) => Ok(()),

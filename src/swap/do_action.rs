@@ -2,13 +2,13 @@ use crate::{swap::db, SwapId};
 use comit::Timestamp;
 
 #[async_trait::async_trait]
-pub trait Do<E>
+pub trait TryDo<E>
 where
     Self: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
     E: Clone + Send + Sync + 'static,
     <Self as Execute<E>>::Args: Send + Sync,
 {
-    async fn r#do(&self, execution_args: <Self as Execute<E>>::Args) -> anyhow::Result<Next<E>> {
+    async fn try_do(&self, execution_args: <Self as Execute<E>>::Args) -> anyhow::Result<Next<E>> {
         if let Some(event) = self.check_memory().await? {
             return Ok(Next::Continue(event));
         }
@@ -21,6 +21,34 @@ where
         self.remember(event.clone()).await?;
 
         Ok(Next::Continue(event))
+    }
+}
+
+#[async_trait::async_trait]
+impl<E, A> TryDo<E> for A
+where
+    A: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
+    E: Clone + Send + Sync + 'static,
+    <Self as Execute<E>>::Args: Send + Sync,
+{
+}
+
+#[async_trait::async_trait]
+pub trait Do<E>
+where
+    Self: CheckMemory<E> + Execute<E> + Remember<E>,
+    E: Clone + Send + Sync + 'static,
+    <Self as Execute<E>>::Args: Send + Sync,
+{
+    async fn r#do(&self, execution_args: <Self as Execute<E>>::Args) -> anyhow::Result<E> {
+        if let Some(event) = self.check_memory().await? {
+            return Ok(event);
+        }
+
+        let event = Execute::<E>::execute(self, execution_args).await?;
+        self.remember(event.clone()).await?;
+
+        Ok(event)
     }
 }
 
@@ -115,7 +143,7 @@ pub trait BetaLedgerTime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::swap::{Do, Next};
+    use crate::swap::{Next, TryDo};
     use std::{
         collections::HashMap,
         sync::{Arc, RwLock},
@@ -207,12 +235,12 @@ mod tests {
         };
 
         assert!(blockchain.read().unwrap().events.is_empty());
-        let res = actor.r#do(()).await;
+        let res = actor.try_do(()).await;
 
         assert!(matches!(res, Ok(Next::Continue(ArbitraryEvent))));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
 
-        let res = actor.r#do(()).await;
+        let res = actor.try_do(()).await;
         assert!(matches!(res, Ok(Next::Continue(ArbitraryEvent))));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
     }
