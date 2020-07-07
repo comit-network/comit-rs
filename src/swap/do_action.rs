@@ -221,7 +221,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn arbitrary_action_is_idempotent() {
+    async fn trying_to_do_an_arbitrary_action_once_is_idempotent() {
         let blockchain = Arc::new(RwLock::new(FakeBlockchain::default()));
         let wallet = FakeWallet {
             node: Arc::clone(&blockchain),
@@ -245,6 +245,34 @@ mod tests {
 
         let res = actor.try_do_it_once(()).await;
         assert!(matches!(res, Ok(Next::Continue(ArbitraryEvent))));
+        assert_eq!(blockchain.read().unwrap().events.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn doing_an_arbitrary_action_once_is_idempotent() {
+        let blockchain = Arc::new(RwLock::new(FakeBlockchain::default()));
+        let wallet = FakeWallet {
+            node: Arc::clone(&blockchain),
+        };
+
+        let db = FakeDatabase::default();
+
+        let swap_id = SwapId::random();
+
+        let actor = FakeActor {
+            db,
+            wallet,
+            swap_id,
+        };
+
+        assert!(blockchain.read().unwrap().events.is_empty());
+        let res = actor.do_it_once(()).await;
+
+        assert!(matches!(res, Ok(ArbitraryEvent)));
+        assert_eq!(blockchain.read().unwrap().events.len(), 1);
+
+        let res = actor.do_it_once(()).await;
+        assert!(matches!(res, Ok(ArbitraryEvent)));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
     }
 }
