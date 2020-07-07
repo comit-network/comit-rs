@@ -2,13 +2,16 @@ use crate::{swap::db, SwapId};
 use comit::Timestamp;
 
 #[async_trait::async_trait]
-pub trait TryDo<E>
+pub trait TryDoItOnce<E>
 where
     Self: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
     E: Clone + Send + Sync + 'static,
     <Self as Execute<E>>::Args: Send + Sync,
 {
-    async fn try_do(&self, execution_args: <Self as Execute<E>>::Args) -> anyhow::Result<Next<E>> {
+    async fn try_do_it_once(
+        &self,
+        execution_args: <Self as Execute<E>>::Args,
+    ) -> anyhow::Result<Next<E>> {
         if let Some(event) = self.check_memory().await? {
             return Ok(Next::Continue(event));
         }
@@ -25,7 +28,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<E, A> TryDo<E> for A
+impl<E, A> TryDoItOnce<E> for A
 where
     A: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
     E: Clone + Send + Sync + 'static,
@@ -34,13 +37,13 @@ where
 }
 
 #[async_trait::async_trait]
-pub trait Do<E>
+pub trait DoItOnce<E>
 where
     Self: CheckMemory<E> + Execute<E> + Remember<E>,
     E: Clone + Send + Sync + 'static,
     <Self as Execute<E>>::Args: Send + Sync,
 {
-    async fn r#do(&self, execution_args: <Self as Execute<E>>::Args) -> anyhow::Result<E> {
+    async fn do_it_once(&self, execution_args: <Self as Execute<E>>::Args) -> anyhow::Result<E> {
         if let Some(event) = self.check_memory().await? {
             return Ok(event);
         }
@@ -53,7 +56,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<E, A> Do<E> for A
+impl<E, A> DoItOnce<E> for A
 where
     A: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
     E: Clone + Send + Sync + 'static,
@@ -143,7 +146,7 @@ pub trait BetaLedgerTime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::swap::{Next, TryDo};
+    use crate::swap::{Next, TryDoItOnce};
     use std::{
         collections::HashMap,
         sync::{Arc, RwLock},
@@ -235,12 +238,12 @@ mod tests {
         };
 
         assert!(blockchain.read().unwrap().events.is_empty());
-        let res = actor.try_do(()).await;
+        let res = actor.try_do_it_once(()).await;
 
         assert!(matches!(res, Ok(Next::Continue(ArbitraryEvent))));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
 
-        let res = actor.try_do(()).await;
+        let res = actor.try_do_it_once(()).await;
         assert!(matches!(res, Ok(Next::Continue(ArbitraryEvent))));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
     }

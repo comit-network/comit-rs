@@ -14,65 +14,70 @@ use futures::future;
 
 pub use alice::WatchOnlyAlice;
 pub use bob::WalletBob;
-pub use do_action::{AlphaLedgerTime, BetaExpiry, BetaLedgerTime, Do, Execute, Next, TryDo};
+pub use do_action::{
+    AlphaLedgerTime, BetaExpiry, BetaLedgerTime, DoItOnce, Execute, Next, TryDoItOnce,
+};
 
 /// Execute a Hbit<->Herc20 swap.
 pub async fn hbit_herc20<A, B>(alice: A, bob: B) -> anyhow::Result<()>
 where
-    A: TryDo<hbit::Funded>
+    A: TryDoItOnce<hbit::Funded>
         + Execute<hbit::Funded, Args = ()>
-        + TryDo<herc20::Redeemed>
+        + TryDoItOnce<herc20::Redeemed>
         + Execute<herc20::Redeemed, Args = herc20::Deployed>
-        + Do<hbit::Refunded>
+        + DoItOnce<hbit::Refunded>
         + Execute<hbit::Refunded, Args = hbit::Funded>
         + Sync,
-    B: TryDo<herc20::Deployed>
+    B: TryDoItOnce<herc20::Deployed>
         + Execute<herc20::Deployed, Args = ()>
-        + TryDo<herc20::Funded>
+        + TryDoItOnce<herc20::Funded>
         + Execute<herc20::Funded, Args = herc20::Deployed>
-        + Do<hbit::Redeemed>
+        + DoItOnce<hbit::Redeemed>
         + Execute<hbit::Redeemed, Args = (hbit::Funded, Secret)>
-        + Do<herc20::Refunded>
+        + DoItOnce<herc20::Refunded>
         + Execute<herc20::Refunded, Args = herc20::Deployed>
         + Sync,
 {
-    let hbit_funded = match TryDo::<hbit::Funded>::try_do(&alice, ()).await? {
+    let hbit_funded = match TryDoItOnce::<hbit::Funded>::try_do_it_once(&alice, ()).await? {
         Next::Continue(hbit_funded) => hbit_funded,
         Next::Abort => return Ok(()),
     };
 
-    let herc20_deployed = match TryDo::<herc20::Deployed>::try_do(&bob, ()).await? {
+    let herc20_deployed = match TryDoItOnce::<herc20::Deployed>::try_do_it_once(&bob, ()).await? {
         Next::Continue(herc20_deployed) => herc20_deployed,
         Next::Abort => {
-            Do::<hbit::Refunded>::r#do(&alice, hbit_funded).await?;
+            DoItOnce::<hbit::Refunded>::do_it_once(&alice, hbit_funded).await?;
 
             return Ok(());
         }
     };
 
     let _herc20_funded =
-        match TryDo::<herc20::Funded>::try_do(&bob, herc20_deployed.clone()).await? {
+        match TryDoItOnce::<herc20::Funded>::try_do_it_once(&bob, herc20_deployed.clone()).await? {
             Next::Continue(herc20_funded) => herc20_funded,
             Next::Abort => {
-                Do::<hbit::Refunded>::r#do(&alice, hbit_funded).await?;
+                DoItOnce::<hbit::Refunded>::do_it_once(&alice, hbit_funded).await?;
 
                 return Ok(());
             }
         };
 
     let herc20_redeemed =
-        match TryDo::<herc20::Redeemed>::try_do(&alice, herc20_deployed.clone()).await? {
+        match TryDoItOnce::<herc20::Redeemed>::try_do_it_once(&alice, herc20_deployed.clone())
+            .await?
+        {
             Next::Continue(herc20_redeemed) => herc20_redeemed,
             Next::Abort => {
-                Do::<hbit::Refunded>::r#do(&alice, hbit_funded).await?;
-                Do::<herc20::Refunded>::r#do(&bob, herc20_deployed.clone()).await?;
+                DoItOnce::<hbit::Refunded>::do_it_once(&alice, hbit_funded).await?;
+                DoItOnce::<herc20::Refunded>::do_it_once(&bob, herc20_deployed.clone()).await?;
 
                 return Ok(());
             }
         };
 
-    let hbit_redeem = Do::<hbit::Redeemed>::r#do(&bob, (hbit_funded, herc20_redeemed.secret));
-    let hbit_refund = Do::<hbit::Refunded>::r#do(&alice, hbit_funded);
+    let hbit_redeem =
+        DoItOnce::<hbit::Redeemed>::do_it_once(&bob, (hbit_funded, herc20_redeemed.secret));
+    let hbit_refund = DoItOnce::<hbit::Refunded>::do_it_once(&alice, hbit_funded);
 
     match future::try_select(hbit_redeem, hbit_refund).await {
         Ok(future::Either::Left((_hbit_redeemed, _))) => Ok(()),
@@ -87,24 +92,24 @@ where
 /// Execute a Hbit<->Herc20 swap.
 pub async fn herc20_hbit<A, B>(alice: A, bob: B) -> anyhow::Result<()>
 where
-    A: TryDo<herc20::Deployed>
+    A: TryDoItOnce<herc20::Deployed>
         + Execute<herc20::Deployed, Args = ()>
-        + TryDo<herc20::Funded>
+        + TryDoItOnce<herc20::Funded>
         + Execute<herc20::Funded, Args = herc20::Deployed>
-        + TryDo<hbit::Redeemed>
+        + TryDoItOnce<hbit::Redeemed>
         + Execute<hbit::Redeemed, Args = hbit::Funded>
-        + Do<herc20::Refunded>
+        + DoItOnce<herc20::Refunded>
         + Execute<herc20::Refunded, Args = herc20::Deployed>
         + Sync,
-    B: TryDo<hbit::Funded>
+    B: TryDoItOnce<hbit::Funded>
         + Execute<hbit::Funded, Args = ()>
-        + Do<herc20::Redeemed>
+        + DoItOnce<herc20::Redeemed>
         + Execute<herc20::Redeemed, Args = (herc20::Deployed, Secret)>
-        + Do<hbit::Refunded>
+        + DoItOnce<hbit::Refunded>
         + Execute<hbit::Refunded, Args = hbit::Funded>
         + Sync,
 {
-    let herc20_deployed = match TryDo::<herc20::Deployed>::try_do(&alice, ()).await? {
+    let herc20_deployed = match TryDoItOnce::<herc20::Deployed>::try_do_it_once(&alice, ()).await? {
         Next::Continue(herc20_deployed) => herc20_deployed,
         Next::Abort => {
             return Ok(());
@@ -112,35 +117,39 @@ where
     };
 
     let _herc20_funded =
-        match TryDo::<herc20::Funded>::try_do(&alice, herc20_deployed.clone()).await? {
+        match TryDoItOnce::<herc20::Funded>::try_do_it_once(&alice, herc20_deployed.clone()).await?
+        {
             Next::Continue(herc20_funded) => herc20_funded,
             Next::Abort => {
                 return Ok(());
             }
         };
 
-    let hbit_funded = match TryDo::<hbit::Funded>::try_do(&bob, ()).await? {
+    let hbit_funded = match TryDoItOnce::<hbit::Funded>::try_do_it_once(&bob, ()).await? {
         Next::Continue(hbit_funded) => hbit_funded,
         Next::Abort => {
-            Do::<herc20::Refunded>::r#do(&alice, herc20_deployed.clone()).await?;
+            DoItOnce::<herc20::Refunded>::do_it_once(&alice, herc20_deployed.clone()).await?;
 
             return Ok(());
         }
     };
 
-    let hbit_redeemed = match TryDo::<hbit::Redeemed>::try_do(&alice, hbit_funded).await? {
-        Next::Continue(hbit_redeemed) => hbit_redeemed,
-        Next::Abort => {
-            Do::<herc20::Refunded>::r#do(&alice, herc20_deployed.clone()).await?;
-            Do::<hbit::Refunded>::r#do(&bob, hbit_funded).await?;
+    let hbit_redeemed =
+        match TryDoItOnce::<hbit::Redeemed>::try_do_it_once(&alice, hbit_funded).await? {
+            Next::Continue(hbit_redeemed) => hbit_redeemed,
+            Next::Abort => {
+                DoItOnce::<herc20::Refunded>::do_it_once(&alice, herc20_deployed.clone()).await?;
+                DoItOnce::<hbit::Refunded>::do_it_once(&bob, hbit_funded).await?;
 
-            return Ok(());
-        }
-    };
+                return Ok(());
+            }
+        };
 
-    let herc20_redeem =
-        Do::<herc20::Redeemed>::r#do(&bob, (herc20_deployed.clone(), hbit_redeemed.secret));
-    let herc20_refund = Do::<herc20::Refunded>::r#do(&alice, herc20_deployed.clone());
+    let herc20_redeem = DoItOnce::<herc20::Redeemed>::do_it_once(
+        &bob,
+        (herc20_deployed.clone(), hbit_redeemed.secret),
+    );
+    let herc20_refund = DoItOnce::<herc20::Refunded>::do_it_once(&alice, herc20_deployed.clone());
 
     match future::try_select(herc20_redeem, herc20_refund).await {
         Ok(future::Either::Left((_herc20_redeemed, _))) => Ok(()),
