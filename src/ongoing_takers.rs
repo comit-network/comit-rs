@@ -19,7 +19,7 @@ impl PeersWithOngoingTrades {
         self.0.contains(taker)
     }
 
-    fn remove(&mut self, taker: &Taker) {
+    pub fn remove(&mut self, taker: &Taker) {
         self.0.remove(taker);
     }
 }

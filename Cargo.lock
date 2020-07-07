@@ -1939,6 +1939,7 @@ dependencies = [
  "ethabi",
  "ethereum-types",
  "futures",
+ "futures-timer",
  "hex 0.4.2",
  "libp2p",
  "log",

@@ -1,5 +1,6 @@
 #![allow(unused_variables)]
 
+use crate::network::Taker;
 use crate::{
     bitcoin, dai,
     network::Order,
@@ -112,6 +113,13 @@ impl Maker {
         }
     }
 
+    pub fn new_order(&self, position: Position) -> anyhow::Result<BtcDaiOrder> {
+        match position {
+            Position::Buy => self.new_buy_order(),
+            Position::Sell => self.new_sell_order(),
+        }
+    }
+
     /// Decide whether we should proceed with order,
     /// Confirm with the order book
     /// Re & take & reserve
@@ -126,7 +134,7 @@ impl Maker {
                     .spread
                     .apply(current_mid_market_rate.into(), order.inner.position)?;
                 let order_rate = Rate::try_from(order.inner.clone())?;
-                let next_order = match order.clone().into() {
+                match order.clone().into() {
                     order
                     @
                     BtcDaiOrder {
@@ -149,7 +157,6 @@ impl Maker {
                         }
 
                         self.dai_reserved_funds = updated_dai_reserved_funds;
-                        self.new_buy_order()?
                     }
                     order
                     @
@@ -166,13 +173,13 @@ impl Maker {
                             return Ok(TakeRequestDecision::RateNotProfitable);
                         }
 
-                        let updated_btc_reserved_funds = self.btc_reserved_funds + order.base;
+                        let updated_btc_reserved_funds =
+                            self.btc_reserved_funds + order.base + self.btc_fee;
                         if updated_btc_reserved_funds > self.btc_balance {
                             return Ok(TakeRequestDecision::InsufficientFunds);
                         }
 
                         self.btc_reserved_funds = updated_btc_reserved_funds;
-                        self.new_sell_order()?
                     }
                 };
 
@@ -180,16 +187,35 @@ impl Maker {
                     .insert(order.taker)
                     .expect("already checked that we can trade");
 
-                Ok(TakeRequestDecision::GoForSwap { next_order })
+                Ok(TakeRequestDecision::GoForSwap)
             }
             None => anyhow::bail!(RateNotAvailable(order.inner.position)),
         }
     }
+
+    pub fn process_finished_swap(&mut self, free: Free, taker: Taker) {
+        match free {
+            Free::Dai(amount) => {
+                self.dai_reserved_funds = self.dai_reserved_funds.clone() - amount;
+            }
+            Free::Btc(amount) => {
+                self.btc_reserved_funds = self.btc_reserved_funds - (amount + self.btc_fee);
+            }
+        }
+
+        self.ongoing_takers.remove(&taker);
+    }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug)]
+pub enum Free {
+    Dai(dai::Amount),
+    Btc(bitcoin::Amount),
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum TakeRequestDecision {
-    GoForSwap { next_order: BtcDaiOrder },
+    GoForSwap,
     RateNotProfitable,
     InsufficientFunds,
     CannotTradeWithTaker,
@@ -208,6 +234,7 @@ pub struct RateNotAvailable(Position);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::network::Taker;
     use crate::{
         network::Order,
         order::{BtcDaiOrder, Position},
@@ -236,6 +263,7 @@ mod tests {
     fn btc_funds_reserved_upon_taking_sell_order() {
         let mut maker = Maker {
             btc_balance: bitcoin::Amount::from_btc(3.0).unwrap(),
+            btc_fee: bitcoin::Amount::ZERO,
             ..Default::default()
         };
 
@@ -250,10 +278,36 @@ mod tests {
 
         let event = maker.process_taken_order(order_taken).unwrap();
 
-        assert!(matches!(event, TakeRequestDecision::GoForSwap { .. }));
+        assert_eq!(event, TakeRequestDecision::GoForSwap);
         assert_eq!(
             maker.btc_reserved_funds,
             bitcoin::Amount::from_btc(1.5).unwrap()
+        )
+    }
+
+    #[test]
+    fn btc_funds_reserved_upon_taking_sell_order_with_fee() {
+        let mut maker = Maker {
+            btc_balance: bitcoin::Amount::from_btc(3.0).unwrap(),
+            btc_fee: bitcoin::Amount::from_btc(1.0).unwrap(),
+            ..Default::default()
+        };
+
+        let order_taken = Order {
+            inner: BtcDaiOrder {
+                position: Position::Sell,
+                base: bitcoin::Amount::from_btc(1.5).unwrap(),
+                quote: dai::Amount::zero(),
+            },
+            ..Default::default()
+        };
+
+        let event = maker.process_taken_order(order_taken).unwrap();
+
+        assert_eq!(event, TakeRequestDecision::GoForSwap);
+        assert_eq!(
+            maker.btc_reserved_funds,
+            bitcoin::Amount::from_btc(2.5).unwrap()
         )
     }
 
@@ -276,7 +330,33 @@ mod tests {
 
         let result = maker.process_taken_order(order_taken).unwrap();
 
-        assert!(matches!(result, TakeRequestDecision::GoForSwap { .. }));
+        assert_eq!(result, TakeRequestDecision::GoForSwap);
+        assert_eq!(
+            maker.dai_reserved_funds,
+            dai::Amount::from_dai_trunc(1.5).unwrap()
+        )
+    }
+
+    #[test]
+    fn dai_funds_reserved_upon_taking_buy_order_with_fee() {
+        let mut maker = Maker {
+            dai_balance: dai::Amount::from_dai_trunc(10000.0).unwrap(),
+            mid_market_rate: Some(MidMarketRate::new(Rate::try_from(1.5).unwrap())),
+            ..Default::default()
+        };
+
+        let order_taken = Order {
+            inner: BtcDaiOrder {
+                position: Position::Buy,
+                base: bitcoin::Amount::from_btc(1.0).unwrap(),
+                quote: dai::Amount::from_dai_trunc(1.5).unwrap(),
+            },
+            ..Default::default()
+        };
+
+        let result = maker.process_taken_order(order_taken).unwrap();
+
+        assert_eq!(result, TakeRequestDecision::GoForSwap);
         assert_eq!(
             maker.dai_reserved_funds,
             dai::Amount::from_dai_trunc(1.5).unwrap()
@@ -453,6 +533,8 @@ mod tests {
     #[test]
     fn rate_updated_and_new_orders_if_rate_update_with_new_value() {
         let mut maker = Maker {
+            btc_balance: bitcoin::Amount::from_btc(10.0).unwrap(),
+            dai_balance: dai::Amount::from_dai_trunc(10.0).unwrap(),
             mid_market_rate: Some(MidMarketRate::new(Rate::try_from(1.0).unwrap())),
             ..Default::default()
         };
@@ -462,5 +544,35 @@ mod tests {
         let reaction = maker.update_rate(new_mid_market_rate).unwrap();
         assert!(reaction.is_some());
         assert_eq!(maker.mid_market_rate, Some(new_mid_market_rate))
+    }
+
+    #[test]
+    fn free_funds_and_remove_ongoing_taker_when_processing_finished_swap() {
+        let mut maker = Maker {
+            btc_reserved_funds: bitcoin::Amount::from_btc(1.1).unwrap(),
+            dai_reserved_funds: dai::Amount::from_dai_trunc(1.0).unwrap(),
+            btc_fee: bitcoin::Amount::from_btc(0.1).unwrap(),
+            ..Default::default()
+        };
+
+        let taker = Taker { 0: 0 };
+
+        maker.ongoing_takers.insert(taker).unwrap();
+
+        let free_btc = Free::Btc(bitcoin::Amount::from_btc(0.5).unwrap());
+        let free_dai = Free::Dai(dai::Amount::from_dai_trunc(0.5).unwrap());
+
+        maker.process_finished_swap(free_btc, taker);
+        assert_eq!(
+            maker.btc_reserved_funds,
+            bitcoin::Amount::from_btc(0.5).unwrap()
+        );
+
+        maker.process_finished_swap(free_dai, taker);
+        assert_eq!(
+            maker.dai_reserved_funds,
+            dai::Amount::from_dai_trunc(0.5).unwrap()
+        );
+        assert!(!maker.ongoing_takers.has_an_ongoing_trade(&taker));
     }
 }

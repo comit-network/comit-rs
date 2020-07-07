@@ -4,7 +4,7 @@ use crate::Rate;
 use comit::asset::Erc20;
 use comit::ethereum::{Address, ChainId};
 use conquer_once::Lazy;
-use num::{pow::Pow, BigUint, ToPrimitive, Zero};
+use num::{pow::Pow, BigUint, CheckedAdd, ToPrimitive, Zero};
 use std::str::FromStr;
 
 pub const ATTOS_IN_DAI_EXP: u16 = 18;
@@ -160,6 +160,14 @@ impl Amount {
             .ok_or_else(|| anyhow::anyhow!("Result is unexpectedly large"))?;
 
         Ok(bitcoin::Amount::from_sat(sats))
+    }
+
+    pub fn symbol(self) -> String {
+        "DAI".to_owned()
+    }
+
+    pub fn checked_add(self, rhs: Amount) -> Option<Amount> {
+        self.0.checked_add(&rhs.0).map(Amount)
     }
 }
 
