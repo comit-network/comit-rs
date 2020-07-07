@@ -1,8 +1,7 @@
 use crate::{asset, identity, network::*, LocalSwapId, SecretHash, SharedSwapId, Timestamp};
 use libp2p::{
     swarm::{
-        NegotiatedSubstream, NetworkBehaviour, NetworkBehaviourAction,
-        NetworkBehaviourEventProcess, PollParameters,
+        NegotiatedSubstream, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters,
     },
     NetworkBehaviour, PeerId,
 };
@@ -120,8 +119,7 @@ impl Comit {
         ) {
             tracing::info!("Confirm & communicate for swap: {}", digest);
             Self::confirm(shared_swap_id, io);
-            let addresses = self.announce.addresses_of_peer(&peer_id);
-            self.communicate(shared_swap_id, peer_id, addresses, data)
+            self.communicate(shared_swap_id, peer_id, data)
         } else {
             self.swaps.create_as_pending_announcement(
                 digest.clone(),
@@ -147,19 +145,8 @@ impl Comit {
         &mut self,
         shared_swap_id: SharedSwapId,
         peer_id: libp2p::PeerId,
-        addresses: Vec<Multiaddr>,
         data: LocalData,
     ) {
-        self.secret_hash
-            .register_addresses(peer_id.clone(), addresses.clone());
-        self.ethereum_identity
-            .register_addresses(peer_id.clone(), addresses.clone());
-        self.lightning_identity
-            .register_addresses(peer_id.clone(), addresses.clone());
-        self.bitcoin_identity
-            .register_addresses(peer_id.clone(), addresses.clone());
-        self.finalize.register_addresses(peer_id.clone(), addresses);
-
         // Communicate
         if let Some(ethereum_identity) = data.ethereum_identity {
             self.ethereum_identity.send(
@@ -400,8 +387,7 @@ impl NetworkBehaviourEventProcess<take_order::behaviour::BehaviourOutEvent> for 
                     .swaps
                     .move_pending_confirmation_to_communicate(&swap_digest, shared_swap_id)
                 {
-                    let addresses = self.take_order.addresses_of_peer(&peer);
-                    self.communicate(shared_swap_id, peer, addresses, data);
+                    self.communicate(shared_swap_id, peer, data);
                 } else {
                     unimplemented!("inconsistent state inside swaps")
                 }
@@ -487,8 +473,7 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                     Ok((shared_swap_id, create_params)) => {
                         tracing::debug!("Swap confirmation and communication has started.");
                         Self::confirm(shared_swap_id, *io);
-                        let addresses = self.announce.addresses_of_peer(&peer);
-                        self.communicate(shared_swap_id, peer, addresses, create_params);
+                        self.communicate(shared_swap_id, peer, create_params);
                     }
                     Err(swaps::Error::NotFound) => {
                         tracing::debug!("Swap has not been created yet, parking it.");
@@ -517,8 +502,7 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                     .swaps
                     .move_pending_confirmation_to_communicate(&swap_digest, shared_swap_id)
                 {
-                    let addresses = self.announce.addresses_of_peer(&peer);
-                    self.communicate(shared_swap_id, peer, addresses, data);
+                    self.communicate(shared_swap_id, peer, data);
                 } else {
                     tracing::warn!(
                         "Confirmation received for unknown swap {} from {}",

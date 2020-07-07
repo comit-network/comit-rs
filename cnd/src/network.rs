@@ -1,3 +1,4 @@
+mod peer_tracker;
 pub mod tor;
 pub mod transport;
 
@@ -9,10 +10,10 @@ pub use transport::ComitTransport;
 use crate::{
     config::Settings,
     identity,
-    network::{Comit, LocalData},
+    network::{peer_tracker::PeerTracker, Comit, LocalData},
     spawn,
     storage::{ForSwap, Save},
-    CreatedSwap, Load, LocalSwapId, Protocol, ProtocolSpawner, Role, RootSeed, SecretHash,
+    CreatedSwap, Load, LocalSwapId, Never, Protocol, ProtocolSpawner, Role, RootSeed, SecretHash,
     SharedSwapId, Storage, SwapContext,
 };
 use ::comit::asset;
@@ -22,7 +23,7 @@ use chrono::Utc;
 use futures::{stream::StreamExt, Future, TryFutureExt};
 use libp2p::{
     identity::{ed25519, Keypair},
-    swarm::{NetworkBehaviour, SwarmBuilder},
+    swarm::SwarmBuilder,
     Multiaddr, NetworkBehaviour, PeerId,
 };
 use std::{
@@ -213,11 +214,13 @@ fn derive_key_pair(seed: &RootSeed) -> Keypair {
     let key = ed25519::SecretKey::from_bytes(bytes).expect("we always pass 32 bytes");
     Keypair::Ed25519(key.into())
 }
-/// A `NetworkBehaviour` that delegates to the `Comit` and `Mdns` behaviours.
+
+/// A `NetworkBehaviour` that represents a COMIT node.
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
 pub struct ComitNode {
     comit: Comit,
+    peer_tracker: PeerTracker,
 
     #[behaviour(ignore)]
     pub seed: RootSeed,
@@ -253,6 +256,7 @@ impl ComitNode {
     ) -> Result<Self, io::Error> {
         Ok(Self {
             comit: Comit::new(peer_id),
+            peer_tracker: PeerTracker::default(),
             seed,
             task_executor,
             storage,
@@ -394,8 +398,8 @@ impl ComitPeers for Swarm {
     async fn comit_peers(
         &self,
     ) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
-        let mut swarm = self.inner.lock().await;
-        Box::new(swarm.comit.connected_peers())
+        let swarm = self.inner.lock().await;
+        Box::new(swarm.peer_tracker.connected_peers())
     }
 }
 
@@ -420,6 +424,10 @@ impl ListenAddresses for Swarm {
 
 impl libp2p::swarm::NetworkBehaviourEventProcess<()> for ComitNode {
     fn inject_event(&mut self, _event: ()) {}
+}
+
+impl libp2p::swarm::NetworkBehaviourEventProcess<Never> for ComitNode {
+    fn inject_event(&mut self, _: Never) {}
 }
 
 impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::comit::BehaviourOutEvent>
@@ -508,9 +516,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::comit::Behavi
 
                 let local_data = LocalData::for_bob(shared_swap_id, identities);
                 Comit::confirm(shared_swap_id, io);
-                let addresses = self.comit.take_order.addresses_of_peer(&peer);
-                self.comit
-                    .communicate(shared_swap_id, peer, addresses, local_data);
+                self.comit.communicate(shared_swap_id, peer, local_data);
             }
         }
     }
