@@ -4,14 +4,17 @@ mod alice;
 mod bitcoin;
 mod bob;
 mod db;
+mod do_action;
 mod ethereum;
 mod hbit;
 mod herc20;
 
+use comit::Secret;
 use futures::future;
 
 pub use alice::WatchOnlyAlice;
 pub use bob::WalletBob;
+pub use do_action::{BetaLedgerTime, Do, Execute, Next};
 
 /// Execute a Hbit<->Herc20 swap.
 pub async fn hbit_herc20<A, B>(
@@ -21,33 +24,43 @@ pub async fn hbit_herc20<A, B>(
     herc20_params: herc20::Params,
 ) -> anyhow::Result<()>
 where
-    A: hbit::Fund + herc20::RedeemAsAlice + hbit::Refund,
-    B: herc20::Deploy + herc20::Fund + hbit::RedeemAsBob + herc20::Refund,
+    A: Do<hbit::CorrectlyFunded>
+        + Execute<hbit::CorrectlyFunded, Args = hbit::Params>
+        + Do<herc20::Redeemed>
+        + Execute<herc20::Redeemed, Args = (herc20::Params, herc20::Deployed)>
+        + hbit::Refund
+        + Sync,
+    B: Do<herc20::Deployed>
+        + Execute<herc20::Deployed, Args = herc20::Params>
+        + Do<herc20::CorrectlyFunded>
+        + Execute<herc20::CorrectlyFunded, Args = (herc20::Params, herc20::Deployed)>
+        + Execute<hbit::Redeemed, Args = (hbit::Params, hbit::CorrectlyFunded, Secret)>
+        + herc20::Refund
+        + Sync,
 {
-    let hbit_funded = match alice.fund(&hbit_params, herc20_params.expiry).await? {
-        Next::Continue(hbit_funded) => hbit_funded,
-        Next::Abort => return Ok(()),
-    };
+    let beta_expiry = herc20_params.expiry;
+    let hbit_funded =
+        match Do::<hbit::CorrectlyFunded>::r#do(&alice, beta_expiry, hbit_params).await? {
+            Next::Continue(hbit_funded) => hbit_funded,
+            Next::Abort => return Ok(()),
+        };
 
-    let herc20_deployed = match bob
-        .deploy(herc20_params.clone(), herc20_params.expiry)
-        .await?
-    {
-        Next::Continue(herc20_deployed) => herc20_deployed,
-        Next::Abort => {
-            alice.refund(&hbit_params, hbit_funded).await?;
+    let herc20_deployed =
+        match Do::<herc20::Deployed>::r#do(&bob, beta_expiry, herc20_params.clone()).await? {
+            Next::Continue(herc20_deployed) => herc20_deployed,
+            Next::Abort => {
+                alice.refund(&hbit_params, hbit_funded).await?;
 
-            return Ok(());
-        }
-    };
+                return Ok(());
+            }
+        };
 
-    let _herc20_funded = match bob
-        .fund(
-            herc20_params.clone(),
-            herc20_deployed.clone(),
-            herc20_params.expiry,
-        )
-        .await?
+    let _herc20_funded = match Do::<herc20::CorrectlyFunded>::r#do(
+        &bob,
+        beta_expiry,
+        (herc20_params.clone(), herc20_deployed.clone()),
+    )
+    .await?
     {
         Next::Continue(herc20_funded) => herc20_funded,
         Next::Abort => {
@@ -57,13 +70,12 @@ where
         }
     };
 
-    let herc20_redeemed = match alice
-        .redeem(
-            herc20_params.clone(),
-            herc20_deployed.clone(),
-            herc20_params.expiry,
-        )
-        .await?
+    let herc20_redeemed = match Do::<herc20::Redeemed>::r#do(
+        &alice,
+        beta_expiry,
+        (herc20_params.clone(), herc20_deployed.clone()),
+    )
+    .await?
     {
         Next::Continue(herc20_redeemed) => herc20_redeemed,
         Next::Abort => {
@@ -74,7 +86,17 @@ where
         }
     };
 
-    let hbit_redeem = bob.redeem(&hbit_params, hbit_funded, herc20_redeemed.secret);
+    // TODO: Prevent Bob from trying to redeem again (applies to the
+    // all the refunds too). Reusing the Do trait seems wrong since we
+    // should never abort at this stage, which is why we used the
+    // Execute trait directly. There is no risk in doing this action
+    // more than once, but it's a bit wasteful. We should probably
+    // introduce another trait which composes CheckMemory, Execute and
+    // Remember to solve this problem (P.S. naming is hard)
+    let hbit_redeem = Execute::<hbit::Redeemed>::execute(
+        &bob,
+        (hbit_params, hbit_funded, herc20_redeemed.secret),
+    );
     let hbit_refund = alice.refund(&hbit_params, hbit_funded);
 
     // It's always safe for Bob to redeem, he just has to do it before
@@ -87,12 +109,6 @@ where
             Err(error)
         }
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Next<E> {
-    Continue(E),
-    Abort,
 }
 
 #[cfg(all(test, feature = "test-docker"))]
@@ -173,27 +189,6 @@ mod tests {
         (params, private_details_funder, private_details_redeemer)
     }
 
-    fn herc20_params(
-        secret_hash: SecretHash,
-        chain_id: ethereum::ChainId,
-        redeem_identity: identity::Ethereum,
-        refund_identity: identity::Ethereum,
-        token_contract: ethereum::Address,
-    ) -> herc20::Params {
-        let quantity = Erc20Quantity::from_wei(1_000_000_000u64);
-        let asset = asset::Erc20::new(token_contract, quantity);
-        let expiry = Timestamp::now().plus(60 * 60);
-
-        herc20::Params {
-            asset,
-            redeem_identity,
-            refund_identity,
-            expiry,
-            chain_id,
-            secret_hash,
-        }
-    }
-
     fn secret() -> Secret {
         let bytes = b"hello world, you are beautiful!!";
         Secret::from(*bytes)
@@ -204,65 +199,21 @@ mod tests {
     struct Database;
 
     #[async_trait::async_trait]
-    impl db::Load<hbit::CorrectlyFunded> for Database {
-        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<hbit::CorrectlyFunded>> {
+    impl<T> db::Load<T> for Database
+    where
+        T: 'static,
+    {
+        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<T>> {
             Ok(None)
         }
     }
 
     #[async_trait::async_trait]
-    impl db::Load<herc20::Deployed> for Database {
-        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<herc20::Deployed>> {
-            Ok(None)
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl db::Load<herc20::CorrectlyFunded> for Database {
-        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<herc20::CorrectlyFunded>> {
-            Ok(None)
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl db::Load<herc20::Redeemed> for Database {
-        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<herc20::Redeemed>> {
-            Ok(None)
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl db::Save<hbit::CorrectlyFunded> for Database {
-        async fn save(
-            &self,
-            _event: hbit::CorrectlyFunded,
-            _swap_id: SwapId,
-        ) -> anyhow::Result<()> {
-            Ok(())
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl db::Save<herc20::Deployed> for Database {
-        async fn save(&self, _event: herc20::Deployed, _swap_id: SwapId) -> anyhow::Result<()> {
-            Ok(())
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl db::Save<herc20::CorrectlyFunded> for Database {
-        async fn save(
-            &self,
-            _event: herc20::CorrectlyFunded,
-            _swap_id: SwapId,
-        ) -> anyhow::Result<()> {
-            Ok(())
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl db::Save<herc20::Redeemed> for Database {
-        async fn save(&self, _event: herc20::Redeemed, _swap_id: SwapId) -> anyhow::Result<()> {
+    impl<T> db::Save<T> for Database
+    where
+        T: Send + 'static,
+    {
+        async fn save(&self, _event: T, _swap_id: SwapId) -> anyhow::Result<()> {
             Ok(())
         }
     }
@@ -372,6 +323,7 @@ mod tests {
         let secret_hash = SecretHash::new(secret);
 
         let start_of_swap = Utc::now().naive_local();
+        let beta_expiry = Timestamp::now().plus(60 * 60);
 
         let (hbit_params, private_details_funder, private_details_redeemer) = {
             let redeem_address = bob_bitcoin_wallet.inner.new_address().await?;
@@ -380,12 +332,13 @@ mod tests {
             hbit_params(secret_hash, bitcoin_network, refund_address, redeem_address)
         };
 
-        let herc20_params = herc20_params(
+        let herc20_params = herc20::params(
             secret_hash,
             ethereum_chain_id,
             alice_ethereum_wallet.inner.account(),
             bob_ethereum_wallet.inner.account(),
             token_contract,
+            beta_expiry,
         );
 
         let alice_swap = {

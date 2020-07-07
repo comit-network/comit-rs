@@ -5,9 +5,7 @@
 
 use crate::{
     swap::{
-        bitcoin, db,
-        ethereum::{self, ethereum_latest_time},
-        Next, {hbit, herc20},
+        bitcoin, db, ethereum, BetaLedgerTime, Execute, {hbit, herc20},
     },
     SwapId,
 };
@@ -27,77 +25,74 @@ pub struct WalletBob<AW, BW, DB, E> {
 }
 
 #[async_trait::async_trait]
-impl<AW, DB, E> herc20::Deploy for WalletBob<AW, ethereum::Wallet, DB, E>
+impl<AW, BW, DB, E> BetaLedgerTime for WalletBob<AW, BW, DB, E>
 where
     AW: Send + Sync,
-    DB: db::Load<herc20::Deployed> + db::Save<herc20::Deployed>,
+    BW: BetaLedgerTime + Send + Sync,
+    DB: Send + Sync,
     E: Send + Sync,
 {
-    async fn deploy(
-        &self,
-        params: herc20::Params,
-        beta_expiry: Timestamp,
-    ) -> anyhow::Result<Next<herc20::Deployed>> {
-        {
-            if let Some(deploy_event) = self.db.load(self.swap_id).await? {
-                return Ok(Next::Continue(deploy_event));
-            }
-
-            let beta_ledger_time = ethereum_latest_time(&self.beta_wallet).await?;
-            if beta_expiry <= beta_ledger_time {
-                return Ok(Next::Abort);
-            }
-
-            let deploy_event = self.deploy(&params).await?;
-            self.db.save(deploy_event.clone(), self.swap_id).await?;
-
-            Ok(Next::Continue(deploy_event))
-        }
+    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
+        self.beta_wallet.beta_ledger_time().await
     }
 }
 
 #[async_trait::async_trait]
-impl<AW, DB, E> herc20::Fund for WalletBob<AW, ethereum::Wallet, DB, E>
+impl<AW, BW, DB, E> Execute<herc20::Deployed> for WalletBob<AW, BW, DB, E>
 where
     AW: Send + Sync,
-    DB: db::Load<herc20::CorrectlyFunded> + db::Save<herc20::CorrectlyFunded>,
+    BW: herc20::ExecuteDeploy + Send + Sync,
+    DB: Send + Sync,
     E: Send + Sync,
 {
-    async fn fund(
-        &self,
-        params: herc20::Params,
-        deploy_event: herc20::Deployed,
-        beta_expiry: Timestamp,
-    ) -> anyhow::Result<Next<herc20::CorrectlyFunded>> {
-        if let Some(fund_event) = self.db.load(self.swap_id).await? {
-            return Ok(Next::Continue(fund_event));
-        }
+    type Args = herc20::Params;
 
-        let beta_ledger_time = ethereum_latest_time(&self.beta_wallet).await?;
-        if beta_expiry <= beta_ledger_time {
-            return Ok(Next::Abort);
-        }
-
-        let fund_event = self.fund(params, deploy_event).await?;
-        self.db.save(fund_event.clone(), self.swap_id).await?;
-
-        Ok(Next::Continue(fund_event))
+    async fn execute(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {
+        self.beta_wallet.execute_deploy(params).await
     }
 }
 
 #[async_trait::async_trait]
-impl<DB> hbit::RedeemAsBob
-    for WalletBob<bitcoin::Wallet, ethereum::Wallet, DB, hbit::PrivateDetailsRedeemer>
+impl<AW, BW, DB, E> Execute<herc20::CorrectlyFunded> for WalletBob<AW, BW, DB, E>
 where
+    AW: Send + Sync,
+    BW: herc20::ExecuteFund + Send + Sync,
+    DB: Send + Sync,
+    E: Send + Sync,
+{
+    type Args = (herc20::Params, herc20::Deployed);
+
+    async fn execute(
+        &self,
+        (params, deploy_event): (herc20::Params, herc20::Deployed),
+    ) -> anyhow::Result<herc20::CorrectlyFunded> {
+        self.beta_wallet
+            .execute_fund(params, deploy_event, self.start_of_swap)
+            .await
+    }
+}
+
+#[async_trait::async_trait]
+impl<AW, BW, DB> Execute<hbit::Redeemed> for WalletBob<AW, BW, DB, hbit::PrivateDetailsRedeemer>
+where
+    AW: hbit::ExecuteRedeem + Send + Sync,
+    BW: Send + Sync,
     DB: Send + Sync,
 {
-    async fn redeem(
+    type Args = (hbit::Params, hbit::CorrectlyFunded, Secret);
+
+    async fn execute(
         &self,
-        params: &hbit::Params,
-        fund_event: hbit::CorrectlyFunded,
-        secret: Secret,
+        (params, fund_event, secret): (hbit::Params, hbit::CorrectlyFunded, Secret),
     ) -> anyhow::Result<hbit::Redeemed> {
-        self.redeem(*params, fund_event, secret).await
+        self.alpha_wallet
+            .execute_redeem(
+                params,
+                fund_event,
+                secret,
+                self.private_protocol_details.transient_redeem_sk,
+            )
+            .await
     }
 }
 
@@ -113,9 +108,7 @@ where
         deploy_event: herc20::Deployed,
     ) -> anyhow::Result<herc20::Refunded> {
         loop {
-            let ethereum_time = ethereum_latest_time(self.beta_wallet.connector.as_ref()).await?;
-
-            if ethereum_time >= params.expiry {
+            if self.beta_wallet.beta_ledger_time().await? >= params.expiry {
                 break;
             }
 
@@ -129,32 +122,6 @@ where
 }
 
 impl<AW, DB, E> WalletBob<AW, ethereum::Wallet, DB, E> {
-    async fn deploy(&self, params: &herc20::Params) -> anyhow::Result<herc20::Deployed> {
-        let deploy_action = params.build_deploy_action();
-        let event = self.beta_wallet.deploy(deploy_action).await?;
-
-        Ok(event)
-    }
-
-    async fn fund(
-        &self,
-        params: herc20::Params,
-        deploy_event: herc20::Deployed,
-    ) -> anyhow::Result<herc20::CorrectlyFunded> {
-        let fund_action = params.build_fund_action(deploy_event.location);
-        self.beta_wallet.fund(fund_action).await?;
-
-        let event = herc20::watch_for_funded(
-            self.beta_wallet.connector.as_ref(),
-            params,
-            self.start_of_swap,
-            deploy_event,
-        )
-        .await?;
-
-        Ok(event)
-    }
-
     async fn refund(
         &self,
         params: herc20::Params,
@@ -174,28 +141,38 @@ impl<AW, DB, E> WalletBob<AW, ethereum::Wallet, DB, E> {
     }
 }
 
-impl<BW, DB> WalletBob<bitcoin::Wallet, BW, DB, hbit::PrivateDetailsRedeemer> {
-    async fn redeem(
-        &self,
-        params: hbit::Params,
-        fund_event: hbit::CorrectlyFunded,
-        secret: Secret,
-    ) -> anyhow::Result<hbit::Redeemed> {
-        let redeem_action = params.build_redeem_action(
-            &crate::SECP,
-            fund_event.asset,
-            fund_event.location,
-            self.private_protocol_details.clone().transient_redeem_sk,
-            self.private_protocol_details.clone().final_redeem_identity,
-            secret,
-        )?;
-        let transaction = self.alpha_wallet.redeem(redeem_action).await?;
-        let redeem_event = hbit::Redeemed {
-            transaction,
-            secret,
-        };
+#[async_trait::async_trait]
+impl<T, AW, BW, DB, E> db::Load<T> for WalletBob<AW, BW, DB, E>
+where
+    AW: Send + Sync + 'static,
+    BW: Send + Sync + 'static,
+    DB: db::Load<T>,
+    E: Send + Sync + 'static,
+    T: 'static,
+{
+    async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<T>> {
+        self.db.load(swap_id).await
+    }
+}
 
-        Ok(redeem_event)
+#[async_trait::async_trait]
+impl<T, AW, BW, DB, E> db::Save<T> for WalletBob<AW, BW, DB, E>
+where
+    AW: Send + Sync + 'static,
+    BW: Send + Sync + 'static,
+    DB: db::Save<T>,
+    E: Send + Sync + 'static,
+    T: Send + 'static,
+{
+    async fn save(&self, event: T, swap_id: SwapId) -> anyhow::Result<()> {
+        self.db.save(event, swap_id).await
+    }
+}
+
+impl<AW, BW, DB, E> std::ops::Deref for WalletBob<AW, BW, DB, E> {
+    type Target = SwapId;
+    fn deref(&self) -> &Self::Target {
+        &self.swap_id
     }
 }
 
@@ -219,106 +196,80 @@ pub mod watch_only_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AC, BC, DB> herc20::Deploy for WatchOnlyBob<AC, BC, DB>
+    impl<AC, BC, DB> BetaLedgerTime for WatchOnlyBob<AC, BC, DB>
     where
         AC: Send + Sync,
-        BC: LatestBlock<Block = ethereum::Block>
-            + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-            + ReceiptByHash,
-        DB: db::Load<herc20::Deployed> + db::Save<herc20::Deployed>,
+        BC: BetaLedgerTime + Send + Sync,
+        DB: Send + Sync,
     {
-        async fn deploy(
-            &self,
-            params: herc20::Params,
-            beta_expiry: Timestamp,
-        ) -> anyhow::Result<Next<herc20::Deployed>> {
-            {
-                if let Some(deploy_event) = self.db.load(self.swap_id).await? {
-                    return Ok(Next::Continue(deploy_event));
-                }
-
-                let beta_ledger_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
-                if beta_expiry <= beta_ledger_time {
-                    return Ok(Next::Abort);
-                }
-
-                let deploy_event = herc20::watch_for_deployed(
-                    self.beta_connector.as_ref(),
-                    params,
-                    self.start_of_swap,
-                )
-                .await?;
-                self.db.save(deploy_event.clone(), self.swap_id).await?;
-
-                Ok(Next::Continue(deploy_event))
-            }
+        async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
+            self.beta_connector.as_ref().beta_ledger_time().await
         }
     }
 
     #[async_trait::async_trait]
-    impl<AC, BC, DB> herc20::Fund for WatchOnlyBob<AC, BC, DB>
+    impl<AC, BC, DB> Execute<herc20::Deployed> for WatchOnlyBob<AC, BC, DB>
     where
         AC: Send + Sync,
-        BC: LatestBlock<Block = ethereum::Block>
-            + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-            + ReceiptByHash,
-        DB: db::Load<herc20::CorrectlyFunded> + db::Save<herc20::CorrectlyFunded>,
-    {
-        async fn fund(
-            &self,
-            params: herc20::Params,
-            deploy_event: herc20::Deployed,
-            beta_expiry: Timestamp,
-        ) -> anyhow::Result<Next<herc20::CorrectlyFunded>> {
-            {
-                if let Some(fund_event) = self.db.load(self.swap_id).await? {
-                    return Ok(Next::Continue(fund_event));
-                }
-
-                let beta_ledger_time = ethereum_latest_time(self.beta_connector.as_ref()).await?;
-                if beta_expiry <= beta_ledger_time {
-                    return Ok(Next::Abort);
-                }
-
-                let fund_event = herc20::watch_for_funded(
-                    self.beta_connector.as_ref(),
-                    params,
-                    self.start_of_swap,
-                    deploy_event,
-                )
-                .await?;
-                self.db.save(fund_event.clone(), self.swap_id).await?;
-
-                Ok(Next::Continue(fund_event))
-            }
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl<AC, BC, DB> hbit::RedeemAsBob for WatchOnlyBob<AC, BC, DB>
-    where
-        AC: LatestBlock<Block = bitcoin::Block>
-            + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
         BC: LatestBlock<Block = ethereum::Block>
             + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
             + ReceiptByHash,
         DB: Send + Sync,
     {
-        async fn redeem(
+        type Args = herc20::Params;
+
+        async fn execute(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {
+            herc20::watch_for_deployed(self.beta_connector.as_ref(), params, self.start_of_swap)
+                .await
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<AC, BC, DB> Execute<herc20::CorrectlyFunded> for WatchOnlyBob<AC, BC, DB>
+    where
+        AC: Send + Sync,
+        BC: LatestBlock<Block = ethereum::Block>
+            + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
+            + ReceiptByHash,
+        DB: Send + Sync,
+    {
+        type Args = (herc20::Params, herc20::Deployed);
+
+        async fn execute(
             &self,
-            params: &hbit::Params,
-            fund_event: hbit::CorrectlyFunded,
-            _secret: Secret,
+            (params, deploy_event): (herc20::Params, herc20::Deployed),
+        ) -> anyhow::Result<herc20::CorrectlyFunded> {
+            herc20::watch_for_funded(
+                self.beta_connector.as_ref(),
+                params,
+                self.start_of_swap,
+                deploy_event,
+            )
+            .await
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<AC, BC, DB> Execute<hbit::Redeemed> for WatchOnlyBob<AC, BC, DB>
+    where
+        AC: LatestBlock<Block = bitcoin::Block>
+            + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
+        BC: Send + Sync,
+        DB: Send + Sync,
+    {
+        type Args = (hbit::Params, hbit::CorrectlyFunded, Secret);
+
+        async fn execute(
+            &self,
+            (params, fund_event, _): (hbit::Params, hbit::CorrectlyFunded, Secret),
         ) -> anyhow::Result<hbit::Redeemed> {
-            let event = hbit::watch_for_redeemed(
+            hbit::watch_for_redeemed(
                 self.alpha_connector.as_ref(),
                 &params,
                 fund_event.location,
                 self.start_of_swap,
             )
-            .await?;
-
-            Ok(event)
+            .await
         }
     }
 
@@ -344,6 +295,39 @@ pub mod watch_only_actor {
             .await?;
 
             Ok(event)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<T, AC, BC, DB> db::Load<T> for WatchOnlyBob<AC, BC, DB>
+    where
+        AC: Send + Sync + 'static,
+        BC: Send + Sync + 'static,
+        DB: db::Load<T>,
+        T: 'static,
+    {
+        async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<T>> {
+            self.db.load(swap_id).await
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<T, AC, BC, DB> db::Save<T> for WatchOnlyBob<AC, BC, DB>
+    where
+        AC: Send + Sync + 'static,
+        BC: Send + Sync + 'static,
+        DB: db::Save<T>,
+        T: Send + 'static,
+    {
+        async fn save(&self, event: T, swap_id: SwapId) -> anyhow::Result<()> {
+            self.db.save(event, swap_id).await
+        }
+    }
+
+    impl<AC, BC, DB> std::ops::Deref for WatchOnlyBob<AC, BC, DB> {
+        type Target = SwapId;
+        fn deref(&self) -> &Self::Target {
+            &self.swap_id
         }
     }
 }

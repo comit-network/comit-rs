@@ -1,4 +1,3 @@
-use crate::swap::Next;
 use bitcoin::{secp256k1::SecretKey, Address, Block, BlockHash};
 use chrono::NaiveDateTime;
 use comit::asset;
@@ -23,30 +22,18 @@ pub struct PrivateDetailsRedeemer {
 }
 
 #[async_trait::async_trait]
-pub trait Fund {
-    async fn fund(
-        &self,
-        hbit_params: &Params,
-        beta_expiry: Timestamp,
-    ) -> anyhow::Result<Next<CorrectlyFunded>>;
+pub trait ExecuteFund {
+    async fn execute_fund(&self, params: &Params) -> anyhow::Result<CorrectlyFunded>;
 }
 
 #[async_trait::async_trait]
-pub trait RedeemAsAlice {
-    async fn redeem(
+pub trait ExecuteRedeem {
+    async fn execute_redeem(
         &self,
-        params: &Params,
-        fund_event: CorrectlyFunded,
-    ) -> anyhow::Result<Next<Redeemed>>;
-}
-
-#[async_trait::async_trait]
-pub trait RedeemAsBob {
-    async fn redeem(
-        &self,
-        params: &Params,
+        params: Params,
         fund_event: CorrectlyFunded,
         secret: Secret,
+        transient_redeem_sk: SecretKey,
     ) -> anyhow::Result<Redeemed>;
 }
 
