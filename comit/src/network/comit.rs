@@ -789,29 +789,20 @@ mod tests {
     use super::*;
     use crate::{
         asset::{self, ethereum::FromWei},
-        network::{swap_digest, test_swarm, DialInformation},
+        network::{
+            swap_digest,
+            test::{await_events_or_timeout, connect, new_swarm},
+            DialInformation,
+        },
     };
-    use futures::future;
     use std::str::FromStr;
 
     #[tokio::test]
     async fn finalize_lightning_ethereum_swap_success() {
-        let alice_keypair = libp2p::identity::Keypair::generate_ed25519();
-        let bob_keypair = libp2p::identity::Keypair::generate_ed25519();
-        let alice_peer_id = PeerId::from(alice_keypair.public());
-        let bob_peer_id = PeerId::from(bob_keypair.public());
-
         // arrange
-        let (mut alice_swarm, _) = test_swarm::new(
-            Comit::new(alice_peer_id.clone()),
-            alice_peer_id.clone(),
-            alice_keypair,
-        );
-        let (mut bob_swarm, bob_addr) = test_swarm::new(
-            Comit::new(bob_peer_id.clone()),
-            bob_peer_id.clone(),
-            bob_keypair,
-        );
+        let (mut alice_swarm, _, alice_peer_id) = new_swarm(Comit::new);
+        let (mut bob_swarm, bob_addr, bob_peer_id) = new_swarm(Comit::new);
+        connect(&mut alice_swarm, &mut bob_swarm).await;
 
         let secret_hash = SecretHash::from_str(
             "bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf\
@@ -877,7 +868,8 @@ mod tests {
             .expect("initiate communication for bob");
 
         // act
-        let (alice_event, bob_event) = future::join(alice_swarm.next(), bob_swarm.next()).await;
+        let (alice_event, bob_event) =
+            await_events_or_timeout(alice_swarm.next(), bob_swarm.next()).await;
 
         let learned = match (alice_event, bob_event) {
             (

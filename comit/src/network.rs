@@ -3,8 +3,8 @@ pub mod oneshot_behaviour;
 pub mod oneshot_protocol;
 pub mod protocols;
 pub mod swap_digest;
-#[cfg(test)]
-pub mod test_swarm;
+#[cfg(any(test, feature = "test"))]
+pub mod test;
 
 use crate::{identity, SecretHash};
 use libp2p::{Multiaddr, PeerId};
