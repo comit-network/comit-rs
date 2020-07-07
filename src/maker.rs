@@ -62,7 +62,7 @@ impl Maker {
         mid_market_rate: MidMarketRate,
     ) -> anyhow::Result<RateUpdateDecision> {
         if let Some(previous_mid_market_rate) = self.mid_market_rate {
-            if previous_mid_market_rate.value == mid_market_rate.value {
+            if previous_mid_market_rate == mid_market_rate {
                 return Ok(RateUpdateDecision::NoRateChange);
             }
         }
@@ -74,6 +74,10 @@ impl Maker {
         })
     }
 
+    pub fn invlidate_rate(&mut self) {
+        self.mid_market_rate = None;
+    }
+
     pub fn update_bitcoin_balance(&mut self, balance: bitcoin::Amount) {
         self.btc_balance = balance;
     }
@@ -82,12 +86,6 @@ impl Maker {
         self.dai_balance = balance;
     }
 
-    pub fn track_failed_rate_update(&mut self) {
-        self.mid_market_rate = None;
-    }
-
-    pub fn track_failed_balance_update(&mut self, error: anyhow::Error) {}
-
     pub fn new_sell_order(&self) -> anyhow::Result<BtcDaiOrder> {
         match self.mid_market_rate {
             Some(mid_market_rate) => BtcDaiOrder::new_sell(
@@ -95,7 +93,7 @@ impl Maker {
                 self.btc_fee,
                 self.btc_reserved_funds,
                 self.btc_max_sell_amount,
-                mid_market_rate.value,
+                mid_market_rate.into(),
                 self.spread,
             ),
             None => anyhow::bail!(RateNotAvailable(Position::Sell)),
@@ -109,7 +107,7 @@ impl Maker {
                 self.dai_fee.clone(),
                 self.dai_reserved_funds.clone(),
                 self.dai_max_sell_amount.clone(),
-                mid_market_rate.value,
+                mid_market_rate.into(),
                 self.spread,
             ),
             None => anyhow::bail!(RateNotAvailable(Position::Buy)),
@@ -124,69 +122,70 @@ impl Maker {
             return Ok(TakeRequestDecision::CannotTradeWithTaker);
         }
 
-        if self.mid_market_rate.is_none() {
-            anyhow::bail!(RateNotAvailable(order.inner.position))
+        match self.mid_market_rate {
+            Some(current_mid_market_rate) => {
+                let current_profitable_rate = self
+                    .spread
+                    .apply(current_mid_market_rate.into(), order.inner.position)?;
+                let order_rate = Rate::try_from(order.inner.clone())?;
+                let next_order = match order.clone().into() {
+                    order
+                    @
+                    BtcDaiOrder {
+                        position: Position::Buy,
+                        ..
+                    } => {
+                        // We are buying BTC for DAI
+                        // Given an order rate of: 1:9000
+                        // It is NOT profitable to buy, if the current rate is greater than the order rate.
+                        // 1:8800 -> We give less DAI for getting BTC -> Good.
+                        // 1:9200 -> We have to give more DAI for getting BTC -> Sucks.
+                        if order_rate > current_profitable_rate {
+                            return Ok(TakeRequestDecision::RateSucks);
+                        }
+
+                        let updated_dai_reserved_funds =
+                            self.dai_reserved_funds.clone() + order.quote;
+                        if updated_dai_reserved_funds > self.dai_balance {
+                            return Ok(TakeRequestDecision::InsufficientFunds);
+                        }
+
+                        self.dai_reserved_funds = updated_dai_reserved_funds;
+                        self.new_buy_order()?
+                    }
+                    order
+                    @
+                    BtcDaiOrder {
+                        position: Position::Sell,
+                        ..
+                    } => {
+                        // We are selling BTC for DAI
+                        // Given an order rate of: 1:9000
+                        // It is NOT profitable to sell, if the current rate is smaller than the order rate.
+                        // 1:8800 -> We get less DAI for our BTC -> Sucks.
+                        // 1:9200 -> We get more DAI for our BTC -> Good.
+                        if order_rate < current_profitable_rate {
+                            return Ok(TakeRequestDecision::RateSucks);
+                        }
+
+                        let updated_btc_reserved_funds = self.btc_reserved_funds + order.base;
+                        if updated_btc_reserved_funds > self.btc_balance {
+                            return Ok(TakeRequestDecision::InsufficientFunds);
+                        }
+
+                        self.btc_reserved_funds = updated_btc_reserved_funds;
+                        self.new_sell_order()?
+                    }
+                };
+
+                self.ongoing_takers
+                    .insert(order.taker)
+                    .expect("already checked that we can trade");
+
+                Ok(TakeRequestDecision::GoForSwap { next_order })
+            }
+            None => anyhow::bail!(RateNotAvailable(order.inner.position)),
         }
-
-        let current_mid_market_rate = self.mid_market_rate.unwrap();
-        let current_profitable_rate = self
-            .spread
-            .apply(current_mid_market_rate.value, order.inner.position)?;
-        let order_rate = Rate::try_from(order.inner.clone())?;
-        let next_order = match order.clone().into() {
-            order
-            @
-            BtcDaiOrder {
-                position: Position::Buy,
-                ..
-            } => {
-                // We are buying BTC for DAI
-                // Given an order rate of: 1:9000
-                // It is NOT profitable to buy, if the current rate is greater than the order rate.
-                // 1:8800 -> We give less DAI for getting BTC -> Good.
-                // 1:9200 -> We have to give more DAI for getting BTC -> Sucks.
-                if order_rate > current_profitable_rate {
-                    return Ok(TakeRequestDecision::RateSucks);
-                }
-
-                let updated_dai_reserved_funds = self.dai_reserved_funds.clone() + order.quote;
-                if updated_dai_reserved_funds > self.dai_balance {
-                    return Ok(TakeRequestDecision::InsufficientFunds);
-                }
-
-                self.dai_reserved_funds = updated_dai_reserved_funds;
-                self.new_buy_order()?
-            }
-            order
-            @
-            BtcDaiOrder {
-                position: Position::Sell,
-                ..
-            } => {
-                // We are selling BTC for DAI
-                // Given an order rate of: 1:9000
-                // It is NOT profitable to sell, if the current rate is smaller than the order rate.
-                // 1:8800 -> We get less DAI for our BTC -> Sucks.
-                // 1:9200 -> We get more DAI for our BTC -> Good.
-                if order_rate < current_profitable_rate {
-                    return Ok(TakeRequestDecision::RateSucks);
-                }
-
-                let updated_btc_reserved_funds = self.btc_reserved_funds + order.base;
-                if updated_btc_reserved_funds > self.btc_balance {
-                    return Ok(TakeRequestDecision::InsufficientFunds);
-                }
-
-                self.btc_reserved_funds = updated_btc_reserved_funds;
-                self.new_sell_order()?
-            }
-        };
-
-        self.ongoing_takers
-            .insert(order.taker)
-            .expect("already checked that we can trade");
-
-        Ok(TakeRequestDecision::GoForSwap { next_order })
     }
 }
 
@@ -268,9 +267,7 @@ mod tests {
     fn dai_funds_reserved_upon_taking_buy_order() {
         let mut maker = Maker {
             dai_balance: dai::Amount::from_dai_trunc(10000.0).unwrap(),
-            mid_market_rate: Some(MidMarketRate {
-                value: Rate::try_from(1.5).unwrap(),
-            }),
+            mid_market_rate: Some(MidMarketRate::new(Rate::try_from(1.5).unwrap())),
             ..Default::default()
         };
 
@@ -317,9 +314,7 @@ mod tests {
     fn not_enough_btc_funds_to_reserve_for_a_buy_order() {
         let mut maker = Maker {
             dai_balance: dai::Amount::zero(),
-            mid_market_rate: Some(MidMarketRate {
-                value: Rate::try_from(1.5).unwrap(),
-            }),
+            mid_market_rate: Some(MidMarketRate::new(Rate::try_from(1.5).unwrap())),
             ..Default::default()
         };
 
@@ -407,9 +402,7 @@ mod tests {
     #[test]
     fn fail_to_confirm_sell_order_if_sell_rate_is_not_good_enough() {
         let mut maker = Maker {
-            mid_market_rate: Some(MidMarketRate {
-                value: Rate::try_from(10000.0).unwrap(),
-            }),
+            mid_market_rate: Some(MidMarketRate::new(Rate::try_from(10000.0).unwrap())),
             ..Default::default()
         };
 
@@ -430,9 +423,7 @@ mod tests {
     #[test]
     fn fail_to_confirm_buy_order_if_buy_rate_is_not_good_enough() {
         let mut maker = Maker {
-            mid_market_rate: Some(MidMarketRate {
-                value: Rate::try_from(10000.0).unwrap(),
-            }),
+            mid_market_rate: Some(MidMarketRate::new(Rate::try_from(10000.0).unwrap())),
             ..Default::default()
         };
 
@@ -451,38 +442,30 @@ mod tests {
     }
 
     #[test]
-    fn rate_updated_if_rate_update_with_same_value() {
+    fn no_rate_change_if_rate_update_with_same_value() {
         let mut maker = Maker {
-            mid_market_rate: Some(MidMarketRate {
-                value: Rate::try_from(1.0).unwrap(),
-            }),
+            mid_market_rate: Some(MidMarketRate::new(Rate::try_from(1.0).unwrap())),
             ..Default::default()
         };
 
-        let new_mid_market_rate = MidMarketRate {
-            value: Rate::try_from(1.0).unwrap(),
-        };
+        let new_mid_market_rate = MidMarketRate::new(Rate::try_from(1.0).unwrap());
 
         let reaction = maker.update_rate(new_mid_market_rate).unwrap();
         assert_eq!(reaction, RateUpdateDecision::NoRateChange);
-        assert_eq!(maker.mid_market_rate.unwrap(), new_mid_market_rate)
+        assert_eq!(maker.mid_market_rate, Some(new_mid_market_rate))
     }
 
     #[test]
     fn rate_updated_and_new_orders_if_rate_update_with_new_value() {
         let mut maker = Maker {
-            mid_market_rate: Some(MidMarketRate {
-                value: Rate::try_from(1.0).unwrap(),
-            }),
+            mid_market_rate: Some(MidMarketRate::new(Rate::try_from(1.0).unwrap())),
             ..Default::default()
         };
 
-        let new_mid_market_rate = MidMarketRate {
-            value: Rate::try_from(2.0).unwrap(),
-        };
+        let new_mid_market_rate = MidMarketRate::new(Rate::try_from(2.0).unwrap());
 
         let reaction = maker.update_rate(new_mid_market_rate).unwrap();
         assert!(matches!(reaction, RateUpdateDecision::RateChange {..}));
-        assert_eq!(maker.mid_market_rate.unwrap(), new_mid_market_rate)
+        assert_eq!(maker.mid_market_rate, Some(new_mid_market_rate))
     }
 }

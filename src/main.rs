@@ -107,7 +107,7 @@ async fn main() {
                 }
             }
             Err(e) => {
-                maker.track_failed_rate_update();
+                maker.invlidate_rate();
                 tracing::error!(
                     "Unable to fetch latest rate! Fetching rate yielded error: {}",
                     e
@@ -118,12 +118,12 @@ async fn main() {
         let bitcoin_balance = bitcoin_wallet.balance().await;
         match bitcoin_balance {
             Ok(new_balance) => maker.update_bitcoin_balance(new_balance),
-            Err(e) => maker.track_failed_balance_update(e),
+            Err(e) => unimplemented!(),
         }
         let dai_balance = ethereum_wallet.dai_balance().await;
         match dai_balance {
             Ok(new_balance) => maker.update_dai_balance(new_balance.into()),
-            Err(e) => maker.track_failed_balance_update(e),
+            Err(e) => unimplemented!(),
         }
 
         // if nothing happens on the network for 15 seconds, loop
@@ -157,7 +157,7 @@ async fn main() {
                             }
                             Err(e) => {
                                 swarm.orderbook.ignore(order);
-                                tracing::error!("Processing rate take request yielded error: {}", e)
+                                tracing::error!("Processing taken order yielded error: {}", e)
                             }
                         }
                     }

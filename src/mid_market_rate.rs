@@ -1,11 +1,6 @@
 use crate::Rate;
 use std::convert::TryInto;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct MidMarketRate {
-    pub value: Rate,
-}
-
 /// Get mid-market rate for the trading pair BTC-DAI.
 ///
 /// Currently, this function only delegates to Kraken. Eventually, it
@@ -14,12 +9,25 @@ pub async fn get_btc_dai_mid_market_rate() -> anyhow::Result<MidMarketRate> {
     kraken::get_btc_dai_mid_market_rate().await
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct MidMarketRate(Rate);
+
+impl MidMarketRate {
+    pub fn new(rate: Rate) -> Self {
+        Self { 0: rate }
+    }
+}
+
 #[cfg(test)]
 impl Default for MidMarketRate {
     fn default() -> Self {
-        Self {
-            value: Rate::default(),
-        }
+        Self { 0: Rate::default() }
+    }
+}
+
+impl From<MidMarketRate> for Rate {
+    fn from(rate: MidMarketRate) -> Self {
+        rate.0
     }
 }
 
@@ -59,7 +67,7 @@ mod kraken {
             let value = (bid + ask) / 2f64;
             let value = Rate::try_from(value).unwrap();
 
-            Ok(Self { value })
+            Ok(Self { 0: value })
         }
     }
 
