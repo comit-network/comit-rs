@@ -91,6 +91,20 @@ pub struct HbitHerc20 {
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct SwapDigest(Multihash);
 
+#[cfg(test)]
+impl SwapDigest {
+    pub fn random() -> Self {
+        use rand::{thread_rng, RngCore};
+
+        let mut bytes = [0u8; 32];
+        thread_rng().fill_bytes(&mut bytes);
+
+        let hash = libp2p::multihash::Sha3_256::digest(&bytes);
+
+        Self(hash)
+    }
+}
+
 impl fmt::Display for SwapDigest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", hex::encode(self.0.as_bytes()))

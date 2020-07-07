@@ -13,7 +13,7 @@ use std::fmt;
 pub use self::{
     comit::*,
     protocols::{
-        announce::{behaviour::*, handler::*, protocol::*, *},
+        announce::Announce,
         orderbook::*,
         take_order::{behaviour::*, handler::*, protocol::*, *},
         *,

@@ -22,11 +22,13 @@ use async_trait::async_trait;
 use chrono::Utc;
 use futures::{stream::StreamExt, Future, TryFutureExt};
 use libp2p::{
+    core::connection::ConnectionLimit,
     identity::{ed25519, Keypair},
     swarm::SwarmBuilder,
     Multiaddr, NetworkBehaviour, PeerId,
 };
 use std::{
+    collections::HashMap,
     fmt::Debug,
     io,
     pin::Pin,
@@ -89,13 +91,33 @@ impl Swarm {
     pub async fn initiate_communication(
         &self,
         id: LocalSwapId,
-        peer: DialInformation,
+        DialInformation {
+            peer_id,
+            address_hint,
+        }: DialInformation,
         role: Role,
         digest: SwapDigest,
         identities: Identities,
     ) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
-        guard.initiate_communication(id, peer, role, digest, identities)
+
+        // best effort attempt to establish a connection to the other party
+        if let Some(address_hint) = address_hint {
+            let existing_connection_to_peer =
+                libp2p::Swarm::connection_info(&mut guard, &peer_id).is_some();
+
+            if !existing_connection_to_peer {
+                match libp2p::Swarm::dial_addr(&mut guard, address_hint) {
+                    Ok(()) => {}
+                    // How did we hit the connection limit if we are not connected?
+                    // Match on the error directly so our assumption of only hitting the connection
+                    // limit here is not violated by future API changes.
+                    Err(ConnectionLimit { .. }) => {}
+                }
+            }
+        }
+
+        guard.initiate_communication(id, peer_id, role, digest, identities)
     }
 
     pub async fn take_hbit_herc20_order(
@@ -219,6 +241,7 @@ fn derive_key_pair(seed: &RootSeed) -> Keypair {
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
 pub struct ComitNode {
+    announce: Announce,
     comit: Comit,
     peer_tracker: PeerTracker,
 
@@ -226,7 +249,16 @@ pub struct ComitNode {
     pub seed: RootSeed,
     #[behaviour(ignore)]
     task_executor: Handle,
-
+    /// We receive the LocalData for the execution parameter exchange at the
+    /// same time as we announce the swap. We save `LocalData` here until the
+    /// swap is confirmed.
+    #[behaviour(ignore)]
+    local_data: HashMap<LocalSwapId, LocalData>,
+    /// The execution parameter exchange only knows about `SharedSwapId`s, so we
+    /// need to map this back to a `LocalSwapId` to save the data correctly to
+    /// the database.
+    #[behaviour(ignore)]
+    local_swap_ids: HashMap<SharedSwapId, LocalSwapId>,
     #[behaviour(ignore)]
     pub storage: Storage,
     #[behaviour(ignore)]
@@ -255,10 +287,13 @@ impl ComitNode {
         peer_id: PeerId,
     ) -> Result<Self, io::Error> {
         Ok(Self {
+            announce: Announce::default(),
             comit: Comit::new(peer_id),
             peer_tracker: PeerTracker::default(),
             seed,
             task_executor,
+            local_data: HashMap::default(),
+            local_swap_ids: HashMap::default(),
             storage,
             protocol_spawner,
         })
@@ -267,7 +302,7 @@ impl ComitNode {
     pub fn initiate_communication(
         &mut self,
         local_swap_id: LocalSwapId,
-        peer: DialInformation,
+        peer_id: PeerId,
         role: Role,
         digest: SwapDigest,
         identities: Identities,
@@ -279,24 +314,27 @@ impl ComitNode {
         // kicks off here.
         self.assert_have_lnd_if_needed(identities.lightning_identity)?;
 
-        match role {
+        let local_data = match role {
             Role::Alice => {
+                self.announce.announce_swap(digest, peer_id, local_swap_id);
+
                 let swap_seed = self.seed.derive_swap_seed(local_swap_id);
                 let secret = swap_seed.derive_secret();
                 let secret_hash = SecretHash::new(secret);
-                let data = LocalData::for_alice(secret_hash, identities);
 
-                self.comit
-                    .initiate_communication_for_alice(local_swap_id, peer, digest, data)
+                LocalData::for_alice(secret_hash, identities)
             }
             Role::Bob => {
-                let shared_swap_id = SharedSwapId::default();
-                let data = LocalData::for_bob(shared_swap_id, identities);
+                self.announce
+                    .await_announcement(digest, peer_id, local_swap_id);
 
-                self.comit
-                    .initiate_communication_for_bob(local_swap_id, peer, digest, data)
+                LocalData::for_bob(identities)
             }
-        }
+        };
+
+        self.local_data.insert(local_swap_id, local_data);
+
+        Ok(())
     }
 
     fn assert_have_lnd_if_needed(
@@ -321,19 +359,15 @@ impl ComitNode {
             secret_hash: Some(SecretHash::new(
                 self.seed.derive_swap_seed(swap_id).derive_secret(),
             )),
-            shared_swap_id: None,
             ethereum_identity: Some(redeem_identity),
             lightning_identity: None,
             bitcoin_identity: Some(refund_identity),
         };
 
-        self.comit.take_order(
-            order_id,
-            swap_id,
-            local_data,
-            refund_address,
-            redeem_identity,
-        )
+        self.local_data.insert(swap_id, local_data);
+
+        self.comit
+            .take_order(order_id, refund_address, redeem_identity)
     }
 
     pub fn make_hbit_herc20_order(
@@ -436,11 +470,19 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::comit::Behavi
     fn inject_event(&mut self, event: ::comit::network::comit::BehaviourOutEvent) {
         match event {
             ::comit::network::comit::BehaviourOutEvent::SwapFinalized {
-                local_swap_id,
+                shared_swap_id,
                 remote_data,
             } => {
                 let storage = self.storage.clone();
                 let spawner = self.protocol_spawner.clone();
+
+                let local_swap_id = match self.local_swap_ids.remove(&shared_swap_id) {
+                    Some(local_swap_id) => local_swap_id,
+                    None => {
+                        tracing::warn!("inconsistent data, missing local_swap_id mapping");
+                        return;
+                    }
+                };
 
                 let save_and_start_swap = async move {
                     let swap = storage.load(local_swap_id).await?;
@@ -464,7 +506,9 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::comit::Behavi
             } => {
                 tracing::info!("order taken: {:?}", order.id);
                 let local_swap_id = LocalSwapId::default();
-                let shared_swap_id = self.comit.new_shared_swap_id(local_swap_id);
+                let shared_swap_id = SharedSwapId::default();
+
+                self.local_swap_ids.insert(shared_swap_id, local_swap_id);
 
                 let role = Role::Bob;
 
@@ -500,6 +544,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::comit::Behavi
                         Ok(()) => (),
                         Err(e) => tracing::error!("{}", e),
                     }
+                    let _ = io.send(shared_swap_id).await;
                 });
 
                 let transient_identity = self.storage.derive_transient_identity(
@@ -514,9 +559,41 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::comit::Behavi
                     lightning_identity: None,
                 };
 
-                let local_data = LocalData::for_bob(shared_swap_id, identities);
-                Comit::confirm(shared_swap_id, io);
-                self.comit.communicate(shared_swap_id, peer, local_data);
+                let local_data = LocalData::for_bob(identities);
+                self.comit.communicate(peer, shared_swap_id, local_data);
+            }
+        }
+    }
+}
+
+impl libp2p::swarm::NetworkBehaviourEventProcess<announce::BehaviourOutEvent> for ComitNode {
+    fn inject_event(&mut self, event: announce::BehaviourOutEvent) {
+        match event {
+            announce::BehaviourOutEvent::Confirmed {
+                peer,
+                shared_swap_id,
+                local_swap_id,
+            } => {
+                let data = match self.local_data.remove(&local_swap_id) {
+                    Some(local_data) => local_data,
+                    None => {
+                        tracing::warn!("inconsistent data, missing local-data mapping");
+                        return;
+                    }
+                };
+
+                self.comit.communicate(peer, shared_swap_id, data);
+                self.local_swap_ids.insert(shared_swap_id, local_swap_id);
+            }
+            announce::BehaviourOutEvent::Failed {
+                peer,
+                local_swap_id,
+            } => {
+                tracing::warn!(
+                    "failed to complete announce protocol for swap {} with {}",
+                    local_swap_id,
+                    peer,
+                );
             }
         }
     }
