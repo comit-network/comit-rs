@@ -51,8 +51,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AC, BC, DB, BP> Execute<herc20::CorrectlyFunded>
-    for WatchOnlyAlice<AC, BC, DB, herc20::Params, BP>
+impl<AC, BC, DB, BP> Execute<herc20::Funded> for WatchOnlyAlice<AC, BC, DB, herc20::Params, BP>
 where
     AC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
@@ -63,10 +62,7 @@ where
 {
     type Args = herc20::Deployed;
 
-    async fn execute(
-        &self,
-        deploy_event: herc20::Deployed,
-    ) -> anyhow::Result<herc20::CorrectlyFunded> {
+    async fn execute(&self, deploy_event: herc20::Deployed) -> anyhow::Result<herc20::Funded> {
         herc20::watch_for_funded(
             self.alpha_connector.as_ref(),
             self.alpha_params.clone(),

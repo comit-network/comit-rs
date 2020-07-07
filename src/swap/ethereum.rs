@@ -48,7 +48,7 @@ impl herc20::ExecuteFund for Wallet {
         params: herc20::Params,
         deploy_event: herc20::Deployed,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<herc20::CorrectlyFunded> {
+    ) -> anyhow::Result<herc20::Funded> {
         let action = params.build_fund_action(deploy_event.location);
         let _data = self.inner.call_contract(action).await?;
 

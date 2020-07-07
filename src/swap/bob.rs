@@ -43,7 +43,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AW, BW, DB, AP> Execute<herc20::CorrectlyFunded> for WalletBob<AW, BW, DB, AP, herc20::Params>
+impl<AW, BW, DB, AP> Execute<herc20::Funded> for WalletBob<AW, BW, DB, AP, herc20::Params>
 where
     AW: Send + Sync,
     BW: herc20::ExecuteFund + Send + Sync,
@@ -52,10 +52,7 @@ where
 {
     type Args = herc20::Deployed;
 
-    async fn execute(
-        &self,
-        deploy_event: herc20::Deployed,
-    ) -> anyhow::Result<herc20::CorrectlyFunded> {
+    async fn execute(&self, deploy_event: herc20::Deployed) -> anyhow::Result<herc20::Funded> {
         self.beta_wallet
             .execute_fund(self.beta_params.clone(), deploy_event, self.start_of_swap)
             .await
@@ -260,8 +257,7 @@ pub mod watch_only_actor {
     }
 
     #[async_trait::async_trait]
-    impl<AC, BC, DB, AP> Execute<herc20::CorrectlyFunded>
-        for WatchOnlyBob<AC, BC, DB, AP, herc20::Params>
+    impl<AC, BC, DB, AP> Execute<herc20::Funded> for WatchOnlyBob<AC, BC, DB, AP, herc20::Params>
     where
         AC: Send + Sync,
         BC: LatestBlock<Block = ethereum::Block>
@@ -272,10 +268,7 @@ pub mod watch_only_actor {
     {
         type Args = herc20::Deployed;
 
-        async fn execute(
-            &self,
-            deploy_event: herc20::Deployed,
-        ) -> anyhow::Result<herc20::CorrectlyFunded> {
+        async fn execute(&self, deploy_event: herc20::Deployed) -> anyhow::Result<herc20::Funded> {
             herc20::watch_for_funded(
                 self.beta_connector.as_ref(),
                 self.beta_params.clone(),

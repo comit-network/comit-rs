@@ -27,8 +27,8 @@ where
         + Sync,
     B: Do<herc20::Deployed>
         + Execute<herc20::Deployed, Args = ()>
-        + Do<herc20::CorrectlyFunded>
-        + Execute<herc20::CorrectlyFunded, Args = herc20::Deployed>
+        + Do<herc20::Funded>
+        + Execute<herc20::Funded, Args = herc20::Deployed>
         + Execute<hbit::Redeemed, Args = (hbit::CorrectlyFunded, Secret)>
         + Execute<herc20::Refunded, Args = herc20::Deployed>
         + Sync,
@@ -47,15 +47,14 @@ where
         }
     };
 
-    let _herc20_funded =
-        match Do::<herc20::CorrectlyFunded>::r#do(&bob, herc20_deployed.clone()).await? {
-            Next::Continue(herc20_funded) => herc20_funded,
-            Next::Abort => {
-                Execute::<hbit::Refunded>::execute(&alice, hbit_funded).await?;
+    let _herc20_funded = match Do::<herc20::Funded>::r#do(&bob, herc20_deployed.clone()).await? {
+        Next::Continue(herc20_funded) => herc20_funded,
+        Next::Abort => {
+            Execute::<hbit::Refunded>::execute(&alice, hbit_funded).await?;
 
-                return Ok(());
-            }
-        };
+            return Ok(());
+        }
+    };
 
     let herc20_redeemed =
         match Do::<herc20::Redeemed>::r#do(&alice, herc20_deployed.clone()).await? {
@@ -96,8 +95,8 @@ pub async fn herc20_hbit<A, B>(alice: A, bob: B) -> anyhow::Result<()>
 where
     A: Do<herc20::Deployed>
         + Execute<herc20::Deployed, Args = ()>
-        + Do<herc20::CorrectlyFunded>
-        + Execute<herc20::CorrectlyFunded, Args = herc20::Deployed>
+        + Do<herc20::Funded>
+        + Execute<herc20::Funded, Args = herc20::Deployed>
         + Do<hbit::Redeemed>
         + Execute<hbit::Redeemed, Args = hbit::CorrectlyFunded>
         + Execute<herc20::Refunded, Args = herc20::Deployed>
@@ -116,13 +115,12 @@ where
         }
     };
 
-    let _herc20_funded =
-        match Do::<herc20::CorrectlyFunded>::r#do(&alice, herc20_deployed.clone()).await? {
-            Next::Continue(herc20_funded) => herc20_funded,
-            Next::Abort => {
-                return Ok(());
-            }
-        };
+    let _herc20_funded = match Do::<herc20::Funded>::r#do(&alice, herc20_deployed.clone()).await? {
+        Next::Continue(herc20_funded) => herc20_funded,
+        Next::Abort => {
+            return Ok(());
+        }
+    };
 
     let hbit_funded = match Do::<hbit::CorrectlyFunded>::r#do(&bob, ()).await? {
         Next::Continue(hbit_funded) => hbit_funded,
