@@ -19,21 +19,21 @@ pub use do_action::{AlphaLedgerTime, BetaExpiry, BetaLedgerTime, Do, Execute, Ne
 /// Execute a Hbit<->Herc20 swap.
 pub async fn hbit_herc20<A, B>(alice: A, bob: B) -> anyhow::Result<()>
 where
-    A: Do<hbit::CorrectlyFunded>
-        + Execute<hbit::CorrectlyFunded, Args = ()>
+    A: Do<hbit::Funded>
+        + Execute<hbit::Funded, Args = ()>
         + Do<herc20::Redeemed>
         + Execute<herc20::Redeemed, Args = herc20::Deployed>
-        + Execute<hbit::Refunded, Args = hbit::CorrectlyFunded>
+        + Execute<hbit::Refunded, Args = hbit::Funded>
         + Sync,
     B: Do<herc20::Deployed>
         + Execute<herc20::Deployed, Args = ()>
         + Do<herc20::Funded>
         + Execute<herc20::Funded, Args = herc20::Deployed>
-        + Execute<hbit::Redeemed, Args = (hbit::CorrectlyFunded, Secret)>
+        + Execute<hbit::Redeemed, Args = (hbit::Funded, Secret)>
         + Execute<herc20::Refunded, Args = herc20::Deployed>
         + Sync,
 {
-    let hbit_funded = match Do::<hbit::CorrectlyFunded>::r#do(&alice, ()).await? {
+    let hbit_funded = match Do::<hbit::Funded>::r#do(&alice, ()).await? {
         Next::Continue(hbit_funded) => hbit_funded,
         Next::Abort => return Ok(()),
     };
@@ -98,14 +98,14 @@ where
         + Do<herc20::Funded>
         + Execute<herc20::Funded, Args = herc20::Deployed>
         + Do<hbit::Redeemed>
-        + Execute<hbit::Redeemed, Args = hbit::CorrectlyFunded>
+        + Execute<hbit::Redeemed, Args = hbit::Funded>
         + Execute<herc20::Refunded, Args = herc20::Deployed>
         + Sync,
-    B: Do<hbit::CorrectlyFunded>
-        + Execute<hbit::CorrectlyFunded, Args = ()>
+    B: Do<hbit::Funded>
+        + Execute<hbit::Funded, Args = ()>
         + Do<herc20::Redeemed>
         + Execute<herc20::Redeemed, Args = (herc20::Deployed, Secret)>
-        + Execute<hbit::Refunded, Args = hbit::CorrectlyFunded>
+        + Execute<hbit::Refunded, Args = hbit::Funded>
         + Sync,
 {
     let herc20_deployed = match Do::<herc20::Deployed>::r#do(&alice, ()).await? {
@@ -122,7 +122,7 @@ where
         }
     };
 
-    let hbit_funded = match Do::<hbit::CorrectlyFunded>::r#do(&bob, ()).await? {
+    let hbit_funded = match Do::<hbit::Funded>::r#do(&bob, ()).await? {
         Next::Continue(hbit_funded) => hbit_funded,
         Next::Abort => {
             Execute::<herc20::Refunded>::execute(&alice, herc20_deployed.clone()).await?;

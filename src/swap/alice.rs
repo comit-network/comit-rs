@@ -119,8 +119,7 @@ where
 
 #[allow(clippy::unit_arg)]
 #[async_trait::async_trait]
-impl<AC, BC, DB, BP> Execute<hbit::CorrectlyFunded>
-    for WatchOnlyAlice<AC, BC, DB, hbit::SharedParams, BP>
+impl<AC, BC, DB, BP> Execute<hbit::Funded> for WatchOnlyAlice<AC, BC, DB, hbit::SharedParams, BP>
 where
     AC: LatestBlock<Block = bitcoin::Block>
         + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
@@ -130,7 +129,7 @@ where
 {
     type Args = ();
 
-    async fn execute(&self, (): Self::Args) -> anyhow::Result<hbit::CorrectlyFunded> {
+    async fn execute(&self, (): Self::Args) -> anyhow::Result<hbit::Funded> {
         hbit::watch_for_funded(
             self.alpha_connector.as_ref(),
             &self.alpha_params,
@@ -149,9 +148,9 @@ where
     DB: Send + Sync,
     AP: Send + Sync,
 {
-    type Args = hbit::CorrectlyFunded;
+    type Args = hbit::Funded;
 
-    async fn execute(&self, fund_event: hbit::CorrectlyFunded) -> anyhow::Result<hbit::Redeemed> {
+    async fn execute(&self, fund_event: hbit::Funded) -> anyhow::Result<hbit::Redeemed> {
         hbit::watch_for_redeemed(
             self.beta_connector.as_ref(),
             &self.beta_params,
@@ -171,9 +170,9 @@ where
     DB: Send + Sync,
     BP: Send + Sync,
 {
-    type Args = hbit::CorrectlyFunded;
+    type Args = hbit::Funded;
 
-    async fn execute(&self, fund_event: hbit::CorrectlyFunded) -> anyhow::Result<hbit::Refunded> {
+    async fn execute(&self, fund_event: hbit::Funded) -> anyhow::Result<hbit::Refunded> {
         hbit::watch_for_refunded(
             self.alpha_connector.as_ref(),
             &self.alpha_params,
@@ -266,7 +265,7 @@ pub mod wallet_actor {
 
     #[allow(clippy::unit_arg)]
     #[async_trait::async_trait]
-    impl<AW, BW, DB, BP> Execute<hbit::CorrectlyFunded> for WalletAlice<AW, BW, DB, hbit::Params, BP>
+    impl<AW, BW, DB, BP> Execute<hbit::Funded> for WalletAlice<AW, BW, DB, hbit::Params, BP>
     where
         AW: hbit::ExecuteFund + Send + Sync,
         BW: Send + Sync,
@@ -275,7 +274,7 @@ pub mod wallet_actor {
     {
         type Args = ();
 
-        async fn execute(&self, (): Self::Args) -> anyhow::Result<hbit::CorrectlyFunded> {
+        async fn execute(&self, (): Self::Args) -> anyhow::Result<hbit::Funded> {
             self.alpha_wallet.execute_fund(&self.alpha_params).await
         }
     }
@@ -312,12 +311,9 @@ pub mod wallet_actor {
         DB: Send + Sync,
         BP: Send + Sync,
     {
-        type Args = hbit::CorrectlyFunded;
+        type Args = hbit::Funded;
 
-        async fn execute(
-            &self,
-            fund_event: hbit::CorrectlyFunded,
-        ) -> anyhow::Result<hbit::Refunded> {
+        async fn execute(&self, fund_event: hbit::Funded) -> anyhow::Result<hbit::Refunded> {
             loop {
                 let bitcoin_time =
                     comit::bitcoin::median_time_past(self.alpha_wallet.connector.as_ref()).await?;
@@ -336,10 +332,7 @@ pub mod wallet_actor {
     }
 
     impl<BW, DB, BP> WalletAlice<bitcoin::Wallet, BW, DB, hbit::Params, BP> {
-        async fn refund(
-            &self,
-            fund_event: hbit::CorrectlyFunded,
-        ) -> anyhow::Result<hbit::Refunded> {
+        async fn refund(&self, fund_event: hbit::Funded) -> anyhow::Result<hbit::Refunded> {
             let refund_address = self.alpha_wallet.inner.new_address().await?;
             let refund_action = self.alpha_params.shared.build_refund_action(
                 &crate::SECP,

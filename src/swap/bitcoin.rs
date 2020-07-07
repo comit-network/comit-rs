@@ -13,7 +13,7 @@ pub struct Wallet {
 
 #[async_trait::async_trait]
 impl hbit::ExecuteFund for Wallet {
-    async fn execute_fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::CorrectlyFunded> {
+    async fn execute_fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::Funded> {
         let action = params.shared.build_fund_action();
 
         let txid = self
@@ -45,7 +45,7 @@ impl hbit::ExecuteFund for Wallet {
         })?;
         let asset = asset::Bitcoin::from_sat(transaction.output[location.vout as usize].value);
 
-        Ok(hbit::CorrectlyFunded { asset, location })
+        Ok(hbit::Funded { asset, location })
     }
 }
 
@@ -54,7 +54,7 @@ impl hbit::ExecuteRedeem for Wallet {
     async fn execute_redeem(
         &self,
         params: hbit::Params,
-        fund_event: hbit::CorrectlyFunded,
+        fund_event: hbit::Funded,
         secret: Secret,
     ) -> anyhow::Result<hbit::Redeemed> {
         let redeem_address = self.inner.new_address().await?;

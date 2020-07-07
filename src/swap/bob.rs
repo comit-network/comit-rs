@@ -103,7 +103,7 @@ where
 
 #[allow(clippy::unit_arg)]
 #[async_trait::async_trait]
-impl<AW, BW, DB, AP> Execute<hbit::CorrectlyFunded> for WalletBob<AW, BW, DB, AP, hbit::Params>
+impl<AW, BW, DB, AP> Execute<hbit::Funded> for WalletBob<AW, BW, DB, AP, hbit::Params>
 where
     AW: Send + Sync,
     BW: hbit::ExecuteFund + Send + Sync,
@@ -112,7 +112,7 @@ where
 {
     type Args = ();
 
-    async fn execute(&self, (): Self::Args) -> anyhow::Result<hbit::CorrectlyFunded> {
+    async fn execute(&self, (): Self::Args) -> anyhow::Result<hbit::Funded> {
         self.beta_wallet.execute_fund(&self.beta_params).await
     }
 }
@@ -125,11 +125,11 @@ where
     DB: Send + Sync,
     BP: Send + Sync,
 {
-    type Args = (hbit::CorrectlyFunded, Secret);
+    type Args = (hbit::Funded, Secret);
 
     async fn execute(
         &self,
-        (fund_event, secret): (hbit::CorrectlyFunded, Secret),
+        (fund_event, secret): (hbit::Funded, Secret),
     ) -> anyhow::Result<hbit::Redeemed> {
         self.alpha_wallet
             .execute_redeem(self.alpha_params, fund_event, secret)
@@ -145,7 +145,7 @@ where
     DB: Send + Sync,
     AP: Send + Sync,
 {
-    type Args = hbit::CorrectlyFunded;
+    type Args = hbit::Funded;
 
     async fn execute(&self, fund_event: Self::Args) -> anyhow::Result<hbit::Refunded> {
         self.beta_wallet
@@ -288,11 +288,11 @@ pub mod watch_only_actor {
         DB: Send + Sync,
         BP: Send + Sync,
     {
-        type Args = (hbit::CorrectlyFunded, Secret);
+        type Args = (hbit::Funded, Secret);
 
         async fn execute(
             &self,
-            (fund_event, _): (hbit::CorrectlyFunded, Secret),
+            (fund_event, _): (hbit::Funded, Secret),
         ) -> anyhow::Result<hbit::Redeemed> {
             hbit::watch_for_redeemed(
                 self.alpha_connector.as_ref(),
