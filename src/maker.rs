@@ -76,7 +76,7 @@ impl Maker {
         }
     }
 
-    pub fn invlidate_rate(&mut self) {
+    pub fn invalidate_rate(&mut self) {
         self.mid_market_rate = None;
     }
 

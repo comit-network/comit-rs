@@ -107,7 +107,7 @@ async fn main() {
                 }
             }
             Err(e) => {
-                maker.invlidate_rate();
+                maker.invalidate_rate();
                 tracing::error!(
                     "Unable to fetch latest rate! Fetching rate yielded error: {}",
                     e
