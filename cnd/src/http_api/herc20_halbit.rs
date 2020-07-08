@@ -33,11 +33,11 @@ pub async fn post_swap(body: serde_json::Value, facade: Facade) -> Result<impl R
         bitcoin_identity: None,
     };
     let digest = swap_digest::herc20_halbit(body.clone());
-    let peer = body.peer.into();
+    let (peer, address_hint) = body.peer.into_peer_with_address_hint();
     let role = body.role.0;
 
     facade
-        .initiate_communication(swap_id, peer, role, digest, identities)
+        .initiate_communication(swap_id, role, digest, identities, peer, address_hint)
         .await
         .map(|_| {
             warp::reply::with_status(

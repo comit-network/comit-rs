@@ -7,7 +7,7 @@ use crate::{
         },
         ReplySubstream, SwapDigest,
     },
-    DialInformation, SharedSwapId,
+    SharedSwapId,
 };
 use libp2p::{
     core::{connection::ConnectionId, ConnectedPoint, Multiaddr, PeerId},
@@ -41,30 +41,29 @@ impl Default for TakeOrder {
 }
 
 impl TakeOrder {
-    pub fn take(&mut self, order_id: OrderId, swap_digest: SwapDigest, dial_info: DialInformation) {
+    pub fn take(
+        &mut self,
+        order_id: OrderId,
+        swap_digest: SwapDigest,
+        maker: PeerId,
+        maker_address: Multiaddr,
+    ) {
         tracing::info!(
             "sending take order request with id: {:?} to peer: {:?} with addr: {:?}",
             order_id,
-            dial_info.peer_id,
-            dial_info.address_hint.clone()
+            maker,
+            maker_address
         );
-        match self.connections.entry(dial_info.peer_id.clone()) {
+        match self.connections.entry(maker.clone()) {
             Entry::Vacant(entry) => {
                 self.events.push_back(NetworkBehaviourAction::DialPeer {
-                    peer_id: dial_info.peer_id.clone(),
+                    peer_id: maker,
                     condition: Default::default(),
                 });
 
-                let mut address_hints = VecDeque::new();
-                if let Some(address) = dial_info.address_hint {
-                    address_hints.push_back(address);
-                }
-
-                let pending_events = vec![OutboundConfig::new(order_id, swap_digest)];
-
                 entry.insert(ConnectionState::Connecting {
-                    pending_events,
-                    address_hints,
+                    pending_events: vec![OutboundConfig::new(order_id, swap_digest)],
+                    address_hints: vec![maker_address].into(),
                 });
             }
             Entry::Occupied(mut entry) => {
@@ -76,18 +75,16 @@ impl TakeOrder {
                         address_hints,
                     } => {
                         pending_events.push(OutboundConfig::new(order_id, swap_digest));
-                        if let Some(address) = dial_info.address_hint {
-                            // We push to the front because we consider the new address to be the
-                            // most likely one to succeed. The order of this queue is important
-                            // when returning it from `addresses_of_peer()` because it will be tried
-                            // by libp2p in the returned order.
-                            address_hints.push_front(address);
-                        }
+                        // We push to the front because we consider the new address to be the
+                        // most likely one to succeed. The order of this queue is important
+                        // when returning it from `addresses_of_peer()` because it will be tried
+                        // by libp2p in the returned order.
+                        address_hints.push_front(maker_address);
                     }
                     ConnectionState::Connected { .. } => {
                         self.events
                             .push_back(NetworkBehaviourAction::NotifyHandler {
-                                peer_id: dial_info.peer_id.clone(),
+                                peer_id: maker,
                                 handler: NotifyHandler::Any,
                                 event: OutboundConfig::new(order_id, swap_digest),
                             });

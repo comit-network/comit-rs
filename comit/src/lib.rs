@@ -41,7 +41,6 @@ pub mod export {
 }
 
 pub use self::{
-    network::DialInformation,
     secret::Secret,
     secret_hash::SecretHash,
     swap_id::{LocalSwapId, SharedSwapId},
