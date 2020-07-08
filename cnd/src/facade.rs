@@ -1,9 +1,7 @@
 use crate::{
     btsieve::LatestBlock,
     connectors::Connectors,
-    network::{
-        ComitPeers, DialInformation, Identities, ListenAddresses, LocalPeerId, SwapDigest, Swarm,
-    },
+    network::{ComitPeers, Identities, ListenAddresses, LocalPeerId, SwapDigest, Swarm},
     storage::{Load, LoadAll, Storage},
     LocalSwapId, Role, Save, Timestamp,
 };
@@ -30,13 +28,14 @@ impl Facade {
     pub async fn initiate_communication(
         &self,
         id: LocalSwapId,
-        peer: DialInformation,
         role: Role,
         digest: SwapDigest,
         identities: Identities,
+        peer: PeerId,
+        address_hint: Option<Multiaddr>,
     ) -> anyhow::Result<()> {
         self.swarm
-            .initiate_communication(id, peer, role, digest, identities)
+            .initiate_communication(id, role, digest, identities, peer, address_hint)
             .await
     }
 

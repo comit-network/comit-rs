@@ -7,8 +7,6 @@ pub mod swap_digest;
 pub mod test;
 
 use crate::{identity, SecretHash};
-use libp2p::{Multiaddr, PeerId};
-use std::fmt;
 
 pub use self::{
     comit::*,
@@ -20,21 +18,6 @@ pub use self::{
     },
     swap_digest::SwapDigest,
 };
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct DialInformation {
-    pub peer_id: PeerId,
-    pub address_hint: Option<Multiaddr>,
-}
-
-impl fmt::Display for DialInformation {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match &self.address_hint {
-            None => write!(f, "{}", self.peer_id),
-            Some(address_hint) => write!(f, "{}@{}", self.peer_id, address_hint),
-        }
-    }
-}
 
 /// All possible identities to be sent to the remote node for any protocol
 /// combination.

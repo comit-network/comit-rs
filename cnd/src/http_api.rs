@@ -277,29 +277,23 @@ pub enum DialInformation {
     },
 }
 
+impl DialInformation {
+    fn into_peer_with_address_hint(self) -> (PeerId, Option<Multiaddr>) {
+        match self {
+            DialInformation::JustPeerId(inner) => (inner.0, None),
+            DialInformation::WithAddressHint {
+                peer_id,
+                address_hint,
+            } => (peer_id.0, Some(address_hint)),
+        }
+    }
+}
+
 impl From<DialInformation> for PeerId {
     fn from(dial_information: DialInformation) -> Self {
         match dial_information {
             DialInformation::JustPeerId(inner) => inner.0,
             DialInformation::WithAddressHint { peer_id, .. } => peer_id.0,
-        }
-    }
-}
-
-impl From<DialInformation> for comit::network::DialInformation {
-    fn from(dial_information: DialInformation) -> Self {
-        match dial_information {
-            DialInformation::JustPeerId(inner) => Self {
-                peer_id: inner.0,
-                address_hint: None,
-            },
-            DialInformation::WithAddressHint {
-                peer_id,
-                address_hint,
-            } => Self {
-                peer_id: peer_id.0,
-                address_hint: Some(address_hint),
-            },
         }
     }
 }

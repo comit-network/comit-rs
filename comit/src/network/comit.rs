@@ -198,11 +198,6 @@ impl Comit {
             self.orderbook
                 .take_with_identities(order_id, refund_identity, redeem_identity)?;
 
-        let dial_info = DialInformation {
-            peer_id: order.maker.peer_id(),
-            address_hint: Some(order.maker_addr),
-        };
-
         // hint: alice expiry has to be longer than bobs
         // todo: add two distinct expiries
         let swap = HbitHerc20 {
@@ -215,7 +210,8 @@ impl Comit {
 
         let digest = swap_digest::hbit_herc20(swap);
 
-        self.take_order.take(order_id, digest, dial_info);
+        self.take_order
+            .take(order_id, digest, order.maker.peer_id(), order.maker_addr);
 
         Ok(())
     }

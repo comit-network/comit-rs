@@ -91,20 +91,18 @@ impl Swarm {
     pub async fn initiate_communication(
         &self,
         id: LocalSwapId,
-        DialInformation {
-            peer_id,
-            address_hint,
-        }: DialInformation,
         role: Role,
         digest: SwapDigest,
         identities: Identities,
+        peer: PeerId,
+        address_hint: Option<Multiaddr>,
     ) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
 
         // best effort attempt to establish a connection to the other party
         if let Some(address_hint) = address_hint {
             let existing_connection_to_peer =
-                libp2p::Swarm::connection_info(&mut guard, &peer_id).is_some();
+                libp2p::Swarm::connection_info(&mut guard, &peer).is_some();
 
             if !existing_connection_to_peer {
                 match libp2p::Swarm::dial_addr(&mut guard, address_hint) {
@@ -117,7 +115,7 @@ impl Swarm {
             }
         }
 
-        guard.initiate_communication(id, peer_id, role, digest, identities)
+        guard.initiate_communication(id, peer, role, digest, identities)
     }
 
     pub async fn take_hbit_herc20_order(
