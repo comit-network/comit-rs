@@ -89,7 +89,7 @@ where
     }
 }
 
-/// Execute a Hbit<->Herc20 swap.
+/// Execute a Herc20<->Hbit swap.
 pub async fn herc20_hbit<A, B>(alice: A, bob: B) -> anyhow::Result<()>
 where
     A: TryDoItOnce<herc20::Deployed>
