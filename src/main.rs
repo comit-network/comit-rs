@@ -18,13 +18,14 @@ use structopt::StructOpt;
 async fn init_maker(
     bitcoin_wallet: bitcoin_wallet::Wallet,
     ethereum_wallet: ethereum_wallet::Wallet,
+    nectar_settings: config::Nectar,
 ) -> Maker {
     let initial_btc_balance = bitcoin_wallet.balance().await;
 
     let initial_dai_balance = ethereum_wallet.dai_balance().await;
 
-    let btc_max_sell: anyhow::Result<bitcoin::Amount> = todo!("from config");
-    let dai_max_sell: anyhow::Result<dai::Amount> = todo!("from config");
+    let btc_max_sell = nectar_settings.max_sell.bitcoin;
+    let dai_max_sell = nectar_settings.max_sell.dai;
     let btc_fee_reserve: anyhow::Result<bitcoin::Amount> = todo!("from config");
     let dai_fee_reserve: anyhow::Result<dai::Amount> = todo!("from config");
 
@@ -32,13 +33,12 @@ async fn init_maker(
 
     let spread: Spread = todo!("from config");
 
+    // TODO: This match is weird. If the settings does not give you want you want then it should fail earlier.
     match (
         initial_btc_balance,
         initial_dai_balance,
         btc_fee_reserve,
         dai_fee_reserve,
-        btc_max_sell,
-        dai_max_sell,
         initial_rate,
     ) {
         (
@@ -46,8 +46,6 @@ async fn init_maker(
             Ok(initial_dai_balance),
             Ok(btc_fee_reserve),
             Ok(dai_fee_reserve),
-            Ok(btc_max_sell),
-            Ok(dai_max_sell),
             Ok(initial_rate),
         ) => Maker::new(
             initial_btc_balance,
@@ -84,7 +82,7 @@ async fn main() {
     let ethereum_wallet =
         ethereum_wallet::Wallet::new(unimplemented!(), settings.ethereum.node_url).unwrap();
 
-    let maker = init_maker(bitcoin_wallet, ethereum_wallet).await;
+    let maker = init_maker(bitcoin_wallet, ethereum_wallet, settings.nectar).await;
 
     let orderbook = Orderbook;
     let nectar = Nectar::new(orderbook);

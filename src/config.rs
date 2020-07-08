@@ -102,10 +102,10 @@ pub struct Nectar {
 pub struct MaxSell {
     #[serde(default)]
     #[serde(with = "crate::config::serde_bitcoin_amount")]
-    bitcoin: Option<bitcoin::Amount>,
+    pub bitcoin: Option<bitcoin::Amount>,
     #[serde(default)]
     #[serde(with = "crate::config::serde_dai_amount")]
-    dai: Option<dai::Amount>,
+    pub dai: Option<dai::Amount>,
 }
 
 #[cfg(test)]

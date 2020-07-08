@@ -6,6 +6,7 @@ use std::convert::{TryFrom, TryInto};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Settings {
+    // TODO: Better name could be "maker"
     pub nectar: Nectar,
     pub network: Network,
     pub data: Data,
