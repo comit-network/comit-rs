@@ -1,5 +1,5 @@
-pub mod alice;
-pub mod bob;
+mod alice;
+mod bob;
 
 use crate::{
     hbit, herc20,

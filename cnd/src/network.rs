@@ -1,6 +1,6 @@
 mod peer_tracker;
-pub mod tor;
-pub mod transport;
+mod tor;
+mod transport;
 
 // Export comit network types while maintaining the module abstraction.
 pub use self::tor::TorTokioTcpConfig;
@@ -156,29 +156,6 @@ impl Swarm {
         guard.get_order(order_id)
     }
 
-    pub async fn get_makers(&self) -> Vec<PeerId> {
-        let guard = self.inner.lock().await;
-        guard.get_makers()
-    }
-
-    pub async fn subscribe(
-        &self,
-        peer_id: PeerId,
-        trading_pair: TradingPair,
-    ) -> anyhow::Result<()> {
-        let mut guard = self.inner.lock().await;
-        guard.subscribe(peer_id, trading_pair)
-    }
-
-    pub async fn unsubscribe(
-        &self,
-        peer_id: PeerId,
-        trading_pair: TradingPair,
-    ) -> anyhow::Result<()> {
-        let mut guard = self.inner.lock().await;
-        guard.unsubscribe(peer_id, trading_pair)
-    }
-
     pub async fn dial_addr(&mut self, addr: Multiaddr) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
         // todo: log error
@@ -261,18 +238,6 @@ pub struct ComitNode {
     pub storage: Storage,
     #[behaviour(ignore)]
     pub protocol_spawner: ProtocolSpawner,
-}
-
-#[derive(Debug, Clone, Copy, thiserror::Error)]
-pub enum RequestError {
-    #[error("peer node had an internal error while processing the request")]
-    InternalError,
-    #[error("peer node produced an invalid response")]
-    InvalidResponse,
-    #[error("failed to establish a new connection to make the request")]
-    Connecting(io::ErrorKind),
-    #[error("unable to send the data on the existing connection")]
-    Connection,
 }
 
 impl ComitNode {
@@ -378,24 +343,12 @@ impl ComitNode {
             .make_order(order, refund_identity, redeem_identity)
     }
 
-    pub fn get_makers(&self) -> Vec<PeerId> {
-        self.comit.get_makers()
-    }
-
     pub fn get_order(&self, order_id: OrderId) -> Option<Order> {
         self.comit.get_order(&order_id)
     }
 
     pub fn get_orders(&self) -> Vec<Order> {
         self.comit.get_orders()
-    }
-
-    pub fn subscribe(&mut self, peer: PeerId, trading_pair: TradingPair) -> anyhow::Result<()> {
-        self.comit.subscribe(peer, trading_pair)
-    }
-
-    pub fn unsubscribe(&mut self, peer: PeerId, trading_pair: TradingPair) -> anyhow::Result<()> {
-        self.comit.unsubscribe(peer, trading_pair)
     }
 
     pub fn announce_trading_pair(&mut self, trading_pair: TradingPair) {

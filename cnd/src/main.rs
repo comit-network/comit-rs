@@ -12,33 +12,96 @@
     clippy::dbg_macro
 )]
 #![forbid(unsafe_code)]
-use crate::cli::Options;
-use anyhow::Context;
-use cnd::{
-    btsieve::{
-        bitcoin::{self, BitcoindConnector},
-        ethereum::{self, Web3Connector},
-    },
-    config::{self, validation::validate_connection_to_network, Settings},
+
+#[macro_use]
+extern crate diesel;
+#[macro_use]
+extern crate diesel_migrations;
+
+#[macro_use]
+mod network;
+#[cfg(test)]
+mod proptest;
+#[cfg(test)]
+mod spectral_ext;
+#[macro_use]
+mod with_swap_types;
+mod actions;
+mod cli;
+mod config;
+mod connectors;
+mod facade;
+mod file_lock;
+mod halbit;
+mod hbit;
+mod herc20;
+mod http_api;
+mod protocol_spawner;
+mod respawn;
+mod spawn;
+mod state;
+mod storage;
+mod trace;
+mod tracing_ext;
+mod htlc_location {
+    pub use comit::htlc_location::*;
+}
+mod identity {
+    pub use comit::identity::*;
+}
+mod transaction {
+    pub use comit::transaction::*;
+}
+mod asset {
+    pub use comit::asset::*;
+}
+mod ethereum {
+    pub use comit::ethereum::*;
+}
+mod bitcoin {
+    pub use comit::bitcoin::{Address, PublicKey};
+}
+mod lightning {
+    pub use comit::lightning::PublicKey;
+}
+mod btsieve {
+    pub use comit::btsieve::*;
+}
+
+use self::{
+    actions::*,
+    btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
+    cli::Options,
+    config::{validate_connection_to_network, Settings},
     connectors::Connectors,
+    facade::Facade,
     file_lock::TryLockExclusive,
-    halbit, hbit, herc20,
-    http_api::route_factory,
     network::{Swarm, SwarmWorker},
-    protocol_spawner::ProtocolSpawner,
+    protocol_spawner::{ProtocolSpawner, *},
     respawn::respawn,
-    storage::{Sqlite, Storage},
-    Facade, RootSeed,
+    spawn::*,
+    storage::{Sqlite, Storage, *},
+    RootSeed,
 };
-use comit::lnd::LndConnectorParams;
+use anyhow::Context;
+use comit::{
+    ledger, lnd::LndConnectorParams, LocalSwapId, Never, Protocol, RelativeTime, Role, Secret,
+    SecretHash, SharedSwapId, Side, Timestamp,
+};
 use rand::rngs::OsRng;
-use std::{process, sync::Arc};
+use std::{
+    env,
+    path::{Path, PathBuf},
+    process,
+    sync::Arc,
+};
 use structopt::StructOpt;
 use tokio::{net::TcpListener, runtime};
-// use warp::filters::BoxedFilter;
 
-mod cli;
-mod trace;
+lazy_static::lazy_static! {
+    pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =
+        ::bitcoin::secp256k1::Secp256k1::new();
+}
 
 fn main() -> anyhow::Result<()> {
     let options = cli::Options::from_args();
@@ -96,7 +159,10 @@ fn main() -> anyhow::Result<()> {
 
         const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
 
-        Arc::new(bitcoin::Cache::new(connector, BITCOIN_BLOCK_CACHE_CAPACITY))
+        Arc::new(btsieve::bitcoin::Cache::new(
+            connector,
+            BITCOIN_BLOCK_CACHE_CAPACITY,
+        ))
     };
 
     let ethereum_connector = {
@@ -117,7 +183,7 @@ fn main() -> anyhow::Result<()> {
         const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
         const ETHEREUM_RECEIPT_CACHE_CAPACITY: usize = 720;
 
-        Arc::new(ethereum::Cache::new(
+        Arc::new(btsieve::ethereum::Cache::new(
             connector,
             ETHEREUM_BLOCK_CACHE_CAPACITY,
             ETHEREUM_RECEIPT_CACHE_CAPACITY,
@@ -222,7 +288,7 @@ async fn make_http_api_worker(
     facade: Facade,
     incoming_requests: tokio::net::TcpListener,
 ) {
-    let routes = route_factory::create(facade, &settings.http_api.cors.allowed_origins);
+    let routes = http_api::create_routes(facade, &settings.http_api.cors.allowed_origins);
 
     match incoming_requests.local_addr() {
         Ok(socket) => {
@@ -254,7 +320,7 @@ fn read_config(options: &Options) -> anyhow::Result<config::File> {
     }
 
     // try to load default config
-    let default_path = cnd::default_config_path()?;
+    let default_path = default_config_path()?;
 
     if !default_path.exists() {
         return Ok(config::File::default());
@@ -275,4 +341,48 @@ fn dump_config(settings: Settings) -> anyhow::Result<()> {
     let serialized = toml::to_string(&file)?;
     println!("{}", serialized);
     Ok(())
+}
+
+fn default_config_path() -> anyhow::Result<PathBuf> {
+    crate::config_dir()
+        .map(|dir| Path::join(&dir, "cnd.toml"))
+        .context("Could not generate default configuration path")
+}
+
+// Linux: /home/<user>/.config/comit/
+// Windows: C:\Users\<user>\AppData\Roaming\comit\config\
+// OSX: /Users/<user>/Library/Application Support/comit/
+fn config_dir() -> Option<PathBuf> {
+    directories::ProjectDirs::from("", "", "comit")
+        .map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
+}
+
+// Linux: /home/<user>/.local/share/comit/
+// Windows: C:\Users\<user>\AppData\Roaming\comit\
+// OSX: /Users/<user>/Library/Application Support/comit/
+pub fn data_dir() -> Option<PathBuf> {
+    directories::ProjectDirs::from("", "", "comit")
+        .map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
+}
+
+/// Returns `/Users/[username]/Library/Application Support/Lnd/` for macos.
+/// Returns `%LOCALAPPDATA%/Lnd for windows.
+/// Returns `~/.lnd` if $HOME exists for linux.
+pub fn lnd_default_dir() -> Option<PathBuf> {
+    if cfg!(target_os = "macos") || cfg!(target_os = "windows") {
+        directories::ProjectDirs::from("", "", "Lnd")
+            .map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
+    } else if cfg!(target_os = "linux") {
+        directories::UserDirs::new().map(|d| d.home_dir().to_path_buf().join(".lnd"))
+    } else {
+        None
+    }
+}
+
+/// Returns the directory used by lnd.
+pub fn lnd_dir() -> Option<PathBuf> {
+    if let Ok(dir) = env::var("LND_DIR") {
+        return Some(PathBuf::from(dir));
+    }
+    lnd_default_dir()
 }

@@ -20,14 +20,6 @@ table! {
 }
 
 table! {
-    address_book {
-        id -> Integer,
-        peer_id -> Text,
-        multi_address -> Text,
-    }
-}
-
-table! {
     herc20s {
         id -> Integer,
         swap_id -> Integer,

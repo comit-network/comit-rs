@@ -1,18 +1,20 @@
 pub mod halbit;
-pub mod halbit_herc20;
+mod halbit_herc20;
 pub mod hbit;
-pub mod hbit_herc20;
+mod hbit_herc20;
 pub mod herc20;
-pub mod herc20_halbit;
-pub mod herc20_hbit;
+mod herc20_halbit;
+mod herc20_hbit;
+mod info;
 mod orderbook;
-pub mod route_factory;
-pub mod routes;
+mod route_factory;
 #[macro_use]
-pub mod impl_serialize_http;
-pub mod action;
+mod impl_serialize_http;
+mod action;
+mod peers;
 mod problem;
 mod protocol;
+mod swaps;
 
 pub use self::{
     halbit::Halbit,
@@ -20,15 +22,16 @@ pub use self::{
     herc20::Herc20,
     problem::*,
     protocol::{AliceSwap, BobSwap},
+    route_factory::create as create_routes,
 };
-use crate::{actions::lnd::Chain, storage::CreatedSwap};
-use chrono::Utc;
 
 pub const PATH: &str = "swaps";
 
 use crate::{
-    asset, ethereum::ChainId, htlc_location, identity, ledger, transaction, LocalSwapId, Role,
+    actions::lnd::Chain, asset, ethereum::ChainId, htlc_location, identity, ledger,
+    storage::CreatedSwap, transaction, LocalSwapId, Role,
 };
+use chrono::Utc;
 use libp2p::{Multiaddr, PeerId};
 use serde::{
     de::Error as _, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer,

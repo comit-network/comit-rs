@@ -13,7 +13,7 @@ use async_trait::async_trait;
 
 /// Convert data from a protocol table, along with its associated state, into a
 /// Finalized.
-pub trait IntoFinalized {
+trait IntoFinalized {
     type Finalized;
     type State;
 
@@ -22,7 +22,7 @@ pub trait IntoFinalized {
 
 /// Convert data from the hbit protocol table, along with its associated state,
 /// into a FinalizedAsRedeemer object.
-pub trait IntoFinalizedAsRedeemer {
+trait IntoFinalizedAsRedeemer {
     fn into_finalized_as_redeemer(
         self,
         swap_id: LocalSwapId,
@@ -33,7 +33,7 @@ pub trait IntoFinalizedAsRedeemer {
 
 /// Convert data from the hbit protocol table, along with its associated state,
 /// into a FinalizedAsFunder object.
-pub trait IntoFinalizedAsFunder {
+trait IntoFinalizedAsFunder {
     fn into_finalized_as_funder(
         self,
         swap_id: LocalSwapId,

@@ -88,12 +88,6 @@ impl TorTokioTcpConfig {
         }
     }
 
-    /// Sets the TTL to set for opened sockets.
-    pub fn ttl(mut self, value: u32) -> Self {
-        self.ttl = Some(value);
-        self
-    }
-
     /// Sets the `TCP_NODELAY` to set for opened sockets.
     pub fn nodelay(mut self, value: bool) -> Self {
         self.nodelay = Some(value);
@@ -103,12 +97,6 @@ impl TorTokioTcpConfig {
     /// Sets the map for onion address -> local socket port number.
     pub fn onion_map(mut self, value: HashMap<Multiaddr, u16>) -> Self {
         self.onion_map = value;
-        self
-    }
-
-    /// Sets the Tor SOCKS5 proxy port number.
-    pub fn socks_port(mut self, port: u16) -> Self {
-        self.socks_port = port;
         self
     }
 }

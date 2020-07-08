@@ -1,19 +1,11 @@
-pub mod peers;
-pub mod swaps;
-
 use crate::{
     http_api::{problem, Http},
     network::{ListenAddresses, LocalPeerId},
     Facade,
 };
-use http_api_problem::HttpApiProblem;
 use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
 use warp::{Rejection, Reply};
-
-pub fn into_rejection(problem: HttpApiProblem) -> Rejection {
-    warp::reject::custom(problem)
-}
 
 /// Basic HTTP GET request on the root endpoint.
 pub async fn get_info(facade: Facade) -> Result<impl Reply, Rejection> {
@@ -39,7 +31,7 @@ pub async fn get_info_siren(facade: Facade) -> Result<impl Reply, Rejection> {
             })
             .map_err(anyhow::Error::from)
             .map_err(problem::from_anyhow)
-            .map_err(into_rejection)?
+            .map_err(warp::reject::custom)?
             .with_link(
                 siren::NavigationalLink::new(&["collection"], "/swaps").with_class_member("swaps"),
             ),

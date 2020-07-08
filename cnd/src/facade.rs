@@ -98,26 +98,6 @@ impl Facade {
         self.swarm.get_orders().await
     }
 
-    pub async fn get_makers(&self) -> Vec<PeerId> {
-        self.swarm.get_makers().await
-    }
-
-    pub async fn subscribe(
-        &self,
-        peer_id: PeerId,
-        trading_pair: TradingPair,
-    ) -> anyhow::Result<()> {
-        self.swarm.subscribe(peer_id, trading_pair).await
-    }
-
-    pub async fn unsubscribe(
-        &self,
-        peer_id: PeerId,
-        trading_pair: TradingPair,
-    ) -> anyhow::Result<()> {
-        self.swarm.unsubscribe(peer_id, trading_pair).await
-    }
-
     pub async fn dial_addr(&mut self, addr: Multiaddr) {
         let _ = self.swarm.dial_addr(addr).await;
     }

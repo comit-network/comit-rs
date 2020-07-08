@@ -10,14 +10,13 @@ use crate::{
 use anyhow::Context;
 use async_trait::async_trait;
 use bitcoin::Network;
-use diesel::{BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
-use std::sync::Arc;
-
 use comit::network::OrderId;
+use diesel::{BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
+use std::{collections::HashMap, sync::Arc};
+use tokio::sync::Mutex;
+
 pub use db::*;
 pub use seed::*;
-use std::collections::HashMap;
-use tokio::sync::Mutex;
 
 /// Load data for a particular swap from the storage layer.
 #[async_trait]
