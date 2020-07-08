@@ -61,17 +61,19 @@ impl Maker {
         &mut self,
         mid_market_rate: MidMarketRate,
     ) -> anyhow::Result<RateUpdateDecision> {
-        if let Some(previous_mid_market_rate) = self.mid_market_rate {
-            if previous_mid_market_rate == mid_market_rate {
-                return Ok(RateUpdateDecision::NoRateChange);
+        match self.mid_market_rate {
+            Some(previous_mid_market_rate) if previous_mid_market_rate == mid_market_rate => {
+                Ok(RateUpdateDecision::NoRateChange)
+            }
+            _ => {
+                self.mid_market_rate = Some(mid_market_rate);
+
+                Ok(RateUpdateDecision::RateChange {
+                    new_sell_order: self.new_sell_order()?,
+                    new_buy_order: self.new_buy_order()?,
+                })
             }
         }
-
-        self.mid_market_rate = Some(mid_market_rate);
-        Ok(RateUpdateDecision::RateChange {
-            new_sell_order: self.new_sell_order()?,
-            new_buy_order: self.new_buy_order()?,
-        })
     }
 
     pub fn invlidate_rate(&mut self) {
