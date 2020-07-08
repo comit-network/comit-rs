@@ -1,9 +1,8 @@
 use crate::bitcoin::{self, SATS_IN_BITCOIN_EXP};
 use crate::float_maths::{divide_pow_ten_trunc, multiply_pow_ten, truncate};
 use crate::Rate;
-use clarity::Address;
 use comit::asset::Erc20;
-use comit::ethereum::ChainId;
+use comit::ethereum::{Address, ChainId};
 use conquer_once::Lazy;
 use num::{pow::Pow, BigUint, ToPrimitive, Zero};
 use std::str::FromStr;

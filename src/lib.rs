@@ -14,8 +14,6 @@
 #![forbid(unsafe_code)]
 // TODO: Add no unwrap policy
 
-use conquer_once::Lazy;
-
 pub mod bitcoin;
 pub mod bitcoin_wallet;
 pub mod bitcoind;
@@ -29,22 +27,41 @@ pub mod maker;
 pub mod mid_market_rate;
 pub mod network;
 pub mod ongoing_takers;
+pub mod options;
 pub mod order;
 pub mod rate;
 pub mod seed;
 pub mod swap;
 pub mod swap_id;
 
+use anyhow::Context;
+use conquer_once::Lazy;
 pub use maker::Maker;
 pub use mid_market_rate::MidMarketRate;
 pub use ongoing_takers::PeersWithOngoingTrades;
 pub use rate::{Rate, Spread};
 pub use seed::Seed;
+use std::path::{Path, PathBuf};
 pub use swap_id::SwapId;
 
 pub static SECP: Lazy<::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All>> =
     Lazy::new(::bitcoin::secp256k1::Secp256k1::new);
 
+/// This is to store the configuration and seed files
+// Linux: /home/<user>/.config/nectar/
+// OSX: /Users/<user>/Library/Preferences/nectar/
+fn config_dir() -> Option<PathBuf> {
+    directories::ProjectDirs::from("", "", "nectar")
+        .map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
+}
+
+pub fn default_config_path() -> anyhow::Result<PathBuf> {
+    crate::config_dir()
+        .map(|dir| Path::join(&dir, "config.toml"))
+        .context("Could not generate default configuration path")
+}
+
+/// This is to store the DB
 // Linux: /home/<user>/.local/share/nectar/
 // OSX: /Users/<user>/Library/Application Support/nectar/
 pub fn data_dir() -> Option<std::path::PathBuf> {

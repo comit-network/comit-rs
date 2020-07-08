@@ -62,7 +62,7 @@ impl From<Bitcoin> for file::Bitcoin {
 pub struct Ethereum {
     pub chain_id: ChainId,
     pub node_url: Url,
-    pub dai_contract_address: clarity::Address,
+    pub dai_contract_address: comit::ethereum::Address,
 }
 
 impl From<Ethereum> for file::Ethereum {

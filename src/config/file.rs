@@ -37,7 +37,7 @@ pub struct Bitcoin {
 pub struct Ethereum {
     pub chain_id: ChainId,
     pub node_url: Option<Url>,
-    pub local_dai_contract_address: Option<clarity::Address>,
+    pub local_dai_contract_address: Option<comit::ethereum::Address>,
 }
 
 impl File {
