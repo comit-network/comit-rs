@@ -31,7 +31,7 @@ async fn init_maker(
 
     let initial_rate = get_btc_dai_mid_market_rate().await;
 
-    let spread: Spread = todo!("from config");
+    let spread: Spread = maker_settings.spread;
 
     // TODO: This match is weird. If the settings does not give you want you want then it should fail earlier.
     match (

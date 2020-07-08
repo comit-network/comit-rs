@@ -1,5 +1,6 @@
 use crate::config::{file, Bitcoin, Bitcoind, Data, Ethereum, File, Maker, MaxSell, Network};
 use crate::dai::DaiContractAddress;
+use crate::Spread;
 use anyhow::{anyhow, Context};
 use log::LevelFilter;
 use std::convert::{TryFrom, TryInto};
@@ -82,7 +83,7 @@ impl TryFrom<Option<file::Ethereum>> for Ethereum {
 impl From<Settings> for File {
     fn from(settings: Settings) -> Self {
         let Settings {
-            maker: maker,
+            maker,
             network,
             data,
             logging: Logging { level },
@@ -93,6 +94,7 @@ impl From<Settings> for File {
         File {
             maker: Some(file::Maker {
                 max_sell: Some(maker.max_sell),
+                spread: Some(maker.spread),
             }),
             network: Some(network),
             data: Some(data),
@@ -125,16 +127,24 @@ impl Settings {
 
         Ok(Self {
             maker: Maker {
-                max_sell: {
-                    match maker {
-                        Some(file::Maker {
-                            max_sell: Some(max_sell),
-                        }) => max_sell,
-                        _ => MaxSell {
-                            bitcoin: None,
-                            dai: None,
-                        },
+                max_sell: if let Some(file::Maker {
+                    max_sell: Some(ref max_sell),
+                    ..
+                }) = maker
+                {
+                    max_sell.clone()
+                } else {
+                    MaxSell {
+                        bitcoin: None,
+                        dai: None,
                     }
+                },
+                spread: match maker {
+                    Some(file::Maker {
+                        spread: Some(spread),
+                        ..
+                    }) => spread,
+                    _ => Spread::new(500).expect("500 is a valid spread value"),
                 },
             },
             network: network.unwrap_or_else(|| {

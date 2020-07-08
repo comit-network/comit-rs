@@ -5,7 +5,7 @@ mod serde_dai_amount;
 pub mod settings;
 pub mod validation;
 
-use crate::{bitcoin, dai};
+use crate::{bitcoin, dai, Spread};
 use comit::ethereum::ChainId;
 use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
@@ -96,6 +96,7 @@ impl Default for Ethereum {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Maker {
     pub max_sell: MaxSell,
+    pub spread: Spread,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]

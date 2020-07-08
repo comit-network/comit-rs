@@ -1,4 +1,5 @@
 use crate::config::{Bitcoind, Data, MaxSell, Network};
+use crate::Spread;
 use comit::ethereum::ChainId;
 use config as config_rs;
 use log::LevelFilter;
@@ -24,6 +25,7 @@ pub struct File {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Maker {
     pub max_sell: Option<MaxSell>,
+    pub spread: Option<Spread>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -139,6 +141,10 @@ mod tests {
     #[test]
     fn full_config_deserializes_correctly() {
         let contents = r#"
+[maker]
+# 1000 is 10.00% spread
+spread = 1000
+
 [maker.max_sell]
 bitcoin = 1.23456
 dai = 9876.54321
@@ -169,6 +175,7 @@ local_dai_contract_address = "0x31F42841c2db5173425b5223809CF3A38FEde360"
                     bitcoin: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
                     dai: Some(dai::Amount::from_dai_trunc(9876.54321).unwrap()),
                 }),
+                spread: Some(Spread::new(1000).unwrap()),
             }),
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
