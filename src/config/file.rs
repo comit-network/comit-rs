@@ -30,7 +30,7 @@ pub struct Maker {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Bitcoin {
-    #[serde(with = "crate::config::serde_bitcoin_network")]
+    #[serde(with = "crate::config::serde::bitcoin_network")]
     pub network: bitcoin::Network,
     pub bitcoind: Option<Bitcoind>,
 }

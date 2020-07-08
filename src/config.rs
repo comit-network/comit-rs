@@ -1,14 +1,12 @@
 pub mod file;
-mod serde_bitcoin_amount;
-mod serde_bitcoin_network;
-mod serde_dai_amount;
+mod serde;
 pub mod settings;
 pub mod validation;
 
 use crate::{bitcoin, dai, Spread};
+use ::serde::{Deserialize, Serialize};
 use comit::ethereum::ChainId;
 use libp2p::Multiaddr;
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use url::Url;
 
@@ -27,7 +25,7 @@ pub struct Network {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Bitcoin {
-    #[serde(with = "crate::config::serde_bitcoin_network")]
+    #[serde(with = "crate::config::serde::bitcoin_network")]
     pub network: ::bitcoin::Network,
     pub bitcoind: Bitcoind,
 }
@@ -102,10 +100,10 @@ pub struct Maker {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct MaxSell {
     #[serde(default)]
-    #[serde(with = "crate::config::serde_bitcoin_amount")]
+    #[serde(with = "crate::config::serde::bitcoin_amount")]
     pub bitcoin: Option<bitcoin::Amount>,
     #[serde(default)]
-    #[serde(with = "crate::config::serde_dai_amount")]
+    #[serde(with = "crate::config::serde::dai_amount")]
     pub dai: Option<dai::Amount>,
 }
 
