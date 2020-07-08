@@ -94,7 +94,7 @@ impl Default for Ethereum {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Nectar {
+pub struct Maker {
     pub max_sell: MaxSell,
 }
 

@@ -1,4 +1,4 @@
-use crate::config::{file, Bitcoin, Bitcoind, Data, Ethereum, File, MaxSell, Nectar, Network};
+use crate::config::{file, Bitcoin, Bitcoind, Data, Ethereum, File, Maker, MaxSell, Network};
 use crate::dai::DaiContractAddress;
 use anyhow::{anyhow, Context};
 use log::LevelFilter;
@@ -6,8 +6,7 @@ use std::convert::{TryFrom, TryInto};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Settings {
-    // TODO: Better name could be "maker"
-    pub nectar: Nectar,
+    pub maker: Maker,
     pub network: Network,
     pub data: Data,
     pub logging: Logging,
@@ -83,7 +82,7 @@ impl TryFrom<Option<file::Ethereum>> for Ethereum {
 impl From<Settings> for File {
     fn from(settings: Settings) -> Self {
         let Settings {
-            nectar,
+            maker: maker,
             network,
             data,
             logging: Logging { level },
@@ -92,8 +91,8 @@ impl From<Settings> for File {
         } = settings;
 
         File {
-            nectar: Some(file::Nectar {
-                max_sell: Some(nectar.max_sell),
+            maker: Some(file::Maker {
+                max_sell: Some(maker.max_sell),
             }),
             network: Some(network),
             data: Some(data),
@@ -116,7 +115,7 @@ pub struct Logging {
 impl Settings {
     pub fn from_config_file_and_defaults(config_file: File) -> anyhow::Result<Self> {
         let File {
-            nectar,
+            maker,
             network,
             data,
             logging,
@@ -125,10 +124,10 @@ impl Settings {
         } = config_file;
 
         Ok(Self {
-            nectar: Nectar {
+            maker: Maker {
                 max_sell: {
-                    match nectar {
-                        Some(file::Nectar {
+                    match maker {
+                        Some(file::Maker {
                             max_sell: Some(max_sell),
                         }) => max_sell,
                         _ => MaxSell {

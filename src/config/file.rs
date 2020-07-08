@@ -13,7 +13,7 @@ use url::Url;
 /// for filling in default values for absent configuration options.
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct File {
-    pub nectar: Option<Nectar>,
+    pub maker: Option<Maker>,
     pub network: Option<Network>,
     pub data: Option<Data>,
     pub logging: Option<Logging>,
@@ -22,7 +22,7 @@ pub struct File {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Nectar {
+pub struct Maker {
     pub max_sell: Option<MaxSell>,
 }
 
@@ -43,7 +43,7 @@ pub struct Ethereum {
 impl File {
     pub fn default() -> Self {
         File {
-            nectar: None,
+            maker: None,
             network: None,
             data: None,
             logging: None,
@@ -139,7 +139,7 @@ mod tests {
     #[test]
     fn full_config_deserializes_correctly() {
         let contents = r#"
-[nectar.max_sell]
+[maker.max_sell]
 bitcoin = 1.23456
 dai = 9876.54321
 
@@ -164,7 +164,7 @@ node_url = "http://localhost:8545/"
 local_dai_contract_address = "0x31F42841c2db5173425b5223809CF3A38FEde360"
 "#;
         let file = File {
-            nectar: Some(Nectar {
+            maker: Some(Maker {
                 max_sell: Some(MaxSell {
                     bitcoin: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
                     dai: Some(dai::Amount::from_dai_trunc(9876.54321).unwrap()),

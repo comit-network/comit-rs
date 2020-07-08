@@ -18,14 +18,14 @@ use structopt::StructOpt;
 async fn init_maker(
     bitcoin_wallet: bitcoin_wallet::Wallet,
     ethereum_wallet: ethereum_wallet::Wallet,
-    nectar_settings: config::Nectar,
+    maker_settings: config::Maker,
 ) -> Maker {
     let initial_btc_balance = bitcoin_wallet.balance().await;
 
     let initial_dai_balance = ethereum_wallet.dai_balance().await;
 
-    let btc_max_sell = nectar_settings.max_sell.bitcoin;
-    let dai_max_sell = nectar_settings.max_sell.dai;
+    let btc_max_sell = maker_settings.max_sell.bitcoin;
+    let dai_max_sell = maker_settings.max_sell.dai;
     let btc_fee_reserve: anyhow::Result<bitcoin::Amount> = todo!("from config");
     let dai_fee_reserve: anyhow::Result<dai::Amount> = todo!("from config");
 
@@ -82,7 +82,7 @@ async fn main() {
     let ethereum_wallet =
         ethereum_wallet::Wallet::new(unimplemented!(), settings.ethereum.node_url).unwrap();
 
-    let maker = init_maker(bitcoin_wallet, ethereum_wallet, settings.nectar).await;
+    let maker = init_maker(bitcoin_wallet, ethereum_wallet, settings.maker).await;
 
     let orderbook = Orderbook;
     let nectar = Nectar::new(orderbook);
