@@ -65,7 +65,7 @@ lazy_static::lazy_static! {
 
 // Linux: /home/<user>/.config/comit/
 // Windows: C:\Users\<user>\AppData\Roaming\comit\config\
-// OSX: /Users/<user>/Library/Preferences/comit/
+// OSX: /Users/<user>/Library/Application Support/comit/
 fn config_dir() -> Option<PathBuf> {
     directories::ProjectDirs::from("", "", "comit")
         .map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
