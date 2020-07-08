@@ -13,10 +13,7 @@ use std::path::PathBuf;
 use url::Url;
 
 pub use self::{file::File, settings::Settings};
-
-lazy_static::lazy_static! {
-    pub static ref LND_URL: Url = Url::parse("https://localhost:8080").expect("static string to be a valid url");
-}
+use crate::dai::DaiContractAddress;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Data {
@@ -65,13 +62,23 @@ impl From<Bitcoin> for file::Bitcoin {
 pub struct Ethereum {
     pub chain_id: ChainId,
     pub node_url: Url,
+    pub dai_contract_address: clarity::Address,
 }
 
 impl From<Ethereum> for file::Ethereum {
     fn from(ethereum: Ethereum) -> Self {
-        file::Ethereum {
-            chain_id: ethereum.chain_id,
-            node_url: Some(ethereum.node_url),
+        let dai_contract_address = DaiContractAddress::from_public_chain_id(ethereum.chain_id);
+        match dai_contract_address {
+            None => file::Ethereum {
+                chain_id: ethereum.chain_id,
+                node_url: Some(ethereum.node_url),
+                local_dai_contract_address: Some(ethereum.dai_contract_address),
+            },
+            Some(_) => file::Ethereum {
+                chain_id: ethereum.chain_id,
+                node_url: Some(ethereum.node_url),
+                local_dai_contract_address: None,
+            },
         }
     }
 }
@@ -79,8 +86,9 @@ impl From<Ethereum> for file::Ethereum {
 impl Default for Ethereum {
     fn default() -> Self {
         Self {
-            chain_id: ChainId::regtest(),
+            chain_id: ChainId::mainnet(),
             node_url: Url::parse("http://localhost:8545").expect("static string to be a valid url"),
+            dai_contract_address: DaiContractAddress::Mainnet.into(),
         }
     }
 }

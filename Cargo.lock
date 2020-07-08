@@ -1853,7 +1853,6 @@ dependencies = [
  "ethereum-types",
  "futures",
  "hex 0.4.2",
- "lazy_static",
  "libp2p",
  "log",
  "num 0.3.0",

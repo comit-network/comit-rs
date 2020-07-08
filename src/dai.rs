@@ -1,13 +1,79 @@
 use crate::bitcoin::{self, SATS_IN_BITCOIN_EXP};
 use crate::float_maths::{divide_pow_ten_trunc, multiply_pow_ten, truncate};
 use crate::Rate;
+use clarity::Address;
 use comit::asset::Erc20;
+use comit::ethereum::ChainId;
 use conquer_once::Lazy;
 use num::{pow::Pow, BigUint, ToPrimitive, Zero};
 use std::str::FromStr;
 
 pub const ATTOS_IN_DAI_EXP: u16 = 18;
 pub static DAI_DEC: Lazy<BigUint> = Lazy::new(|| BigUint::from(10u16).pow(ATTOS_IN_DAI_EXP));
+
+/// As per https://github.com/makerdao/developerguides/blob/804bb1f4d1ea737f0287cbf6480a570b888dd547/dai/dai-token/dai-token.md
+/// Dai Version 1.0.8
+static DAI_CONTRACT_ADDRESS_MAINNET: Lazy<Address> = Lazy::new(|| {
+    "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+        .parse()
+        .unwrap()
+});
+/// Dai Version 1.0.8
+static DAI_CONTRACT_ADDRESS_KOVAN: Lazy<Address> = Lazy::new(|| {
+    "0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa"
+        .parse()
+        .unwrap()
+});
+/// Dai Version 1.0.4
+static DAI_CONTRACT_ADDRESS_RINKEBY: Lazy<Address> = Lazy::new(|| {
+    "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
+        .parse()
+        .unwrap()
+});
+/// Dai Version 1.0.4
+static DAI_CONTRACT_ADDRESS_ROPSTEN: Lazy<Address> = Lazy::new(|| {
+    "0x31F42841c2db5173425b5223809CF3A38FEde360"
+        .parse()
+        .unwrap()
+});
+
+#[derive(Clone, Copy, Debug)]
+pub enum DaiContractAddress {
+    Mainnet,
+    Kovan,
+    Rinkeby,
+    Ropsten,
+    Local(Address),
+}
+
+impl From<DaiContractAddress> for Address {
+    fn from(var: DaiContractAddress) -> Self {
+        match var {
+            DaiContractAddress::Mainnet => *DAI_CONTRACT_ADDRESS_MAINNET,
+            DaiContractAddress::Kovan => *DAI_CONTRACT_ADDRESS_KOVAN,
+            DaiContractAddress::Rinkeby => *DAI_CONTRACT_ADDRESS_RINKEBY,
+            DaiContractAddress::Ropsten => *DAI_CONTRACT_ADDRESS_ROPSTEN,
+            DaiContractAddress::Local(address) => address,
+        }
+    }
+}
+
+impl DaiContractAddress {
+    pub fn local(dai_contract_address: Address) -> Self {
+        Self::Local(dai_contract_address)
+    }
+
+    pub fn from_public_chain_id(chain_id: ChainId) -> Option<Self> {
+        use DaiContractAddress::*;
+        match chain_id.into() {
+            1 => Some(Mainnet),
+            3 => Some(Ropsten),
+            4 => Some(Rinkeby),
+            42 => Some(Kovan),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Clone, Ord, PartialOrd, PartialEq, Eq, Default)]
 pub struct Amount(BigUint);

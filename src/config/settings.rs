@@ -1,6 +1,8 @@
 use crate::config::{file, Bitcoin, Bitcoind, Data, Ethereum, File, MaxSell, Nectar, Network};
-use anyhow::Context;
+use crate::dai::DaiContractAddress;
+use anyhow::{anyhow, Context};
 use log::LevelFilter;
+use std::convert::{TryFrom, TryInto};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Settings {
@@ -38,27 +40,45 @@ fn derive_url_bitcoin(bitcoin: Option<file::Bitcoin>) -> Bitcoin {
     }
 }
 
-fn derive_url_ethereum(ethereum: Option<file::Ethereum>) -> Ethereum {
-    match ethereum {
-        None => Ethereum::default(),
-        Some(ethereum) => {
-            let node_url = match ethereum.node_url {
-                None => {
-                    // default is always localhost:8545
-                    "http://localhost:8545"
-                        .parse()
-                        .expect("to be valid static string")
-                }
-                Some(node_url) => node_url,
-            };
-            Ethereum {
-                chain_id: ethereum.chain_id,
-                node_url,
+impl TryFrom<Option<file::Ethereum>> for Ethereum {
+    type Error = anyhow::Error;
+
+    fn try_from(file_ethereum: Option<file::Ethereum>) -> anyhow::Result<Ethereum> {
+        match file_ethereum {
+            None => Ok(Ethereum::default()),
+            Some(file_ethereum) => {
+                let chain_id = file_ethereum.chain_id;
+
+                let node_url = match file_ethereum.node_url {
+                    None => {
+                        // default is always localhost:8545
+                        "http://localhost:8545"
+                            .parse()
+                            .expect("to be valid static string")
+                    }
+                    Some(node_url) => node_url,
+                };
+
+                let dai_contract_address = match DaiContractAddress::from_public_chain_id(chain_id)
+                {
+                    Some(dai_contract_address) => Ok(dai_contract_address),
+                    None => match file_ethereum.local_dai_contract_address {
+                        Some(dai_contract_address) => {
+                            Ok(DaiContractAddress::local(dai_contract_address))
+                        }
+                        None => Err(anyhow!("Could not deduce Dai Contract Address")),
+                    },
+                }?;
+
+                Ok(Ethereum {
+                    chain_id,
+                    node_url,
+                    dai_contract_address: dai_contract_address.into(),
+                })
             }
         }
     }
 }
-
 impl From<Settings> for File {
     fn from(settings: Settings) -> Self {
         let Settings {
@@ -146,7 +166,7 @@ impl Settings {
                 }
             },
             bitcoin: derive_url_bitcoin(bitcoin),
-            ethereum: derive_url_ethereum(ethereum),
+            ethereum: ethereum.try_into()?,
         })
     }
 }
@@ -251,38 +271,11 @@ mod tests {
             .is_ok()
             .map(|settings| &settings.ethereum)
             .is_equal_to(Ethereum {
-                chain_id: ChainId::regtest(),
+                chain_id: ChainId::mainnet(),
                 node_url: "http://localhost:8545".parse().unwrap(),
+                dai_contract_address: "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+                    .parse()
+                    .unwrap(),
             })
-    }
-
-    #[test]
-    fn ethereum_defaults_chain_id_only() {
-        let defaults = vec![
-            (ChainId::mainnet(), "http://localhost:8545"),
-            (ChainId::ropsten(), "http://localhost:8545"),
-            (ChainId::regtest(), "http://localhost:8545"),
-        ];
-
-        for (chain_id, url) in defaults {
-            let ethereum = Some(file::Ethereum {
-                chain_id,
-                node_url: None,
-            });
-            let config_file = File {
-                ethereum,
-                ..File::default()
-            };
-
-            let settings = Settings::from_config_file_and_defaults(config_file);
-
-            assert_that(&settings)
-                .is_ok()
-                .map(|settings| &settings.ethereum)
-                .is_equal_to(Ethereum {
-                    chain_id,
-                    node_url: url.parse().unwrap(),
-                })
-        }
     }
 }

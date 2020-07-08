@@ -37,6 +37,7 @@ pub struct Bitcoin {
 pub struct Ethereum {
     pub chain_id: ChainId,
     pub node_url: Option<Url>,
+    pub local_dai_contract_address: Option<clarity::Address>,
 }
 
 impl File {
@@ -160,6 +161,7 @@ node_url = "http://localhost:18443/"
 [ethereum]
 chain_id = 1337
 node_url = "http://localhost:8545/"
+local_dai_contract_address = "0x31F42841c2db5173425b5223809CF3A38FEde360"
 "#;
         let file = File {
             nectar: Some(Nectar {
@@ -186,6 +188,11 @@ node_url = "http://localhost:8545/"
             ethereum: Some(Ethereum {
                 chain_id: ChainId::regtest(),
                 node_url: Some("http://localhost:8545".parse().unwrap()),
+                local_dai_contract_address: Some(
+                    "0x31F42841c2db5173425b5223809CF3A38FEde360"
+                        .parse()
+                        .unwrap(),
+                ),
             }),
         };
 
@@ -266,6 +273,7 @@ node_url = "http://localhost:8545/"
             r#"
             chain_id = 1337
             node_url = "http://example.com:8545"
+            local_dai_contract_address = "0x31F42841c2db5173425b5223809CF3A38FEde360"
             "#,
             r#"
             chain_id = 3
@@ -281,14 +289,21 @@ node_url = "http://localhost:8545/"
             Ethereum {
                 chain_id: ChainId::regtest(),
                 node_url: Some(Url::parse("http://example.com:8545").unwrap()),
+                local_dai_contract_address: Some(
+                    "0x31F42841c2db5173425b5223809CF3A38FEde360"
+                        .parse()
+                        .unwrap(),
+                ),
             },
             Ethereum {
                 chain_id: ChainId::ropsten(),
                 node_url: Some(Url::parse("http://example.com:8545").unwrap()),
+                local_dai_contract_address: None,
             },
             Ethereum {
                 chain_id: ChainId::mainnet(),
                 node_url: Some(Url::parse("http://example.com:8545").unwrap()),
+                local_dai_contract_address: None,
             },
         ];
 
