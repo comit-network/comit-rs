@@ -256,12 +256,12 @@ impl Predates for Block {
     }
 }
 
-#[derive(Clone, Copy, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct Topic(pub Hash);
 
 /// Event works similar to web3 filters:
 /// https://web3js.readthedocs.io/en/1.0/web3-eth-subscribe.html?highlight=filter#subscribe-logs
-#[derive(Clone, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Event {
     pub address: Address,
     pub topics: Vec<Option<Topic>>,

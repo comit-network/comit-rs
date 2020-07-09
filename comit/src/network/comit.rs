@@ -267,7 +267,6 @@ impl NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> for Comit {
 // CreatedSwapEvent pushed up to the ComitNode to let ComitNode know to save the
 // swap to the database. When a taker receives a TakeOrderResponse, the taker
 // converts the order into a swap.
-#[allow(clippy::cognitive_complexity)]
 impl NetworkBehaviourEventProcess<take_order::behaviour::BehaviourOutEvent> for Comit {
     fn inject_event(&mut self, event: take_order::behaviour::BehaviourOutEvent) {
         match event {

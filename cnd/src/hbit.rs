@@ -181,7 +181,6 @@ impl state::Update<Event> for States {
 
 /// Represents states that an Bitcoin HTLC can be in.
 #[derive(Debug, Clone, strum_macros::Display)]
-#[allow(clippy::large_enum_variant)]
 pub enum State {
     None,
     Funded {

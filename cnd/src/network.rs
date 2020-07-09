@@ -39,7 +39,6 @@ use tokio::{runtime::Handle, sync::Mutex};
 
 #[derive(Clone, derivative::Derivative)]
 #[derivative(Debug)]
-#[allow(clippy::type_complexity)]
 pub struct Swarm {
     #[derivative(Debug = "ignore")]
     inner: Arc<Mutex<libp2p::Swarm<ComitNode>>>,
@@ -47,7 +46,6 @@ pub struct Swarm {
 }
 
 impl Swarm {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         settings: &Settings,
         seed: RootSeed,
@@ -241,7 +239,6 @@ pub struct ComitNode {
 }
 
 impl ComitNode {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         seed: RootSeed,
         task_executor: Handle,

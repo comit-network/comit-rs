@@ -18,7 +18,7 @@ use libp2p::{swarm::NetworkBehaviourEventProcess, PeerId};
 use serde::de::Error;
 use std::str::FromStr;
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone, Copy)]
 pub enum OrderbookError {
     #[error("could not make order")]
     Make,
@@ -116,6 +116,7 @@ pub struct Order {
     pub absolute_expiry: u32,
 }
 
+#[derive(Debug)]
 pub struct OrderWithIdentities {
     pub id: OrderId,
     pub maker_id: Vec<u8>,
@@ -125,6 +126,7 @@ pub struct OrderWithIdentities {
     pub absolute_expiry: u32,
 }
 
+#[derive(Debug)]
 pub struct NewOrder {
     pub buy: asset::Bitcoin,
     pub sell: asset::Erc20,
@@ -155,6 +157,7 @@ impl Order {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct DefaultMakerTopic;
 
 impl DefaultMakerTopic {
@@ -199,7 +202,7 @@ impl fmt::Debug for Orderbook {
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct BehaviourOutEvent;
 
 impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
@@ -308,8 +311,7 @@ impl Orderbook {
     }
 
     pub fn get_orders(&self) -> Vec<Order> {
-        #[allow(clippy::map_clone)]
-        self.orders.values().map(|order| order.clone()).collect()
+        self.orders.values().cloned().collect()
     }
 
     pub fn get_order(&self, order_id: &OrderId) -> Option<Order> {
