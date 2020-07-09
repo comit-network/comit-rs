@@ -487,6 +487,18 @@ mod tests {
     use tracing_log::LogTracer;
     use tracing_subscriber::FmtSubscriber;
 
+    fn create_order(id: PeerId, maker_addr: Multiaddr) -> Order {
+        Order::new(id, NewOrder {
+            buy: asset::Bitcoin::from_sat(100),
+            sell: Erc20 {
+                token_contract: Default::default(),
+                quantity: Erc20Quantity::max_value(),
+            },
+            absolute_expiry: 100,
+            maker_addr,
+        })
+    }
+
     #[tokio::test]
     async fn take_order_request_confirmation() {
         let comit_level = LevelFilter::Debug;
@@ -501,16 +513,7 @@ mod tests {
         let (mut bob_swarm, bob_addr, bob_peer_id) = new_swarm(Orderbook::new);
         connect(&mut alice_swarm, &mut bob_swarm).await;
 
-        // TODO: Create helper function for this.
-        let order = Order::new(bob_peer_id.clone(), NewOrder {
-            buy: asset::Bitcoin::from_sat(100),
-            sell: Erc20 {
-                token_contract: Default::default(),
-                quantity: Erc20Quantity::max_value(),
-            },
-            absolute_expiry: 100,
-            maker_addr: bob_addr.clone(),
-        });
+        let order = create_order(bob_peer_id.clone(), bob_addr.clone());
 
         // TODO: Create helper function for this.
         let bob_refund_identity =
