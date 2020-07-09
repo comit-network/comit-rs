@@ -4,9 +4,9 @@ use anyhow::Context;
 use nectar::config::settings;
 use nectar::maker::PublishOrders;
 use nectar::{
-    bitcoin, bitcoin_wallet, config,
+    bitcoin_wallet, config,
     config::Settings,
-    dai, ethereum_wallet,
+    ethereum_wallet,
     maker::TakeRequestDecision,
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, Nectar, Orderbook},
@@ -27,32 +27,18 @@ async fn init_maker(
 
     let btc_max_sell = maker_settings.max_sell.bitcoin;
     let dai_max_sell = maker_settings.max_sell.dai;
-    let btc_fee_reserve: anyhow::Result<bitcoin::Amount> = todo!("from config");
-    let dai_fee_reserve: anyhow::Result<dai::Amount> = todo!("from config");
+    let btc_fee_reserve = maker_settings.maximum_possible_fee.bitcoin;
 
     let initial_rate = get_btc_dai_mid_market_rate().await;
 
     let spread: Spread = maker_settings.spread;
 
     // TODO: This match is weird. If the settings does not give you want you want then it should fail earlier.
-    match (
-        initial_btc_balance,
-        initial_dai_balance,
-        btc_fee_reserve,
-        dai_fee_reserve,
-        initial_rate,
-    ) {
-        (
-            Ok(initial_btc_balance),
-            Ok(initial_dai_balance),
-            Ok(btc_fee_reserve),
-            Ok(dai_fee_reserve),
-            Ok(initial_rate),
-        ) => Maker::new(
+    match (initial_btc_balance, initial_dai_balance, initial_rate) {
+        (Ok(initial_btc_balance), Ok(initial_dai_balance), Ok(initial_rate)) => Maker::new(
             initial_btc_balance,
             initial_dai_balance.into(),
             btc_fee_reserve,
-            dai_fee_reserve,
             btc_max_sell,
             dai_max_sell,
             initial_rate,
