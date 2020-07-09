@@ -1,5 +1,6 @@
 #![allow(unreachable_code, unused_variables, clippy::unit_arg)]
 
+use nectar::maker::PublishOrders;
 use nectar::{
     bitcoin, bitcoin_wallet, dai, ethereum_wallet,
     maker::TakeRequestDecision,
@@ -60,13 +61,14 @@ async fn init_maker(
 
 #[tokio::main]
 async fn main() {
-    // TODO: from config or hardcoded
-    let dai_contract_addr: comit::ethereum::Address = unimplemented!();
-
-    // TODO: Proper wallet initialisation from config
-    let bitcoin_wallet =
-        bitcoin_wallet::Wallet::new(unimplemented!(), unimplemented!(), unimplemented!()).unwrap();
-    let ethereum_wallet = ethereum_wallet::Wallet::new(unimplemented!(), unimplemented!()).unwrap();
+    let bitcoin_wallet = bitcoin_wallet::Wallet::new(
+        todo!("from config"),
+        todo!("from config"),
+        todo!("from config"),
+    )
+    .unwrap();
+    let ethereum_wallet =
+        ethereum_wallet::Wallet::new(todo!("from config"), todo!("from config")).unwrap();
 
     let maker = init_maker(bitcoin_wallet, ethereum_wallet).await;
 
@@ -90,19 +92,38 @@ async fn main() {
     loop {
         let rate = get_btc_dai_mid_market_rate().await;
         match rate {
-            Ok(new_rate) => maker.update_rate(unimplemented!()),
-            Err(e) => maker.track_failed_rate(e),
+            Ok(new_rate) => {
+                let reaction = maker.update_rate(new_rate); // maker should record timestamp of this
+                match reaction {
+                    Ok(Some(PublishOrders {
+                        new_sell_order,
+                        new_buy_order,
+                    })) => {
+                        swarm.orderbook.publish(new_sell_order.into());
+                        swarm.orderbook.publish(new_buy_order.into());
+                    }
+                    Ok(None) => (),
+                    Err(e) => tracing::warn!("Rate update yielded error: {}", e),
+                }
+            }
+            Err(e) => {
+                maker.invalidate_rate();
+                tracing::error!(
+                    "Unable to fetch latest rate! Fetching rate yielded error: {}",
+                    e
+                );
+            }
         }
 
         let bitcoin_balance = bitcoin_wallet.balance().await;
         match bitcoin_balance {
             Ok(new_balance) => maker.update_bitcoin_balance(new_balance),
-            Err(e) => maker.track_failed_balance_update(e),
+            Err(e) => unimplemented!(),
         }
         let dai_balance = ethereum_wallet.dai_balance().await;
         match dai_balance {
             Ok(new_balance) => maker.update_dai_balance(new_balance.into()),
-            Err(e) => maker.track_failed_balance_update(e),
+            Err(e) => unimplemented!(),
         }
 
         // if nothing happens on the network for 15 seconds, loop
@@ -129,11 +150,14 @@ async fn main() {
                                 swarm.orderbook.take(order);
                                 orderbook.publish(next_order.into());
                             }
-                            Ok(TakeRequestDecision::RateSucks)
+                            Ok(TakeRequestDecision::RateNotProfitable)
                             | Ok(TakeRequestDecision::InsufficientFunds)
-                            | Ok(TakeRequestDecision::CannotTradeWithTaker)
-                            | Err(_) => {
+                            | Ok(TakeRequestDecision::CannotTradeWithTaker) => {
                                 swarm.orderbook.ignore(order);
+                            }
+                            Err(e) => {
+                                swarm.orderbook.ignore(order);
+                                tracing::error!("Processing taken order yielded error: {}", e)
                             }
                         }
                     }

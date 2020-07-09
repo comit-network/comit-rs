@@ -1,12 +1,5 @@
 use crate::Rate;
-use chrono::{DateTime, Utc};
 use std::convert::TryInto;
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct MidMarketRate {
-    pub value: Rate,
-    pub timestamp: DateTime<Utc>,
-}
 
 /// Get mid-market rate for the trading pair BTC-DAI.
 ///
@@ -16,13 +9,25 @@ pub async fn get_btc_dai_mid_market_rate() -> anyhow::Result<MidMarketRate> {
     kraken::get_btc_dai_mid_market_rate().await
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct MidMarketRate(Rate);
+
+impl MidMarketRate {
+    pub fn new(rate: Rate) -> Self {
+        Self { 0: rate }
+    }
+}
+
 #[cfg(test)]
 impl Default for MidMarketRate {
     fn default() -> Self {
-        Self {
-            value: Rate::default(),
-            timestamp: Utc::now(),
-        }
+        Self { 0: Rate::default() }
+    }
+}
+
+impl From<MidMarketRate> for Rate {
+    fn from(rate: MidMarketRate) -> Self {
+        rate.0
     }
 }
 
@@ -62,10 +67,7 @@ mod kraken {
             let value = (bid + ask) / 2f64;
             let value = Rate::try_from(value).unwrap();
 
-            Ok(Self {
-                value,
-                timestamp: Utc::now(),
-            })
+            Ok(Self { 0: value })
         }
     }
 
