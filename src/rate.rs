@@ -2,6 +2,7 @@ use crate::order::Position;
 use crate::{bitcoin, dai, float_maths::divide_pow_ten_trunc, order::BtcDaiOrder};
 use anyhow::Context;
 use num::{BigUint, Integer, ToPrimitive};
+use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::iter::FromIterator;
 use std::str::FromStr;
@@ -91,7 +92,7 @@ impl TryFrom<BtcDaiOrder> for Rate {
 
 /// Spread: percentage to be added on top of a rate or amount with
 /// a maximum precision of 2 decimals
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Spread(u16);
 
 impl Spread {

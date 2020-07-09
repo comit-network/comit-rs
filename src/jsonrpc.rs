@@ -6,11 +6,11 @@ use std::fmt::Debug;
 #[derive(Clone, Debug)]
 pub struct Client {
     inner: reqwest::Client,
-    url: reqwest::Url,
+    url: url::Url,
 }
 
 impl Client {
-    pub fn new(base_url: reqwest::Url) -> Self {
+    pub fn new(base_url: url::Url) -> Self {
         Self {
             inner: reqwest::Client::new(),
             url: base_url,

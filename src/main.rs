@@ -1,39 +1,45 @@
 #![allow(unreachable_code, unused_variables, clippy::unit_arg)]
 
+use anyhow::Context;
+use nectar::config::settings;
 use nectar::maker::PublishOrders;
 use nectar::{
-    bitcoin, bitcoin_wallet, dai, ethereum_wallet,
+    bitcoin, bitcoin_wallet, config,
+    config::Settings,
+    dai, ethereum_wallet,
     maker::TakeRequestDecision,
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, Nectar, Orderbook},
+    options::{self, Options},
     Maker, Spread,
 };
 use std::time::Duration;
+use structopt::StructOpt;
 
 async fn init_maker(
     bitcoin_wallet: bitcoin_wallet::Wallet,
     ethereum_wallet: ethereum_wallet::Wallet,
+    maker_settings: settings::Maker,
 ) -> Maker {
     let initial_btc_balance = bitcoin_wallet.balance().await;
 
     let initial_dai_balance = ethereum_wallet.dai_balance().await;
 
-    let btc_max_sell: anyhow::Result<bitcoin::Amount> = todo!("from config");
-    let dai_max_sell: anyhow::Result<dai::Amount> = todo!("from config");
+    let btc_max_sell = maker_settings.max_sell.bitcoin;
+    let dai_max_sell = maker_settings.max_sell.dai;
     let btc_fee_reserve: anyhow::Result<bitcoin::Amount> = todo!("from config");
     let dai_fee_reserve: anyhow::Result<dai::Amount> = todo!("from config");
 
     let initial_rate = get_btc_dai_mid_market_rate().await;
 
-    let spread: Spread = todo!("from config");
+    let spread: Spread = maker_settings.spread;
 
+    // TODO: This match is weird. If the settings does not give you want you want then it should fail earlier.
     match (
         initial_btc_balance,
         initial_dai_balance,
         btc_fee_reserve,
         dai_fee_reserve,
-        btc_max_sell,
-        dai_max_sell,
         initial_rate,
     ) {
         (
@@ -41,8 +47,6 @@ async fn init_maker(
             Ok(initial_dai_balance),
             Ok(btc_fee_reserve),
             Ok(dai_fee_reserve),
-            Ok(btc_max_sell),
-            Ok(dai_max_sell),
             Ok(initial_rate),
         ) => Maker::new(
             initial_btc_balance,
@@ -61,16 +65,25 @@ async fn init_maker(
 
 #[tokio::main]
 async fn main() {
+    let options = options::Options::from_args();
+
+    let settings = read_config(&options)
+        .and_then(Settings::from_config_file_and_defaults)
+        .expect("Could not initialize configuration");
+
+    let dai_contract_addr: comit::ethereum::Address = settings.ethereum.dai_contract_address;
+
+    // TODO: Proper wallet initialisation from config
     let bitcoin_wallet = bitcoin_wallet::Wallet::new(
-        todo!("from config"),
-        todo!("from config"),
-        todo!("from config"),
+        unimplemented!(),
+        settings.bitcoin.bitcoind.node_url,
+        settings.bitcoin.network,
     )
     .unwrap();
     let ethereum_wallet =
-        ethereum_wallet::Wallet::new(todo!("from config"), todo!("from config")).unwrap();
+        ethereum_wallet::Wallet::new(unimplemented!(), settings.ethereum.node_url).unwrap();
 
-    let maker = init_maker(bitcoin_wallet, ethereum_wallet).await;
+    let maker = init_maker(bitcoin_wallet, ethereum_wallet, settings.maker).await;
 
     let orderbook = Orderbook;
     let nectar = Nectar::new(orderbook);
@@ -170,4 +183,29 @@ async fn main() {
             _ => (),
         }
     }
+}
+
+fn read_config(options: &Options) -> anyhow::Result<config::File> {
+    // if the user specifies a config path, use it
+    if let Some(path) = &options.config_file {
+        eprintln!("Using config file {}", path.display());
+
+        return config::File::read(&path)
+            .with_context(|| format!("failed to read config file {}", path.display()));
+    }
+
+    // try to load default config
+    let default_path = nectar::default_config_path()?;
+
+    if !default_path.exists() {
+        return Ok(config::File::default());
+    }
+
+    eprintln!(
+        "Using config file at default path: {}",
+        default_path.display()
+    );
+
+    config::File::read(&default_path)
+        .with_context(|| format!("failed to read config file {}", default_path.display()))
 }

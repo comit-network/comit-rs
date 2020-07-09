@@ -1,7 +1,7 @@
 use crate::bitcoind;
-use reqwest::Url;
 use std::time::Duration;
 use testcontainers::{clients, images::coblox_bitcoincore::BitcoinCore, Container, Docker};
+use url::Url;
 
 #[derive(Debug)]
 pub struct Blockchain<'c> {

@@ -2,11 +2,77 @@ use crate::bitcoin::{self, SATS_IN_BITCOIN_EXP};
 use crate::float_maths::{divide_pow_ten_trunc, multiply_pow_ten, truncate};
 use crate::Rate;
 use comit::asset::Erc20;
+use comit::ethereum::{Address, ChainId};
 use conquer_once::Lazy;
 use num::{pow::Pow, BigUint, ToPrimitive, Zero};
+use std::str::FromStr;
 
 pub const ATTOS_IN_DAI_EXP: u16 = 18;
 pub static DAI_DEC: Lazy<BigUint> = Lazy::new(|| BigUint::from(10u16).pow(ATTOS_IN_DAI_EXP));
+
+/// As per https://github.com/makerdao/developerguides/blob/804bb1f4d1ea737f0287cbf6480a570b888dd547/dai/dai-token/dai-token.md
+/// Dai Version 1.0.8
+static DAI_CONTRACT_ADDRESS_MAINNET: Lazy<Address> = Lazy::new(|| {
+    "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+        .parse()
+        .unwrap()
+});
+/// Dai Version 1.0.8
+static DAI_CONTRACT_ADDRESS_KOVAN: Lazy<Address> = Lazy::new(|| {
+    "0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa"
+        .parse()
+        .unwrap()
+});
+/// Dai Version 1.0.4
+static DAI_CONTRACT_ADDRESS_RINKEBY: Lazy<Address> = Lazy::new(|| {
+    "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
+        .parse()
+        .unwrap()
+});
+/// Dai Version 1.0.4
+static DAI_CONTRACT_ADDRESS_ROPSTEN: Lazy<Address> = Lazy::new(|| {
+    "0x31F42841c2db5173425b5223809CF3A38FEde360"
+        .parse()
+        .unwrap()
+});
+
+#[derive(Clone, Copy, Debug)]
+pub enum DaiContractAddress {
+    Mainnet,
+    Kovan,
+    Rinkeby,
+    Ropsten,
+    Local(Address),
+}
+
+impl From<DaiContractAddress> for Address {
+    fn from(var: DaiContractAddress) -> Self {
+        match var {
+            DaiContractAddress::Mainnet => *DAI_CONTRACT_ADDRESS_MAINNET,
+            DaiContractAddress::Kovan => *DAI_CONTRACT_ADDRESS_KOVAN,
+            DaiContractAddress::Rinkeby => *DAI_CONTRACT_ADDRESS_RINKEBY,
+            DaiContractAddress::Ropsten => *DAI_CONTRACT_ADDRESS_ROPSTEN,
+            DaiContractAddress::Local(address) => address,
+        }
+    }
+}
+
+impl DaiContractAddress {
+    pub fn local(dai_contract_address: Address) -> Self {
+        Self::Local(dai_contract_address)
+    }
+
+    pub fn from_public_chain_id(chain_id: ChainId) -> Option<Self> {
+        use DaiContractAddress::*;
+        match chain_id.into() {
+            1 => Some(Mainnet),
+            3 => Some(Ropsten),
+            4 => Some(Rinkeby),
+            42 => Some(Kovan),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Clone, Ord, PartialOrd, PartialEq, Eq, Default)]
 pub struct Amount(BigUint);
@@ -39,6 +105,36 @@ impl Amount {
         let u_int_value = multiply_pow_ten(dai, ATTOS_IN_DAI_EXP).expect("It is truncated");
 
         Ok(Amount(u_int_value))
+    }
+
+    /// Rounds to 2 digits after decimal point
+    pub fn as_dai_rounded(&self) -> f64 {
+        let mut str = self.0.to_string();
+        let precision: usize = 2;
+
+        let truncate: usize = ATTOS_IN_DAI_EXP as usize - precision;
+        if str.len() > truncate {
+            str.truncate(str.len() - truncate);
+            let str = match str.len() {
+                1 => {
+                    let mut prefix = String::from("0.0");
+                    prefix.push_str(&str);
+                    prefix
+                }
+                2 => {
+                    let mut prefix = String::from("0.");
+                    prefix.push_str(&str);
+                    prefix
+                }
+                _ => {
+                    str.insert(str.len() - precision, '.');
+                    str
+                }
+            };
+            f64::from_str(&str).expect("float")
+        } else {
+            0.0
+        }
     }
 
     pub fn from_atto(atto: BigUint) -> Self {
@@ -157,6 +253,80 @@ mod tests {
         // Result is 12,340,123.4 satoshis
         let btc = bitcoin::Amount::from_sat(12_340_123);
         assert_eq!(res, btc);
+    }
+
+    #[test]
+    fn given_amount_has_2_digits_after_decimal_return_same_amount() {
+        let dai = Amount::from_dai_trunc(1.23).unwrap();
+        let dai = dai.as_dai_rounded();
+
+        assert!(dai - 1.23 < 1e-10)
+    }
+
+    #[test]
+    fn given_amount_has_3_digits_after_decimal_return_rounded_down_amount() {
+        let dai = Amount::from_dai_trunc(1.234).unwrap();
+        let dai = dai.as_dai_rounded();
+
+        assert!(dai - 1.23 < 1e-10)
+    }
+
+    #[test]
+    fn given_amount_has_3_digits_after_decimal_return_rounded_up_amount() {
+        let dai = Amount::from_dai_trunc(1.235).unwrap();
+        let dai = dai.as_dai_rounded();
+
+        assert!(dai - 1.24 < 1e-10)
+    }
+
+    #[test]
+    fn given_amount_is_less_than_milli_dai_return_0() {
+        let dai = Amount::from_dai_trunc(0.001).unwrap();
+        let dai = dai.as_dai_rounded();
+
+        assert!(dai - 0.0 < 1e-10)
+    }
+
+    #[test]
+    fn given_amount_is_centi_dai_return_centi_dai() {
+        let dai = Amount::from_dai_trunc(0.1).unwrap();
+        let dai = dai.as_dai_rounded();
+
+        assert!(dai - 0.1 < 1e-10)
+    }
+
+    #[test]
+    fn given_amount_is_deci_dai_return_deci_dai() {
+        let dai = Amount::from_dai_trunc(0.01).unwrap();
+        let dai = dai.as_dai_rounded();
+
+        assert!(dai - 0.01 < 1e-10)
+    }
+
+    proptest! {
+        #[test]
+        fn as_dai_rounded_return_2_digits_or_less_after_decimal(s in "[0-9]+") {
+            let uint = BigUint::from_str(&s).unwrap();
+            let dai = Amount::from_atto(uint);
+            let dai = dai.as_dai_rounded();
+            let dai = dai.to_string();
+            let decimal_index = dai.find('.');
+
+            // If there is no decimal point then the test pass
+            if let Some(decimal_index) = decimal_index {
+                // Decimal needs to be within 2 digit of the last char (len - 1)
+                assert!(decimal_index >= dai.len() - 1 - 2)
+            }
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn as_dai_rounded_doesnt_panic(s in "[0-9]+") {
+            let uint = BigUint::from_str(&s).unwrap();
+            let dai = Amount::from_atto(uint);
+            let _ = dai.as_dai_rounded();
+        }
     }
 
     proptest! {

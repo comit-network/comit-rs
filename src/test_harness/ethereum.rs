@@ -7,13 +7,13 @@ use comit::{
     ethereum::{Address, ChainId},
 };
 use num256::Uint256;
-use reqwest::Url;
 use std::str::FromStr;
 use testcontainers::{
     clients,
     images::generic::{GenericImage, Stream, WaitFor},
     Container, Docker, Image,
 };
+use url::Url;
 
 pub const TOKEN_CONTRACT: &str = include_str!("./erc20_token/contract.hex");
 pub const GETH_HOST_KEYSTORE_DIR: &str = "./.geth_datadir";

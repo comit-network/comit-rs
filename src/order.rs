@@ -21,11 +21,14 @@ impl BtcDaiOrder {
         base_balance: bitcoin::Amount,
         base_fees: bitcoin::Amount,
         base_reserved_funds: bitcoin::Amount,
-        max_amount: bitcoin::Amount,
+        max_amount: Option<bitcoin::Amount>,
         mid_market_rate: Rate,
         spread: Spread,
     ) -> anyhow::Result<BtcDaiOrder> {
-        let base = min(base_balance - base_reserved_funds, max_amount) - base_fees;
+        let base = match max_amount {
+            Some(max_amount) => min(base_balance - base_reserved_funds, max_amount) - base_fees,
+            None => base_balance - base_reserved_funds - base_fees,
+        };
 
         let rate = spread.apply(mid_market_rate, Position::Sell)?;
         let quote = base.worth_in(rate);
@@ -41,11 +44,14 @@ impl BtcDaiOrder {
         quote_balance: dai::Amount,
         quote_fees: dai::Amount,
         quote_reserved_funds: dai::Amount,
-        max_amount: dai::Amount,
+        max_amount: Option<dai::Amount>,
         mid_market_rate: Rate,
         spread: Spread,
     ) -> anyhow::Result<BtcDaiOrder> {
-        let quote = min(quote_balance - quote_reserved_funds, max_amount) - quote_fees;
+        let quote = match max_amount {
+            Some(max_amount) => min(quote_balance - quote_reserved_funds, max_amount) - quote_fees,
+            None => quote_balance - quote_reserved_funds - quote_fees,
+        };
 
         let rate = spread.apply(mid_market_rate, Position::Buy)?;
         let base = quote.worth_in(rate)?;
@@ -105,7 +111,7 @@ mod tests {
             btc(10.0),
             btc(0.0),
             btc(0.0),
-            btc(100.0),
+            Some(btc(100.0)),
             rate,
             Spread::new(0).unwrap(),
         )
@@ -117,7 +123,7 @@ mod tests {
             dai(10.0),
             dai(0.0),
             dai(0.0),
-            dai(100.0),
+            Some(dai(100.0)),
             rate,
             Spread::new(0).unwrap(),
         )
@@ -133,7 +139,7 @@ mod tests {
             btc(10.0),
             btc(0.0),
             btc(2.0),
-            btc(100.0),
+            Some(btc(100.0)),
             rate,
             Spread::new(0).unwrap(),
         )
@@ -145,7 +151,7 @@ mod tests {
             dai(10.0),
             dai(0.0),
             dai(2.0),
-            dai(100.0),
+            None,
             rate,
             Spread::new(0).unwrap(),
         )
@@ -161,7 +167,7 @@ mod tests {
             btc(10.0),
             btc(0.0),
             btc(2.0),
-            btc(2.0),
+            Some(btc(2.0)),
             rate,
             Spread::new(0).unwrap(),
         )
@@ -173,7 +179,7 @@ mod tests {
             dai(10.0),
             dai(0.0),
             dai(2.0),
-            dai(2.0),
+            Some(dai(2.0)),
             rate,
             Spread::new(0).unwrap(),
         )
@@ -189,7 +195,7 @@ mod tests {
             btc(10.0),
             btc(1.0),
             btc(2.0),
-            btc(2.0),
+            Some(btc(2.0)),
             rate,
             Spread::new(0).unwrap(),
         )
@@ -201,7 +207,7 @@ mod tests {
             dai(10.0),
             dai(1.0),
             dai(2.0),
-            dai(2.0),
+            Some(dai(2.0)),
             rate,
             Spread::new(0).unwrap(),
         )
@@ -216,8 +222,7 @@ mod tests {
 
         let rate = Rate::try_from(0.1).unwrap();
         let order =
-            BtcDaiOrder::new_sell(btc(1051.0), btc(1.0), btc(50.0), btc(9999.0), rate, spread)
-                .unwrap();
+            BtcDaiOrder::new_sell(btc(1051.0), btc(1.0), btc(50.0), None, rate, spread).unwrap();
 
         // 1 Sell => 0.1 Buy
         // 1000 Sell => 100 Buy
@@ -226,16 +231,14 @@ mod tests {
 
         let rate = Rate::try_from(10.0).unwrap();
         let order =
-            BtcDaiOrder::new_sell(btc(1051.0), btc(1.0), btc(50.0), btc(9999.0), rate, spread)
-                .unwrap();
+            BtcDaiOrder::new_sell(btc(1051.0), btc(1.0), btc(50.0), None, rate, spread).unwrap();
 
         assert_eq!(order.base, btc(1000.0));
         assert_eq!(order.quote, dai(10_000.0));
 
         let rate = Rate::try_from(0.1).unwrap();
         let order =
-            BtcDaiOrder::new_buy(dai(1051.0), dai(1.0), dai(50.0), dai(9999.0), rate, spread)
-                .unwrap();
+            BtcDaiOrder::new_buy(dai(1051.0), dai(1.0), dai(50.0), None, rate, spread).unwrap();
 
         // 1 Sell => 0.1 Buy
         // 1000 Sell => 100 Buy
@@ -244,8 +247,7 @@ mod tests {
 
         let rate = Rate::try_from(10.0).unwrap();
         let order =
-            BtcDaiOrder::new_buy(dai(1051.0), dai(1.0), dai(50.0), dai(9999.0), rate, spread)
-                .unwrap();
+            BtcDaiOrder::new_buy(dai(1051.0), dai(1.0), dai(50.0), None, rate, spread).unwrap();
 
         assert_eq!(order.base, btc(10_000.0));
         assert_eq!(order.quote, dai(1000.0));
@@ -257,15 +259,13 @@ mod tests {
         let spread = Spread::new(300).unwrap();
 
         let order =
-            BtcDaiOrder::new_sell(btc(1051.0), btc(1.0), btc(50.0), btc(9999.0), rate, spread)
-                .unwrap();
+            BtcDaiOrder::new_sell(btc(1051.0), btc(1.0), btc(50.0), None, rate, spread).unwrap();
 
         assert_eq!(order.base, btc(1000.0));
         assert_eq!(order.quote, dai(103.0));
 
         let order =
-            BtcDaiOrder::new_buy(dai(1051.0), dai(1.0), dai(50.0), dai(9999.0), rate, spread)
-                .unwrap();
+            BtcDaiOrder::new_buy(dai(1051.0), dai(1.0), dai(50.0), None, rate, spread).unwrap();
 
         assert_eq!(order.base, btc(97.0));
         assert_eq!(order.quote, dai(1000.0));
