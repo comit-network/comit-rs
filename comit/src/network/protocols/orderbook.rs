@@ -499,6 +499,15 @@ mod tests {
         })
     }
 
+    fn refund_redeem_identities() -> (crate::bitcoin::Address, identity::Ethereum) {
+        let refund = crate::bitcoin::Address::from_str("2MufZ6LLCqYTvZnCwzfAjSKn26Xcnr19PBE")
+            .expect("failed to parse bitcoin address");
+
+        let redeem = identity::Ethereum::random();
+
+        (refund, redeem)
+    }
+
     #[tokio::test]
     async fn take_order_request_confirmation() {
         let comit_level = LevelFilter::Debug;
@@ -514,12 +523,7 @@ mod tests {
         connect(&mut alice_swarm, &mut bob_swarm).await;
 
         let order = create_order(bob_peer_id.clone(), bob_addr.clone());
-
-        // TODO: Create helper function for this.
-        let bob_refund_identity =
-            crate::bitcoin::Address::from_str("2MufZ6LLCqYTvZnCwzfAjSKn26Xcnr19PBE")
-                .expect("failed to parse bitcoin address");
-        let bob_redeem_identity = identity::Ethereum::random();
+        let (bob_refund_identity, bob_redeem_identity) = refund_redeem_identities();
 
         // act
 
