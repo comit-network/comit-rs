@@ -1,10 +1,10 @@
 //! Execute a swap.
 
+mod action;
 mod alice;
 mod bitcoin;
 mod bob;
 mod db;
-mod do_action;
 mod ethereum;
 mod hbit;
 mod herc20;
@@ -12,11 +12,11 @@ mod herc20;
 use comit::Secret;
 use futures::future::{self, Either};
 
-pub use alice::WatchOnlyAlice;
-pub use bob::WalletBob;
-pub use do_action::{
+pub use action::{
     AlphaLedgerTime, BetaExpiry, BetaLedgerTime, DoItOnce, Execute, Next, TryDoItOnce,
 };
+pub use alice::WatchOnlyAlice;
+pub use bob::WalletBob;
 
 /// Execute a Hbit<->Herc20 swap.
 pub async fn hbit_herc20<A, B>(alice: A, bob: B) -> anyhow::Result<()>
