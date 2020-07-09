@@ -347,9 +347,7 @@ impl Order {
             absolute_expiry: new_order.absolute_expiry,
         }
     }
-    pub fn order_id(&self) -> OrderId {
-        self.id
-    }
+
     pub fn topic(&self, peer: &PeerId) -> Topic {
         TradingPair {
             buy: SwapType::Hbit,
@@ -402,7 +400,7 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
             let decoded: Message = bincode::deserialize(&message.data[..]).unwrap();
             match decoded {
                 Message::CreateOrder(order) => {
-                    self.orders.insert(order.order_id(), order);
+                    self.orders.insert(order.id, order);
                 }
                 Message::DeleteOrder(order_id) => {
                     self.orders.remove(&order_id);
