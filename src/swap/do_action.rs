@@ -1,5 +1,10 @@
 use crate::{swap::db, SwapId};
 use comit::Timestamp;
+use futures::{
+    future::{self, Either},
+    pin_mut,
+};
+use std::time::Duration;
 
 #[async_trait::async_trait]
 pub trait TryDoItOnce<E>
@@ -16,14 +21,27 @@ where
             return Ok(Next::Continue(event));
         }
 
-        if self.should_abort().await? {
-            return Ok(Next::Abort);
+        let should_abort = async {
+            loop {
+                if self.should_abort().await.unwrap_or(true) {
+                    return;
+                }
+
+                tokio::time::delay_for(Duration::from_secs(1)).await;
+            }
+        };
+        let execute_future = Execute::<E>::execute(self, execution_args);
+
+        pin_mut!(execute_future);
+        pin_mut!(should_abort);
+
+        match future::select(execute_future, should_abort).await {
+            Either::Left((Ok(event), _)) => {
+                self.remember(event.clone()).await?;
+                Ok(Next::Continue(event))
+            }
+            _ => Ok(Next::Abort),
         }
-
-        let event = Execute::<E>::execute(self, execution_args).await?;
-        self.remember(event.clone()).await?;
-
-        Ok(Next::Continue(event))
     }
 }
 
