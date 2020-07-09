@@ -1,6 +1,6 @@
 #![allow(unreachable_code, unused_variables, clippy::unit_arg)]
 
-use nectar::maker::RateUpdateDecision;
+use nectar::maker::PublishOrders;
 use nectar::{
     bitcoin, bitcoin_wallet, dai, ethereum_wallet,
     maker::TakeRequestDecision,
@@ -95,14 +95,14 @@ async fn main() {
             Ok(new_rate) => {
                 let reaction = maker.update_rate(new_rate); // maker should record timestamp of this
                 match reaction {
-                    Ok(RateUpdateDecision::RateChange {
+                    Ok(Some(PublishOrders {
                         new_sell_order,
                         new_buy_order,
-                    }) => {
+                    })) => {
                         swarm.orderbook.publish(new_sell_order.into());
                         swarm.orderbook.publish(new_buy_order.into());
                     }
-                    Ok(RateUpdateDecision::NoRateChange) => (),
+                    Ok(None) => (),
                     Err(e) => tracing::warn!("Rate update yielded error: {}", e),
                 }
             }

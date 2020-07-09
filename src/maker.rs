@@ -60,18 +60,18 @@ impl Maker {
     pub fn update_rate(
         &mut self,
         mid_market_rate: MidMarketRate,
-    ) -> anyhow::Result<RateUpdateDecision> {
+    ) -> anyhow::Result<Option<PublishOrders>> {
         match self.mid_market_rate {
             Some(previous_mid_market_rate) if previous_mid_market_rate == mid_market_rate => {
-                Ok(RateUpdateDecision::NoRateChange)
+                Ok(None)
             }
             _ => {
                 self.mid_market_rate = Some(mid_market_rate);
 
-                Ok(RateUpdateDecision::RateChange {
+                Ok(Some(PublishOrders {
                     new_sell_order: self.new_sell_order()?,
                     new_buy_order: self.new_buy_order()?,
-                })
+                }))
             }
         }
     }
@@ -200,12 +200,9 @@ pub enum TakeRequestDecision {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum RateUpdateDecision {
-    RateChange {
-        new_sell_order: BtcDaiOrder,
-        new_buy_order: BtcDaiOrder,
-    },
-    NoRateChange,
+pub struct PublishOrders {
+    pub new_sell_order: BtcDaiOrder,
+    pub new_buy_order: BtcDaiOrder,
 }
 
 #[derive(Debug, Copy, Clone, thiserror::Error)]
@@ -445,16 +442,17 @@ mod tests {
 
     #[test]
     fn no_rate_change_if_rate_update_with_same_value() {
+        let init_rate = Some(MidMarketRate::new(Rate::try_from(1.0).unwrap()));
         let mut maker = Maker {
-            mid_market_rate: Some(MidMarketRate::new(Rate::try_from(1.0).unwrap())),
+            mid_market_rate: init_rate,
             ..Default::default()
         };
 
         let new_mid_market_rate = MidMarketRate::new(Rate::try_from(1.0).unwrap());
 
         let reaction = maker.update_rate(new_mid_market_rate).unwrap();
-        assert_eq!(reaction, RateUpdateDecision::NoRateChange);
-        assert_eq!(maker.mid_market_rate, Some(new_mid_market_rate))
+        assert!(reaction.is_none());
+        assert_eq!(maker.mid_market_rate, init_rate)
     }
 
     #[test]
@@ -467,7 +465,7 @@ mod tests {
         let new_mid_market_rate = MidMarketRate::new(Rate::try_from(2.0).unwrap());
 
         let reaction = maker.update_rate(new_mid_market_rate).unwrap();
-        assert!(matches!(reaction, RateUpdateDecision::RateChange {..}));
+        assert!(reaction.is_some());
         assert_eq!(maker.mid_market_rate, Some(new_mid_market_rate))
     }
 }
