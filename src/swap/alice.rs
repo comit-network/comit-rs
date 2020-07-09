@@ -5,7 +5,7 @@
 //! watches the two blockchains involved in the swap.
 
 use crate::{
-    swap::{db, ethereum, hbit, herc20, BetaExpiry, BetaLedgerTime, Execute},
+    swap::{bitcoin, db, ethereum, hbit, herc20, BetaExpiry, BetaLedgerTime, Execute},
     SwapId,
 };
 use chrono::NaiveDateTime;

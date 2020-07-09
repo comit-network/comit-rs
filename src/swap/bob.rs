@@ -218,7 +218,7 @@ pub mod watch_only_actor {
     //! Nectar always executes a swap as Bob.
 
     use super::*;
-    use crate::swap::ethereum;
+    use crate::swap::{bitcoin, ethereum};
     use comit::btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock};
     use std::sync::Arc;
 
