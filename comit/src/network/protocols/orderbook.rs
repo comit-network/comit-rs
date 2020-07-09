@@ -499,9 +499,6 @@ mod tests {
 
         let (mut alice_swarm, _, _alice_peer_id) = new_swarm(Orderbook::new);
         let (mut bob_swarm, bob_addr, bob_peer_id) = new_swarm(Orderbook::new);
-
-        // libp2p::Swarm::dial_addr(&mut alice_swarm, bob_addr.clone());
-
         connect(&mut alice_swarm, &mut bob_swarm).await;
 
         // TODO: Create helper function for this.
