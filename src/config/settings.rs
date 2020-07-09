@@ -172,16 +172,7 @@ impl From<Settings> for File {
         } = settings;
 
         File {
-            maker: Some(file::Maker {
-                max_sell: match maker.max_sell {
-                    MaxSell {
-                        bitcoin: None,
-                        dai: None,
-                    } => None,
-                    max_sell => Some(max_sell),
-                },
-                spread: Some(maker.spread),
-            }),
+            maker: Some(maker.into()),
             network: Some(network),
             data: Some(data),
             logging: Some(file::Logging {
@@ -189,6 +180,21 @@ impl From<Settings> for File {
             }),
             bitcoin: Some(bitcoin.into()),
             ethereum: Some(ethereum.into()),
+        }
+    }
+}
+
+impl From<Maker> for file::Maker {
+    fn from(maker: Maker) -> file::Maker {
+        file::Maker {
+            max_sell: match maker.max_sell {
+                MaxSell {
+                    bitcoin: None,
+                    dai: None,
+                } => None,
+                max_sell => Some(max_sell),
+            },
+            spread: Some(maker.spread),
         }
     }
 }
