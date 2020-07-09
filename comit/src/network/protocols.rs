@@ -5,7 +5,6 @@ pub mod finalize;
 pub mod lightning_identity;
 pub mod orderbook;
 pub mod secret_hash;
-pub mod take_order;
 
 use super::swap_digest::SwapDigest;
 use futures::prelude::*;

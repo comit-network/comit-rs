@@ -59,34 +59,33 @@ impl Facade {
         Ok(timestamp)
     }
 
-    pub async fn make_hbit_herc20_order(
-        &self,
-        order: NewOrder,
-        refund_identity: crate::bitcoin::Address,
-        redeem_identity: identity::Ethereum,
-    ) -> anyhow::Result<OrderId> {
+    pub async fn take_herc20_hbit_order(
+        &mut self,
+        order_id: OrderId,
+        swap_id: LocalSwapId,
+        redeem_identity: crate::bitcoin::Address,
+        refund_identity: identity::Ethereum,
+    ) -> anyhow::Result<()> {
+        // TODO: What is this mapping used for, it shouldn't be called here because this
+        // method should be a pure delegation method.
+        self.storage
+            .associate_swap_with_order(order_id, swap_id)
+            .await;
+
         self.swarm
-            .make_hbit_herc20_order(order, refund_identity, redeem_identity)
+            .take_herc20_hbit_order(order_id, swap_id, redeem_identity, refund_identity)
             .await
     }
 
-    pub async fn take_hbit_herc20_order(
-        &mut self,
-        id: OrderId,
+    pub async fn make_herc20_hbit_order(
+        &self,
+        order: NewOrder,
         swap_id: LocalSwapId,
-        refund_address: crate::bitcoin::Address,
-        refund_identity: identity::Bitcoin,
         redeem_identity: identity::Ethereum,
-    ) -> anyhow::Result<()> {
-        self.storage.associate_swap_with_order(id, swap_id).await;
+        refund_identity: crate::bitcoin::Address,
+    ) -> anyhow::Result<OrderId> {
         self.swarm
-            .take_hbit_herc20_order(
-                id,
-                swap_id,
-                refund_address,
-                refund_identity,
-                redeem_identity,
-            )
+            .make_herc20_hbit_order(order, swap_id, redeem_identity, refund_identity)
             .await
     }
 

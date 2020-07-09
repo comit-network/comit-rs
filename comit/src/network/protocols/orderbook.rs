@@ -1,22 +1,230 @@
-use libp2p::{
-    gossipsub,
-    gossipsub::{Gossipsub, GossipsubEvent, Topic},
-    multiaddr::Multiaddr,
-    NetworkBehaviour,
+mod take_order;
+
+use crate::{
+    asset,
+    network::protocols::orderbook::take_order::{Response, TakeOrderCodec, TakeOrderProtocol},
+    SharedSwapId,
 };
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use libp2p::{
+    core::either::EitherOutput,
+    gossipsub,
+    gossipsub::{Gossipsub, GossipsubEvent, GossipsubRpc, Topic},
+    multiaddr::Multiaddr,
+    request_response::{
+        handler::RequestProtocol, ProtocolSupport, RequestResponse, RequestResponseConfig,
+        RequestResponseEvent, RequestResponseMessage, ResponseChannel,
+    },
+    swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
+    NetworkBehaviour, PeerId,
+};
+use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
-    collections::{hash_map::DefaultHasher, HashMap, HashSet},
+    collections::{hash_map::DefaultHasher, HashMap, HashSet, VecDeque},
     fmt,
     hash::{Hash, Hasher},
+    str::FromStr,
+    task::{Context, Poll},
     time::Duration,
 };
 use uuid::Uuid;
 
-use crate::{asset, identity};
-use libp2p::{swarm::NetworkBehaviourEventProcess, PeerId};
-use serde::de::Error;
-use std::str::FromStr;
+const TOPIC: &str = "Herc20Hbit";
+const REQUEST_TIMEOUT_SECS: u64 = 10;
+
+#[derive(NetworkBehaviour)]
+#[behaviour(out_event = "BehaviourOutEvent", poll_method = "poll")]
+pub struct Orderbook {
+    pub gossipsub: Gossipsub,
+    take_order: RequestResponse<TakeOrderCodec>,
+    #[behaviour(ignore)]
+    events: VecDeque<BehaviourOutEvent>,
+    #[behaviour(ignore)]
+    orders: HashMap<OrderId, Order>,
+    #[behaviour(ignore)]
+    trading_pairs: HashSet<TradingPairTopic>,
+    #[behaviour(ignore)]
+    pub(crate) peer_id: PeerId,
+}
+
+impl Orderbook {
+    pub fn new(peer_id: PeerId) -> Orderbook {
+        // To content-address message, we can take the hash of message and use it as an
+        // ID.
+        let message_id_fn = |message: &gossipsub::GossipsubMessage| {
+            let mut s = DefaultHasher::new();
+            message.data.hash(&mut s);
+            gossipsub::MessageId(s.finish().to_string())
+        };
+        let gossipsub_config = gossipsub::GossipsubConfigBuilder::new()
+            .heartbeat_interval(Duration::from_secs(1))
+            .message_id_fn(message_id_fn) // content-address messages. No two messages of the
+            // same content will be propagated.
+            .build();
+
+        let mut config = RequestResponseConfig::default();
+        config.set_request_timeout(Duration::from_secs(REQUEST_TIMEOUT_SECS));
+
+        let mut orderbook = Orderbook {
+            peer_id: peer_id.clone(),
+            gossipsub: Gossipsub::new(peer_id, gossipsub_config),
+            take_order: RequestResponse::new(
+                TakeOrderCodec::default(),
+                vec![(TakeOrderProtocol, ProtocolSupport::Full)],
+                config,
+            ),
+            trading_pairs: HashSet::new(),
+            orders: HashMap::new(),
+            events: VecDeque::new(),
+        };
+
+        orderbook.gossipsub.subscribe(DefaultMakerTopic::to_topic());
+
+        orderbook.gossipsub.subscribe(Topic::new(TOPIC.to_string()));
+
+        orderbook
+    }
+
+    // TODO: Is this really what we want?
+    pub fn peer_id(&self) -> PeerId {
+        self.peer_id.clone()
+    }
+
+    pub fn make(&mut self, order: Order) -> anyhow::Result<OrderId> {
+        self.gossipsub.publish(
+            &order.topic(&self.peer_id),
+            bincode::serialize(&Message::CreateOrder(order.clone())).unwrap(),
+        );
+        tracing::info!("order published");
+        self.orders.insert(order.id, order.clone());
+
+        Ok(order.id)
+    }
+
+    /// Called by Alice i.e., the taker.  Does _not_ remove the order from the
+    /// order book.
+    pub fn take(&mut self, order_id: OrderId) -> anyhow::Result<()> {
+        // TODO: Refactor this
+        let peer_id = match self.peer_id_for_order(order_id) {
+            Some(id) => Ok(id),
+            None => Err(anyhow::Error::from(OrderbookError::OrderNotFound(order_id))),
+        }?;
+
+        self.take_order.send_request(&peer_id, order_id);
+
+        Ok(())
+    }
+
+    pub fn peer_id_for_order(&self, order_id: OrderId) -> Option<PeerId> {
+        if let Some(order) = self.orders.get(&order_id) {
+            Some(order.maker.peer_id())
+        } else {
+            None
+        }
+    }
+
+    /// Called by Bob i.e., the maker.
+    /// Does _not_ remove the order from the order book.
+    pub fn confirm(&mut self, peer_id: PeerId, _: OrderId, channel: ResponseChannel<Response>) {
+        let shared_swap_id = SharedSwapId::default();
+        tracing::debug!(
+            "confirming take order request with swap id: {}",
+            shared_swap_id
+        );
+
+        self.take_order
+            .send_response(channel, Response::Confirmation(shared_swap_id));
+
+        // TODO: Do we want to do something with order_id? E.g. remove the order from
+        // the order book?
+
+        // TODO: Work around the fact that libp2p silently drops the channel send error
+        // and only push this event if we know the response got to peer.
+        self.events
+            .push_back(BehaviourOutEvent::TakeOrderConfirmation {
+                peer_id,
+                shared_swap_id,
+            });
+    }
+
+    /// Called by Bob i.e., the maker to deny a take order request.
+    pub fn deny(&mut self, channel: ResponseChannel<Response>) {
+        self.take_order.send_response(channel, Response::Error);
+    }
+
+    /// Removes the order from the local order book i.e., does nothing on the
+    /// network.
+    pub fn local_remove_order() -> Option<OrderId> {
+        unimplemented!()
+    }
+
+    pub fn get_orders(&self) -> Vec<Order> {
+        #[allow(clippy::map_clone)]
+        self.orders.values().map(|order| order.clone()).collect()
+    }
+
+    pub fn get_order(&self, order_id: &OrderId) -> Option<Order> {
+        if let Some(order) = self.orders.get(order_id) {
+            Some(order.clone())
+        } else {
+            None
+        }
+    }
+
+    pub fn get_trading_pairs(&self) -> Vec<TradingPairTopic> {
+        let mut topics = vec![];
+        for topic in self.trading_pairs.iter() {
+            topics.push(topic.clone());
+        }
+        topics
+    }
+
+    pub fn add_trading_pair(&mut self, topic: &TradingPairTopic) {
+        self.trading_pairs.insert(topic.clone());
+    }
+
+    pub fn subscribe(&mut self, peer: PeerId, trading_pair: TradingPair) -> anyhow::Result<()> {
+        let topic = TradingPairTopic::new(peer, trading_pair);
+        self.trading_pairs.insert(topic.clone());
+        self.gossipsub.subscribe(topic.to_topic());
+        Ok(())
+    }
+
+    pub fn unsubscribe(&mut self, peer: PeerId, trading_pair: TradingPair) -> anyhow::Result<()> {
+        let topic = TradingPairTopic::new(peer, trading_pair);
+        self.trading_pairs.remove(&topic);
+        self.gossipsub.unsubscribe(topic.to_topic());
+        Ok(())
+    }
+
+    // Ideally this step should be executed automatically before making an order.
+    // Unfortunately a brief delay is required to allow peers to acknowledge and
+    // subscribe to the announced trading pair before publishing the order
+    pub fn announce_trading_pair(&mut self, trading_pair: TradingPair) {
+        let topic = TradingPairTopic::new(self.peer_id.clone(), trading_pair).to_topic();
+        self.gossipsub.subscribe(topic.clone());
+        self.gossipsub.publish(
+            &topic,
+            bincode::serialize(&Message::TradingPair(trading_pair)).unwrap(),
+        );
+    }
+
+    fn poll(
+        &mut self,
+        _: &mut Context<'_>,
+        _: &mut impl PollParameters,
+    ) -> Poll<
+        NetworkBehaviourAction<
+            EitherOutput<GossipsubRpc, RequestProtocol<TakeOrderCodec>>,
+            BehaviourOutEvent,
+        >,
+    > {
+        if let Some(event) = self.events.pop_front() {
+            return Poll::Ready(NetworkBehaviourAction::GenerateEvent(event));
+        }
+
+        Poll::Pending
+    }
+}
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 pub enum OrderbookError {
@@ -65,19 +273,18 @@ impl TradingPairTopic {
         }
     }
     fn to_topic(&self) -> Topic {
-        Topic::new("HbitHerc20".to_string())
+        Topic::new(TOPIC.to_string())
     }
 }
 
 pub type OrderId = Uuid;
 
+/// MakerId is a PeerId wrapper so we control serialization/deserialization.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MakerId(PeerId);
 
 impl MakerId {
-    pub fn new(peer_id: PeerId) -> Self {
-        MakerId(peer_id)
-    }
+    /// Returns a clone of the inner peer id.
     pub fn peer_id(&self) -> PeerId {
         self.0.clone()
     }
@@ -89,7 +296,6 @@ impl Serialize for MakerId {
         S: Serializer,
     {
         let string = self.0.to_string();
-
         serializer.serialize_str(&string)
     }
 }
@@ -117,16 +323,6 @@ pub struct Order {
 }
 
 #[derive(Debug)]
-pub struct OrderWithIdentities {
-    pub id: OrderId,
-    pub maker_id: Vec<u8>,
-    pub maker_addr: Multiaddr,
-    pub buy: u64,
-    pub sell: asset::Erc20,
-    pub absolute_expiry: u32,
-}
-
-#[derive(Debug)]
 pub struct NewOrder {
     pub buy: asset::Bitcoin,
     pub sell: asset::Erc20,
@@ -145,9 +341,7 @@ impl Order {
             absolute_expiry: new_order.absolute_expiry,
         }
     }
-    pub fn order_id(&self) -> OrderId {
-        self.id
-    }
+
     pub fn topic(&self, peer: &PeerId) -> Topic {
         TradingPair {
             buy: SwapType::Hbit,
@@ -179,20 +373,6 @@ pub enum Message {
     DeleteOrder(OrderId),
 }
 
-#[derive(NetworkBehaviour)]
-#[behaviour(out_event = "BehaviourOutEvent")]
-pub struct Orderbook {
-    pub gossipsub: Gossipsub,
-    #[behaviour(ignore)]
-    orders: HashMap<OrderId, Order>,
-    #[behaviour(ignore)]
-    trading_pairs: HashSet<TradingPairTopic>,
-    #[behaviour(ignore)]
-    identities: HashMap<OrderId, (crate::bitcoin::Address, identity::Ethereum)>,
-    #[behaviour(ignore)]
-    pub(crate) peer_id: PeerId,
-}
-
 impl fmt::Debug for Orderbook {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BasicOrderbook")
@@ -202,8 +382,20 @@ impl fmt::Debug for Orderbook {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct BehaviourOutEvent;
+#[derive(Debug)]
+pub enum BehaviourOutEvent {
+    TakeOrderRequest {
+        peer_id: PeerId,
+        response_channel: ResponseChannel<Response>,
+        order_id: OrderId,
+    },
+    TakeOrderConfirmation {
+        peer_id: PeerId,
+        shared_swap_id: SharedSwapId,
+    },
+    // TODO: Put the order id in here as well?
+    Failed(PeerId),
+}
 
 impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
     fn inject_event(&mut self, event: GossipsubEvent) {
@@ -211,14 +403,12 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
             let decoded: Message = bincode::deserialize(&message.data[..]).unwrap();
             match decoded {
                 Message::CreateOrder(order) => {
-                    tracing::info!("create order message received");
-                    self.orders.insert(order.order_id(), order);
+                    self.orders.insert(order.id, order);
                 }
                 Message::DeleteOrder(order_id) => {
                     self.orders.remove(&order_id);
                 }
                 Message::TradingPair(trading_pair) => {
-                    tracing::info!("trading pair message received");
                     self.add_trading_pair(&TradingPairTopic::new(peer_id.clone(), trading_pair));
                     self.gossipsub
                         .subscribe(TradingPairTopic::new(peer_id, trading_pair).to_topic());
@@ -228,135 +418,156 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
     }
 }
 
-impl Orderbook {
-    pub fn new(peer_id: PeerId) -> Orderbook {
-        // To content-address message, we can take the hash of message and use it as an
-        // ID.
-        let message_id_fn = |message: &gossipsub::GossipsubMessage| {
-            let mut s = DefaultHasher::new();
-            message.data.hash(&mut s);
-            gossipsub::MessageId(s.finish().to_string())
-        };
-        let gossipsub_config = gossipsub::GossipsubConfigBuilder::new()
-            .heartbeat_interval(Duration::from_secs(1))
-            .message_id_fn(message_id_fn) // content-address messages. No two messages of the
-            // same content will be propagated.
-            .build();
-        let mut orderbook = Orderbook {
-            peer_id: peer_id.clone(),
-            gossipsub: Gossipsub::new(peer_id, gossipsub_config),
-            trading_pairs: HashSet::new(),
-            orders: HashMap::new(),
-            identities: HashMap::new(),
-        };
-
-        orderbook.gossipsub.subscribe(DefaultMakerTopic::to_topic());
-
-        orderbook
-            .gossipsub
-            .subscribe(Topic::new("HbitHerc20".to_string()));
-
-        orderbook
-    }
-
-    pub fn make(
-        &mut self,
-        order: Order,
-        refund_identity: crate::bitcoin::Address,
-        redeem_identity: identity::Ethereum,
-    ) -> anyhow::Result<OrderId> {
-        self.gossipsub.publish(
-            &order.topic(&self.peer_id),
-            bincode::serialize(&Message::CreateOrder(order.clone())).unwrap(),
-        );
-        tracing::info!("order published");
-        self.orders.insert(order.id, order.clone());
-        self.identities
-            .insert(order.id, (refund_identity, redeem_identity));
-        Ok(order.id)
-    }
-
-    pub fn take(
-        &mut self,
-        order_id: OrderId,
-    ) -> anyhow::Result<(Order, crate::bitcoin::Address, identity::Ethereum)> {
-        let identities = match self.identities.remove(&order_id) {
-            Some(identities) => (identities.0, identities.1),
-            None => {
-                return Err(anyhow::Error::from(
-                    OrderbookError::IdentitiesForOrderNotFound(order_id),
-                ))
+impl NetworkBehaviourEventProcess<RequestResponseEvent<OrderId, Response>> for Orderbook {
+    fn inject_event(&mut self, event: RequestResponseEvent<OrderId, Response>) {
+        match event {
+            RequestResponseEvent::Message {
+                peer: peer_id,
+                message:
+                    RequestResponseMessage::Request {
+                        request: order_id,
+                        channel: response_channel,
+                    },
+            } => {
+                tracing::info!("received take order request");
+                self.events.push_back(BehaviourOutEvent::TakeOrderRequest {
+                    peer_id,
+                    response_channel,
+                    order_id,
+                });
             }
-        };
-        let order = match self.orders.remove(&order_id) {
-            Some(order) => order,
-            None => return Err(anyhow::Error::from(OrderbookError::OrderNotFound(order_id))),
-        };
-        Ok((order, identities.0, identities.1))
+            RequestResponseEvent::Message {
+                peer: peer_id,
+                message:
+                    RequestResponseMessage::Response {
+                        request_id: _,
+                        response: Response::Confirmation(shared_swap_id),
+                    },
+            } => {
+                self.events
+                    .push_back(BehaviourOutEvent::TakeOrderConfirmation {
+                        peer_id,
+                        shared_swap_id,
+                    });
+            }
+            RequestResponseEvent::Message {
+                peer: peer_id,
+                message:
+                    RequestResponseMessage::Response {
+                        request_id: _,
+                        response: Response::Error,
+                    },
+            } => {
+                // This should be unreachable because we close the channel on error.
+                tracing::error!("received take order response error from peer: {}", peer_id);
+            }
+            RequestResponseEvent::OutboundFailure { error, .. } => {
+                tracing::warn!("outbound failure: {:?}", error);
+            }
+            RequestResponseEvent::InboundFailure { error, .. } => {
+                tracing::warn!("inbound failure: {:?}", error);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        asset::{self, Erc20, Erc20Quantity},
+        network::test::{await_events_or_timeout, connect, new_swarm},
+    };
+    use libp2p::Swarm;
+
+    fn create_order(id: PeerId, maker_addr: Multiaddr) -> Order {
+        Order::new(id, NewOrder {
+            buy: asset::Bitcoin::from_sat(100),
+            sell: Erc20 {
+                token_contract: Default::default(),
+                quantity: Erc20Quantity::max_value(),
+            },
+            absolute_expiry: 100,
+            maker_addr,
+        })
     }
 
-    pub fn take_with_identities(
-        &mut self,
-        order_id: OrderId,
-        refund_identity: crate::bitcoin::Address,
-        redeem_identity: identity::Ethereum,
-    ) -> anyhow::Result<Order> {
-        self.identities
-            .insert(order_id, (refund_identity, redeem_identity));
-        let order = match self.orders.remove(&order_id) {
-            Some(order) => order,
-            None => return Err(anyhow::Error::from(OrderbookError::OrderNotFound(order_id))),
+    #[tokio::test]
+    async fn take_order_request_confirmation() {
+        // arrange
+
+        // TODO: Create a helper function for these three statements.
+        let (mut alice_swarm, _, alice_peer_id) = new_swarm(Orderbook::new);
+        let (mut bob_swarm, bob_addr, bob_peer_id) = new_swarm(Orderbook::new);
+        connect(&mut alice_swarm, &mut bob_swarm).await;
+
+        let order = create_order(bob_peer_id.clone(), bob_addr.clone());
+
+        // act
+
+        // Trigger subscription.
+        poll_no_event(&mut alice_swarm).await;
+        poll_no_event(&mut bob_swarm).await;
+
+        let _ = bob_swarm
+            .make(order.clone())
+            .expect("order id should exist");
+
+        // Trigger publish and receipt of order.
+        poll_no_event(&mut bob_swarm).await;
+        poll_no_event(&mut alice_swarm).await;
+
+        let order = alice_swarm
+            .get_orders()
+            .first()
+            .cloned()
+            .expect("Alice has no orders");
+
+        alice_swarm.take(order.id).expect("failed to take order");
+
+        // Trigger request/response messages.
+        poll_no_event(&mut alice_swarm).await;
+        let bob_event = tokio::time::timeout(Duration::from_secs(2), bob_swarm.next())
+            .await
+            .expect("failed to get TakeOrderRequest event");
+
+        let (peer_id, channel, order_id) = match bob_event {
+            BehaviourOutEvent::TakeOrderRequest {
+                peer_id,
+                response_channel,
+                order_id,
+            } => (peer_id, response_channel, order_id),
+            _ => panic!("unexepected bob event"),
         };
-        Ok(order)
-    }
+        bob_swarm.confirm(peer_id, order_id, channel);
 
-    pub fn get_orders(&self) -> Vec<Order> {
-        self.orders.values().cloned().collect()
-    }
-
-    pub fn get_order(&self, order_id: &OrderId) -> Option<Order> {
-        if let Some(order) = self.orders.get(order_id) {
-            Some(order.clone())
-        } else {
-            None
+        let (alice_event, bob_event) =
+            await_events_or_timeout(alice_swarm.next(), bob_swarm.next()).await;
+        match (alice_event, bob_event) {
+            (
+                BehaviourOutEvent::TakeOrderConfirmation {
+                    peer_id: alice_got_peer_id,
+                    shared_swap_id: alice_got_swap_id,
+                },
+                BehaviourOutEvent::TakeOrderConfirmation {
+                    peer_id: bob_got_peer_id,
+                    shared_swap_id: bob_got_swap_id,
+                },
+            ) => {
+                assert_eq!(alice_got_peer_id, bob_peer_id);
+                assert_eq!(bob_got_peer_id, alice_peer_id);
+                assert_eq!(alice_got_swap_id, bob_got_swap_id);
+            }
+            _ => panic!("failed to get take order confirmation"),
         }
     }
 
-    pub fn get_trading_pairs(&self) -> Vec<TradingPairTopic> {
-        let mut topics = vec![];
-        for topic in self.trading_pairs.iter() {
-            topics.push(topic.clone());
+    // Poll the swarm for some time, we don't expect any events though.
+    async fn poll_no_event(swarm: &mut Swarm<Orderbook>) {
+        let delay = Duration::from_secs(2);
+
+        while let Ok(event) = tokio::time::timeout(delay, swarm.next()).await {
+            panic!("unexpected event emitted: {:?}", event)
         }
-        topics
-    }
-
-    pub fn add_trading_pair(&mut self, topic: &TradingPairTopic) {
-        self.trading_pairs.insert(topic.clone());
-    }
-
-    pub fn subscribe(&mut self, peer: PeerId, trading_pair: TradingPair) -> anyhow::Result<()> {
-        let topic = TradingPairTopic::new(peer, trading_pair);
-        self.trading_pairs.insert(topic.clone());
-        self.gossipsub.subscribe(topic.to_topic());
-        Ok(())
-    }
-
-    pub fn unsubscribe(&mut self, peer: PeerId, trading_pair: TradingPair) -> anyhow::Result<()> {
-        let topic = TradingPairTopic::new(peer, trading_pair);
-        self.trading_pairs.remove(&topic);
-        self.gossipsub.unsubscribe(topic.to_topic());
-        Ok(())
-    }
-
-    // Ideally this step should be executed automatically before making an order.
-    // Unfortunately a brief delay is required to allow peers to acknowledge and
-    // subscribe to the announced trading pair before publishing the order
-    pub fn announce_trading_pair(&mut self, trading_pair: TradingPair) {
-        let topic = TradingPairTopic::new(self.peer_id.clone(), trading_pair).to_topic();
-        self.gossipsub.subscribe(topic.clone());
-        self.gossipsub.publish(
-            &topic,
-            bincode::serialize(&Message::TradingPair(trading_pair)).unwrap(),
-        );
     }
 }
