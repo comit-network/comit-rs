@@ -2,22 +2,21 @@ use crate::{swap::db, SwapId};
 use comit::Timestamp;
 
 #[async_trait::async_trait]
-pub trait Do<E>
+pub trait TryDoItOnce<E>
 where
     Self: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
     E: Clone + Send + Sync + 'static,
     <Self as Execute<E>>::Args: Send + Sync,
 {
-    async fn r#do(
+    async fn try_do_it_once(
         &self,
-        beta_expiry: Timestamp,
         execution_args: <Self as Execute<E>>::Args,
     ) -> anyhow::Result<Next<E>> {
         if let Some(event) = self.check_memory().await? {
             return Ok(Next::Continue(event));
         }
 
-        if self.should_abort(beta_expiry).await? {
+        if self.should_abort().await? {
             return Ok(Next::Abort);
         }
 
@@ -29,7 +28,35 @@ where
 }
 
 #[async_trait::async_trait]
-impl<E, A> Do<E> for A
+impl<E, A> TryDoItOnce<E> for A
+where
+    A: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
+    E: Clone + Send + Sync + 'static,
+    <Self as Execute<E>>::Args: Send + Sync,
+{
+}
+
+#[async_trait::async_trait]
+pub trait DoItOnce<E>
+where
+    Self: CheckMemory<E> + Execute<E> + Remember<E>,
+    E: Clone + Send + Sync + 'static,
+    <Self as Execute<E>>::Args: Send + Sync,
+{
+    async fn do_it_once(&self, execution_args: <Self as Execute<E>>::Args) -> anyhow::Result<E> {
+        if let Some(event) = self.check_memory().await? {
+            return Ok(event);
+        }
+
+        let event = Execute::<E>::execute(self, execution_args).await?;
+        self.remember(event.clone()).await?;
+
+        Ok(event)
+    }
+}
+
+#[async_trait::async_trait]
+impl<E, A> DoItOnce<E> for A
 where
     A: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
     E: Clone + Send + Sync + 'static,
@@ -53,20 +80,24 @@ where
     }
 }
 
+/// Determine if we should abort before `Do`-ing an action.
 #[async_trait::async_trait]
 pub trait ShouldAbort {
-    async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool>;
+    async fn should_abort(&self) -> anyhow::Result<bool>;
 }
 
+/// For Nectar, we should abort if Beta has expired, meaning that Beta
+/// ledger has reached or surpassed the expiry time of the Beta
+/// contract.
 #[async_trait::async_trait]
 impl<A> ShouldAbort for A
 where
-    A: BetaLedgerTime + Sync,
+    A: BetaLedgerTime + BetaExpiry + Sync,
 {
-    async fn should_abort(&self, beta_expiry: Timestamp) -> anyhow::Result<bool> {
+    async fn should_abort(&self) -> anyhow::Result<bool> {
         let beta_ledger_time = self.beta_ledger_time().await?;
 
-        Ok(beta_expiry <= beta_ledger_time)
+        Ok(self.beta_expiry() <= beta_ledger_time)
     }
 }
 
@@ -98,6 +129,15 @@ pub enum Next<E> {
     Abort,
 }
 
+pub trait BetaExpiry {
+    fn beta_expiry(&self) -> Timestamp;
+}
+
+#[async_trait::async_trait]
+pub trait AlphaLedgerTime {
+    async fn alpha_ledger_time(&self) -> anyhow::Result<Timestamp>;
+}
+
 #[async_trait::async_trait]
 pub trait BetaLedgerTime {
     async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp>;
@@ -106,7 +146,7 @@ pub trait BetaLedgerTime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::swap::{Do, Next};
+    use crate::swap::{Next, TryDoItOnce};
     use std::{
         collections::HashMap,
         sync::{Arc, RwLock},
@@ -148,9 +188,9 @@ mod tests {
     }
 
     #[async_trait::async_trait]
-    impl BetaLedgerTime for FakeActor {
-        async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
-            Ok(Timestamp::now())
+    impl ShouldAbort for FakeActor {
+        async fn should_abort(&self) -> anyhow::Result<bool> {
+            Ok(false)
         }
     }
 
@@ -181,7 +221,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn arbitrary_action_is_idempotent() {
+    async fn trying_to_do_an_arbitrary_action_once_is_idempotent() {
         let blockchain = Arc::new(RwLock::new(FakeBlockchain::default()));
         let wallet = FakeWallet {
             node: Arc::clone(&blockchain),
@@ -197,16 +237,42 @@ mod tests {
             swap_id,
         };
 
-        let beta_expiry = Timestamp::now().plus(60 * 60);
-
         assert!(blockchain.read().unwrap().events.is_empty());
-        let res = actor.r#do(beta_expiry, ()).await;
+        let res = actor.try_do_it_once(()).await;
 
         assert!(matches!(res, Ok(Next::Continue(ArbitraryEvent))));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
 
-        let res = actor.r#do(beta_expiry, ()).await;
+        let res = actor.try_do_it_once(()).await;
         assert!(matches!(res, Ok(Next::Continue(ArbitraryEvent))));
+        assert_eq!(blockchain.read().unwrap().events.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn doing_an_arbitrary_action_once_is_idempotent() {
+        let blockchain = Arc::new(RwLock::new(FakeBlockchain::default()));
+        let wallet = FakeWallet {
+            node: Arc::clone(&blockchain),
+        };
+
+        let db = FakeDatabase::default();
+
+        let swap_id = SwapId::random();
+
+        let actor = FakeActor {
+            db,
+            wallet,
+            swap_id,
+        };
+
+        assert!(blockchain.read().unwrap().events.is_empty());
+        let res = actor.do_it_once(()).await;
+
+        assert!(matches!(res, Ok(ArbitraryEvent)));
+        assert_eq!(blockchain.read().unwrap().events.len(), 1);
+
+        let res = actor.do_it_once(()).await;
+        assert!(matches!(res, Ok(ArbitraryEvent)));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
     }
 }

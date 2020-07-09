@@ -1,7 +1,7 @@
 use crate::swap::{herc20, BetaLedgerTime};
 use chrono::NaiveDateTime;
 use comit::{btsieve::LatestBlock, Timestamp};
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 pub use comit::{
     ethereum::{Address, Block, ChainId, Hash},
@@ -48,7 +48,7 @@ impl herc20::ExecuteFund for Wallet {
         params: herc20::Params,
         deploy_event: herc20::Deployed,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<herc20::CorrectlyFunded> {
+    ) -> anyhow::Result<herc20::Funded> {
         let action = params.build_fund_action(deploy_event.location);
         let _data = self.inner.call_contract(action).await?;
 
@@ -74,6 +74,33 @@ impl herc20::ExecuteRedeem for Wallet {
 
         let event =
             herc20::watch_for_redeemed(self.connector.as_ref(), start_of_swap, deploy_event)
+                .await?;
+
+        Ok(event)
+    }
+}
+
+#[async_trait::async_trait]
+impl herc20::ExecuteRefund for Wallet {
+    async fn execute_refund(
+        &self,
+        params: herc20::Params,
+        deploy_event: herc20::Deployed,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<herc20::Refunded> {
+        loop {
+            if self.beta_ledger_time().await? >= params.expiry {
+                break;
+            }
+
+            tokio::time::delay_for(Duration::from_secs(1)).await;
+        }
+
+        let action = params.build_refund_action(deploy_event.location);
+        let _data = self.inner.call_contract(action).await?;
+
+        let event =
+            herc20::watch_for_refunded(self.connector.as_ref(), start_of_swap, deploy_event)
                 .await?;
 
         Ok(event)
