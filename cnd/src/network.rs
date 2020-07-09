@@ -12,9 +12,8 @@ use crate::{
     identity,
     network::{peer_tracker::PeerTracker, Comit, LocalData},
     spawn,
-    storage::{ForSwap, Save},
-    CreatedSwap, Load, LocalSwapId, Never, Protocol, ProtocolSpawner, Role, RootSeed, SecretHash,
-    SharedSwapId, Storage, SwapContext,
+    storage::{CreatedSwap, ForSwap, Load, RootSeed, Save, SwapContext},
+    LocalSwapId, Never, Protocol, ProtocolSpawner, Role, SecretHash, SharedSwapId, Storage,
 };
 use ::comit::asset;
 use anyhow::Context;

@@ -1,14 +1,14 @@
 use crate::{
     asset, bitcoin, halbit, hbit, herc20, identity, lightning,
     storage::db::{
-        schema::{halbits, hbits, herc20s, secret_hashes, swaps},
+        schema::{halbits, hbits, herc20s, secret_hashes, swap_contexts, swaps},
         wrapper_types::{
             custom_sql_types::{Text, U32},
             BitcoinNetwork, Erc20Amount, Satoshis,
         },
         Sqlite,
     },
-    LocalSwapId, Role, Side,
+    LocalSwapId, Protocol, Role, Side,
 };
 use anyhow::Context;
 use chrono::NaiveDateTime;
@@ -59,6 +59,16 @@ impl InsertableSwap {
             start_of_swap,
         }
     }
+}
+
+#[derive(Associations, Clone, Copy, Debug, Identifiable, Queryable, PartialEq)]
+#[table_name = "swap_contexts"]
+pub struct SwapContext {
+    id: i32,
+    pub local_swap_id: Text<LocalSwapId>,
+    pub role: Text<Role>,
+    pub alpha: Text<Protocol>,
+    pub beta: Text<Protocol>,
 }
 
 #[derive(Associations, Clone, Copy, Debug, Identifiable, Queryable, PartialEq)]

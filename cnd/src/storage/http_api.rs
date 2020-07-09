@@ -4,10 +4,10 @@ use crate::{
     http_api::{halbit, hbit, herc20, AliceSwap, BobSwap},
     state::Get,
     storage::{
-        db::{Halbit, Hbit, Herc20, NoRedeemIdentity, NoRefundIdentity, NoSecretHash},
-        LoadTables, RootSeed, Tables,
+        Halbit, Hbit, Herc20, Load, LoadTables, NoRedeemIdentity, NoRefundIdentity, NoSecretHash,
+        RootSeed, Tables,
     },
-    Load, LocalSwapId, Storage,
+    LocalSwapId, Storage,
 };
 use async_trait::async_trait;
 
