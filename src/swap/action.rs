@@ -6,6 +6,22 @@ use futures::{
 };
 use std::time::Duration;
 
+/// Try to do an action resulting in the event `E`.
+///
+/// If we already know about the event `E` because it's part of our
+/// "Memory", we return `Next::Continue` early and do not try to do
+/// the action again.
+///
+/// We do the action by calling `Execute::<E>::execute` and awaiting
+/// on it, which will yield the event `E` if it resolves successfully.
+///
+/// Whilst waiting for the `Execute<E>` future to resolve, we
+/// continuously check if we `ShouldAbort`. If we `ShouldAbort` before
+/// we finish doing the action, we return `Next::Abort`.
+///
+/// If doing the action succeeds, we `Remember` the resulting event
+/// `E` so that repeated calls to this function do not result in doing
+/// the action more than once.
 #[async_trait::async_trait]
 pub trait TryDoItOnce<E>
 where
@@ -54,6 +70,18 @@ where
 {
 }
 
+/// Do an action resulting in the event `E`.
+///
+/// If we already know about the event `E` because it's part of our
+/// "Memory", we return `Next::Continue` early and do not do the
+/// action again.
+///
+/// We do the action by calling `Execute::<E>::execute` and awaiting
+/// on it, which will yield the event `E` if it resolves successfully.
+///
+/// If doing the action succeeds, we `Remember` the resulting event
+/// `E` so that repeated calls to this function do not result in doing
+/// the action more than once.
 #[async_trait::async_trait]
 pub trait DoItOnce<E>
 where
@@ -82,11 +110,13 @@ where
 {
 }
 
+/// Look for the event `E` in our "Memory".
 #[async_trait::async_trait]
 pub trait CheckMemory<E> {
     async fn check_memory(&self) -> anyhow::Result<Option<E>>;
 }
 
+/// Look for the event `E` by attempting to `Load` it from a database.
 #[async_trait::async_trait]
 impl<E, A> CheckMemory<E> for A
 where
@@ -119,17 +149,20 @@ where
     }
 }
 
+/// Execute an action which yields the event `E`.
 #[async_trait::async_trait]
 pub trait Execute<E> {
     type Args;
     async fn execute(&self, args: Self::Args) -> anyhow::Result<E>;
 }
 
+/// Add the event `E` to our "Memory", so as to `Remember` it.
 #[async_trait::async_trait]
 pub trait Remember<E> {
     async fn remember(&self, event: E) -> anyhow::Result<()>;
 }
 
+/// Add the event `E` to our "Memory", by saving it to a database.
 #[async_trait::async_trait]
 impl<E, A> Remember<E> for A
 where
@@ -141,16 +174,23 @@ where
     }
 }
 
+/// Result of doing a conditional protocol action.
+///
+/// If the action was done successfully we `Continue` and obtain the
+/// event `E`. Otherwise we `Abort`.
 #[derive(Debug, Clone, Copy)]
 pub enum Next<E> {
     Continue(E),
     Abort,
 }
 
+/// Get the expiry timestamp for the Beta asset in a swap protocol.
 pub trait BetaExpiry {
     fn beta_expiry(&self) -> Timestamp;
 }
 
+/// Fetch the current `Timestamp` for the Beta ledger in a swap
+/// protocol.
 #[async_trait::async_trait]
 pub trait BetaLedgerTime {
     async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp>;
