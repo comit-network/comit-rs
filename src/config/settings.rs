@@ -121,7 +121,9 @@ impl Default for Ethereum {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Maker {
+    /// Maximum amount to sell per order
     pub max_sell: MaxSell,
+    /// Spread to apply to the mid-market rate, format is permyriad. E.g. 5.20 is 5.2% spread
     pub spread: Spread,
 }
 
