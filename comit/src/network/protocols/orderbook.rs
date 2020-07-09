@@ -35,162 +35,6 @@ use take_order::TakeOrderCodec;
 
 const TOPIC: &str = "Herc20Hbit";
 
-#[derive(thiserror::Error, Debug)]
-pub enum OrderbookError {
-    #[error("could not make order")]
-    Make,
-    #[error("could not take order because identities not found")]
-    IdentitiesForOrderNotFound(OrderId),
-    #[error("could not take order because not found")]
-    OrderNotFound(OrderId),
-    #[error("could not subscribe to all peers for topic")]
-    Subscribe,
-    #[error("could not unsubscribe to all peers for topic")]
-    UnSubscribe,
-}
-
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub struct TradingPair {
-    pub buy: SwapType,
-    pub sell: SwapType,
-}
-
-impl TradingPair {
-    pub fn to_topic(&self, peer: &PeerId) -> Topic {
-        let trading_pair_topic = TradingPairTopic {
-            peer: PeerId::into_bytes(peer.clone()),
-            buy: self.buy,
-            sell: self.sell,
-        };
-        trading_pair_topic.to_topic()
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub struct TradingPairTopic {
-    peer: Vec<u8>,
-    buy: SwapType,
-    sell: SwapType,
-}
-
-impl TradingPairTopic {
-    fn new(peer: PeerId, trading_pair: TradingPair) -> TradingPairTopic {
-        TradingPairTopic {
-            peer: PeerId::into_bytes(peer),
-            buy: trading_pair.buy,
-            sell: trading_pair.sell,
-        }
-    }
-    fn to_topic(&self) -> Topic {
-        Topic::new(TOPIC.to_string())
-    }
-}
-
-pub type OrderId = Uuid;
-
-/// MakerId is a PeerId wrapper so we control serialization/deserialization.
-#[derive(Debug, Clone, PartialEq)]
-pub struct MakerId(PeerId);
-
-impl MakerId {
-    /// Returns a clone of the inner peer id.
-    pub fn peer_id(&self) -> PeerId {
-        self.0.clone()
-    }
-}
-
-impl Serialize for MakerId {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let string = self.0.to_string();
-        serializer.serialize_str(&string)
-    }
-}
-
-impl<'de> Deserialize<'de> for MakerId {
-    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let string = String::deserialize(deserializer)?;
-        let peer_id = PeerId::from_str(&string).map_err(D::Error::custom)?;
-
-        Ok(MakerId(peer_id))
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Order {
-    pub id: OrderId,
-    pub maker: MakerId,
-    pub maker_addr: Multiaddr,
-    pub buy: u64,
-    pub sell: asset::Erc20,
-    pub absolute_expiry: u32,
-}
-
-pub struct OrderWithIdentities {
-    pub id: OrderId,
-    pub maker_id: Vec<u8>,
-    pub maker_addr: Multiaddr,
-    pub buy: u64,
-    pub sell: asset::Erc20,
-    pub absolute_expiry: u32,
-}
-
-pub struct NewOrder {
-    pub buy: asset::Bitcoin,
-    pub sell: asset::Erc20,
-    pub absolute_expiry: u32,
-    pub maker_addr: Multiaddr,
-}
-
-impl Order {
-    pub fn new(peer_id: PeerId, new_order: NewOrder) -> Self {
-        Order {
-            id: Uuid::new_v4(),
-            maker: MakerId(peer_id),
-            maker_addr: new_order.maker_addr,
-            buy: new_order.buy.as_sat(),
-            sell: new_order.sell,
-            absolute_expiry: new_order.absolute_expiry,
-        }
-    }
-    pub fn order_id(&self) -> OrderId {
-        self.id
-    }
-    pub fn topic(&self, peer: &PeerId) -> Topic {
-        TradingPair {
-            buy: SwapType::Hbit,
-            sell: SwapType::Herc20,
-        }
-        .to_topic(peer)
-    }
-}
-
-pub struct DefaultMakerTopic;
-
-impl DefaultMakerTopic {
-    pub fn to_topic() -> Topic {
-        Topic::new("makers".to_string())
-    }
-}
-
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
-pub enum SwapType {
-    Herc20,
-    Hbit,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub enum Message {
-    TradingPair(TradingPair),
-    CreateOrder(Order),
-    DeleteOrder(OrderId),
-}
-
 #[derive(NetworkBehaviour)]
 #[behaviour(out_event = "BehaviourOutEvent", poll_method = "poll")]
 pub struct Orderbook {
@@ -206,86 +50,6 @@ pub struct Orderbook {
     identities: HashMap<OrderId, (crate::bitcoin::Address, identity::Ethereum)>,
     #[behaviour(ignore)]
     pub(crate) peer_id: PeerId,
-}
-
-impl fmt::Debug for Orderbook {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BasicOrderbook")
-            .field("peer_id", &self.peer_id)
-            .field("orders", &self.orders)
-            .finish()
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum BehaviourOutEvent {
-    TakeOrderRequest,
-    TakeOrderConfirmation,
-    Failed(PeerId),
-}
-
-impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
-    fn inject_event(&mut self, event: GossipsubEvent) {
-        if let GossipsubEvent::Message(peer_id, _message_id, message) = event {
-            let decoded: Message = bincode::deserialize(&message.data[..]).unwrap();
-            match decoded {
-                Message::CreateOrder(order) => {
-                    self.orders.insert(order.order_id(), order);
-                }
-                Message::DeleteOrder(order_id) => {
-                    self.orders.remove(&order_id);
-                }
-                Message::TradingPair(trading_pair) => {
-                    self.add_trading_pair(&TradingPairTopic::new(peer_id.clone(), trading_pair));
-                    self.gossipsub
-                        .subscribe(TradingPairTopic::new(peer_id, trading_pair).to_topic());
-                }
-            }
-        }
-    }
-}
-
-impl NetworkBehaviourEventProcess<RequestResponseEvent<OrderId, Response>> for Orderbook {
-    fn inject_event(&mut self, event: RequestResponseEvent<OrderId, Response>) {
-        match event {
-            RequestResponseEvent::Message {
-                peer,
-                message:
-                    RequestResponseMessage::Request {
-                        request: order_id,
-                        channel,
-                    },
-            } => {
-                if self.can_order_be_taken(&order_id) {
-                    self.confirm(peer, channel);
-                } else {
-                    self.deny(peer, channel);
-                }
-            }
-            RequestResponseEvent::Message {
-                peer: _peer,
-                message:
-                    RequestResponseMessage::Response {
-                        request_id: _request_id,
-                        response: _response,
-                    },
-            } => {
-                tracing::info!("received order confirmation");
-                self.events
-                    .push_back(BehaviourOutEvent::TakeOrderConfirmation);
-            }
-            RequestResponseEvent::OutboundFailure {
-                peer: _peer,
-                request_id: _request_id,
-                error,
-            } => {
-                tracing::warn!("outbound failure: {:?}", error);
-            }
-            RequestResponseEvent::InboundFailure { error, .. } => {
-                tracing::warn!("inbound failure: {:?}", error);
-            }
-        }
-    }
 }
 
 impl Orderbook {
@@ -466,6 +230,242 @@ impl Orderbook {
         }
 
         Poll::Pending
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum OrderbookError {
+    #[error("could not make order")]
+    Make,
+    #[error("could not take order because identities not found")]
+    IdentitiesForOrderNotFound(OrderId),
+    #[error("could not take order because not found")]
+    OrderNotFound(OrderId),
+    #[error("could not subscribe to all peers for topic")]
+    Subscribe,
+    #[error("could not unsubscribe to all peers for topic")]
+    UnSubscribe,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct TradingPair {
+    pub buy: SwapType,
+    pub sell: SwapType,
+}
+
+impl TradingPair {
+    pub fn to_topic(&self, peer: &PeerId) -> Topic {
+        let trading_pair_topic = TradingPairTopic {
+            peer: PeerId::into_bytes(peer.clone()),
+            buy: self.buy,
+            sell: self.sell,
+        };
+        trading_pair_topic.to_topic()
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct TradingPairTopic {
+    peer: Vec<u8>,
+    buy: SwapType,
+    sell: SwapType,
+}
+
+impl TradingPairTopic {
+    fn new(peer: PeerId, trading_pair: TradingPair) -> TradingPairTopic {
+        TradingPairTopic {
+            peer: PeerId::into_bytes(peer),
+            buy: trading_pair.buy,
+            sell: trading_pair.sell,
+        }
+    }
+    fn to_topic(&self) -> Topic {
+        Topic::new(TOPIC.to_string())
+    }
+}
+
+pub type OrderId = Uuid;
+
+/// MakerId is a PeerId wrapper so we control serialization/deserialization.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MakerId(PeerId);
+
+impl MakerId {
+    /// Returns a clone of the inner peer id.
+    pub fn peer_id(&self) -> PeerId {
+        self.0.clone()
+    }
+}
+
+impl Serialize for MakerId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let string = self.0.to_string();
+        serializer.serialize_str(&string)
+    }
+}
+
+impl<'de> Deserialize<'de> for MakerId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let string = String::deserialize(deserializer)?;
+        let peer_id = PeerId::from_str(&string).map_err(D::Error::custom)?;
+
+        Ok(MakerId(peer_id))
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Order {
+    pub id: OrderId,
+    pub maker: MakerId,
+    pub maker_addr: Multiaddr,
+    pub buy: u64,
+    pub sell: asset::Erc20,
+    pub absolute_expiry: u32,
+}
+
+pub struct OrderWithIdentities {
+    pub id: OrderId,
+    pub maker_id: Vec<u8>,
+    pub maker_addr: Multiaddr,
+    pub buy: u64,
+    pub sell: asset::Erc20,
+    pub absolute_expiry: u32,
+}
+
+pub struct NewOrder {
+    pub buy: asset::Bitcoin,
+    pub sell: asset::Erc20,
+    pub absolute_expiry: u32,
+    pub maker_addr: Multiaddr,
+}
+
+impl Order {
+    pub fn new(peer_id: PeerId, new_order: NewOrder) -> Self {
+        Order {
+            id: Uuid::new_v4(),
+            maker: MakerId(peer_id),
+            maker_addr: new_order.maker_addr,
+            buy: new_order.buy.as_sat(),
+            sell: new_order.sell,
+            absolute_expiry: new_order.absolute_expiry,
+        }
+    }
+    pub fn order_id(&self) -> OrderId {
+        self.id
+    }
+    pub fn topic(&self, peer: &PeerId) -> Topic {
+        TradingPair {
+            buy: SwapType::Hbit,
+            sell: SwapType::Herc20,
+        }
+        .to_topic(peer)
+    }
+}
+
+pub struct DefaultMakerTopic;
+
+impl DefaultMakerTopic {
+    pub fn to_topic() -> Topic {
+        Topic::new("makers".to_string())
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
+pub enum SwapType {
+    Herc20,
+    Hbit,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+pub enum Message {
+    TradingPair(TradingPair),
+    CreateOrder(Order),
+    DeleteOrder(OrderId),
+}
+
+impl fmt::Debug for Orderbook {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BasicOrderbook")
+            .field("peer_id", &self.peer_id)
+            .field("orders", &self.orders)
+            .finish()
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum BehaviourOutEvent {
+    TakeOrderRequest,
+    TakeOrderConfirmation,
+    Failed(PeerId),
+}
+
+impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
+    fn inject_event(&mut self, event: GossipsubEvent) {
+        if let GossipsubEvent::Message(peer_id, _message_id, message) = event {
+            let decoded: Message = bincode::deserialize(&message.data[..]).unwrap();
+            match decoded {
+                Message::CreateOrder(order) => {
+                    self.orders.insert(order.order_id(), order);
+                }
+                Message::DeleteOrder(order_id) => {
+                    self.orders.remove(&order_id);
+                }
+                Message::TradingPair(trading_pair) => {
+                    self.add_trading_pair(&TradingPairTopic::new(peer_id.clone(), trading_pair));
+                    self.gossipsub
+                        .subscribe(TradingPairTopic::new(peer_id, trading_pair).to_topic());
+                }
+            }
+        }
+    }
+}
+
+impl NetworkBehaviourEventProcess<RequestResponseEvent<OrderId, Response>> for Orderbook {
+    fn inject_event(&mut self, event: RequestResponseEvent<OrderId, Response>) {
+        match event {
+            RequestResponseEvent::Message {
+                peer,
+                message:
+                    RequestResponseMessage::Request {
+                        request: order_id,
+                        channel,
+                    },
+            } => {
+                if self.can_order_be_taken(&order_id) {
+                    self.confirm(peer, channel);
+                } else {
+                    self.deny(peer, channel);
+                }
+            }
+            RequestResponseEvent::Message {
+                peer: _peer,
+                message:
+                    RequestResponseMessage::Response {
+                        request_id: _request_id,
+                        response: _response,
+                    },
+            } => {
+                tracing::info!("received order confirmation");
+                self.events
+                    .push_back(BehaviourOutEvent::TakeOrderConfirmation);
+            }
+            RequestResponseEvent::OutboundFailure {
+                peer: _peer,
+                request_id: _request_id,
+                error,
+            } => {
+                tracing::warn!("outbound failure: {:?}", error);
+            }
+            RequestResponseEvent::InboundFailure { error, .. } => {
+                tracing::warn!("inbound failure: {:?}", error);
+            }
+        }
     }
 }
 
