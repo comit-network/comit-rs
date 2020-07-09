@@ -150,7 +150,7 @@ async fn main() {
                                 swarm.orderbook.take(order);
                                 orderbook.publish(next_order.into());
                             }
-                            Ok(TakeRequestDecision::RateSucks)
+                            Ok(TakeRequestDecision::RateNotProfitable)
                             | Ok(TakeRequestDecision::InsufficientFunds)
                             | Ok(TakeRequestDecision::CannotTradeWithTaker) => {
                                 swarm.orderbook.ignore(order);

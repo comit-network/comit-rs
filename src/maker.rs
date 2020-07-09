@@ -143,7 +143,7 @@ impl Maker {
                         // 1:8800 -> We give less DAI for getting BTC -> Good.
                         // 1:9200 -> We have to give more DAI for getting BTC -> Sucks.
                         if order_rate > current_profitable_rate {
-                            return Ok(TakeRequestDecision::RateSucks);
+                            return Ok(TakeRequestDecision::RateNotProfitable);
                         }
 
                         let updated_dai_reserved_funds =
@@ -167,7 +167,7 @@ impl Maker {
                         // 1:8800 -> We get less DAI for our BTC -> Sucks.
                         // 1:9200 -> We get more DAI for our BTC -> Good.
                         if order_rate < current_profitable_rate {
-                            return Ok(TakeRequestDecision::RateSucks);
+                            return Ok(TakeRequestDecision::RateNotProfitable);
                         }
 
                         let updated_btc_reserved_funds = self.btc_reserved_funds + order.base;
@@ -194,7 +194,7 @@ impl Maker {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TakeRequestDecision {
     GoForSwap { next_order: BtcDaiOrder },
-    RateSucks,
+    RateNotProfitable,
     InsufficientFunds,
     CannotTradeWithTaker,
 }
@@ -416,7 +416,7 @@ mod tests {
 
         let result = maker.process_taken_order(order_taken).unwrap();
 
-        assert_eq!(result, TakeRequestDecision::RateSucks);
+        assert_eq!(result, TakeRequestDecision::RateNotProfitable);
     }
 
     #[test]
@@ -437,7 +437,7 @@ mod tests {
 
         let result = maker.process_taken_order(order_taken).unwrap();
 
-        assert_eq!(result, TakeRequestDecision::RateSucks);
+        assert_eq!(result, TakeRequestDecision::RateNotProfitable);
     }
 
     #[test]
