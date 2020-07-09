@@ -88,13 +88,12 @@ impl TradingPairTopic {
 
 pub type OrderId = Uuid;
 
+/// MakerId is a PeerId wrapper so we control serialization/deserialization.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MakerId(PeerId);
 
 impl MakerId {
-    pub fn new(peer_id: PeerId) -> Self {
-        MakerId(peer_id)
-    }
+    /// Returns a clone of the inner peer id.
     pub fn peer_id(&self) -> PeerId {
         self.0.clone()
     }
@@ -106,7 +105,6 @@ impl Serialize for MakerId {
         S: Serializer,
     {
         let string = self.0.to_string();
-
         serializer.serialize_str(&string)
     }
 }
