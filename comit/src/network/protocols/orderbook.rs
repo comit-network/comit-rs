@@ -1,9 +1,5 @@
-use libp2p::{
-    gossipsub,
-    gossipsub::{Gossipsub, GossipsubEvent, Topic},
-    multiaddr::Multiaddr,
-    NetworkBehaviour,
-};
+mod take_order;
+
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::{hash_map::DefaultHasher, HashMap, HashSet},
@@ -13,10 +9,31 @@ use std::{
 };
 use uuid::Uuid;
 
-use crate::{asset, identity};
-use libp2p::{swarm::NetworkBehaviourEventProcess, PeerId};
+use crate::{
+    asset, identity,
+    network::protocols::orderbook::take_order::{Response, TakeOrderProtocol},
+};
+use libp2p::{
+    core::either::EitherOutput,
+    gossipsub,
+    gossipsub::{Gossipsub, GossipsubEvent, GossipsubRpc, Topic},
+    multiaddr::Multiaddr,
+    request_response::{
+        handler::RequestProtocol, ProtocolSupport, RequestId, RequestResponse,
+        RequestResponseConfig, RequestResponseEvent, RequestResponseMessage, ResponseChannel,
+    },
+    swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
+    NetworkBehaviour, PeerId,
+};
 use serde::de::Error;
-use std::str::FromStr;
+use std::{
+    collections::VecDeque,
+    str::FromStr,
+    task::{Context, Poll},
+};
+use take_order::TakeOrderCodec;
+
+const TOPIC: &str = "Herc20Hbit";
 
 #[derive(thiserror::Error, Debug)]
 pub enum OrderbookError {
@@ -65,7 +82,7 @@ impl TradingPairTopic {
         }
     }
     fn to_topic(&self) -> Topic {
-        Topic::new("HbitHerc20".to_string())
+        Topic::new(TOPIC.to_string())
     }
 }
 
@@ -177,9 +194,12 @@ pub enum Message {
 }
 
 #[derive(NetworkBehaviour)]
-#[behaviour(out_event = "BehaviourOutEvent")]
+#[behaviour(out_event = "BehaviourOutEvent", poll_method = "poll")]
 pub struct Orderbook {
     pub gossipsub: Gossipsub,
+    take_order: RequestResponse<TakeOrderCodec>,
+    #[behaviour(ignore)]
+    events: VecDeque<BehaviourOutEvent>,
     #[behaviour(ignore)]
     orders: HashMap<OrderId, Order>,
     #[behaviour(ignore)]
@@ -199,8 +219,12 @@ impl fmt::Debug for Orderbook {
     }
 }
 
-#[derive(Debug)]
-pub struct BehaviourOutEvent;
+#[derive(Debug, PartialEq)]
+pub enum BehaviourOutEvent {
+    TakeOrderRequest,
+    TakeOrderConfirmation,
+    Failed(PeerId),
+}
 
 impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
     fn inject_event(&mut self, event: GossipsubEvent) {
@@ -208,18 +232,59 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
             let decoded: Message = bincode::deserialize(&message.data[..]).unwrap();
             match decoded {
                 Message::CreateOrder(order) => {
-                    tracing::info!("create order message received");
                     self.orders.insert(order.order_id(), order);
                 }
                 Message::DeleteOrder(order_id) => {
                     self.orders.remove(&order_id);
                 }
                 Message::TradingPair(trading_pair) => {
-                    tracing::info!("trading pair message received");
                     self.add_trading_pair(&TradingPairTopic::new(peer_id.clone(), trading_pair));
                     self.gossipsub
                         .subscribe(TradingPairTopic::new(peer_id, trading_pair).to_topic());
                 }
+            }
+        }
+    }
+}
+
+impl NetworkBehaviourEventProcess<RequestResponseEvent<OrderId, Response>> for Orderbook {
+    fn inject_event(&mut self, event: RequestResponseEvent<OrderId, Response>) {
+        match event {
+            RequestResponseEvent::Message {
+                peer,
+                message:
+                    RequestResponseMessage::Request {
+                        request: order_id,
+                        channel,
+                    },
+            } => {
+                if self.can_order_be_taken(&order_id) {
+                    self.confirm(peer, channel);
+                } else {
+                    self.deny(peer, channel);
+                }
+            }
+            RequestResponseEvent::Message {
+                peer: _peer,
+                message:
+                    RequestResponseMessage::Response {
+                        request_id: _request_id,
+                        response: _response,
+                    },
+            } => {
+                tracing::info!("received order confirmation");
+                self.events
+                    .push_back(BehaviourOutEvent::TakeOrderConfirmation);
+            }
+            RequestResponseEvent::OutboundFailure {
+                peer: _peer,
+                request_id: _request_id,
+                error,
+            } => {
+                tracing::warn!("outbound failure: {:?}", error);
+            }
+            RequestResponseEvent::InboundFailure { error, .. } => {
+                tracing::warn!("inbound failure: {:?}", error);
             }
         }
     }
@@ -239,21 +304,47 @@ impl Orderbook {
             .message_id_fn(message_id_fn) // content-address messages. No two messages of the
             // same content will be propagated.
             .build();
+
+        let mut config = RequestResponseConfig::default();
+        config.set_request_timeout(Duration::from_secs(5 * 60));
+
         let mut orderbook = Orderbook {
             peer_id: peer_id.clone(),
             gossipsub: Gossipsub::new(peer_id, gossipsub_config),
+            take_order: RequestResponse::new(
+                TakeOrderCodec::default(),
+                vec![(TakeOrderProtocol, ProtocolSupport::Full)],
+                config,
+            ),
             trading_pairs: HashSet::new(),
             orders: HashMap::new(),
             identities: HashMap::new(),
+            events: VecDeque::new(),
         };
 
         orderbook.gossipsub.subscribe(DefaultMakerTopic::to_topic());
 
-        orderbook
-            .gossipsub
-            .subscribe(Topic::new("HbitHerc20".to_string()));
+        orderbook.gossipsub.subscribe(Topic::new(TOPIC.to_string()));
 
         orderbook
+    }
+
+    fn confirm(&mut self, _peer: PeerId, channel: ResponseChannel<Response>) {
+        tracing::info!("confirming order");
+        self.take_order
+            .send_response(channel, Response::Confirmation);
+        self.events.push_back(BehaviourOutEvent::TakeOrderRequest)
+    }
+
+    fn deny(&mut self, peer: PeerId, channel: ResponseChannel<Response>) {
+        tracing::info!("aborting announce protocol with {}", peer);
+
+        self.events.push_back(BehaviourOutEvent::Failed(peer));
+        self.take_order.send_response(channel, Response::Error);
+    }
+
+    fn can_order_be_taken(&self, order_id: &OrderId) -> bool {
+        self.orders.contains_key(order_id)
     }
 
     pub fn make(
@@ -273,7 +364,7 @@ impl Orderbook {
         Ok(order.id)
     }
 
-    pub fn take(
+    pub fn old_take(
         &mut self,
         order_id: OrderId,
     ) -> anyhow::Result<(Order, crate::bitcoin::Address, identity::Ethereum)> {
@@ -290,6 +381,10 @@ impl Orderbook {
             None => return Err(anyhow::Error::from(OrderbookError::OrderNotFound(order_id))),
         };
         Ok((order, identities.0, identities.1))
+    }
+
+    pub fn take(&mut self, peer_id: &PeerId, order_id: OrderId) -> RequestId {
+        self.take_order.send_request(peer_id, order_id)
     }
 
     pub fn take_with_identities(
@@ -356,5 +451,145 @@ impl Orderbook {
             &topic,
             bincode::serialize(&Message::TradingPair(trading_pair)).unwrap(),
         );
+    }
+
+    fn poll(
+        &mut self,
+        _: &mut Context<'_>,
+        _: &mut impl PollParameters,
+    ) -> Poll<
+        NetworkBehaviourAction<
+            EitherOutput<GossipsubRpc, RequestProtocol<TakeOrderCodec>>,
+            BehaviourOutEvent,
+        >,
+    > {
+        if let Some(event) = self.events.pop_front() {
+            return Poll::Ready(NetworkBehaviourAction::GenerateEvent(event));
+        }
+
+        Poll::Pending
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        asset::{self, Erc20, Erc20Quantity},
+        network::test::{await_events_or_timeout, connect, new_swarm},
+    };
+    use atty::{self, Stream};
+    use libp2p::Swarm;
+    use log::LevelFilter;
+    use spectral::prelude::*;
+    use std::str::FromStr;
+    use tracing::{info, subscriber, Level};
+    use tracing_log::LogTracer;
+    use tracing_subscriber::FmtSubscriber;
+
+    #[tokio::test]
+    async fn take_order_request_confirmation() {
+        let comit_level = LevelFilter::Debug;
+        let upstream_level = LevelFilter::Info;
+        init_tracing(comit_level, upstream_level).expect("failed to init tracing");
+
+        // arrange
+
+        let delay = Duration::from_secs(2);
+
+        let (mut alice_swarm, _, _alice_peer_id) = new_swarm(Orderbook::new);
+        let (mut bob_swarm, bob_addr, bob_peer_id) = new_swarm(Orderbook::new);
+
+        // libp2p::Swarm::dial_addr(&mut alice_swarm, bob_addr.clone());
+
+        connect(&mut alice_swarm, &mut bob_swarm).await;
+
+        // TODO: Create helper function for this.
+        let order = Order::new(bob_peer_id.clone(), NewOrder {
+            buy: asset::Bitcoin::from_sat(100),
+            sell: Erc20 {
+                token_contract: Default::default(),
+                quantity: Erc20Quantity::max_value(),
+            },
+            absolute_expiry: 100,
+            maker_addr: bob_addr.clone(),
+        });
+
+        // TODO: Create helper function for this.
+        let bob_refund_identity =
+            crate::bitcoin::Address::from_str("2MufZ6LLCqYTvZnCwzfAjSKn26Xcnr19PBE")
+                .expect("failed to parse bitcoin address");
+        let bob_redeem_identity = identity::Ethereum::random();
+
+        // act
+
+        // Trigger subscription.
+        poll_with_delay(&mut alice_swarm, delay).await;
+        poll_with_delay(&mut bob_swarm, delay).await;
+
+        let _ = bob_swarm
+            .make(order.clone(), bob_refund_identity, bob_redeem_identity)
+            .expect("order id should exist");
+
+        // Trigger publish and receipt of order.
+        poll_with_delay(&mut bob_swarm, delay).await;
+        poll_with_delay(&mut alice_swarm, delay).await;
+
+        let order = alice_swarm
+            .get_orders()
+            .first()
+            .cloned()
+            .expect("Alice has no orders");
+
+        tracing::info!("alice received order");
+
+        alice_swarm.take(&bob_peer_id, order.id);
+
+        poll_with_delay(&mut bob_swarm, delay).await;
+        poll_with_delay(&mut alice_swarm, delay).await;
+
+        let (alice_event, bob_event) =
+            await_events_or_timeout(alice_swarm.next(), bob_swarm.next()).await;
+
+        // assert
+
+        assert_that(&alice_event).is_equal_to(BehaviourOutEvent::TakeOrderConfirmation);
+        assert_that(&bob_event).is_equal_to(BehaviourOutEvent::TakeOrderRequest);
+    }
+
+    // Poll the swarm for some time, we don't expect any events though.
+    async fn poll_with_delay(swarm: &mut Swarm<Orderbook>, delay: Duration) {
+        while let Ok(event) = tokio::time::timeout(delay, swarm.next()).await {
+            panic!("unexpected event emitted: {:?}", event)
+        }
+    }
+
+    fn init_tracing(comit: LevelFilter, upstream: LevelFilter) -> anyhow::Result<()> {
+        LogTracer::init_with_filter(upstream)?;
+
+        let is_terminal = atty::is(Stream::Stdout);
+        let subscriber = FmtSubscriber::builder()
+            .with_max_level(level_from_level_filter(comit))
+            .with_ansi(is_terminal)
+            .finish();
+
+        subscriber::set_global_default(subscriber)?;
+        info!(
+            "Initialized tracing within comit at level: {}, upstream: {}",
+            comit, upstream
+        );
+
+        Ok(())
+    }
+
+    fn level_from_level_filter(level: LevelFilter) -> Level {
+        match level {
+            LevelFilter::Off => panic!("level is off"),
+            LevelFilter::Error => Level::ERROR,
+            LevelFilter::Warn => Level::WARN,
+            LevelFilter::Info => Level::INFO,
+            LevelFilter::Debug => Level::DEBUG,
+            LevelFilter::Trace => Level::TRACE,
+        }
     }
 }

@@ -32,7 +32,7 @@ pub enum BehaviourOutEvent {
 #[behaviour(out_event = "BehaviourOutEvent", poll_method = "poll")]
 pub struct Comit {
     orderbook: Orderbook,
-    pub take_order: TakeOrder,
+    pub take_order: TakeOrderOld,
     secret_hash: oneshot_behaviour::Behaviour<secret_hash::Message>,
     ethereum_identity: oneshot_behaviour::Behaviour<ethereum_identity::Message>,
     lightning_identity: oneshot_behaviour::Behaviour<lightning_identity::Message>,
@@ -277,14 +277,14 @@ impl NetworkBehaviourEventProcess<take_order::behaviour::BehaviourOutEvent> for 
                     order_id,
                     peer
                 );
-                let (order, refund_identity, redeem_identity) = match self.orderbook.take(order_id)
-                {
-                    Ok(order) => order,
-                    Err(_) => {
-                        tracing::warn!("Order {:?} does not exist", order_id);
-                        return;
-                    }
-                };
+                let (order, refund_identity, redeem_identity) =
+                    match self.orderbook.old_take(order_id) {
+                        Ok(order) => order,
+                        Err(_) => {
+                            tracing::warn!("Order {:?} does not exist", order_id);
+                            return;
+                        }
+                    };
 
                 self.events.push_back(BehaviourOutEvent::OrderTaken {
                     order,

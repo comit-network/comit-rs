@@ -530,6 +530,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "atty",
  "base64 0.12.3",
  "bincode",
  "bitcoin",
@@ -545,6 +546,7 @@ dependencies = [
  "lazy_static",
  "levenshtein",
  "libp2p",
+ "log 0.4.8",
  "lru 0.5.3",
  "num",
  "primitive-types",
@@ -563,7 +565,10 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+ "tracing-core",
  "tracing-futures",
+ "tracing-log",
+ "tracing-subscriber",
  "uuid",
 ]
 

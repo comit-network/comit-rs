@@ -24,14 +24,14 @@ use std::{
 /// Network behaviour that announces a swap to peer by sending a `swap_digest`
 /// and receives the `swap_id` back.
 #[derive(Debug)]
-pub struct TakeOrder {
+pub struct TakeOrderOld {
     /// Pending events to be emitted when polled.
     events: VecDeque<NetworkBehaviourAction<OutboundConfig, BehaviourOutEvent>>,
     /// Stores connection state for nodes we connect to.
     connections: HashMap<PeerId, ConnectionState>,
 }
 
-impl Default for TakeOrder {
+impl Default for TakeOrderOld {
     fn default() -> Self {
         Self {
             events: VecDeque::new(),
@@ -40,7 +40,7 @@ impl Default for TakeOrder {
     }
 }
 
-impl TakeOrder {
+impl TakeOrderOld {
     pub fn take(
         &mut self,
         order_id: OrderId,
@@ -95,7 +95,7 @@ impl TakeOrder {
     }
 }
 
-impl NetworkBehaviour for TakeOrder {
+impl NetworkBehaviour for TakeOrderOld {
     type ProtocolsHandler = Handler;
     type OutEvent = BehaviourOutEvent;
 
