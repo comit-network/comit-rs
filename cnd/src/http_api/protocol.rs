@@ -221,7 +221,6 @@ impl From<halbit::State> for LedgerEvents {
     }
 }
 
-#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
 pub enum AliceSwap<AC, BC, AF, BF> {
     Created {
@@ -235,7 +234,6 @@ pub enum AliceSwap<AC, BC, AF, BF> {
     },
 }
 
-#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
 pub enum BobSwap<AC, BC, AF, BF> {
     Created {

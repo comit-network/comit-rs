@@ -139,7 +139,7 @@ impl FromStr for Hash {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, thiserror::Error)]
 pub enum FromHexStrError {
     #[error("unable to decode string as hex")]
     InvalidHex(#[from] hex::FromHexError),

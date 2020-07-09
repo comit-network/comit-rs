@@ -11,8 +11,6 @@ pub struct LedgerNotConfigured {
     pub ledger: &'static str,
 }
 
-// tracing triggers clippy warning, issue reported: https://github.com/tokio-rs/tracing/issues/553
-#[allow(clippy::cognitive_complexity)]
 pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
     let e = match e.downcast::<HttpApiProblem>() {
         Ok(problem) => return problem,

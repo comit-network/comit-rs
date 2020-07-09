@@ -83,6 +83,7 @@ pub struct OrderConfirmed {
     pub swap_id: SharedSwapId,
 }
 
+#[derive(Debug)]
 pub struct InboundTakeOrderRequest<T> {
     pub order_id: OrderId,
     pub reply_substream: ReplySubstream<T>,
@@ -107,7 +108,7 @@ impl UpgradeInfo for InboundConfig {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct InboundMessage {
     order_id: OrderId,
     swap_digest: SwapDigest,

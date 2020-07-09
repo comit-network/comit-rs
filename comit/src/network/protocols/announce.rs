@@ -25,6 +25,7 @@ use std::{
 /// us.
 #[derive(NetworkBehaviour)]
 #[behaviour(out_event = "BehaviourOutEvent", poll_method = "poll")]
+#[allow(missing_debug_implementations)]
 pub struct Announce {
     inner: RequestResponse<AnnounceCodec>,
 
@@ -276,7 +277,7 @@ pub enum BehaviourOutEvent {
     },
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy, Debug)]
 pub struct AnnounceProtocol;
 
 impl ProtocolName for AnnounceProtocol {
@@ -285,14 +286,14 @@ impl ProtocolName for AnnounceProtocol {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct AnnounceCodec;
 
 /// The different responses we can send back as part of an announcement.
 ///
 /// For now, this only includes a generic error variant in addition to the
 /// confirmation because we simply close the connection in case of an error.
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum Response {
     Confirmation(SharedSwapId),
     Error,
