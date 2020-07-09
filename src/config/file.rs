@@ -24,8 +24,8 @@ pub struct File {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Maker {
-    pub max_sell: Option<MaxSell>,
     pub spread: Option<Spread>,
+    pub max_sell: Option<MaxSell>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]

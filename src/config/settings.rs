@@ -1,9 +1,11 @@
-use crate::config::{file, Bitcoin, Bitcoind, Data, Ethereum, File, Maker, MaxSell, Network};
+use crate::config::{file, Bitcoind, Data, File, MaxSell, Network};
 use crate::dai::DaiContractAddress;
 use crate::Spread;
 use anyhow::{anyhow, Context};
+use comit::ethereum::ChainId;
 use log::LevelFilter;
 use std::convert::{TryFrom, TryInto};
+use url::Url;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Settings {
@@ -15,28 +17,54 @@ pub struct Settings {
     pub ethereum: Ethereum,
 }
 
-fn derive_url_bitcoin(bitcoin: Option<file::Bitcoin>) -> Bitcoin {
-    match bitcoin {
-        None => Bitcoin::default(),
-        Some(bitcoin) => {
-            let node_url = match bitcoin.bitcoind {
-                Some(bitcoind) => bitcoind.node_url,
-                None => match bitcoin.network {
-                    ::bitcoin::Network::Bitcoin => "http://localhost:8332"
-                        .parse()
-                        .expect("to be valid static string"),
-                    ::bitcoin::Network::Testnet => "http://localhost:18332"
-                        .parse()
-                        .expect("to be valid static string"),
-                    ::bitcoin::Network::Regtest => "http://localhost:18443"
-                        .parse()
-                        .expect("to be valid static string"),
-                },
-            };
-            Bitcoin {
-                network: bitcoin.network,
-                bitcoind: Bitcoind { node_url },
-            }
+#[derive(Clone, Debug, PartialEq)]
+pub struct Bitcoin {
+    pub network: ::bitcoin::Network,
+    pub bitcoind: Bitcoind,
+}
+
+impl Default for Bitcoin {
+    fn default() -> Self {
+        Self {
+            network: ::bitcoin::Network::Regtest,
+            bitcoind: Bitcoind {
+                node_url: Url::parse("http://localhost:18443")
+                    .expect("static string to be a valid url"),
+            },
+        }
+    }
+}
+
+impl From<Bitcoin> for file::Bitcoin {
+    fn from(bitcoin: Bitcoin) -> Self {
+        file::Bitcoin {
+            network: bitcoin.network,
+            bitcoind: Some(bitcoin.bitcoind),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Ethereum {
+    pub chain_id: ChainId,
+    pub node_url: Url,
+    pub dai_contract_address: comit::ethereum::Address,
+}
+
+impl From<Ethereum> for file::Ethereum {
+    fn from(ethereum: Ethereum) -> Self {
+        let dai_contract_address = DaiContractAddress::from_public_chain_id(ethereum.chain_id);
+        match dai_contract_address {
+            None => file::Ethereum {
+                chain_id: ethereum.chain_id,
+                node_url: Some(ethereum.node_url),
+                local_dai_contract_address: Some(ethereum.dai_contract_address),
+            },
+            Some(_) => file::Ethereum {
+                chain_id: ethereum.chain_id,
+                node_url: Some(ethereum.node_url),
+                local_dai_contract_address: None,
+            },
         }
     }
 }
@@ -80,6 +108,56 @@ impl TryFrom<Option<file::Ethereum>> for Ethereum {
         }
     }
 }
+
+impl Default for Ethereum {
+    fn default() -> Self {
+        Self {
+            chain_id: ChainId::mainnet(),
+            node_url: Url::parse("http://localhost:8545").expect("static string to be a valid url"),
+            dai_contract_address: DaiContractAddress::Mainnet.into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Maker {
+    pub max_sell: MaxSell,
+    pub spread: Spread,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, derivative::Derivative)]
+#[derivative(Default)]
+pub struct Logging {
+    #[derivative(Default(value = "LevelFilter::Info"))]
+    pub level: LevelFilter,
+}
+
+fn derive_url_bitcoin(bitcoin: Option<file::Bitcoin>) -> Bitcoin {
+    match bitcoin {
+        None => Bitcoin::default(),
+        Some(bitcoin) => {
+            let node_url = match bitcoin.bitcoind {
+                Some(bitcoind) => bitcoind.node_url,
+                None => match bitcoin.network {
+                    ::bitcoin::Network::Bitcoin => "http://localhost:8332"
+                        .parse()
+                        .expect("to be valid static string"),
+                    ::bitcoin::Network::Testnet => "http://localhost:18332"
+                        .parse()
+                        .expect("to be valid static string"),
+                    ::bitcoin::Network::Regtest => "http://localhost:18443"
+                        .parse()
+                        .expect("to be valid static string"),
+                },
+            };
+            Bitcoin {
+                network: bitcoin.network,
+                bitcoind: Bitcoind { node_url },
+            }
+        }
+    }
+}
+
 impl From<Settings> for File {
     fn from(settings: Settings) -> Self {
         let Settings {
@@ -93,7 +171,13 @@ impl From<Settings> for File {
 
         File {
             maker: Some(file::Maker {
-                max_sell: Some(maker.max_sell),
+                max_sell: match maker.max_sell {
+                    MaxSell {
+                        bitcoin: None,
+                        dai: None,
+                    } => None,
+                    max_sell => Some(max_sell),
+                },
                 spread: Some(maker.spread),
             }),
             network: Some(network),
@@ -105,13 +189,6 @@ impl From<Settings> for File {
             ethereum: Some(ethereum.into()),
         }
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, derivative::Derivative)]
-#[derivative(Default)]
-pub struct Logging {
-    #[derivative(Default(value = "LevelFilter::Info"))]
-    pub level: LevelFilter,
 }
 
 impl Settings {

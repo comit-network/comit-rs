@@ -93,7 +93,6 @@ impl TryFrom<BtcDaiOrder> for Rate {
 /// Spread: percentage to be added on top of a rate or amount with
 /// a maximum precision of 2 decimals
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(transparent)]
 pub struct Spread(u16);
 
 impl Spread {

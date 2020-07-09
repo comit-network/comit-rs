@@ -1,6 +1,7 @@
 #![allow(unreachable_code, unused_variables, clippy::unit_arg)]
 
 use anyhow::Context;
+use nectar::config::settings;
 use nectar::maker::PublishOrders;
 use nectar::{
     bitcoin, bitcoin_wallet, config,
@@ -18,7 +19,7 @@ use structopt::StructOpt;
 async fn init_maker(
     bitcoin_wallet: bitcoin_wallet::Wallet,
     ethereum_wallet: ethereum_wallet::Wallet,
-    maker_settings: config::Maker,
+    maker_settings: settings::Maker,
 ) -> Maker {
     let initial_btc_balance = bitcoin_wallet.balance().await;
 
