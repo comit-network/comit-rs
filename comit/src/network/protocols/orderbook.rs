@@ -549,6 +549,7 @@ mod tests {
 
         alice_swarm.take(&bob_peer_id, order.id);
 
+        // Trigger request/response messages.
         poll_with_delay(&mut bob_swarm, delay).await;
         poll_with_delay(&mut alice_swarm, delay).await;
 
