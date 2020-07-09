@@ -1,3 +1,4 @@
+use crate::bitcoin;
 use crate::config::{file, Bitcoind, Data, File, MaxSell, Network};
 use crate::dai::DaiContractAddress;
 use crate::Spread;
@@ -125,6 +126,24 @@ pub struct Maker {
     pub max_sell: MaxSell,
     /// Spread to apply to the mid-market rate, format is permyriad. E.g. 5.20 is 5.2% spread
     pub spread: Spread,
+    /// Maximum possible network fee to consider when calculating the available balance.
+    /// Fees are in the nominal native currency and per transaction.
+    pub maximum_possible_fee: Fees,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Fees {
+    pub bitcoin: bitcoin::Amount,
+}
+
+impl Default for Fees {
+    fn default() -> Self {
+        Fees {
+            // ~265 vbytes (2 inputs 2 outputs segwit transaction)
+            // * 35 sat/vbytes (Looking at https://bitcoinfees.github.io/#1m)
+            bitcoin: bitcoin::Amount::from_sat(265 * 35),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, derivative::Derivative)]
@@ -195,6 +214,9 @@ impl From<Maker> for file::Maker {
                 max_sell => Some(max_sell),
             },
             spread: Some(maker.spread),
+            maximum_possible_fee: Some(file::Fees {
+                bitcoin: Some(maker.maximum_possible_fee.bitcoin),
+            }),
         }
     }
 }
@@ -230,6 +252,20 @@ impl Settings {
                         ..
                     }) => spread,
                     _ => Spread::new(500).expect("500 is a valid spread value"),
+                },
+                maximum_possible_fee: {
+                    if let Some(file::Maker {
+                        maximum_possible_fee:
+                            Some(file::Fees {
+                                bitcoin: Some(bitcoin),
+                            }),
+                        ..
+                    }) = maker
+                    {
+                        Fees { bitcoin }
+                    } else {
+                        Fees::default()
+                    }
                 },
             },
             network: network.unwrap_or_else(|| {
