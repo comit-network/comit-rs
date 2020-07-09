@@ -13,7 +13,7 @@ pub trait Save<T>: Send + Sync + 'static {
     async fn save(&self, event: T, swap_id: SwapId) -> anyhow::Result<()>;
 }
 
-struct Database {
+pub struct Database {
     db: sled::Db,
     #[cfg(test)]
     tmp_dir: tempdir::TempDir,
@@ -40,7 +40,7 @@ impl Database {
         Ok(Database { db, tmp_dir })
     }
 
-    pub fn insert(&self, swap_id: &SwapId, swap: &Swap) -> anyhow::Result<()> {
+    fn insert(&self, swap_id: &SwapId, swap: &Swap) -> anyhow::Result<()> {
         let key = swap_id.as_bytes();
         // TODO: Consider using https://github.com/3Hren/msgpack-rust instead
         let value = serde_json::to_vec(&swap)
@@ -53,7 +53,7 @@ impl Database {
         Ok(())
     }
 
-    pub fn get(&self, swap_id: &SwapId) -> anyhow::Result<Swap> {
+    fn get(&self, swap_id: &SwapId) -> anyhow::Result<Swap> {
         let swap = self
             .db
             .get(swap_id.as_bytes())?
@@ -66,11 +66,15 @@ impl Database {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct Swap {
     pub hbit_funded: Option<HbitFunded>,
+    pub hbit_redeemed: Option<HbitRedeemed>,
 }
 
 impl Default for Swap {
     fn default() -> Self {
-        Swap { hbit_funded: None }
+        Swap {
+            hbit_funded: None,
+            hbit_redeemed: None,
+        }
     }
 }
 
@@ -133,9 +137,84 @@ impl Load<hbit::Funded> for Database {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct HbitRedeemed {
+    pub transaction: comit::transaction::Bitcoin,
+    pub secret: comit::Secret,
+}
+
+impl From<HbitRedeemed> for hbit::Redeemed {
+    fn from(event: HbitRedeemed) -> Self {
+        hbit::Redeemed {
+            transaction: event.transaction,
+            secret: event.secret,
+        }
+    }
+}
+
+impl From<hbit::Redeemed> for HbitRedeemed {
+    fn from(event: hbit::Redeemed) -> Self {
+        HbitRedeemed {
+            transaction: event.transaction,
+            secret: event.secret,
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Save<hbit::Redeemed> for Database {
+    async fn save(&self, event: hbit::Redeemed, swap_id: SwapId) -> anyhow::Result<()> {
+        let stored_swap = self.get(&swap_id)?;
+
+        match stored_swap.hbit_redeemed {
+            Some(_) => Err(anyhow!("Hbit Redeemed event is already stored")),
+            None => {
+                let mut swap = stored_swap.clone();
+                swap.hbit_redeemed = Some(event.into());
+
+                let old_value = serde_json::to_vec(&stored_swap)
+                    .context("Could not serialize old swap value")?;
+                let new_value =
+                    serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
+
+                self.db
+                    .compare_and_swap(swap_id.as_bytes(), Some(old_value), Some(new_value))
+                    .context("Could not write in the DB")?
+                    .context("Stored swap somehow changed, aborting saving")
+            }
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Load<hbit::Redeemed> for Database {
+    async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<hbit::Redeemed>> {
+        let swap = self.get(&swap_id)?;
+
+        Ok(swap.hbit_redeemed.map(Into::into))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn bitcoin_transaction() -> ::bitcoin::Transaction {
+        ::bitcoin::Transaction {
+            version: 1,
+            lock_time: 0,
+            input: vec![::bitcoin::TxIn {
+                previous_output: Default::default(),
+                script_sig: Default::default(),
+                sequence: 0,
+                witness: vec![],
+            }],
+            output: vec![::bitcoin::TxOut {
+                value: 0,
+                script_pubkey: Default::default(),
+            }],
+        }
+    }
 
     #[tokio::test]
     async fn save_and_load_hbit_funded() {
@@ -150,7 +229,7 @@ mod tests {
         let funded = hbit::Funded { asset, location };
         db.save(funded, swap_id).await.unwrap();
 
-        let stored_funded = db
+        let stored_funded: hbit::Funded = db
             .load(swap_id)
             .await
             .expect("No error loading")
@@ -158,5 +237,31 @@ mod tests {
 
         assert_eq!(stored_funded.asset, asset);
         assert_eq!(stored_funded.location, location);
+    }
+
+    #[tokio::test]
+    async fn save_and_load_hbit_redeemed() {
+        let db = Database::new_test().unwrap();
+        let transaction = bitcoin_transaction();
+        let secret = comit::Secret::from_vec(b"are those thirty-two bytes? Hum.").unwrap();
+        let swap = Swap::default();
+        let swap_id = SwapId::default();
+
+        db.insert(&swap_id, &swap).unwrap();
+
+        let event = hbit::Redeemed {
+            transaction: transaction.clone(),
+            secret,
+        };
+        db.save(event, swap_id).await.unwrap();
+
+        let stored_event: hbit::Redeemed = db
+            .load(swap_id)
+            .await
+            .expect("No error loading")
+            .expect("found the event");
+
+        assert_eq!(stored_event.transaction, transaction);
+        assert_eq!(stored_event.secret, secret);
     }
 }
