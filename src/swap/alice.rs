@@ -95,6 +95,10 @@ where
     }
 }
 
+/// Nectar does not care if the taker refunds, so we do not need to
+/// look for the taker's refund event the blockchain.
+///
+/// Therefore, this implementation is effectively a no-op.
 #[async_trait::async_trait]
 impl<AC, BC, DB, BP> Execute<herc20::Refunded> for WatchOnlyAlice<AC, BC, DB, herc20::Params, BP>
 where
@@ -107,13 +111,10 @@ where
 {
     type Args = herc20::Deployed;
 
-    async fn execute(&self, deploy_event: herc20::Deployed) -> anyhow::Result<herc20::Refunded> {
-        herc20::watch_for_refunded(
-            self.alpha_connector.as_ref(),
-            self.start_of_swap,
-            deploy_event,
-        )
-        .await
+    async fn execute(&self, _deploy_event: herc20::Deployed) -> anyhow::Result<herc20::Refunded> {
+        Ok(herc20::Refunded {
+            transaction: ethereum::Transaction::default(),
+        })
     }
 }
 
@@ -161,6 +162,10 @@ where
     }
 }
 
+/// Nectar does not care if the taker refunds, so we do not need to
+/// look for the taker's refund event the blockchain.
+///
+/// Therefore, this implementation is effectively a no-op.
 #[async_trait::async_trait]
 impl<AC, BC, DB, BP> Execute<hbit::Refunded> for WatchOnlyAlice<AC, BC, DB, hbit::SharedParams, BP>
 where
@@ -172,14 +177,15 @@ where
 {
     type Args = hbit::Funded;
 
-    async fn execute(&self, fund_event: hbit::Funded) -> anyhow::Result<hbit::Refunded> {
-        hbit::watch_for_refunded(
-            self.alpha_connector.as_ref(),
-            &self.alpha_params,
-            fund_event.location,
-            self.start_of_swap,
-        )
-        .await
+    async fn execute(&self, _fund_event: hbit::Funded) -> anyhow::Result<hbit::Refunded> {
+        Ok(hbit::Refunded {
+            transaction: bitcoin::Transaction {
+                version: 1,
+                lock_time: 0,
+                input: Vec::new(),
+                output: Vec::new(),
+            },
+        })
     }
 }
 

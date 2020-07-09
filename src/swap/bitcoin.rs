@@ -3,7 +3,7 @@ use comit::{asset, Secret};
 use std::sync::Arc;
 
 pub use crate::bitcoin::Amount;
-pub use ::bitcoin::{secp256k1::SecretKey, Address, Block, BlockHash, OutPoint};
+pub use ::bitcoin::{secp256k1::SecretKey, Address, Block, BlockHash, OutPoint, Transaction};
 
 #[derive(Debug, Clone)]
 pub struct Wallet {
