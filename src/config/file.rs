@@ -322,4 +322,65 @@ local_dai_contract_address = "0x31F42841c2db5173425b5223809CF3A38FEde360"
 
         assert_eq!(actual, expected);
     }
+
+    #[test]
+    fn max_sell_deserializes_correctly() {
+        let file_contents = vec![
+            r#"
+            bitcoin = 1.2345
+            dai = 91234.123
+            "#,
+            r#"
+            bitcoin = 0
+            dai = 9999
+            "#,
+            r#"
+            bitcoin = 123
+            dai = 0
+            "#,
+            r#"
+            dai = 9999
+            "#,
+            r#"
+            bitcoin = 123
+            "#,
+            r#"
+            "#,
+        ];
+
+        let expected = vec![
+            MaxSell {
+                bitcoin: Some(bitcoin::Amount::from_btc(1.2345).unwrap()),
+                dai: Some(dai::Amount::from_dai_trunc(91234.123).unwrap()),
+            },
+            MaxSell {
+                bitcoin: Some(bitcoin::Amount::from_btc(0.0).unwrap()),
+                dai: Some(dai::Amount::from_dai_trunc(9999.0).unwrap()),
+            },
+            MaxSell {
+                bitcoin: Some(bitcoin::Amount::from_btc(123.0).unwrap()),
+                dai: Some(dai::Amount::from_dai_trunc(0.0).unwrap()),
+            },
+            MaxSell {
+                bitcoin: None,
+                dai: Some(dai::Amount::from_dai_trunc(9999.0).unwrap()),
+            },
+            MaxSell {
+                bitcoin: Some(bitcoin::Amount::from_btc(123.0).unwrap()),
+                dai: None,
+            },
+            MaxSell {
+                bitcoin: None,
+                dai: None,
+            },
+        ];
+
+        let actual = file_contents
+            .into_iter()
+            .map(toml::from_str)
+            .collect::<Result<Vec<MaxSell>, toml::de::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
 }
