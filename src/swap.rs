@@ -12,9 +12,7 @@ mod herc20;
 use comit::Secret;
 use futures::future::{self, Either};
 
-pub use action::{
-    AlphaLedgerTime, BetaExpiry, BetaLedgerTime, DoItOnce, Execute, Next, TryDoItOnce,
-};
+pub use action::{BetaExpiry, BetaLedgerTime, DoItOnce, Execute, Next, TryDoItOnce};
 pub use alice::WatchOnlyAlice;
 pub use bob::WalletBob;
 

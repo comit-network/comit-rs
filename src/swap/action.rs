@@ -152,11 +152,6 @@ pub trait BetaExpiry {
 }
 
 #[async_trait::async_trait]
-pub trait AlphaLedgerTime {
-    async fn alpha_ledger_time(&self) -> anyhow::Result<Timestamp>;
-}
-
-#[async_trait::async_trait]
 pub trait BetaLedgerTime {
     async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp>;
 }
