@@ -329,15 +329,6 @@ pub struct Order {
     pub absolute_expiry: u32,
 }
 
-pub struct OrderWithIdentities {
-    pub id: OrderId,
-    pub maker_id: Vec<u8>,
-    pub maker_addr: Multiaddr,
-    pub buy: u64,
-    pub sell: asset::Erc20,
-    pub absolute_expiry: u32,
-}
-
 pub struct NewOrder {
     pub buy: asset::Bitcoin,
     pub sell: asset::Erc20,
