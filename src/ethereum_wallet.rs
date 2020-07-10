@@ -4,7 +4,6 @@ use comit::{
     asset::Erc20,
     ethereum::{Address, ChainId, Hash, TransactionReceipt},
 };
-use std::str::FromStr;
 use url::Url;
 
 // TODO: Add network; assert network on all calls to geth
@@ -12,24 +11,24 @@ use url::Url;
 pub struct Wallet {
     private_key: clarity::PrivateKey,
     geth_client: geth::Client,
-    dai_contract_adr: Address,
+    dai_contract_addr: Address,
 }
 
 impl Wallet {
-    pub fn new(seed: Seed, url: Url) -> anyhow::Result<Self> {
+    pub fn new(
+        seed: Seed,
+        url: Url,
+        dai_contract_addr: comit::ethereum::Address,
+    ) -> anyhow::Result<Self> {
         let private_key = clarity::PrivateKey::from_slice(&seed.secret_key_bytes())
             .map_err(|_| anyhow::anyhow!("Failed to derive private key from slice"))?;
 
         let geth_client = geth::Client::new(url);
 
-        // TODO: Properly deal with address according to chain-id (currently set to mainnet address)
-        let dai_contract_adr = Address::from_str("6b175474e89094c44da98b954eedeac495271d0f")
-            .expect("dai contract address");
-
         Ok(Self {
             private_key,
             geth_client,
-            dai_contract_adr,
+            dai_contract_addr,
         })
     }
 
@@ -41,7 +40,7 @@ impl Wallet {
         Self {
             private_key,
             geth_client,
-            dai_contract_adr,
+            dai_contract_addr: dai_contract_adr,
         }
     }
 
@@ -212,7 +211,7 @@ impl Wallet {
     }
 
     pub async fn dai_balance(&self) -> anyhow::Result<Erc20> {
-        self.erc20_balance(self.dai_contract_adr).await
+        self.erc20_balance(self.dai_contract_addr).await
     }
 
     pub async fn get_transaction_count(&self) -> anyhow::Result<u32> {
