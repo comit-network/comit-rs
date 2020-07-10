@@ -1,6 +1,7 @@
 use crate::swap::{hbit, herc20};
 use crate::SwapId;
 use anyhow::{anyhow, Context};
+use comit::asset::Erc20;
 use comit::ethereum::{self, Hash, Transaction, U256};
 use serde::{Deserialize, Serialize};
 use serde_hex::{SerHexSeq, StrictPfx};
@@ -71,6 +72,7 @@ struct Swap {
     pub hbit_redeemed: Option<HbitRedeemed>,
     pub hbit_refunded: Option<HbitRefunded>,
     pub herc20_deployed: Option<Herc20Deployed>,
+    pub herc20_funded: Option<Herc20Funded>,
 }
 
 impl Default for Swap {
@@ -80,6 +82,7 @@ impl Default for Swap {
             hbit_redeemed: None,
             hbit_refunded: None,
             herc20_deployed: None,
+            herc20_funded: None,
         }
     }
 }
@@ -314,6 +317,64 @@ impl Load<herc20::Deployed> for Database {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct Herc20Funded {
+    pub transaction: EthereumTransaction,
+    pub asset: Erc20Asset,
+}
+
+impl From<Herc20Funded> for herc20::Funded {
+    fn from(event: Herc20Funded) -> Self {
+        herc20::Funded {
+            transaction: event.transaction.into(),
+            asset: event.asset.into(),
+        }
+    }
+}
+
+impl From<herc20::Funded> for Herc20Funded {
+    fn from(event: herc20::Funded) -> Self {
+        Herc20Funded {
+            transaction: event.transaction.into(),
+            asset: event.asset.into(),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Save<herc20::Funded> for Database {
+    async fn save(&self, event: herc20::Funded, swap_id: SwapId) -> anyhow::Result<()> {
+        let stored_swap = self.get(&swap_id)?;
+
+        match stored_swap.herc20_funded {
+            Some(_) => Err(anyhow!("Herc20 Funded event is already stored")),
+            None => {
+                let mut swap = stored_swap.clone();
+                swap.herc20_funded = Some(event.into());
+
+                let old_value = serde_json::to_vec(&stored_swap)
+                    .context("Could not serialize old swap value")?;
+                let new_value =
+                    serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
+
+                self.db
+                    .compare_and_swap(swap_id.as_bytes(), Some(old_value), Some(new_value))
+                    .context("Could not write in the DB")?
+                    .context("Stored swap somehow changed, aborting saving")
+            }
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Load<herc20::Funded> for Database {
+    async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Funded>> {
+        let swap = self.get(&swap_id)?;
+
+        Ok(swap.herc20_funded.map(Into::into))
+    }
+}
+
 #[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
 pub struct EthereumTransaction {
     pub hash: Hash,
@@ -341,6 +402,30 @@ impl From<ethereum::Transaction> for EthereumTransaction {
             to: transaction.to,
             value: transaction.value,
             input: transaction.input,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct Erc20Asset {
+    pub token_contract: ethereum::Address,
+    pub quantity: comit::asset::Erc20Quantity,
+}
+
+impl From<Erc20Asset> for comit::asset::Erc20 {
+    fn from(asset: Erc20Asset) -> Self {
+        comit::asset::Erc20 {
+            token_contract: asset.token_contract,
+            quantity: asset.quantity,
+        }
+    }
+}
+
+impl From<comit::asset::Erc20> for Erc20Asset {
+    fn from(asset: Erc20) -> Self {
+        Erc20Asset {
+            token_contract: asset.token_contract,
+            quantity: asset.quantity,
         }
     }
 }
@@ -462,5 +547,34 @@ mod tests {
 
         assert_eq!(stored_event.transaction, transaction);
         assert_eq!(stored_event.location, location);
+    }
+
+    #[tokio::test]
+    async fn save_and_load_herc20_funded() {
+        let db = Database::new_test().unwrap();
+        let swap = Swap::default();
+        let swap_id = SwapId::default();
+        let transaction = comit::transaction::Ethereum::default();
+        let asset = comit::asset::Erc20::new(
+            ethereum::Address::random(),
+            comit::asset::Erc20Quantity::from_wei_dec_str("123456789012345678").unwrap(),
+        );
+
+        db.insert(&swap_id, &swap).unwrap();
+
+        let event = herc20::Funded {
+            transaction: transaction.clone(),
+            asset: asset.clone(),
+        };
+        db.save(event, swap_id).await.unwrap();
+
+        let stored_event: herc20::Funded = db
+            .load(swap_id)
+            .await
+            .expect("No error loading")
+            .expect("found the event");
+
+        assert_eq!(stored_event.transaction, transaction);
+        assert_eq!(stored_event.asset, asset);
     }
 }
