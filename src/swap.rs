@@ -164,6 +164,7 @@ where
 #[cfg(all(test, feature = "test-docker"))]
 mod tests {
     use super::*;
+    use crate::swap::db::Save;
     use crate::{
         bitcoin_wallet, ethereum_wallet,
         swap::{alice::wallet_actor::WalletAlice, bitcoin, bob::watch_only_actor::WatchOnlyBob},
@@ -232,32 +233,12 @@ mod tests {
     #[derive(Clone, Copy)]
     struct Database;
 
-    #[async_trait::async_trait]
-    impl<E> db::Load<E> for Database
-    where
-        E: 'static,
-    {
-        async fn load(&self, _swap_id: SwapId) -> anyhow::Result<Option<E>> {
-            Ok(None)
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl<E> db::Save<E> for Database
-    where
-        E: Send + 'static,
-    {
-        async fn save(&self, _event: E, _swap_id: SwapId) -> anyhow::Result<()> {
-            Ok(())
-        }
-    }
-
     #[tokio::test]
     async fn execute_alice_hbit_herc20_swap() -> anyhow::Result<()> {
         let client = clients::Cli::default();
 
-        let alice_db = Database;
-        let bob_db = Database;
+        let alice_db = Arc::new(db::Database::new_test().unwrap());
+        let bob_db = Arc::new(db::Database::new_test().unwrap());
 
         let bitcoin_network = ::bitcoin::Network::Regtest;
         let (bitcoin_connector, bitcoind_url, bitcoin_blockchain) = {
@@ -372,11 +353,13 @@ mod tests {
         );
 
         let alice_swap = {
-            let swap_id = SwapId::random();
+            let swap_id = SwapId::default();
+            alice_db.save(db::Created, swap_id).await.unwrap();
+
             let alice = WalletAlice {
                 alpha_wallet: alice_bitcoin_wallet.clone(),
                 beta_wallet: alice_ethereum_wallet.clone(),
-                db: alice_db,
+                db: Arc::clone(&alice_db),
                 alpha_params: hbit::Params::new(hbit_params, hbit_transient_refund_sk),
                 beta_params: herc20_params.clone(),
                 secret,
@@ -398,11 +381,13 @@ mod tests {
         };
 
         let bob_swap = {
-            let swap_id = SwapId::random();
+            let swap_id = SwapId::default();
+            bob_db.save(db::Created, swap_id).await.unwrap();
+
             let alice = WatchOnlyAlice {
                 alpha_connector: Arc::clone(&bitcoin_connector),
                 beta_connector: Arc::clone(&ethereum_connector),
-                db: bob_db,
+                db: Arc::clone(&bob_db),
                 alpha_params: hbit_params,
                 beta_params: herc20_params.clone(),
                 secret_hash,

@@ -229,7 +229,7 @@ mod tests {
 
         let db = FakeDatabase::default();
 
-        let swap_id = SwapId::random();
+        let swap_id = SwapId::default();
 
         let actor = FakeActor {
             db,
@@ -257,7 +257,7 @@ mod tests {
 
         let db = FakeDatabase::default();
 
-        let swap_id = SwapId::random();
+        let swap_id = SwapId::default();
 
         let actor = FakeActor {
             db,
