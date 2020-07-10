@@ -22,6 +22,7 @@ pub mod dai;
 pub mod ethereum_wallet;
 pub mod float_maths;
 pub mod geth;
+pub mod history;
 pub mod jsonrpc;
 pub mod maker;
 pub mod mid_market_rate;
