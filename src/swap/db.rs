@@ -1,9 +1,13 @@
-use crate::swap::{hbit, herc20};
-use crate::SwapId;
+use crate::{
+    swap::{hbit, herc20, SwapKind},
+    SwapId,
+};
 use anyhow::{anyhow, Context};
-use comit::asset::Erc20;
-use comit::ethereum::{self, Hash, Transaction, U256};
-use comit::Secret;
+use comit::{
+    asset::Erc20,
+    ethereum::{self, Hash, Transaction, U256},
+    Secret,
+};
 use serde::{Deserialize, Serialize};
 use serde_hex::{SerHexSeq, StrictPfx};
 
@@ -20,6 +24,7 @@ pub trait Save<T>: Send + Sync + 'static {
 #[derive(Debug, Clone, Copy)]
 pub struct Created;
 
+#[derive(Debug)]
 pub struct Database {
     db: sled::Db,
     #[cfg(test)]
@@ -45,6 +50,19 @@ impl Database {
         ))?;
 
         Ok(Database { db, tmp_dir })
+    }
+
+    pub fn load_all(&self) -> anyhow::Result<Vec<SwapKind>> {
+        todo!()
+    }
+
+    pub fn delete(&self, swap_id: &SwapId) -> anyhow::Result<()> {
+        let key = swap_id.as_bytes();
+
+        self.db
+            .remove(key)
+            .context(format!("Could not delete swap {}", swap_id))
+            .map(|_| ())
     }
 
     fn insert(&self, swap_id: &SwapId, swap: &Swap) -> anyhow::Result<()> {

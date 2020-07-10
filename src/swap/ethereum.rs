@@ -10,7 +10,7 @@ pub use comit::{
 
 #[derive(Debug, Clone)]
 pub struct Wallet {
-    pub inner: crate::ethereum_wallet::Wallet,
+    pub inner: Arc<crate::ethereum_wallet::Wallet>,
     pub connector: Arc<comit::btsieve::ethereum::Web3Connector>,
 }
 
