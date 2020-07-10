@@ -1,4 +1,5 @@
 pub mod file;
+mod seed;
 mod serde;
 pub mod settings;
 pub mod validation;
@@ -9,7 +10,7 @@ use libp2p::Multiaddr;
 use std::path::PathBuf;
 use url::Url;
 
-pub use self::{file::File, settings::*};
+pub use self::{file::File, seed::Seed, settings::*};
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Data {
