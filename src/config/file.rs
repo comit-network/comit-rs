@@ -1,3 +1,4 @@
+use crate::bitcoin;
 use crate::config::{Bitcoind, Data, MaxSell, Network};
 use crate::Spread;
 use comit::ethereum::ChainId;
@@ -26,12 +27,19 @@ pub struct File {
 pub struct Maker {
     pub spread: Option<Spread>,
     pub max_sell: Option<MaxSell>,
+    pub maximum_possible_fee: Option<Fees>,
+}
+
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Fees {
+    #[serde(with = "crate::config::serde::bitcoin_amount")]
+    pub bitcoin: Option<bitcoin::Amount>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Bitcoin {
     #[serde(with = "crate::config::serde::bitcoin_network")]
-    pub network: bitcoin::Network,
+    pub network: ::bitcoin::Network,
     pub bitcoind: Option<Bitcoind>,
 }
 
@@ -144,6 +152,7 @@ mod tests {
 [maker]
 # 1000 is 10.00% spread
 spread = 1000
+maximum_possible_fee = { bitcoin = 0.01 }
 
 [maker.max_sell]
 bitcoin = 1.23456
@@ -176,6 +185,9 @@ local_dai_contract_address = "0x31F42841c2db5173425b5223809CF3A38FEde360"
                     dai: Some(dai::Amount::from_dai_trunc(9876.54321).unwrap()),
                 }),
                 spread: Some(Spread::new(1000).unwrap()),
+                maximum_possible_fee: Some(Fees {
+                    bitcoin: Some(bitcoin::Amount::from_btc(0.01).unwrap()),
+                }),
             }),
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
