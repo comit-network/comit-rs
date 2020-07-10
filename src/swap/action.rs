@@ -8,9 +8,9 @@ use std::time::Duration;
 
 /// Try to do an action resulting in the event `E`.
 ///
-/// If we already know about the event `E` because it's part of our
-/// "Memory", we return `Next::Continue` early and do not try to do
-/// the action again.
+/// If we already know that event `E` has happened because we can look
+/// it up in our internal state via `LookUpEvent`, we return
+/// `Next::Continue<E>` early and do not try to do the action again.
 ///
 /// We do the action by calling `Execute::<E>::execute` and awaiting
 /// on it, which will yield the event `E` if it resolves successfully.
@@ -19,13 +19,13 @@ use std::time::Duration;
 /// continuously check if `BetaHasExpired`. If Beta expires before
 /// we finish doing the action, we return `Next::Abort`.
 ///
-/// If doing the action succeeds, we `Remember` the resulting event
-/// `E` so that repeated calls to this function do not result in doing
-/// the action more than once.
+/// If doing the action succeeds, we store the resulting event `E` via
+/// `StoreEvent` to ensure that repeated calls to this function do not
+/// result in doing the action more than once.
 #[async_trait::async_trait]
 pub trait TryDoItOnce<E>
 where
-    Self: CheckMemory<E> + BetaHasExpired + Execute<E> + Remember<E>,
+    Self: LookUpEvent<E> + BetaHasExpired + Execute<E> + StoreEvent<E>,
     E: Clone + Send + Sync + 'static,
     <Self as Execute<E>>::Args: Send + Sync,
 {
@@ -33,7 +33,7 @@ where
         &self,
         execution_args: <Self as Execute<E>>::Args,
     ) -> anyhow::Result<Next<E>> {
-        if let Some(event) = self.check_memory().await? {
+        if let Some(event) = self.look_up_event().await? {
             return Ok(Next::Continue(event));
         }
 
@@ -54,7 +54,7 @@ where
 
         match future::select(execute_future, beta_expired).await {
             Either::Left((Ok(event), _)) => {
-                self.remember(event.clone()).await?;
+                self.store_event(event.clone()).await?;
                 Ok(Next::Continue(event))
             }
             _ => Ok(Next::Abort),
@@ -65,7 +65,7 @@ where
 #[async_trait::async_trait]
 impl<E, A> TryDoItOnce<E> for A
 where
-    A: CheckMemory<E> + BetaHasExpired + Execute<E> + Remember<E>,
+    A: LookUpEvent<E> + BetaHasExpired + Execute<E> + StoreEvent<E>,
     E: Clone + Send + Sync + 'static,
     <Self as Execute<E>>::Args: Send + Sync,
 {
@@ -73,30 +73,30 @@ where
 
 /// Do an action resulting in the event `E`.
 ///
-/// If we already know about the event `E` because it's part of our
-/// "Memory", we return `Next::Continue` early and do not do the
-/// action again.
+/// If we already know that event `E` has happened because we can look
+/// it up in our internal state via `LookUpEvent`, we return
+/// `Next::Continue<E>` early and do not try to do the action again.
 ///
 /// We do the action by calling `Execute::<E>::execute` and awaiting
 /// on it, which will yield the event `E` if it resolves successfully.
 ///
-/// If doing the action succeeds, we `Remember` the resulting event
-/// `E` so that repeated calls to this function do not result in doing
-/// the action more than once.
+/// If doing the action succeeds, we store the resulting event `E` via
+/// `StoreEvent` to ensure that repeated calls to this function do not
+/// result in doing the action more than once.
 #[async_trait::async_trait]
 pub trait DoItOnce<E>
 where
-    Self: CheckMemory<E> + Execute<E> + Remember<E>,
+    Self: LookUpEvent<E> + Execute<E> + StoreEvent<E>,
     E: Clone + Send + Sync + 'static,
     <Self as Execute<E>>::Args: Send + Sync,
 {
     async fn do_it_once(&self, execution_args: <Self as Execute<E>>::Args) -> anyhow::Result<E> {
-        if let Some(event) = self.check_memory().await? {
+        if let Some(event) = self.look_up_event().await? {
             return Ok(event);
         }
 
         let event = Execute::<E>::execute(self, execution_args).await?;
-        self.remember(event.clone()).await?;
+        self.store_event(event.clone()).await?;
 
         Ok(event)
     }
@@ -105,27 +105,28 @@ where
 #[async_trait::async_trait]
 impl<E, A> DoItOnce<E> for A
 where
-    A: CheckMemory<E> + BetaHasExpired + Execute<E> + Remember<E>,
+    A: LookUpEvent<E> + BetaHasExpired + Execute<E> + StoreEvent<E>,
     E: Clone + Send + Sync + 'static,
     <Self as Execute<E>>::Args: Send + Sync,
 {
 }
 
-/// Look for the event `E` in our "Memory".
 #[async_trait::async_trait]
-pub trait CheckMemory<E> {
-    async fn check_memory(&self) -> anyhow::Result<Option<E>>;
+pub trait LookUpEvent<E> {
+    async fn look_up_event(&self) -> anyhow::Result<Option<E>>;
 }
 
-/// Look for the event `E` by attempting to `Load` it from a database.
+/// Look up swap event `E` by attempting to `Load` it from a database
+/// using our `SwapId`.
 #[async_trait::async_trait]
-impl<E, A> CheckMemory<E> for A
+impl<E, A> LookUpEvent<E> for A
 where
     A: db::Load<E> + std::ops::Deref<Target = SwapId>,
     E: 'static,
 {
-    async fn check_memory(&self) -> anyhow::Result<Option<E>> {
-        self.load(**self).await
+    async fn look_up_event(&self) -> anyhow::Result<Option<E>> {
+        let swap_id = **self;
+        self.load(swap_id).await
     }
 }
 
@@ -153,21 +154,22 @@ pub trait Execute<E> {
     async fn execute(&self, args: Self::Args) -> anyhow::Result<E>;
 }
 
-/// Add the event `E` to our "Memory", so as to `Remember` it.
 #[async_trait::async_trait]
-pub trait Remember<E> {
-    async fn remember(&self, event: E) -> anyhow::Result<()>;
+pub trait StoreEvent<E> {
+    async fn store_event(&self, event: E) -> anyhow::Result<()>;
 }
 
-/// Add the event `E` to our "Memory", by saving it to a database.
+/// Store the event `E` associated with our `SwapId` by saving it to a
+/// database through the `Save` trait.
 #[async_trait::async_trait]
-impl<E, A> Remember<E> for A
+impl<E, A> StoreEvent<E> for A
 where
     A: db::Save<E> + std::ops::Deref<Target = SwapId>,
     E: Send + 'static,
 {
-    async fn remember(&self, event: E) -> anyhow::Result<()> {
-        self.save(event, **self).await
+    async fn store_event(&self, event: E) -> anyhow::Result<()> {
+        let swap_id = **self;
+        self.save(event, swap_id).await
     }
 }
 
