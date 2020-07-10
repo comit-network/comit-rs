@@ -162,10 +162,6 @@ impl Amount {
         Ok(bitcoin::Amount::from_sat(sats))
     }
 
-    pub fn symbol(self) -> String {
-        "DAI".to_owned()
-    }
-
     pub fn checked_add(self, rhs: Amount) -> Option<Amount> {
         self.0.checked_add(&rhs.0).map(Amount)
     }

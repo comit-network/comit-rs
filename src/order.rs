@@ -1,5 +1,5 @@
-use crate::bitcoin;
 use crate::dai;
+use crate::{bitcoin, Symbol};
 use crate::{Rate, Spread};
 use std::cmp::min;
 
@@ -34,7 +34,7 @@ impl BtcDaiOrder {
         match base_reserved_funds.checked_add(base_fees) {
             Some(added) => {
                 if base_balance <= added {
-                    anyhow::bail!(InsufficientFunds(base_balance.symbol()))
+                    anyhow::bail!(InsufficientFunds(Symbol::Btc))
                 }
             }
             None => anyhow::bail!(Overflow),
@@ -63,7 +63,7 @@ impl BtcDaiOrder {
         spread: Spread,
     ) -> anyhow::Result<BtcDaiOrder> {
         if quote_balance <= quote_reserved_funds {
-            anyhow::bail!(InsufficientFunds(quote_balance.symbol()))
+            anyhow::bail!(InsufficientFunds(Symbol::Dai))
         }
 
         let quote = match max_amount {
@@ -82,9 +82,9 @@ impl BtcDaiOrder {
     }
 }
 
-#[derive(Debug, Clone, thiserror::Error)]
+#[derive(Debug, Copy, Clone, thiserror::Error)]
 #[error("Insufficient {0} funds to create new order.")]
-pub struct InsufficientFunds(String);
+pub struct InsufficientFunds(Symbol);
 
 #[derive(Debug, Copy, Clone, thiserror::Error)]
 #[error("The maximum amount for an order cannot be smaller than the maximum fee.")]
