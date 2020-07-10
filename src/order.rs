@@ -25,6 +25,21 @@ impl BtcDaiOrder {
         mid_market_rate: Rate,
         spread: Spread,
     ) -> anyhow::Result<BtcDaiOrder> {
+        if let Some(max_amount) = max_amount {
+            if max_amount < base_fees {
+                anyhow::bail!(MaxAmountSmallerThanMaxFee)
+            }
+        }
+
+        match base_reserved_funds.checked_add(base_fees) {
+            Some(added) => {
+                if base_balance <= added {
+                    anyhow::bail!(InsufficientFunds(base_balance.symbol()))
+                }
+            }
+            None => anyhow::bail!(Overflow),
+        }
+
         let base = match max_amount {
             Some(max_amount) => min(base_balance - base_reserved_funds, max_amount) - base_fees,
             None => base_balance - base_reserved_funds - base_fees,
@@ -47,6 +62,10 @@ impl BtcDaiOrder {
         mid_market_rate: Rate,
         spread: Spread,
     ) -> anyhow::Result<BtcDaiOrder> {
+        if quote_balance <= quote_reserved_funds {
+            anyhow::bail!(InsufficientFunds(quote_balance.symbol()))
+        }
+
         let quote = match max_amount {
             Some(max_amount) => min(quote_balance - quote_reserved_funds, max_amount),
             None => quote_balance - quote_reserved_funds,
@@ -62,6 +81,18 @@ impl BtcDaiOrder {
         })
     }
 }
+
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("Insufficient {0} funds to create new order.")]
+pub struct InsufficientFunds(String);
+
+#[derive(Debug, Copy, Clone, thiserror::Error)]
+#[error("The maximum amount for an order cannot be smaller than the maximum fee.")]
+pub struct MaxAmountSmallerThanMaxFee;
+
+#[derive(Debug, Copy, Clone, thiserror::Error)]
+#[error("Amounts to large to be added.")]
+pub struct Overflow;
 
 pub trait LockedFunds {
     type Amount;
@@ -93,7 +124,10 @@ impl Default for BtcDaiOrder {
 mod tests {
     use super::*;
     use crate::Rate;
+    use num::BigUint;
+    use proptest::prelude::*;
     use std::convert::TryFrom;
+    use std::str::FromStr;
 
     fn btc(btc: f64) -> bitcoin::Amount {
         bitcoin::Amount::from_btc(btc).unwrap()
@@ -243,5 +277,100 @@ mod tests {
 
         assert_eq!(order.base, btc(97.0));
         assert_eq!(order.quote, dai(1000.0));
+    }
+
+    #[test]
+    fn given_fee_higher_than_available_funds_return_insufficient_funds() {
+        let rate = Rate::try_from(1.0).unwrap();
+        let spread = Spread::new(0).unwrap();
+
+        let result = BtcDaiOrder::new_sell(btc(1.0), btc(2.0), btc(0.0), None, rate, spread);
+        assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
+
+        let result = BtcDaiOrder::new_buy(dai(1.0), dai(2.0), None, rate, spread);
+        assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
+    }
+
+    #[test]
+    fn given_reserved_funds_higher_available_funds_return_insufficient_funds() {
+        let rate = Rate::try_from(1.0).unwrap();
+        let spread = Spread::new(0).unwrap();
+
+        let result = BtcDaiOrder::new_sell(btc(1.0), btc(0.0), btc(2.0), None, rate, spread);
+        assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
+
+        let result = BtcDaiOrder::new_buy(dai(1.0), dai(2.0), None, rate, spread);
+        assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
+    }
+
+    proptest! {
+        #[test]
+        fn new_buy_does_not_panic(dai_balance in "[0-9]+", dai_reserved_funds in "[0-9]+", dai_max_amount in "[0-9]+", rate in any::<f64>(), spread in any::<u16>()) {
+
+            let dai_balance = BigUint::from_str(&dai_balance);
+            let dai_reserved_funds = BigUint::from_str(&dai_reserved_funds);
+            let dai_max_amount = BigUint::from_str(&dai_max_amount);
+            let rate = Rate::try_from(rate);
+            let spread = Spread::new(spread);
+
+            if let (Ok(dai_balance), Ok(dai_reserved_funds), Ok(dai_max_amount), Ok(rate), Ok(spread)) = (dai_balance, dai_reserved_funds, dai_max_amount, rate, spread) {
+                let dai_balance = dai::Amount::from_atto(dai_balance);
+                let dai_reserved_funds = dai::Amount::from_atto(dai_reserved_funds);
+                let dai_max_amount = dai::Amount::from_atto(dai_max_amount);
+
+                let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_buy(dai_balance, dai_reserved_funds, Some(dai_max_amount), rate, spread);
+            }
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn new_buy_no_max_amount_does_not_panic(dai_balance in "[0-9]+", dai_reserved_funds in "[0-9]+", rate in any::<f64>(), spread in any::<u16>()) {
+
+            let dai_balance = BigUint::from_str(&dai_balance);
+            let dai_reserved_funds = BigUint::from_str(&dai_reserved_funds);
+            let rate = Rate::try_from(rate);
+            let spread = Spread::new(spread);
+
+            if let (Ok(dai_balance), Ok(dai_reserved_funds), Ok(rate), Ok(spread)) = (dai_balance, dai_reserved_funds, rate, spread) {
+                let dai_balance = dai::Amount::from_atto(dai_balance);
+                let dai_reserved_funds = dai::Amount::from_atto(dai_reserved_funds);
+
+                let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_buy(dai_balance, dai_reserved_funds, None, rate, spread);
+            }
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn new_sell_does_not_panic(btc_balance in any::<u64>(), btc_fees in any::<u64>(), btc_reserved_funds in any::<u64>(), btc_max_amount in any::<u64>(), rate in any::<f64>(), spread in any::<u16>()) {
+
+            let btc_balance = bitcoin::Amount::from_sat(btc_balance);
+            let btc_fees = bitcoin::Amount::from_sat(btc_fees);
+            let btc_reserved_funds = bitcoin::Amount::from_sat(btc_reserved_funds);
+            let btc_max_amount = bitcoin::Amount::from_sat(btc_max_amount);
+            let rate = Rate::try_from(rate);
+            let spread = Spread::new(spread);
+
+            if let (Ok(rate), Ok(spread)) = (rate, spread) {
+                let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_sell(btc_balance, btc_fees, btc_reserved_funds, Some(btc_max_amount), rate, spread);
+            }
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn new_sell_no_max_amount_does_not_panic(btc_balance in any::<u64>(), btc_fees in any::<u64>(), btc_reserved_funds in any::<u64>(), rate in any::<f64>(), spread in any::<u16>()) {
+
+            let btc_balance = bitcoin::Amount::from_sat(btc_balance);
+            let btc_fees = bitcoin::Amount::from_sat(btc_fees);
+            let btc_reserved_funds = bitcoin::Amount::from_sat(btc_reserved_funds);
+            let rate = Rate::try_from(rate);
+            let spread = Spread::new(spread);
+
+            if let (Ok(rate), Ok(spread)) = (rate, spread) {
+                let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_sell(btc_balance, btc_fees, btc_reserved_funds, None, rate, spread);
+            }
+        }
     }
 }
