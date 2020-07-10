@@ -122,12 +122,11 @@ pub trait LookUpEvent<E> {
 #[async_trait::async_trait]
 impl<E, A> LookUpEvent<E> for A
 where
-    A: db::Load<E> + std::ops::Deref<Target = SwapId>,
+    A: db::Load<E> + AsSwapId,
     E: 'static,
 {
     async fn look_up_event(&self) -> anyhow::Result<Option<E>> {
-        let swap_id = **self;
-        self.load(swap_id).await
+        self.load(self.as_swap_id()).await
     }
 }
 
@@ -165,12 +164,11 @@ pub trait StoreEvent<E> {
 #[async_trait::async_trait]
 impl<E, A> StoreEvent<E> for A
 where
-    A: db::Save<E> + std::ops::Deref<Target = SwapId>,
+    A: db::Save<E> + AsSwapId,
     E: Send + 'static,
 {
     async fn store_event(&self, event: E) -> anyhow::Result<()> {
-        let swap_id = **self;
-        self.save(event, swap_id).await
+        self.save(event, self.as_swap_id()).await
     }
 }
 
@@ -184,6 +182,10 @@ pub trait BetaExpiry {
 #[async_trait::async_trait]
 pub trait BetaLedgerTime {
     async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp>;
+}
+
+pub trait AsSwapId {
+    fn as_swap_id(&self) -> SwapId;
 }
 
 #[derive(Debug, Copy, Clone, thiserror::Error)]
@@ -260,10 +262,9 @@ mod tests {
         }
     }
 
-    impl std::ops::Deref for FakeActor {
-        type Target = SwapId;
-        fn deref(&self) -> &Self::Target {
-            &self.swap_id
+    impl AsSwapId for FakeActor {
+        fn as_swap_id(&self) -> SwapId {
+            self.swap_id
         }
     }
 

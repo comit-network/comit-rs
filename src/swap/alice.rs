@@ -5,7 +5,7 @@
 //! watches the two blockchains involved in the swap.
 
 use crate::{
-    swap::{bitcoin, db, ethereum, hbit, herc20, BetaExpiry, BetaLedgerTime, Execute},
+    swap::{bitcoin, db, ethereum, hbit, herc20, AsSwapId, BetaExpiry, BetaLedgerTime, Execute},
     SwapId,
 };
 use chrono::NaiveDateTime;
@@ -234,10 +234,9 @@ where
     }
 }
 
-impl<AC, BC, DB, AP, BP> std::ops::Deref for WatchOnlyAlice<AC, BC, DB, AP, BP> {
-    type Target = SwapId;
-    fn deref(&self) -> &Self::Target {
-        &self.swap_id
+impl<AC, BC, DB, AP, BP> AsSwapId for WatchOnlyAlice<AC, BC, DB, AP, BP> {
+    fn as_swap_id(&self) -> SwapId {
+        self.swap_id
     }
 }
 
@@ -398,10 +397,9 @@ pub mod wallet_actor {
         }
     }
 
-    impl<AW, BW, DB, AP, BP> std::ops::Deref for WalletAlice<AW, BW, DB, AP, BP> {
-        type Target = SwapId;
-        fn deref(&self) -> &Self::Target {
-            &self.swap_id
+    impl<AW, BW, DB, AP, BP> AsSwapId for WalletAlice<AW, BW, DB, AP, BP> {
+        fn as_swap_id(&self) -> SwapId {
+            self.swap_id
         }
     }
 }
