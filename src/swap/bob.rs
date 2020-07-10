@@ -11,12 +11,13 @@ use crate::{
 };
 use chrono::NaiveDateTime;
 use comit::{Secret, SecretHash, Timestamp};
+use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub struct WalletBob<AW, BW, DB, AP, BP> {
     pub alpha_wallet: AW,
     pub beta_wallet: BW,
-    pub db: DB,
+    pub db: Arc<DB>,
     pub alpha_params: AP,
     pub beta_params: BP,
     pub secret_hash: SecretHash,
@@ -225,7 +226,7 @@ pub mod watch_only_actor {
     pub struct WatchOnlyBob<AC, BC, DB, AP, BP> {
         pub alpha_connector: Arc<AC>,
         pub beta_connector: Arc<BC>,
-        pub db: DB,
+        pub db: Arc<DB>,
         pub alpha_params: AP,
         pub beta_params: BP,
         pub secret_hash: SecretHash,

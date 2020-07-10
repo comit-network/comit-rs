@@ -17,6 +17,9 @@ pub trait Save<T>: Send + Sync + 'static {
     async fn save(&self, event: T, swap_id: SwapId) -> anyhow::Result<()>;
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Created;
+
 pub struct Database {
     db: sled::Db,
     #[cfg(test)]
@@ -113,6 +116,28 @@ impl From<hbit::Funded> for HbitFunded {
         HbitFunded {
             asset: funded.asset.as_sat(),
             location: funded.location,
+        }
+    }
+}
+
+// Kind of bending the arm of the trait
+#[async_trait::async_trait]
+impl Save<Created> for Database {
+    async fn save(&self, _event: Created, swap_id: SwapId) -> anyhow::Result<()> {
+        let stored_swap = self.get(&swap_id);
+
+        match stored_swap {
+            Ok(_) => Err(anyhow!("Swap is already stored")),
+            Err(_) => {
+                let swap = Swap::default();
+                let new_value =
+                    serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
+
+                self.db
+                    .compare_and_swap(swap_id.as_bytes(), Option::<Vec<u8>>::None, Some(new_value))
+                    .context("Could not write in the DB")?
+                    .context("Stored swap somehow changed, aborting saving")
+            }
         }
     }
 }

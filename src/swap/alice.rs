@@ -19,7 +19,7 @@ use std::sync::Arc;
 pub struct WatchOnlyAlice<AC, BC, DB, AP, BP> {
     pub alpha_connector: Arc<AC>,
     pub beta_connector: Arc<BC>,
-    pub db: DB,
+    pub db: Arc<DB>,
     pub alpha_params: AP,
     pub beta_params: BP,
     pub secret_hash: SecretHash,
@@ -251,11 +251,11 @@ pub mod wallet_actor {
     use comit::Secret;
     use std::time::Duration;
 
-    #[derive(Clone, Copy, Debug)]
+    #[derive(Clone, Debug)]
     pub struct WalletAlice<AW, BW, DB, AP, BP> {
         pub alpha_wallet: AW,
         pub beta_wallet: BW,
-        pub db: DB,
+        pub db: Arc<DB>,
         pub alpha_params: AP,
         pub beta_params: BP,
         pub secret: Secret,
