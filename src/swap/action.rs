@@ -40,8 +40,8 @@ where
         // For Nectar, we conservatively abort if Beta has expired
         let beta_expired = async {
             loop {
-                if self.beta_has_expired().await.unwrap_or(true) {
-                    return;
+                if self.beta_has_expired().await? {
+                    return Result::<(), anyhow::Error>::Ok(());
                 }
 
                 tokio::time::delay_for(Duration::from_secs(1)).await;
@@ -57,8 +57,8 @@ where
                 self.store_event(event.clone()).await?;
                 Ok(event)
             }
-            Either::Right(_) => anyhow::bail!("ran out of time!"),
-            _ => anyhow::bail!("future fail"),
+            Either::Right(_) => anyhow::bail!(BetaHasExpiredError),
+            _ => anyhow::bail!("A future has failed"),
         }
     }
 }
@@ -185,6 +185,10 @@ pub trait BetaExpiry {
 pub trait BetaLedgerTime {
     async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp>;
 }
+
+#[derive(Debug, Copy, Clone, thiserror::Error)]
+#[error("Beta expiry has been reached")]
+pub struct BetaHasExpiredError;
 
 #[cfg(test)]
 mod tests {
