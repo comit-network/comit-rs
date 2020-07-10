@@ -16,7 +16,7 @@ pub struct Wallet {
 }
 
 impl Wallet {
-    pub fn new(seed: Seed, url: Url, network: Network) -> anyhow::Result<Wallet> {
+    pub async fn new(seed: Seed, url: Url, network: Network) -> anyhow::Result<Wallet> {
         let key = seed.secret_key()?;
 
         let private_key = ::bitcoin::PrivateKey {
@@ -29,15 +29,19 @@ impl Wallet {
 
         let name = Wallet::gen_name(private_key);
 
-        Ok(Wallet {
+        let wallet = Wallet {
             name,
             bitcoind_client,
             private_key,
             network,
-        })
+        };
+
+        wallet.init().await?;
+
+        Ok(wallet)
     }
 
-    pub async fn init(&self) -> anyhow::Result<()> {
+    async fn init(&self) -> anyhow::Result<()> {
         let info = self.info().await;
 
         // We assume the wallet present with the same name has the
@@ -153,21 +157,6 @@ impl Wallet {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::str::FromStr;
-
-    #[test]
-    fn create_new_wallet() {
-        let seed = Seed::default();
-        let url = Url::from_str("http://localhost:1234").unwrap();
-
-        let res = Wallet::new(seed, url, Network::Regtest);
-        assert!(res.is_ok())
-    }
-}
-
 #[cfg(all(test, feature = "test-docker"))]
 mod docker_tests {
     use super::*;
@@ -182,8 +171,9 @@ mod docker_tests {
         blockchain.init().await.unwrap();
 
         let seed = Seed::default();
-        let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).unwrap();
-        wallet.init().await.unwrap();
+        let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+            .await
+            .unwrap();
 
         let _address = wallet.new_address().await.unwrap();
     }
@@ -196,8 +186,9 @@ mod docker_tests {
         blockchain.init().await.unwrap();
 
         let seed = Seed::default();
-        let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).unwrap();
-        wallet.init().await.unwrap();
+        let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+            .await
+            .unwrap();
 
         let _balance = wallet.balance().await.unwrap();
     }
@@ -211,15 +202,17 @@ mod docker_tests {
 
         let seed = Seed::default();
         {
-            let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).unwrap();
-            wallet.init().await.unwrap();
+            let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+                .await
+                .unwrap();
 
             let _address = wallet.new_address().await.unwrap();
         }
 
         {
-            let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).unwrap();
-            wallet.init().await.unwrap();
+            let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+                .await
+                .unwrap();
 
             let _address = wallet.new_address().await.unwrap();
         }
