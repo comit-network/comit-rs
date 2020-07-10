@@ -3,6 +3,7 @@ use crate::SwapId;
 use anyhow::{anyhow, Context};
 use comit::asset::Erc20;
 use comit::ethereum::{self, Hash, Transaction, U256};
+use comit::Secret;
 use serde::{Deserialize, Serialize};
 use serde_hex::{SerHexSeq, StrictPfx};
 
@@ -73,6 +74,7 @@ struct Swap {
     pub hbit_refunded: Option<HbitRefunded>,
     pub herc20_deployed: Option<Herc20Deployed>,
     pub herc20_funded: Option<Herc20Funded>,
+    pub herc20_redeemed: Option<Herc20Redeemed>,
 }
 
 impl Default for Swap {
@@ -83,6 +85,7 @@ impl Default for Swap {
             hbit_refunded: None,
             herc20_deployed: None,
             herc20_funded: None,
+            herc20_redeemed: None,
         }
     }
 }
@@ -149,7 +152,7 @@ impl Load<hbit::Funded> for Database {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct HbitRedeemed {
     pub transaction: comit::transaction::Bitcoin,
-    pub secret: comit::Secret,
+    pub secret: Secret,
 }
 
 impl From<HbitRedeemed> for hbit::Redeemed {
@@ -375,6 +378,64 @@ impl Load<herc20::Funded> for Database {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct Herc20Redeemed {
+    pub transaction: EthereumTransaction,
+    pub secret: Secret,
+}
+
+impl From<Herc20Redeemed> for herc20::Redeemed {
+    fn from(event: Herc20Redeemed) -> Self {
+        herc20::Redeemed {
+            transaction: event.transaction.into(),
+            secret: event.secret,
+        }
+    }
+}
+
+impl From<herc20::Redeemed> for Herc20Redeemed {
+    fn from(event: herc20::Redeemed) -> Self {
+        Herc20Redeemed {
+            transaction: event.transaction.into(),
+            secret: event.secret,
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Save<herc20::Redeemed> for Database {
+    async fn save(&self, event: herc20::Redeemed, swap_id: SwapId) -> anyhow::Result<()> {
+        let stored_swap = self.get(&swap_id)?;
+
+        match stored_swap.herc20_redeemed {
+            Some(_) => Err(anyhow!("Herc20 Redeemed event is already stored")),
+            None => {
+                let mut swap = stored_swap.clone();
+                swap.herc20_redeemed = Some(event.into());
+
+                let old_value = serde_json::to_vec(&stored_swap)
+                    .context("Could not serialize old swap value")?;
+                let new_value =
+                    serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
+
+                self.db
+                    .compare_and_swap(swap_id.as_bytes(), Some(old_value), Some(new_value))
+                    .context("Could not write in the DB")?
+                    .context("Stored swap somehow changed, aborting saving")
+            }
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Load<herc20::Redeemed> for Database {
+    async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Redeemed>> {
+        let swap = self.get(&swap_id)?;
+
+        Ok(swap.herc20_redeemed.map(Into::into))
+    }
+}
+
 #[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
 pub struct EthereumTransaction {
     pub hash: Hash,
@@ -478,7 +539,7 @@ mod tests {
     async fn save_and_load_hbit_redeemed() {
         let db = Database::new_test().unwrap();
         let transaction = bitcoin_transaction();
-        let secret = comit::Secret::from_vec(b"are those thirty-two bytes? Hum.").unwrap();
+        let secret = Secret::from_vec(b"are those thirty-two bytes? Hum.").unwrap();
         let swap = Swap::default();
         let swap_id = SwapId::default();
 
@@ -576,5 +637,31 @@ mod tests {
 
         assert_eq!(stored_event.transaction, transaction);
         assert_eq!(stored_event.asset, asset);
+    }
+
+    #[tokio::test]
+    async fn save_and_load_herc20_redeemed() {
+        let db = Database::new_test().unwrap();
+        let swap = Swap::default();
+        let swap_id = SwapId::default();
+        let transaction = comit::transaction::Ethereum::default();
+        let secret = Secret::from_vec(b"are those thirty-two bytes? Hum.").unwrap();
+
+        db.insert(&swap_id, &swap).unwrap();
+
+        let event = herc20::Redeemed {
+            transaction: transaction.clone(),
+            secret,
+        };
+        db.save(event, swap_id).await.unwrap();
+
+        let stored_event: herc20::Redeemed = db
+            .load(swap_id)
+            .await
+            .expect("No error loading")
+            .expect("found the event");
+
+        assert_eq!(stored_event.transaction, transaction);
+        assert_eq!(stored_event.secret, secret);
     }
 }
