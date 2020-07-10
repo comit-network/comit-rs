@@ -60,6 +60,16 @@ table! {
     }
 }
 
+table! {
+    swap_contexts {
+        id -> Integer,
+        local_swap_id -> Text,
+        role -> Text,
+        alpha -> Text,
+        beta -> Text,
+    }
+}
+
 allow_tables_to_appear_in_same_query!(swaps, halbits);
 allow_tables_to_appear_in_same_query!(swaps, herc20s);
 allow_tables_to_appear_in_same_query!(swaps, hbits);

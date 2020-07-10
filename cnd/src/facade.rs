@@ -2,8 +2,8 @@ use crate::{
     btsieve::LatestBlock,
     connectors::Connectors,
     network::{ComitPeers, Identities, ListenAddresses, LocalPeerId, SwapDigest, Swarm},
-    storage::{Load, LoadAll, Storage},
-    LocalSwapId, Role, Save, Timestamp,
+    storage::{Load, LoadAll, Save, Storage},
+    LocalSwapId, Role, Timestamp,
 };
 use comit::{
     bitcoin, identity,

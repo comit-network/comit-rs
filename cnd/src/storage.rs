@@ -341,10 +341,10 @@ pub struct SwapContext {
     pub beta: Protocol,
 }
 
-impl From<SwapContextRow> for SwapContext {
-    fn from(row: SwapContextRow) -> Self {
+impl From<tables::SwapContext> for SwapContext {
+    fn from(row: tables::SwapContext) -> Self {
         SwapContext {
-            id: row.id.0,
+            id: row.local_swap_id.0,
             role: row.role.0,
             alpha: row.alpha.0,
             beta: row.beta.0,
@@ -355,16 +355,20 @@ impl From<SwapContextRow> for SwapContext {
 #[async_trait::async_trait]
 impl Load<SwapContext> for Storage {
     async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<SwapContext> {
+        use self::schema::swap_contexts;
+
         let context = self
             .db
-            .swap_contexts()
+            .do_in_transaction(|connection| {
+                swap_contexts::table
+                    .filter(swap_contexts::local_swap_id.eq(Text(swap_id)))
+                    .get_result::<tables::SwapContext>(connection)
+                    .optional()
+            })
             .await?
-            .into_iter()
-            .find(|context| context.id.0 == swap_id)
-            .map(|context| context.into())
             .ok_or(NoSwapExists(swap_id))?;
 
-        Ok(context)
+        Ok(context.into())
     }
 }
 
@@ -389,9 +393,13 @@ fn derive_or_unwrap_secret_hash(
 #[async_trait::async_trait]
 impl LoadAll<SwapContext> for Storage {
     async fn load_all(&self) -> anyhow::Result<Vec<SwapContext>> {
+        use self::schema::swap_contexts;
+
         let contexts = self
             .db
-            .swap_contexts()
+            .do_in_transaction(|connection| {
+                swap_contexts::table.load::<tables::SwapContext>(connection)
+            })
             .await?
             .into_iter()
             .map(|context| context.into())

@@ -80,8 +80,7 @@ use self::{
     protocol_spawner::{ProtocolSpawner, *},
     respawn::respawn,
     spawn::*,
-    storage::{Sqlite, Storage, *},
-    RootSeed,
+    storage::{RootSeed, Sqlite, Storage},
 };
 use anyhow::Context;
 use comit::{

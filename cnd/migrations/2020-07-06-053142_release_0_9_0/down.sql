@@ -6,3 +6,5 @@ CREATE TABLE address_book
     peer_id                     NOT NULL,
     multi_address                NOT NULL
 );
+
+DROP VIEW swap_contexts;
