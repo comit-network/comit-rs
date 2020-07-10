@@ -256,6 +256,7 @@ mod tests {
     async fn execute_alice_hbit_herc20_swap() -> anyhow::Result<()> {
         let client = clients::Cli::default();
 
+        // let alice_db = db::Database::new_test().unwrap();
         let alice_db = Database;
         let bob_db = Database;
 
