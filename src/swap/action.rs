@@ -17,7 +17,7 @@ use std::time::Duration;
 ///
 /// Whilst waiting for the `Execute<E>` future to resolve, we
 /// continuously check if `BetaHasExpired`. If Beta expires before
-/// we finish doing the action, we return `Next::Abort`.
+/// we finish doing the action, we fail.
 ///
 /// If doing the action succeeds, we store the resulting event `E` via
 /// `StoreEvent` to ensure that repeated calls to this function do not
@@ -32,9 +32,9 @@ where
     async fn try_do_it_once(
         &self,
         execution_args: <Self as Execute<E>>::Args,
-    ) -> anyhow::Result<Next<E>> {
+    ) -> anyhow::Result<E> {
         if let Some(event) = self.look_up_event().await? {
-            return Ok(Next::Continue(event));
+            return Ok(event);
         }
 
         // For Nectar, we conservatively abort if Beta has expired
@@ -55,9 +55,10 @@ where
         match future::select(execute_future, beta_expired).await {
             Either::Left((Ok(event), _)) => {
                 self.store_event(event.clone()).await?;
-                Ok(Next::Continue(event))
+                Ok(event)
             }
-            _ => Ok(Next::Abort),
+            Either::Right(_) => anyhow::bail!("ran out of time!"),
+            _ => anyhow::bail!("future fail"),
         }
     }
 }
@@ -173,16 +174,6 @@ where
     }
 }
 
-/// Result of doing a conditional protocol action.
-///
-/// If the action was done successfully we `Continue` and obtain the
-/// event `E`. Otherwise we `Abort`.
-#[derive(Debug, Clone, Copy)]
-pub enum Next<E> {
-    Continue(E),
-    Abort,
-}
-
 /// Get the expiry timestamp for the Beta asset in a swap protocol.
 pub trait BetaExpiry {
     fn beta_expiry(&self) -> Timestamp;
@@ -198,7 +189,7 @@ pub trait BetaLedgerTime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::swap::{Next, TryDoItOnce};
+    use crate::swap::TryDoItOnce;
     use std::{
         collections::HashMap,
         sync::{Arc, RwLock},
@@ -292,11 +283,11 @@ mod tests {
         assert!(blockchain.read().unwrap().events.is_empty());
         let res = actor.try_do_it_once(()).await;
 
-        assert!(matches!(res, Ok(Next::Continue(ArbitraryEvent))));
+        assert!(matches!(res, Ok(ArbitraryEvent)));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
 
         let res = actor.try_do_it_once(()).await;
-        assert!(matches!(res, Ok(Next::Continue(ArbitraryEvent))));
+        assert!(matches!(res, Ok(ArbitraryEvent)));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
     }
 
