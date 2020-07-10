@@ -16,7 +16,7 @@ use std::time::Duration;
 /// on it, which will yield the event `E` if it resolves successfully.
 ///
 /// Whilst waiting for the `Execute<E>` future to resolve, we
-/// continuously check if we `ShouldAbort`. If we `ShouldAbort` before
+/// continuously check if `BetaHasExpired`. If Beta expires before
 /// we finish doing the action, we return `Next::Abort`.
 ///
 /// If doing the action succeeds, we `Remember` the resulting event
@@ -25,7 +25,7 @@ use std::time::Duration;
 #[async_trait::async_trait]
 pub trait TryDoItOnce<E>
 where
-    Self: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
+    Self: CheckMemory<E> + BetaHasExpired + Execute<E> + Remember<E>,
     E: Clone + Send + Sync + 'static,
     <Self as Execute<E>>::Args: Send + Sync,
 {
@@ -37,9 +37,10 @@ where
             return Ok(Next::Continue(event));
         }
 
-        let should_abort = async {
+        // For Nectar, we conservatively abort if Beta has expired
+        let beta_expired = async {
             loop {
-                if self.should_abort().await.unwrap_or(true) {
+                if self.beta_has_expired().await.unwrap_or(true) {
                     return;
                 }
 
@@ -49,9 +50,9 @@ where
         let execute_future = Execute::<E>::execute(self, execution_args);
 
         pin_mut!(execute_future);
-        pin_mut!(should_abort);
+        pin_mut!(beta_expired);
 
-        match future::select(execute_future, should_abort).await {
+        match future::select(execute_future, beta_expired).await {
             Either::Left((Ok(event), _)) => {
                 self.remember(event.clone()).await?;
                 Ok(Next::Continue(event))
@@ -64,7 +65,7 @@ where
 #[async_trait::async_trait]
 impl<E, A> TryDoItOnce<E> for A
 where
-    A: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
+    A: CheckMemory<E> + BetaHasExpired + Execute<E> + Remember<E>,
     E: Clone + Send + Sync + 'static,
     <Self as Execute<E>>::Args: Send + Sync,
 {
@@ -104,7 +105,7 @@ where
 #[async_trait::async_trait]
 impl<E, A> DoItOnce<E> for A
 where
-    A: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
+    A: CheckMemory<E> + BetaHasExpired + Execute<E> + Remember<E>,
     E: Clone + Send + Sync + 'static,
     <Self as Execute<E>>::Args: Send + Sync,
 {
@@ -128,21 +129,17 @@ where
     }
 }
 
-/// Determine if we should abort before `Do`-ing an action.
 #[async_trait::async_trait]
-pub trait ShouldAbort {
-    async fn should_abort(&self) -> anyhow::Result<bool>;
+pub trait BetaHasExpired {
+    async fn beta_has_expired(&self) -> anyhow::Result<bool>;
 }
 
-/// For Nectar, we should abort if Beta has expired, meaning that Beta
-/// ledger has reached or surpassed the expiry time of the Beta
-/// contract.
 #[async_trait::async_trait]
-impl<A> ShouldAbort for A
+impl<A> BetaHasExpired for A
 where
     A: BetaLedgerTime + BetaExpiry + Sync,
 {
-    async fn should_abort(&self) -> anyhow::Result<bool> {
+    async fn beta_has_expired(&self) -> anyhow::Result<bool> {
         let beta_ledger_time = self.beta_ledger_time().await?;
 
         Ok(self.beta_expiry() <= beta_ledger_time)
@@ -241,8 +238,8 @@ mod tests {
     }
 
     #[async_trait::async_trait]
-    impl ShouldAbort for FakeActor {
-        async fn should_abort(&self) -> anyhow::Result<bool> {
+    impl BetaHasExpired for FakeActor {
+        async fn beta_has_expired(&self) -> anyhow::Result<bool> {
             Ok(false)
         }
     }
