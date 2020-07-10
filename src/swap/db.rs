@@ -75,6 +75,7 @@ struct Swap {
     pub herc20_deployed: Option<Herc20Deployed>,
     pub herc20_funded: Option<Herc20Funded>,
     pub herc20_redeemed: Option<Herc20Redeemed>,
+    pub herc20_refunded: Option<Herc20Refunded>,
 }
 
 impl Default for Swap {
@@ -86,6 +87,7 @@ impl Default for Swap {
             herc20_deployed: None,
             herc20_funded: None,
             herc20_redeemed: None,
+            herc20_refunded: None,
         }
     }
 }
@@ -436,6 +438,61 @@ impl Load<herc20::Redeemed> for Database {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct Herc20Refunded {
+    pub transaction: EthereumTransaction,
+}
+
+impl From<Herc20Refunded> for herc20::Refunded {
+    fn from(event: Herc20Refunded) -> Self {
+        herc20::Refunded {
+            transaction: event.transaction.into(),
+        }
+    }
+}
+
+impl From<herc20::Refunded> for Herc20Refunded {
+    fn from(event: herc20::Refunded) -> Self {
+        Herc20Refunded {
+            transaction: event.transaction.into(),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Save<herc20::Refunded> for Database {
+    async fn save(&self, event: herc20::Refunded, swap_id: SwapId) -> anyhow::Result<()> {
+        let stored_swap = self.get(&swap_id)?;
+
+        match stored_swap.herc20_refunded {
+            Some(_) => Err(anyhow!("Herc20 Refunded event is already stored")),
+            None => {
+                let mut swap = stored_swap.clone();
+                swap.herc20_refunded = Some(event.into());
+
+                let old_value = serde_json::to_vec(&stored_swap)
+                    .context("Could not serialize old swap value")?;
+                let new_value =
+                    serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
+
+                self.db
+                    .compare_and_swap(swap_id.as_bytes(), Some(old_value), Some(new_value))
+                    .context("Could not write in the DB")?
+                    .context("Stored swap somehow changed, aborting saving")
+            }
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Load<herc20::Refunded> for Database {
+    async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Refunded>> {
+        let swap = self.get(&swap_id)?;
+
+        Ok(swap.herc20_refunded.map(Into::into))
+    }
+}
+
 #[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
 pub struct EthereumTransaction {
     pub hash: Hash,
@@ -663,5 +720,28 @@ mod tests {
 
         assert_eq!(stored_event.transaction, transaction);
         assert_eq!(stored_event.secret, secret);
+    }
+
+    #[tokio::test]
+    async fn save_and_load_herc20_refunded() {
+        let db = Database::new_test().unwrap();
+        let swap = Swap::default();
+        let swap_id = SwapId::default();
+        let transaction = comit::transaction::Ethereum::default();
+
+        db.insert(&swap_id, &swap).unwrap();
+
+        let event = herc20::Refunded {
+            transaction: transaction.clone(),
+        };
+        db.save(event, swap_id).await.unwrap();
+
+        let stored_event: herc20::Refunded = db
+            .load(swap_id)
+            .await
+            .expect("No error loading")
+            .expect("found the event");
+
+        assert_eq!(stored_event.transaction, transaction);
     }
 }
