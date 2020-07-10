@@ -134,8 +134,10 @@ where
     let hbit_redeemed: hbit::Redeemed = match alice.try_do_it_once(hbit_funded).await {
         Ok(hbit_redeemed) => hbit_redeemed,
         Err(_) => {
-            DoItOnce::<herc20::Refunded>::do_it_once(&alice, herc20_deployed.clone()).await?;
-            DoItOnce::<hbit::Refunded>::do_it_once(&bob, hbit_funded).await?;
+            let herc20_refund =
+                DoItOnce::<herc20::Refunded>::do_it_once(&alice, herc20_deployed.clone());
+            let hbit_refund = DoItOnce::<hbit::Refunded>::do_it_once(&bob, hbit_funded);
+            future::try_join(herc20_refund, hbit_refund).await?;
 
             return Ok(());
         }
