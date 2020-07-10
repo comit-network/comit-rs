@@ -1,55 +1,103 @@
 use crate::{swap::db, SwapId};
 use comit::Timestamp;
+use futures::{
+    future::{self, Either},
+    pin_mut,
+};
+use std::time::Duration;
 
+/// Try to do an action resulting in the event `E`.
+///
+/// If we already know that event `E` has happened because we can look
+/// it up in our internal state via `LookUpEvent`, we return
+/// `Next::Continue<E>` early and do not try to do the action again.
+///
+/// We do the action by calling `Execute::<E>::execute` and awaiting
+/// on it, which will yield the event `E` if it resolves successfully.
+///
+/// Whilst waiting for the `Execute<E>` future to resolve, we
+/// continuously check if `BetaHasExpired`. If Beta expires before
+/// we finish doing the action, we fail.
+///
+/// If doing the action succeeds, we store the resulting event `E` via
+/// `StoreEvent` to ensure that repeated calls to this function do not
+/// result in doing the action more than once.
 #[async_trait::async_trait]
 pub trait TryDoItOnce<E>
 where
-    Self: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
+    Self: LookUpEvent<E> + BetaHasExpired + Execute<E> + StoreEvent<E>,
     E: Clone + Send + Sync + 'static,
     <Self as Execute<E>>::Args: Send + Sync,
 {
     async fn try_do_it_once(
         &self,
         execution_args: <Self as Execute<E>>::Args,
-    ) -> anyhow::Result<Next<E>> {
-        if let Some(event) = self.check_memory().await? {
-            return Ok(Next::Continue(event));
+    ) -> anyhow::Result<E> {
+        if let Some(event) = self.look_up_event().await? {
+            return Ok(event);
         }
 
-        if self.should_abort().await? {
-            return Ok(Next::Abort);
+        // For Nectar, we conservatively abort if Beta has expired
+        let beta_expired = async {
+            loop {
+                if self.beta_has_expired().await? {
+                    return Result::<(), anyhow::Error>::Ok(());
+                }
+
+                tokio::time::delay_for(Duration::from_secs(1)).await;
+            }
+        };
+        let execute_future = Execute::<E>::execute(self, execution_args);
+
+        pin_mut!(execute_future);
+        pin_mut!(beta_expired);
+
+        match future::select(execute_future, beta_expired).await {
+            Either::Left((Ok(event), _)) => {
+                self.store_event(event.clone()).await?;
+                Ok(event)
+            }
+            Either::Right(_) => anyhow::bail!(BetaHasExpiredError),
+            _ => anyhow::bail!("A future has failed"),
         }
-
-        let event = Execute::<E>::execute(self, execution_args).await?;
-        self.remember(event.clone()).await?;
-
-        Ok(Next::Continue(event))
     }
 }
 
 #[async_trait::async_trait]
 impl<E, A> TryDoItOnce<E> for A
 where
-    A: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
+    A: LookUpEvent<E> + BetaHasExpired + Execute<E> + StoreEvent<E>,
     E: Clone + Send + Sync + 'static,
     <Self as Execute<E>>::Args: Send + Sync,
 {
 }
 
+/// Do an action resulting in the event `E`.
+///
+/// If we already know that event `E` has happened because we can look
+/// it up in our internal state via `LookUpEvent`, we return
+/// `Next::Continue<E>` early and do not try to do the action again.
+///
+/// We do the action by calling `Execute::<E>::execute` and awaiting
+/// on it, which will yield the event `E` if it resolves successfully.
+///
+/// If doing the action succeeds, we store the resulting event `E` via
+/// `StoreEvent` to ensure that repeated calls to this function do not
+/// result in doing the action more than once.
 #[async_trait::async_trait]
 pub trait DoItOnce<E>
 where
-    Self: CheckMemory<E> + Execute<E> + Remember<E>,
+    Self: LookUpEvent<E> + Execute<E> + StoreEvent<E>,
     E: Clone + Send + Sync + 'static,
     <Self as Execute<E>>::Args: Send + Sync,
 {
     async fn do_it_once(&self, execution_args: <Self as Execute<E>>::Args) -> anyhow::Result<E> {
-        if let Some(event) = self.check_memory().await? {
+        if let Some(event) = self.look_up_event().await? {
             return Ok(event);
         }
 
         let event = Execute::<E>::execute(self, execution_args).await?;
-        self.remember(event.clone()).await?;
+        self.store_event(event.clone()).await?;
 
         Ok(event)
     }
@@ -58,49 +106,48 @@ where
 #[async_trait::async_trait]
 impl<E, A> DoItOnce<E> for A
 where
-    A: CheckMemory<E> + ShouldAbort + Execute<E> + Remember<E>,
+    A: LookUpEvent<E> + BetaHasExpired + Execute<E> + StoreEvent<E>,
     E: Clone + Send + Sync + 'static,
     <Self as Execute<E>>::Args: Send + Sync,
 {
 }
 
 #[async_trait::async_trait]
-pub trait CheckMemory<E> {
-    async fn check_memory(&self) -> anyhow::Result<Option<E>>;
+pub trait LookUpEvent<E> {
+    async fn look_up_event(&self) -> anyhow::Result<Option<E>>;
 }
 
+/// Look up swap event `E` by attempting to `Load` it from a database
+/// using our `SwapId`.
 #[async_trait::async_trait]
-impl<E, A> CheckMemory<E> for A
+impl<E, A> LookUpEvent<E> for A
 where
-    A: db::Load<E> + std::ops::Deref<Target = SwapId>,
+    A: db::Load<E> + AsSwapId,
     E: 'static,
 {
-    async fn check_memory(&self) -> anyhow::Result<Option<E>> {
-        self.load(**self).await
+    async fn look_up_event(&self) -> anyhow::Result<Option<E>> {
+        self.load(self.as_swap_id()).await
     }
 }
 
-/// Determine if we should abort before `Do`-ing an action.
 #[async_trait::async_trait]
-pub trait ShouldAbort {
-    async fn should_abort(&self) -> anyhow::Result<bool>;
+pub trait BetaHasExpired {
+    async fn beta_has_expired(&self) -> anyhow::Result<bool>;
 }
 
-/// For Nectar, we should abort if Beta has expired, meaning that Beta
-/// ledger has reached or surpassed the expiry time of the Beta
-/// contract.
 #[async_trait::async_trait]
-impl<A> ShouldAbort for A
+impl<A> BetaHasExpired for A
 where
     A: BetaLedgerTime + BetaExpiry + Sync,
 {
-    async fn should_abort(&self) -> anyhow::Result<bool> {
+    async fn beta_has_expired(&self) -> anyhow::Result<bool> {
         let beta_ledger_time = self.beta_ledger_time().await?;
 
         Ok(self.beta_expiry() <= beta_ledger_time)
     }
 }
 
+/// Execute an action which yields the event `E`.
 #[async_trait::async_trait]
 pub trait Execute<E> {
     type Args;
@@ -108,45 +155,47 @@ pub trait Execute<E> {
 }
 
 #[async_trait::async_trait]
-pub trait Remember<E> {
-    async fn remember(&self, event: E) -> anyhow::Result<()>;
+pub trait StoreEvent<E> {
+    async fn store_event(&self, event: E) -> anyhow::Result<()>;
 }
 
+/// Store the event `E` associated with our `SwapId` by saving it to a
+/// database through the `Save` trait.
 #[async_trait::async_trait]
-impl<E, A> Remember<E> for A
+impl<E, A> StoreEvent<E> for A
 where
-    A: db::Save<E> + std::ops::Deref<Target = SwapId>,
+    A: db::Save<E> + AsSwapId,
     E: Send + 'static,
 {
-    async fn remember(&self, event: E) -> anyhow::Result<()> {
-        self.save(event, **self).await
+    async fn store_event(&self, event: E) -> anyhow::Result<()> {
+        self.save(event, self.as_swap_id()).await
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum Next<E> {
-    Continue(E),
-    Abort,
-}
-
+/// Get the expiry timestamp for the Beta asset in a swap protocol.
 pub trait BetaExpiry {
     fn beta_expiry(&self) -> Timestamp;
 }
 
-#[async_trait::async_trait]
-pub trait AlphaLedgerTime {
-    async fn alpha_ledger_time(&self) -> anyhow::Result<Timestamp>;
-}
-
+/// Fetch the current `Timestamp` for the Beta ledger in a swap
+/// protocol.
 #[async_trait::async_trait]
 pub trait BetaLedgerTime {
     async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp>;
 }
 
+pub trait AsSwapId {
+    fn as_swap_id(&self) -> SwapId;
+}
+
+#[derive(Debug, Copy, Clone, thiserror::Error)]
+#[error("Beta expiry has been reached")]
+pub struct BetaHasExpiredError;
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::swap::{Next, TryDoItOnce};
+    use crate::swap::TryDoItOnce;
     use std::{
         collections::HashMap,
         sync::{Arc, RwLock},
@@ -188,8 +237,8 @@ mod tests {
     }
 
     #[async_trait::async_trait]
-    impl ShouldAbort for FakeActor {
-        async fn should_abort(&self) -> anyhow::Result<bool> {
+    impl BetaHasExpired for FakeActor {
+        async fn beta_has_expired(&self) -> anyhow::Result<bool> {
             Ok(false)
         }
     }
@@ -213,10 +262,9 @@ mod tests {
         }
     }
 
-    impl std::ops::Deref for FakeActor {
-        type Target = SwapId;
-        fn deref(&self) -> &Self::Target {
-            &self.swap_id
+    impl AsSwapId for FakeActor {
+        fn as_swap_id(&self) -> SwapId {
+            self.swap_id
         }
     }
 
@@ -240,11 +288,11 @@ mod tests {
         assert!(blockchain.read().unwrap().events.is_empty());
         let res = actor.try_do_it_once(()).await;
 
-        assert!(matches!(res, Ok(Next::Continue(ArbitraryEvent))));
+        assert!(matches!(res, Ok(ArbitraryEvent)));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
 
         let res = actor.try_do_it_once(()).await;
-        assert!(matches!(res, Ok(Next::Continue(ArbitraryEvent))));
+        assert!(matches!(res, Ok(ArbitraryEvent)));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
     }
 

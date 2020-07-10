@@ -4,7 +4,7 @@ use comit::{btsieve::LatestBlock, Timestamp};
 use std::{sync::Arc, time::Duration};
 
 pub use comit::{
-    ethereum::{Address, Block, ChainId, Hash},
+    ethereum::{Address, Block, ChainId, Hash, Transaction},
     Secret,
 };
 

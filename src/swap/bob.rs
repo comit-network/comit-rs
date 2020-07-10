@@ -5,7 +5,7 @@
 
 use crate::{
     swap::{
-        db, BetaExpiry, BetaLedgerTime, Execute, {hbit, herc20},
+        db, AsSwapId, BetaExpiry, BetaLedgerTime, Execute, {hbit, herc20},
     },
     SwapId,
 };
@@ -205,10 +205,9 @@ where
     }
 }
 
-impl<AW, BW, DB, AP, BP> std::ops::Deref for WalletBob<AW, BW, DB, AP, BP> {
-    type Target = SwapId;
-    fn deref(&self) -> &Self::Target {
-        &self.swap_id
+impl<AW, BW, DB, AP, BP> AsSwapId for WalletBob<AW, BW, DB, AP, BP> {
+    fn as_swap_id(&self) -> SwapId {
+        self.swap_id
     }
 }
 
@@ -218,7 +217,7 @@ pub mod watch_only_actor {
     //! Nectar always executes a swap as Bob.
 
     use super::*;
-    use crate::swap::ethereum;
+    use crate::swap::{bitcoin, ethereum};
     use comit::btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock};
     use std::sync::Arc;
 
@@ -380,10 +379,9 @@ pub mod watch_only_actor {
         }
     }
 
-    impl<AC, BC, DB, AP, BP> std::ops::Deref for WatchOnlyBob<AC, BC, DB, AP, BP> {
-        type Target = SwapId;
-        fn deref(&self) -> &Self::Target {
-            &self.swap_id
+    impl<AC, BC, DB, AP, BP> AsSwapId for WatchOnlyBob<AC, BC, DB, AP, BP> {
+        fn as_swap_id(&self) -> SwapId {
+            self.swap_id
         }
     }
 }
