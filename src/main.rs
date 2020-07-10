@@ -294,9 +294,13 @@ async fn main() {
         settings.bitcoin.bitcoind.node_url,
         settings.bitcoin.network,
     )
-    .unwrap();
-    let ethereum_wallet =
-        ethereum_wallet::Wallet::new(unimplemented!(), settings.ethereum.node_url).unwrap();
+    .expect("can initialise bitcoin wallet");
+    let ethereum_wallet = ethereum_wallet::Wallet::new(
+        unimplemented!(),
+        settings.ethereum.node_url,
+        dai_contract_addr,
+    )
+    .expect("can initialise ethereum wallet");
 
     let maker = init_maker(bitcoin_wallet, ethereum_wallet, settings.maker).await;
 
