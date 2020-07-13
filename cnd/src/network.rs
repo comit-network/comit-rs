@@ -13,9 +13,9 @@ use crate::{
     hbit, herc20, identity,
     network::{peer_tracker::PeerTracker, Comit, LocalData},
     spawn,
-    storage::{CreatedSwap, ForSwap, Load, RootSeed, Save, SwapContext},
-    Load, LocalSwapId, Never, Protocol, ProtocolSpawner, Role, RootSeed, SecretHash, SharedSwapId,
-    Side, Storage, SwapContext,
+    storage::{CreatedSwap, ForSwap, Load, Save, SwapContext},
+    LocalSwapId, Never, Protocol, ProtocolSpawner, Role, RootSeed, SecretHash, SharedSwapId, Side,
+    Storage,
 };
 use anyhow::Context;
 use async_trait::async_trait;
@@ -480,13 +480,15 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::comit::Behavi
     }
 }
 
-impl libp2p::swarm::NetworkBehaviourEventProcess<announce::BehaviourOutEvent> for ComitNode {
-    fn inject_event(&mut self, event: announce::BehaviourOutEvent) {
+impl libp2p::swarm::NetworkBehaviourEventProcess<announce::BehaviourOutEvent<LocalSwapId>>
+    for ComitNode
+{
+    fn inject_event(&mut self, event: announce::BehaviourOutEvent<LocalSwapId>) {
         match event {
             announce::BehaviourOutEvent::Confirmed {
                 peer,
                 shared_swap_id,
-                local_swap_id,
+                context: local_swap_id,
             } => {
                 let data = match self.local_data.remove(&local_swap_id) {
                     Some(local_data) => local_data,
@@ -508,6 +510,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<announce::BehaviourOutEvent> fo
                     local_swap_id,
                     peer,
                 );
+            }
         }
     }
 }
@@ -520,11 +523,16 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                 response_channel,
                 order_id,
             } => {
-                let order = self.orderbook.get_order(&order_id).unwrap();
+                let order = self
+                    .orderbook
+                    .get_order(&order_id)
+                    .expect("orderbook only bubbles up existing orders");
                 let &local_swap_id = match self.order_swap_ids.get(&order_id) {
                     Some(id) => id,
                     None => {
-                        tracing::warn!("take order request for non-existent order");
+                        tracing::warn!(
+                            "inconsistent state, non-existent order_id->local_swap_id mapping"
+                        );
                         return;
                     }
                 };

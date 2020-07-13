@@ -428,14 +428,17 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<OrderId, Response>> for O
                         request: order_id,
                         channel: response_channel,
                     },
-            } => {
-                tracing::info!("received take order request");
-                self.events.push_back(BehaviourOutEvent::TakeOrderRequest {
-                    peer_id,
-                    response_channel,
-                    order_id,
-                });
-            }
+            } => match self.get_order(&order_id) {
+                Some(_) => {
+                    tracing::info!("received take order request");
+                    self.events.push_back(BehaviourOutEvent::TakeOrderRequest {
+                        peer_id,
+                        response_channel,
+                        order_id,
+                    });
+                }
+                None => tracing::info!("received take order request for non-existent order"),
+            },
             RequestResponseEvent::Message {
                 peer: peer_id,
                 message:
