@@ -19,19 +19,28 @@ pub use bob::WalletBob;
 pub use db::{Database, Save};
 use std::sync::Arc;
 
-#[derive(Clone, Debug)]
+// TODO: This is awkward to manipulate
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SwapKind {
     HbitHerc20(SwapParams),
     Herc20Hbit(SwapParams),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SwapParams {
     pub hbit_params: hbit::Params,
     pub herc20_params: herc20::Params,
     pub secret_hash: comit::SecretHash,
+    // TODO: Why naive and not DateTime<Local>?
     pub start_of_swap: chrono::NaiveDateTime,
     pub swap_id: SwapId,
+}
+
+#[cfg(test)]
+impl Default for SwapParams {
+    fn default() -> Self {
+        todo!()
+    }
 }
 
 pub async fn nectar_hbit_herc20(
@@ -232,7 +241,6 @@ where
 #[cfg(all(test, feature = "test-docker"))]
 mod tests {
     use super::*;
-    use crate::swap::db::Save;
     use crate::{
         swap::{alice::wallet_actor::WalletAlice, bitcoin, bob::watch_only_actor::WatchOnlyBob},
         test_harness, Seed, SwapId,
@@ -418,7 +426,8 @@ mod tests {
 
         let alice_swap = {
             let swap_id = SwapId::default();
-            alice_db.save(db::Created, swap_id).unwrap();
+            let swap: SwapKind = todo!();
+            alice_db.insert(swap).unwrap();
 
             let alice = WalletAlice {
                 alpha_wallet: alice_bitcoin_wallet.clone(),
@@ -446,7 +455,8 @@ mod tests {
 
         let bob_swap = {
             let swap_id = SwapId::default();
-            bob_db.save(db::Created, swap_id).unwrap();
+            let swap: SwapKind = todo!();
+            bob_db.insert(swap).unwrap();
 
             let alice = WatchOnlyAlice {
                 alpha_connector: Arc::clone(&bitcoin_connector),

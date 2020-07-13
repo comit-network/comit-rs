@@ -8,8 +8,9 @@ use crate::{
 use anyhow::{anyhow, Context};
 use comit::{
     asset::Erc20,
-    ethereum::{self, Hash, Transaction, U256},
-    Secret,
+    ethereum,
+    ethereum::{Hash, Transaction, U256},
+    identity, Secret, SecretHash, Timestamp,
 };
 use serde::{Deserialize, Serialize};
 use serde_hex::{SerHexSeq, StrictPfx};
@@ -287,6 +288,29 @@ impl From<comit::asset::Erc20> for Erc20Asset {
             token_contract: asset.token_contract,
             quantity: asset.quantity,
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Params {
+    pub asset: Erc20Asset,
+    pub redeem_identity: identity::Ethereum,
+    pub refund_identity: identity::Ethereum,
+    pub expiry: Timestamp,
+    pub secret_hash: SecretHash,
+    pub chain_id: ethereum::ChainId,
+}
+
+impl From<Params> for comit::herc20::Params {
+    fn from(_: Params) -> Self {
+        todo!()
+    }
+}
+
+#[cfg(test)]
+impl Default for Params {
+    fn default() -> Self {
+        todo!()
     }
 }
 

@@ -1,25 +1,42 @@
 use crate::{
+    swap,
     swap::{
         db::{Database, Load, Save},
         hbit,
     },
     SwapId,
 };
+use ::bitcoin::secp256k1;
 use anyhow::{anyhow, Context};
-use comit::Secret;
+use comit::{identity, Secret, SecretHash, Timestamp};
 use serde::{Deserialize, Serialize};
 
 // TODO: control the serialisation
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct HbitFunded {
-    pub asset: u64,
+    pub asset: Amount,
     pub location: ::bitcoin::OutPoint,
+}
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+pub struct Amount(u64);
+
+impl From<Amount> for comit::asset::Bitcoin {
+    fn from(amount: Amount) -> Self {
+        comit::asset::Bitcoin::from_sat(amount.0)
+    }
+}
+
+impl From<comit::asset::Bitcoin> for Amount {
+    fn from(amount: comit::asset::Bitcoin) -> Self {
+        Amount(amount.as_sat())
+    }
 }
 
 impl From<HbitFunded> for hbit::Funded {
     fn from(funded: HbitFunded) -> Self {
         hbit::Funded {
-            asset: comit::asset::Bitcoin::from_sat(funded.asset),
+            asset: funded.asset.into(),
             location: funded.location,
         }
     }
@@ -28,7 +45,7 @@ impl From<HbitFunded> for hbit::Funded {
 impl From<hbit::Funded> for HbitFunded {
     fn from(funded: hbit::Funded) -> Self {
         HbitFunded {
-            asset: funded.asset.as_sat(),
+            asset: funded.asset.into(),
             location: funded.location,
         }
     }
@@ -172,6 +189,30 @@ impl Load<hbit::Refunded> for Database {
         let swap = self.get(&swap_id)?;
 
         Ok(swap.hbit_refunded.map(Into::into))
+    }
+}
+
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct Params {
+    pub network: ::bitcoin::Network,
+    pub asset: Amount,
+    pub redeem_identity: identity::Bitcoin,
+    pub refund_identity: identity::Bitcoin,
+    pub expiry: Timestamp,
+    pub secret_hash: SecretHash,
+    pub transient_sk: secp256k1::SecretKey,
+}
+
+impl From<Params> for swap::hbit::Params {
+    fn from(_: Params) -> Self {
+        todo!()
+    }
+}
+
+#[cfg(test)]
+impl Default for Params {
+    fn default() -> Self {
+        todo!()
     }
 }
 

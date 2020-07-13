@@ -335,7 +335,7 @@ fn handle_finished_swap(finished_swap: Option<FinishedSwap>, maker: &mut Maker, 
         maker.process_finished_swap(dai, btc, finished_swap.taker);
 
         let _ = db
-            .delete(&swap_id)
+            .remove(&swap_id)
             .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
     }
 }

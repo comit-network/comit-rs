@@ -11,7 +11,7 @@ pub use comit::{
 
 pub type SharedParams = comit::hbit::Params;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Params {
     pub shared: SharedParams,
     pub transient_sk: SecretKey,
