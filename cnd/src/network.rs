@@ -369,7 +369,6 @@ impl ComitNode {
         };
         self.local_data.insert(swap_id, data);
 
-        // TODO: Consider adding peer_id to swarm?
         let order = Order::new(self.peer_id.clone(), order);
         let order_id = self.orderbook.make(order)?;
         self.order_swap_ids.insert(order_id, swap_id);
