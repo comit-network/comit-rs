@@ -572,7 +572,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                 let storage = self.storage.clone();
                 let order_id = order.id;
 
-                // TODO: saving can fail but subsequent communication steps will continue
+                // Saving can fail but subsequent communication steps will continue.
                 self.task_executor.spawn(async move {
                     storage
                         .associate_swap_with_order(order_id, local_swap_id)
