@@ -213,7 +213,7 @@ fn derive_key_pair(seed: &RootSeed) -> Keypair {
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
 pub struct ComitNode {
-    announce: Announce,
+    announce: Announce<LocalSwapId>,
     comit: Comit,
     peer_tracker: PeerTracker,
 
