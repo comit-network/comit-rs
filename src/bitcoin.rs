@@ -49,10 +49,6 @@ impl Amount {
         dai::Amount::from_atto(atto_dai)
     }
 
-    pub fn symbol(self) -> String {
-        "BTC".to_owned()
-    }
-
     pub fn checked_add(self, rhs: Amount) -> Option<Amount> {
         self.0.checked_add(rhs.0).map(Amount)
     }

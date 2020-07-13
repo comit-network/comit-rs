@@ -70,5 +70,26 @@ pub fn data_dir() -> Option<std::path::PathBuf> {
         .map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
 }
 
+#[derive(Debug, Copy, Clone, strum_macros::Display)]
+#[strum(serialize_all = "UPPERCASE")]
+pub enum Symbol {
+    Btc,
+    Dai,
+}
+
 #[cfg(all(test, feature = "test-docker"))]
 pub mod test_harness;
+
+#[cfg(test)]
+mod tests {
+    use crate::Symbol;
+
+    #[test]
+    fn symbol_serializes_correctly() {
+        let btc = Symbol::Btc;
+        let dai = Symbol::Dai;
+
+        assert_eq!(String::from("BTC"), btc.to_string());
+        assert_eq!(String::from("DAI"), dai.to_string());
+    }
+}

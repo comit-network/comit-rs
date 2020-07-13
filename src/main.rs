@@ -225,8 +225,8 @@ fn handle_rate_update(
 ) {
     match rate_update {
         Ok(new_rate) => {
-            let reaction = maker.update_rate(new_rate);
-            match reaction {
+            let result = maker.update_rate(new_rate);
+            match result {
                 Ok(Some(PublishOrders {
                     new_sell_order,
                     new_buy_order,
@@ -253,7 +253,22 @@ fn handle_btc_balance_update(
     maker: &mut Maker,
     swarm: &mut libp2p::Swarm<Nectar>,
 ) {
-    unimplemented!()
+    match btc_balance_update {
+        Ok(btc_balance) => match maker.update_bitcoin_balance(btc_balance) {
+            Ok(Some(new_sell_order)) => {
+                swarm.orderbook.publish(new_sell_order.into());
+            }
+            Ok(None) => (),
+            Err(e) => tracing::warn!("Bitcoin balance update yielded error: {}", e),
+        },
+        Err(e) => {
+            maker.invalidate_bitcoin_balance();
+            tracing::error!(
+                "Unable to fetch bitcoin balance! Fetching balance yielded error: {}",
+                e
+            );
+        }
+    }
 }
 
 fn handle_dai_balance_update(
@@ -261,7 +276,22 @@ fn handle_dai_balance_update(
     maker: &mut Maker,
     swarm: &mut libp2p::Swarm<Nectar>,
 ) {
-    unimplemented!()
+    match dai_balance_update {
+        Ok(dai_balance) => match maker.update_dai_balance(dai_balance) {
+            Ok(Some(new_buy_order)) => {
+                swarm.orderbook.publish(new_buy_order.into());
+            }
+            Ok(None) => (),
+            Err(e) => tracing::warn!("Dai balance update yielded error: {}", e),
+        },
+        Err(e) => {
+            maker.invalidate_dai_balance();
+            tracing::error!(
+                "Unable to fetch dai balance! Fetching balance yielded error: {}",
+                e
+            );
+        }
+    }
 }
 
 struct FinishedSwap {
