@@ -57,22 +57,25 @@ impl Orderbook {
             message.data.hash(&mut s);
             gossipsub::MessageId(s.finish().to_string())
         };
-        let gossipsub_config = gossipsub::GossipsubConfigBuilder::new()
+
+        let config = gossipsub::GossipsubConfigBuilder::new()
             .heartbeat_interval(Duration::from_secs(1))
             .message_id_fn(message_id_fn) // No two messages of the same content will be propagated.
             .build();
+        let gossipsub = Gossipsub::new(peer_id.clone(), config);
 
         let mut config = RequestResponseConfig::default();
         config.set_request_timeout(Duration::from_secs(REQUEST_TIMEOUT_SECS));
+        let behaviour = RequestResponse::new(
+            TakeOrderCodec::default(),
+            vec![(TakeOrderProtocol, ProtocolSupport::Full)],
+            config,
+        );
 
         let mut orderbook = Orderbook {
-            peer_id: peer_id.clone(),
-            gossipsub: Gossipsub::new(peer_id, gossipsub_config),
-            take_order: RequestResponse::new(
-                TakeOrderCodec::default(),
-                vec![(TakeOrderProtocol, ProtocolSupport::Full)],
-                config,
-            ),
+            peer_id,
+            gossipsub,
+            take_order: behaviour,
             trading_pairs: HashSet::new(),
             orders: HashMap::new(),
             events: VecDeque::new(),
@@ -80,6 +83,7 @@ impl Orderbook {
 
         orderbook.gossipsub.subscribe(DefaultMakerTopic::to_topic());
 
+        // Since we only support a single trading pair topic just subscribe to it now.
         orderbook.gossipsub.subscribe(Topic::new(TOPIC.to_string()));
 
         orderbook
@@ -113,11 +117,9 @@ impl Orderbook {
 
     /// Get the peer ID of the node that published this order.
     pub fn peer_id_for_order(&self, order_id: OrderId) -> Option<PeerId> {
-        if let Some(order) = self.orders.get(&order_id) {
-            Some(order.maker.peer_id())
-        } else {
-            None
-        }
+        self.orders
+            .get(&order_id)
+            .map(|order| order.maker.peer_id())
     }
 
     /// Confirm a take order request, called by Bob i.e., the maker.
@@ -151,25 +153,16 @@ impl Orderbook {
 
     /// Get a list of all orders known to this node.
     pub fn get_orders(&self) -> Vec<Order> {
-        #[allow(clippy::map_clone)]
-        self.orders.values().map(|order| order.clone()).collect()
+        self.orders.values().cloned().collect()
     }
 
-    /// Get the order matching order_id is known to this node.
-    pub fn get_order(&self, order_id: &OrderId) -> Option<Order> {
-        if let Some(order) = self.orders.get(order_id) {
-            Some(order.clone())
-        } else {
-            None
-        }
+    /// Get the order matching `id` if known to this node.
+    pub fn get_order(&self, id: &OrderId) -> Option<Order> {
+        self.orders.get(id).cloned()
     }
 
     pub fn get_trading_pairs(&self) -> Vec<TradingPairTopic> {
-        let mut topics = vec![];
-        for topic in self.trading_pairs.iter() {
-            topics.push(topic.clone());
-        }
-        topics
+        self.trading_pairs.iter().cloned().collect()
     }
 
     /// Add a trading pair, called when we receive a topic via gossipsub.
