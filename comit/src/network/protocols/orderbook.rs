@@ -476,7 +476,7 @@ mod tests {
     use super::*;
     use crate::{
         asset::{self, Erc20, Erc20Quantity},
-        network::test::{await_events_or_timeout, connect, new_swarm},
+        network::test::{await_events_or_timeout, new_connected_swarm_pair},
     };
     use libp2p::Swarm;
 
@@ -497,37 +497,37 @@ mod tests {
         // arrange
 
         // TODO: Create a helper function for these three statements.
-        let (mut alice_swarm, _, alice_peer_id) = new_swarm(Orderbook::new);
-        let (mut bob_swarm, bob_addr, bob_peer_id) = new_swarm(Orderbook::new);
-        connect(&mut alice_swarm, &mut bob_swarm).await;
+        let (mut alice, mut bob) = new_connected_swarm_pair(Orderbook::new).await;
 
-        let order = create_order(bob_peer_id.clone(), bob_addr.clone());
+        let order = create_order(bob.peer_id.clone(), bob.addr.clone());
 
         // act
 
         // Trigger subscription.
-        poll_no_event(&mut alice_swarm).await;
-        poll_no_event(&mut bob_swarm).await;
+        poll_no_event(&mut alice.swarm).await;
+        poll_no_event(&mut bob.swarm).await;
 
-        let _ = bob_swarm
+        let _ = bob
+            .swarm
             .make(order.clone())
             .expect("order id should exist");
 
         // Trigger publish and receipt of order.
-        poll_no_event(&mut bob_swarm).await;
-        poll_no_event(&mut alice_swarm).await;
+        poll_no_event(&mut bob.swarm).await;
+        poll_no_event(&mut alice.swarm).await;
 
-        let order = alice_swarm
+        let order = alice
+            .swarm
             .get_orders()
             .first()
             .cloned()
             .expect("Alice has no orders");
 
-        alice_swarm.take(order.id).expect("failed to take order");
+        alice.swarm.take(order.id).expect("failed to take order");
 
         // Trigger request/response messages.
-        poll_no_event(&mut alice_swarm).await;
-        let bob_event = tokio::time::timeout(Duration::from_secs(2), bob_swarm.next())
+        poll_no_event(&mut alice.swarm).await;
+        let bob_event = tokio::time::timeout(Duration::from_secs(2), bob.swarm.next())
             .await
             .expect("failed to get TakeOrderRequest event");
 
@@ -539,10 +539,10 @@ mod tests {
             } => (peer_id, response_channel, order_id),
             _ => panic!("unexepected bob event"),
         };
-        bob_swarm.confirm(peer_id, order_id, channel);
+        bob.swarm.confirm(peer_id, order_id, channel);
 
         let (alice_event, bob_event) =
-            await_events_or_timeout(alice_swarm.next(), bob_swarm.next()).await;
+            await_events_or_timeout(alice.swarm.next(), bob.swarm.next()).await;
         match (alice_event, bob_event) {
             (
                 BehaviourOutEvent::TakeOrderConfirmation {
@@ -554,8 +554,8 @@ mod tests {
                     shared_swap_id: bob_got_swap_id,
                 },
             ) => {
-                assert_eq!(alice_got_peer_id, bob_peer_id);
-                assert_eq!(bob_got_peer_id, alice_peer_id);
+                assert_eq!(alice_got_peer_id, bob.peer_id);
+                assert_eq!(bob_got_peer_id, alice.peer_id);
                 assert_eq!(alice_got_swap_id, bob_got_swap_id);
             }
             _ => panic!("failed to get take order confirmation"),
