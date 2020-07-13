@@ -143,7 +143,9 @@ impl Orderbook {
     }
 
     /// Called by Bob i.e., the maker to deny a take order request.
-    pub fn deny(&mut self, channel: ResponseChannel<Response>) {
+    pub fn deny(&mut self, peer_id: PeerId, order_id: OrderId, channel: ResponseChannel<Response>) {
+        self.events
+            .push_back(BehaviourOutEvent::Failed { peer_id, order_id });
         self.take_order.send_response(channel, Response::Error);
     }
 
@@ -383,8 +385,10 @@ pub enum BehaviourOutEvent {
         order_id: OrderId,
         shared_swap_id: SharedSwapId,
     },
-    // TODO: Put the order id in here as well?
-    Failed(PeerId),
+    Failed {
+        peer_id: PeerId,
+        order_id: OrderId,
+    },
 }
 
 impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {

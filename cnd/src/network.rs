@@ -620,9 +620,12 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                 self.comit
                     .communicate(peer_id.clone(), shared_swap_id, data); //
             }
-            orderbook::BehaviourOutEvent::Failed(peer_id) => {
-                tracing::warn!("failed take order attempt from peer: {}", peer_id)
-            }
+
+            orderbook::BehaviourOutEvent::Failed { peer_id, order_id } => tracing::warn!(
+                "take order request failed, peer: {}, order: {}",
+                peer_id,
+                order_id,
+            ),
         }
     }
 }
