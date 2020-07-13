@@ -26,7 +26,10 @@ pub struct TakeOrderCodec;
 /// confirmation because we simply close the connection in case of an error.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub enum Response {
-    Confirmation(SharedSwapId),
+    Confirmation {
+        order_id: OrderId,
+        shared_swap_id: SharedSwapId,
+    },
     Error,
 }
 

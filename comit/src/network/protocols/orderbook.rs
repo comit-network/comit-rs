@@ -43,7 +43,7 @@ pub struct Orderbook {
     #[behaviour(ignore)]
     trading_pairs: HashSet<TradingPairTopic>,
     #[behaviour(ignore)]
-    pub(crate) peer_id: PeerId,
+    pub peer_id: PeerId,
 }
 
 impl Orderbook {
@@ -84,11 +84,6 @@ impl Orderbook {
         orderbook
     }
 
-    // TODO: Is this really what we want?
-    pub fn peer_id(&self) -> PeerId {
-        self.peer_id.clone()
-    }
-
     pub fn make(&mut self, order: Order) -> anyhow::Result<OrderId> {
         self.gossipsub.publish(
             &order.topic(&self.peer_id),
@@ -124,7 +119,7 @@ impl Orderbook {
 
     /// Called by Bob i.e., the maker.
     /// Does _not_ remove the order from the order book.
-    pub fn confirm(&mut self, peer_id: PeerId, _: OrderId, channel: ResponseChannel<Response>) {
+    pub fn confirm(&mut self, order_id: OrderId, channel: ResponseChannel<Response>) {
         let shared_swap_id = SharedSwapId::default();
         tracing::debug!(
             "confirming take order request with swap id: {}",
@@ -132,7 +127,10 @@ impl Orderbook {
         );
 
         self.take_order
-            .send_response(channel, Response::Confirmation(shared_swap_id));
+            .send_response(channel, Response::Confirmation {
+                order_id,
+                shared_swap_id,
+            });
 
         // TODO: Do we want to do something with order_id? E.g. remove the order from
         // the order book?
@@ -141,7 +139,7 @@ impl Orderbook {
         // and only push this event if we know the response got to peer.
         self.events
             .push_back(BehaviourOutEvent::TakeOrderConfirmation {
-                peer_id,
+                order_id,
                 shared_swap_id,
             });
     }
@@ -390,7 +388,7 @@ pub enum BehaviourOutEvent {
         order_id: OrderId,
     },
     TakeOrderConfirmation {
-        peer_id: PeerId,
+        order_id: OrderId,
         shared_swap_id: SharedSwapId,
     },
     // TODO: Put the order id in here as well?
@@ -440,16 +438,20 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<OrderId, Response>> for O
                 None => tracing::info!("received take order request for non-existent order"),
             },
             RequestResponseEvent::Message {
-                peer: peer_id,
+                peer: _,
                 message:
                     RequestResponseMessage::Response {
                         request_id: _,
-                        response: Response::Confirmation(shared_swap_id),
+                        response:
+                            Response::Confirmation {
+                                order_id,
+                                shared_swap_id,
+                            },
                     },
             } => {
                 self.events
                     .push_back(BehaviourOutEvent::TakeOrderConfirmation {
-                        peer_id,
+                        order_id,
                         shared_swap_id,
                     });
             }
@@ -502,7 +504,7 @@ mod tests {
         // TODO: Create a helper function for these three statements.
         let (mut alice, mut bob) = new_connected_swarm_pair(Orderbook::new).await;
 
-        let order = create_order(bob.peer_id.clone(), bob.addr.clone());
+        let bob_order = create_order(bob.peer_id.clone(), bob.addr.clone());
 
         // act
 
@@ -512,21 +514,24 @@ mod tests {
 
         let _ = bob
             .swarm
-            .make(order.clone())
+            .make(bob_order.clone())
             .expect("order id should exist");
 
         // Trigger publish and receipt of order.
         poll_no_event(&mut bob.swarm).await;
         poll_no_event(&mut alice.swarm).await;
 
-        let order = alice
+        let alice_order = alice
             .swarm
             .get_orders()
             .first()
             .cloned()
             .expect("Alice has no orders");
 
-        alice.swarm.take(order.id).expect("failed to take order");
+        alice
+            .swarm
+            .take(alice_order.id)
+            .expect("failed to take order");
 
         // Trigger request/response messages.
         poll_no_event(&mut alice.swarm).await;
@@ -534,7 +539,7 @@ mod tests {
             .await
             .expect("failed to get TakeOrderRequest event");
 
-        let (peer_id, channel, order_id) = match bob_event {
+        let (_peer_id, channel, order_id) = match bob_event {
             BehaviourOutEvent::TakeOrderRequest {
                 peer_id,
                 response_channel,
@@ -542,23 +547,23 @@ mod tests {
             } => (peer_id, response_channel, order_id),
             _ => panic!("unexepected bob event"),
         };
-        bob.swarm.confirm(peer_id, order_id, channel);
+        bob.swarm.confirm(order_id, channel);
 
         let (alice_event, bob_event) =
             await_events_or_timeout(alice.swarm.next(), bob.swarm.next()).await;
         match (alice_event, bob_event) {
             (
                 BehaviourOutEvent::TakeOrderConfirmation {
-                    peer_id: alice_got_peer_id,
+                    order_id: alice_got_order_id,
                     shared_swap_id: alice_got_swap_id,
                 },
                 BehaviourOutEvent::TakeOrderConfirmation {
-                    peer_id: bob_got_peer_id,
+                    order_id: bob_got_order_id,
                     shared_swap_id: bob_got_swap_id,
                 },
             ) => {
-                assert_eq!(alice_got_peer_id, bob.peer_id);
-                assert_eq!(bob_got_peer_id, alice.peer_id);
+                assert_eq!(alice_got_order_id, bob_order.id);
+                assert_eq!(bob_got_order_id, alice_order.id);
                 assert_eq!(alice_got_swap_id, bob_got_swap_id);
             }
             _ => panic!("failed to get take order confirmation"),

@@ -219,6 +219,8 @@ pub struct ComitNode {
     pub seed: RootSeed,
     #[behaviour(ignore)]
     task_executor: Handle,
+    #[behaviour(ignore)]
+    pub peer_id: PeerId,
     /// We receive the LocalData for the execution parameter exchange at the
     /// same time as we announce the swap. We save `LocalData` here until the
     /// swap is confirmed.
@@ -237,6 +239,8 @@ pub struct ComitNode {
     bitcoin_addresses: HashMap<identity::Bitcoin, crate::bitcoin::Address>,
     #[behaviour(ignore)]
     order_swap_ids: HashMap<OrderId, LocalSwapId>,
+    #[behaviour(ignore)]
+    confirmed_order_peers: HashMap<OrderId, PeerId>,
 }
 
 impl ComitNode {
@@ -249,17 +253,19 @@ impl ComitNode {
     ) -> Result<Self, io::Error> {
         Ok(Self {
             announce: Announce::default(),
-            orderbook: Orderbook::new(peer_id),
+            orderbook: Orderbook::new(peer_id.clone()),
             comit: Comit::default(),
             peer_tracker: PeerTracker::default(),
             seed,
             task_executor,
+            peer_id,
             local_data: HashMap::default(),
             local_swap_ids: HashMap::default(),
             storage,
             protocol_spawner,
             bitcoin_addresses: HashMap::default(),
             order_swap_ids: Default::default(),
+            confirmed_order_peers: Default::default(),
         })
     }
 
@@ -364,7 +370,7 @@ impl ComitNode {
         self.local_data.insert(swap_id, data);
 
         // TODO: Consider adding peer_id to swarm?
-        let order = Order::new(self.orderbook.peer_id(), order);
+        let order = Order::new(self.peer_id.clone(), order);
         let order_id = self.orderbook.make(order)?;
         self.order_swap_ids.insert(order_id, swap_id);
 
@@ -563,7 +569,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                         network: ledger::Bitcoin::Regtest,
                         absolute_expiry: order.absolute_expiry,
                     },
-                    peer: order.maker.peer_id(),
+                    peer: peer_id.clone(),
                     address_hint: None,
                     role: Role::Bob,
                     start_of_swap,
@@ -583,12 +589,14 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                     }
                 });
 
+                self.confirmed_order_peers.insert(order_id, peer_id);
+
                 // No other validation, just take the order. This
                 // implies that an order can be taken multiple times.
-                self.orderbook.confirm(peer_id, order_id, response_channel);
+                self.orderbook.confirm(order_id, response_channel);
             }
             orderbook::BehaviourOutEvent::TakeOrderConfirmation {
-                peer_id,
+                order_id,
                 shared_swap_id,
             } => {
                 // TODO: Re-evaluate all the hashmap access
@@ -606,7 +614,12 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
 
                 // TODO: Consider creating/saving the swap here.
 
-                self.comit.communicate(peer_id, shared_swap_id, data);
+                let peer_id = self
+                    .confirmed_order_peers
+                    .get(&order_id)
+                    .expect("peer id to be inserted during confirmation");
+                self.comit
+                    .communicate(peer_id.clone(), shared_swap_id, data); //
             }
             orderbook::BehaviourOutEvent::Failed(peer_id) => {
                 tracing::warn!("failed take order attempt from peer: {}", peer_id)
