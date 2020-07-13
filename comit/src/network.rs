@@ -2,6 +2,7 @@ pub mod comit;
 pub mod oneshot_behaviour;
 pub mod oneshot_protocol;
 pub mod protocols;
+mod shared_swap_id;
 pub mod swap_digest;
 #[cfg(any(test, feature = "test"))]
 pub mod test;
@@ -16,6 +17,7 @@ pub use self::{
         take_order::{behaviour::*, handler::*, protocol::*, *},
         *,
     },
+    shared_swap_id::SharedSwapId,
     swap_digest::SwapDigest,
 };
 

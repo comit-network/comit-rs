@@ -513,13 +513,15 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::comit::Behavi
     }
 }
 
-impl libp2p::swarm::NetworkBehaviourEventProcess<announce::BehaviourOutEvent> for ComitNode {
-    fn inject_event(&mut self, event: announce::BehaviourOutEvent) {
+impl libp2p::swarm::NetworkBehaviourEventProcess<announce::BehaviourOutEvent<LocalSwapId>>
+    for ComitNode
+{
+    fn inject_event(&mut self, event: announce::BehaviourOutEvent<LocalSwapId>) {
         match event {
             announce::BehaviourOutEvent::Confirmed {
                 peer,
                 shared_swap_id,
-                local_swap_id,
+                context: local_swap_id,
             } => {
                 let data = match self.local_data.remove(&local_swap_id) {
                     Some(local_data) => local_data,
@@ -534,7 +536,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<announce::BehaviourOutEvent> fo
             }
             announce::BehaviourOutEvent::Failed {
                 peer,
-                local_swap_id,
+                context: local_swap_id,
             } => {
                 tracing::warn!(
                     "failed to complete announce protocol for swap {} with {}",

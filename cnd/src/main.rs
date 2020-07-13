@@ -36,6 +36,7 @@ mod halbit;
 mod hbit;
 mod herc20;
 mod http_api;
+mod local_swap_id;
 mod protocol_spawner;
 mod respawn;
 mod spawn;
@@ -76,6 +77,7 @@ use self::{
     connectors::Connectors,
     facade::Facade,
     file_lock::TryLockExclusive,
+    local_swap_id::LocalSwapId,
     network::{Swarm, SwarmWorker},
     protocol_spawner::{ProtocolSpawner, *},
     respawn::respawn,
@@ -84,8 +86,8 @@ use self::{
 };
 use anyhow::Context;
 use comit::{
-    ledger, lnd::LndConnectorParams, LocalSwapId, Never, Protocol, RelativeTime, Role, Secret,
-    SecretHash, SharedSwapId, Side, Timestamp,
+    ledger, lnd::LndConnectorParams, Never, Protocol, RelativeTime, Role, Secret, SecretHash,
+    SharedSwapId, Side, Timestamp,
 };
 use rand::rngs::OsRng;
 use std::{
