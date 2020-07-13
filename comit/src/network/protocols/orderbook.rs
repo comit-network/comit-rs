@@ -130,11 +130,6 @@ impl Orderbook {
                 shared_swap_id,
             });
 
-        // TODO: Do we want to do something with order_id? E.g. remove the order from
-        // the order book?
-
-        // TODO: Work around the fact that libp2p silently drops the channel send error
-        // and only push this event if we know the response got to peer.
         self.events
             .push_back(BehaviourOutEvent::TakeOrderConfirmation {
                 order_id,
@@ -497,9 +492,7 @@ mod tests {
     async fn take_order_request_confirmation() {
         // arrange
 
-        // TODO: Create a helper function for these three statements.
         let (mut alice, mut bob) = new_connected_swarm_pair(Orderbook::new).await;
-
         let bob_order = create_order(bob.peer_id.clone(), bob.addr.clone());
 
         // act

@@ -12,13 +12,10 @@ use libp2p::core::upgrade::{self};
 use serde::Serialize;
 use std::{fmt::Display, io};
 
-// todo: extract swap_digest from this struct
 /// The substream on which a reply is expected to be sent.
 #[derive(Debug)]
 pub struct ReplySubstream<T> {
     pub io: T,
-    // why cant the swap_digest be the order_id?
-    // pub order_id: OrderId,
     pub swap_digest: SwapDigest,
 }
 
