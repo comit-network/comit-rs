@@ -279,8 +279,8 @@ mod tests {
             let seed = Seed::default();
             let bitcoin_wallet = {
                 let wallet =
-                    bitcoin_wallet::Wallet::new(seed, bitcoind_url.clone(), bitcoin_network)?;
-                wallet.init().await?;
+                    bitcoin_wallet::Wallet::new(seed, bitcoind_url.clone(), bitcoin_network)
+                        .await?;
 
                 bitcoin_blockchain
                     .mint(
@@ -308,13 +308,8 @@ mod tests {
 
         let (bob_bitcoin_wallet, bob_ethereum_wallet) = {
             let seed = Seed::default();
-            let bitcoin_wallet = {
-                let wallet =
-                    bitcoin_wallet::Wallet::new(seed, bitcoind_url.clone(), bitcoin_network)?;
-                wallet.init().await?;
-
-                wallet
-            };
+            let bitcoin_wallet =
+                bitcoin_wallet::Wallet::new(seed, bitcoind_url.clone(), bitcoin_network).await?;
             let ethereum_wallet =
                 ethereum_wallet::Wallet::new(seed, ethereum_node_url, token_contract)?;
 

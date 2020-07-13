@@ -294,6 +294,7 @@ async fn main() {
         settings.bitcoin.bitcoind.node_url,
         settings.bitcoin.network,
     )
+    .await
     .expect("can initialise bitcoin wallet");
     let ethereum_wallet = ethereum_wallet::Wallet::new(
         unimplemented!(),
