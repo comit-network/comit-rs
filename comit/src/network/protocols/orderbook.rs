@@ -34,7 +34,7 @@ const REQUEST_TIMEOUT_SECS: u64 = 10;
 #[derive(NetworkBehaviour)]
 #[behaviour(out_event = "BehaviourOutEvent", poll_method = "poll")]
 pub struct Orderbook {
-    pub gossipsub: Gossipsub,
+    gossipsub: Gossipsub,
     take_order: RequestResponse<TakeOrderCodec>,
     #[behaviour(ignore)]
     events: VecDeque<BehaviourOutEvent>,
