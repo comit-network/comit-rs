@@ -28,9 +28,12 @@ use std::{
 };
 use uuid::Uuid;
 
+// We only support a single topic at the moment.
 const TOPIC: &str = "Herc20Hbit";
+/// The time we wait for a take order request to be confirmed or denied.
 const REQUEST_TIMEOUT_SECS: u64 = 10;
 
+/// The Orderbook libp2p network behaviour.
 #[derive(NetworkBehaviour)]
 #[behaviour(out_event = "BehaviourOutEvent", poll_method = "poll")]
 pub struct Orderbook {
@@ -47,9 +50,8 @@ pub struct Orderbook {
 }
 
 impl Orderbook {
+    /// Construct a new orderbook for this node using the node's peer ID.
     pub fn new(peer_id: PeerId) -> Orderbook {
-        // To content-address message, we can take the hash of message and use it as an
-        // ID.
         let message_id_fn = |message: &gossipsub::GossipsubMessage| {
             let mut s = DefaultHasher::new();
             message.data.hash(&mut s);
@@ -57,8 +59,7 @@ impl Orderbook {
         };
         let gossipsub_config = gossipsub::GossipsubConfigBuilder::new()
             .heartbeat_interval(Duration::from_secs(1))
-            .message_id_fn(message_id_fn) // content-address messages. No two messages of the
-            // same content will be propagated.
+            .message_id_fn(message_id_fn) // No two messages of the same content will be propagated.
             .build();
 
         let mut config = RequestResponseConfig::default();
@@ -84,6 +85,7 @@ impl Orderbook {
         orderbook
     }
 
+    /// Create and publish a new 'make' order. Called by Bob i.e. the maker.
     pub fn make(&mut self, order: Order) -> anyhow::Result<OrderId> {
         let order_id = order.id;
         let ser = bincode::serialize(&Message::CreateOrder(order.clone()))?;
@@ -97,8 +99,8 @@ impl Orderbook {
         Ok(order_id)
     }
 
-    /// Called by Alice i.e., the taker.  Does _not_ remove the order from the
-    /// order book.
+    /// Take an order, called by Alice i.e., the taker.
+    /// Does _not_ remove the order from the order book.
     pub fn take(&mut self, order_id: OrderId) -> anyhow::Result<()> {
         let peer_id = self
             .peer_id_for_order(order_id)
@@ -109,6 +111,7 @@ impl Orderbook {
         Ok(())
     }
 
+    /// Get the peer ID of the node that published this order.
     pub fn peer_id_for_order(&self, order_id: OrderId) -> Option<PeerId> {
         if let Some(order) = self.orders.get(&order_id) {
             Some(order.maker.peer_id())
@@ -117,7 +120,7 @@ impl Orderbook {
         }
     }
 
-    /// Called by Bob i.e., the maker.
+    /// Confirm a take order request, called by Bob i.e., the maker.
     /// Does _not_ remove the order from the order book.
     pub fn confirm(&mut self, order_id: OrderId, channel: ResponseChannel<Response>) {
         let shared_swap_id = SharedSwapId::default();
@@ -139,18 +142,20 @@ impl Orderbook {
             });
     }
 
-    /// Called by Bob i.e., the maker to deny a take order request.
+    /// Deny a take order request, called by Bob i.e., the maker.
     pub fn deny(&mut self, peer_id: PeerId, order_id: OrderId, channel: ResponseChannel<Response>) {
         self.events
             .push_back(BehaviourOutEvent::Failed { peer_id, order_id });
         self.take_order.send_response(channel, Response::Error);
     }
 
+    /// Get a list of all orders known to this node.
     pub fn get_orders(&self) -> Vec<Order> {
         #[allow(clippy::map_clone)]
         self.orders.values().map(|order| order.clone()).collect()
     }
 
+    /// Get the order matching order_id is known to this node.
     pub fn get_order(&self, order_id: &OrderId) -> Option<Order> {
         if let Some(order) = self.orders.get(order_id) {
             Some(order.clone())
@@ -167,10 +172,12 @@ impl Orderbook {
         topics
     }
 
+    /// Add a trading pair, called when we receive a topic via gossipsub.
     pub fn add_trading_pair(&mut self, topic: &TradingPairTopic) {
         self.trading_pairs.insert(topic.clone());
     }
 
+    /// Subscribe to a trading pair topic from peer.
     pub fn subscribe(&mut self, peer: PeerId, trading_pair: TradingPair) -> anyhow::Result<()> {
         let topic = TradingPairTopic::new(peer, trading_pair);
         self.trading_pairs.insert(topic.clone());
@@ -178,6 +185,7 @@ impl Orderbook {
         Ok(())
     }
 
+    /// Unsubscribe from a trading pair topic from peer.
     pub fn unsubscribe(&mut self, peer: PeerId, trading_pair: TradingPair) -> anyhow::Result<()> {
         let topic = TradingPairTopic::new(peer, trading_pair);
         self.trading_pairs.remove(&topic);
@@ -188,6 +196,7 @@ impl Orderbook {
     // Ideally this step should be executed automatically before making an order.
     // Unfortunately a brief delay is required to allow peers to acknowledge and
     // subscribe to the announced trading pair before publishing the order
+    /// Announce a trading pair topic to the network.
     pub fn announce_trading_pair(&mut self, tp: TradingPair) -> anyhow::Result<()> {
         let topic = TradingPairTopic::new(self.peer_id.clone(), tp).to_topic();
         let ser = bincode::serialize(&Message::TradingPair(tp))?;
@@ -371,19 +380,32 @@ impl fmt::Debug for Orderbook {
     }
 }
 
+/// Event emitted  by the `Orderbook` behaviour.
 #[derive(Debug)]
 pub enum BehaviourOutEvent {
+    /// Event emitted within Bob's node when a take order request is received.
     TakeOrderRequest {
+        /// The peer from whom request originated.
         peer_id: PeerId,
+        /// Channel to send a confirm/deny response on.
         response_channel: ResponseChannel<Response>,
+        /// The ID of the order peer wants to take.
         order_id: OrderId,
     },
+    /// Event emitted in both Alice and Bob's node when a take order is
+    /// confirmed.
     TakeOrderConfirmation {
+        /// The ID of the order taken.
         order_id: OrderId,
+        /// Identifier for the swap, used by the COMIT communication protocols.
         shared_swap_id: SharedSwapId,
     },
+    /// Event emitted in Bob's node when a take order fails, for Alice we just
+    /// close the channel to signal the error.
     Failed {
+        /// The peer from whom request originated.
         peer_id: PeerId,
+        /// The ID of the order peer wanted to take.
         order_id: OrderId,
     },
 }
