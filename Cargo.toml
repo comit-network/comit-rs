@@ -13,6 +13,7 @@ clarity = "0.1"
 comit = { git = "https://github.com/comit-network/comit-rs", package = "comit", branch = "nectar" }
 config = "0.10"
 conquer-once = "0.2"
+csv = "1.1"
 derivative = "2.1"
 directories = "2.0"
 ethabi = "2.0.0"
