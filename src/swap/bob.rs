@@ -175,7 +175,6 @@ where
     }
 }
 
-#[async_trait::async_trait]
 impl<E, AW, BW, DB, AP, BP> db::Load<E> for WalletBob<AW, BW, DB, AP, BP>
 where
     E: 'static,
@@ -185,12 +184,11 @@ where
     AP: Send + Sync + 'static,
     BP: Send + Sync + 'static,
 {
-    async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<E>> {
-        self.db.load(swap_id).await
+    fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<E>> {
+        self.db.load(swap_id)
     }
 }
 
-#[async_trait::async_trait]
 impl<E, AW, BW, DB, AP, BP> db::Save<E> for WalletBob<AW, BW, DB, AP, BP>
 where
     E: Send + 'static,
@@ -200,8 +198,8 @@ where
     AP: Send + Sync + 'static,
     BP: Send + Sync + 'static,
 {
-    async fn save(&self, event: E, swap_id: SwapId) -> anyhow::Result<()> {
-        self.db.save(event, swap_id).await
+    fn save(&self, event: E, swap_id: SwapId) -> anyhow::Result<()> {
+        self.db.save(event, swap_id)
     }
 }
 
@@ -349,7 +347,6 @@ pub mod watch_only_actor {
         }
     }
 
-    #[async_trait::async_trait]
     impl<E, AC, BC, DB, AP, BP> db::Load<E> for WatchOnlyBob<AC, BC, DB, AP, BP>
     where
         E: 'static,
@@ -359,8 +356,8 @@ pub mod watch_only_actor {
         AP: Send + Sync + 'static,
         BP: Send + Sync + 'static,
     {
-        async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<E>> {
-            self.db.load(swap_id).await
+        fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<E>> {
+            self.db.load(swap_id)
         }
     }
 
@@ -374,8 +371,8 @@ pub mod watch_only_actor {
         AP: Send + Sync + 'static,
         BP: Send + Sync + 'static,
     {
-        async fn save(&self, event: E, swap_id: SwapId) -> anyhow::Result<()> {
-            self.db.save(event, swap_id).await
+        fn save(&self, event: E, swap_id: SwapId) -> anyhow::Result<()> {
+            self.db.save(event, swap_id)
         }
     }
 

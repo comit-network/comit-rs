@@ -11,14 +11,12 @@ use comit::{
 use serde::{Deserialize, Serialize};
 use serde_hex::{SerHexSeq, StrictPfx};
 
-#[async_trait::async_trait]
 pub trait Load<T>: Send + Sync + 'static {
-    async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<T>>;
+    fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<T>>;
 }
 
-#[async_trait::async_trait]
 pub trait Save<T>: Send + Sync + 'static {
-    async fn save(&self, elem: T, swap_id: SwapId) -> anyhow::Result<()>;
+    fn save(&self, elem: T, swap_id: SwapId) -> anyhow::Result<()>;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -139,9 +137,8 @@ impl From<hbit::Funded> for HbitFunded {
 }
 
 // Kind of bending the arm of the trait
-#[async_trait::async_trait]
 impl Save<Created> for Database {
-    async fn save(&self, _event: Created, swap_id: SwapId) -> anyhow::Result<()> {
+    fn save(&self, _event: Created, swap_id: SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get(&swap_id);
 
         match stored_swap {
@@ -160,9 +157,8 @@ impl Save<Created> for Database {
     }
 }
 
-#[async_trait::async_trait]
 impl Save<hbit::Funded> for Database {
-    async fn save(&self, event: hbit::Funded, swap_id: SwapId) -> anyhow::Result<()> {
+    fn save(&self, event: hbit::Funded, swap_id: SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get(&swap_id)?;
 
         match stored_swap.hbit_funded {
@@ -185,16 +181,14 @@ impl Save<hbit::Funded> for Database {
     }
 }
 
-#[async_trait::async_trait]
 impl Save<SwapKind> for Database {
-    async fn save(&self, _elem: SwapKind, _swap_id: SwapId) -> anyhow::Result<()> {
+    fn save(&self, _elem: SwapKind, _swap_id: SwapId) -> anyhow::Result<()> {
         todo!()
     }
 }
 
-#[async_trait::async_trait]
 impl Load<hbit::Funded> for Database {
-    async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<hbit::Funded>> {
+    fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<hbit::Funded>> {
         let swap = self.get(&swap_id)?;
 
         Ok(swap.hbit_funded.map(Into::into))
@@ -225,9 +219,8 @@ impl From<hbit::Redeemed> for HbitRedeemed {
     }
 }
 
-#[async_trait::async_trait]
 impl Save<hbit::Redeemed> for Database {
-    async fn save(&self, event: hbit::Redeemed, swap_id: SwapId) -> anyhow::Result<()> {
+    fn save(&self, event: hbit::Redeemed, swap_id: SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get(&swap_id)?;
 
         match stored_swap.hbit_redeemed {
@@ -250,9 +243,8 @@ impl Save<hbit::Redeemed> for Database {
     }
 }
 
-#[async_trait::async_trait]
 impl Load<hbit::Redeemed> for Database {
-    async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<hbit::Redeemed>> {
+    fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<hbit::Redeemed>> {
         let swap = self.get(&swap_id)?;
 
         Ok(swap.hbit_redeemed.map(Into::into))
@@ -280,9 +272,8 @@ impl From<hbit::Refunded> for HbitRefunded {
     }
 }
 
-#[async_trait::async_trait]
 impl Save<hbit::Refunded> for Database {
-    async fn save(&self, event: hbit::Refunded, swap_id: SwapId) -> anyhow::Result<()> {
+    fn save(&self, event: hbit::Refunded, swap_id: SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get(&swap_id)?;
 
         match stored_swap.hbit_refunded {
@@ -305,9 +296,8 @@ impl Save<hbit::Refunded> for Database {
     }
 }
 
-#[async_trait::async_trait]
 impl Load<hbit::Refunded> for Database {
-    async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<hbit::Refunded>> {
+    fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<hbit::Refunded>> {
         let swap = self.get(&swap_id)?;
 
         Ok(swap.hbit_refunded.map(Into::into))
@@ -338,9 +328,8 @@ impl From<herc20::Deployed> for Herc20Deployed {
     }
 }
 
-#[async_trait::async_trait]
 impl Save<herc20::Deployed> for Database {
-    async fn save(&self, event: herc20::Deployed, swap_id: SwapId) -> anyhow::Result<()> {
+    fn save(&self, event: herc20::Deployed, swap_id: SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get(&swap_id)?;
 
         match stored_swap.herc20_deployed {
@@ -363,9 +352,8 @@ impl Save<herc20::Deployed> for Database {
     }
 }
 
-#[async_trait::async_trait]
 impl Load<herc20::Deployed> for Database {
-    async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Deployed>> {
+    fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Deployed>> {
         let swap = self.get(&swap_id)?;
 
         Ok(swap.herc20_deployed.map(Into::into))
@@ -396,9 +384,8 @@ impl From<herc20::Funded> for Herc20Funded {
     }
 }
 
-#[async_trait::async_trait]
 impl Save<herc20::Funded> for Database {
-    async fn save(&self, event: herc20::Funded, swap_id: SwapId) -> anyhow::Result<()> {
+    fn save(&self, event: herc20::Funded, swap_id: SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get(&swap_id)?;
 
         match stored_swap.herc20_funded {
@@ -421,9 +408,8 @@ impl Save<herc20::Funded> for Database {
     }
 }
 
-#[async_trait::async_trait]
 impl Load<herc20::Funded> for Database {
-    async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Funded>> {
+    fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Funded>> {
         let swap = self.get(&swap_id)?;
 
         Ok(swap.herc20_funded.map(Into::into))
@@ -454,9 +440,8 @@ impl From<herc20::Redeemed> for Herc20Redeemed {
     }
 }
 
-#[async_trait::async_trait]
 impl Save<herc20::Redeemed> for Database {
-    async fn save(&self, event: herc20::Redeemed, swap_id: SwapId) -> anyhow::Result<()> {
+    fn save(&self, event: herc20::Redeemed, swap_id: SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get(&swap_id)?;
 
         match stored_swap.herc20_redeemed {
@@ -479,9 +464,8 @@ impl Save<herc20::Redeemed> for Database {
     }
 }
 
-#[async_trait::async_trait]
 impl Load<herc20::Redeemed> for Database {
-    async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Redeemed>> {
+    fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Redeemed>> {
         let swap = self.get(&swap_id)?;
 
         Ok(swap.herc20_redeemed.map(Into::into))
@@ -509,9 +493,8 @@ impl From<herc20::Refunded> for Herc20Refunded {
     }
 }
 
-#[async_trait::async_trait]
 impl Save<herc20::Refunded> for Database {
-    async fn save(&self, event: herc20::Refunded, swap_id: SwapId) -> anyhow::Result<()> {
+    fn save(&self, event: herc20::Refunded, swap_id: SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get(&swap_id)?;
 
         match stored_swap.herc20_refunded {
@@ -534,9 +517,8 @@ impl Save<herc20::Refunded> for Database {
     }
 }
 
-#[async_trait::async_trait]
 impl Load<herc20::Refunded> for Database {
-    async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Refunded>> {
+    fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Refunded>> {
         let swap = self.get(&swap_id)?;
 
         Ok(swap.herc20_refunded.map(Into::into))
@@ -619,8 +601,8 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn save_and_load_hbit_funded() {
+    #[test]
+    fn save_and_load_hbit_funded() {
         let db = Database::new_test().unwrap();
         let asset = comit::asset::Bitcoin::from_sat(123456);
         let location = comit::htlc_location::Bitcoin::default();
@@ -630,11 +612,10 @@ mod tests {
         db.insert(&swap_id, &swap).unwrap();
 
         let funded = hbit::Funded { asset, location };
-        db.save(funded, swap_id).await.unwrap();
+        db.save(funded, swap_id).unwrap();
 
         let stored_funded: hbit::Funded = db
             .load(swap_id)
-            .await
             .expect("No error loading")
             .expect("found the event");
 
@@ -642,8 +623,8 @@ mod tests {
         assert_eq!(stored_funded.location, location);
     }
 
-    #[tokio::test]
-    async fn save_and_load_hbit_redeemed() {
+    #[test]
+    fn save_and_load_hbit_redeemed() {
         let db = Database::new_test().unwrap();
         let transaction = bitcoin_transaction();
         let secret = Secret::from_vec(b"are those thirty-two bytes? Hum.").unwrap();
@@ -656,11 +637,10 @@ mod tests {
             transaction: transaction.clone(),
             secret,
         };
-        db.save(event, swap_id).await.unwrap();
+        db.save(event, swap_id).unwrap();
 
         let stored_event: hbit::Redeemed = db
             .load(swap_id)
-            .await
             .expect("No error loading")
             .expect("found the event");
 
@@ -668,8 +648,8 @@ mod tests {
         assert_eq!(stored_event.secret, secret);
     }
 
-    #[tokio::test]
-    async fn save_and_load_hbit_refunded() {
+    #[test]
+    fn save_and_load_hbit_refunded() {
         let db = Database::new_test().unwrap();
         let transaction = bitcoin_transaction();
         let swap = Swap::default();
@@ -680,19 +660,18 @@ mod tests {
         let event = hbit::Refunded {
             transaction: transaction.clone(),
         };
-        db.save(event, swap_id).await.unwrap();
+        db.save(event, swap_id).unwrap();
 
         let stored_event: hbit::Refunded = db
             .load(swap_id)
-            .await
             .expect("No error loading")
             .expect("found the event");
 
         assert_eq!(stored_event.transaction, transaction);
     }
 
-    #[tokio::test]
-    async fn save_and_load_herc20_deployed() {
+    #[test]
+    fn save_and_load_herc20_deployed() {
         let db = Database::new_test().unwrap();
         let swap = Swap::default();
         let swap_id = SwapId::default();
@@ -705,11 +684,10 @@ mod tests {
             transaction: transaction.clone(),
             location,
         };
-        db.save(event, swap_id).await.unwrap();
+        db.save(event, swap_id).unwrap();
 
         let stored_event: herc20::Deployed = db
             .load(swap_id)
-            .await
             .expect("No error loading")
             .expect("found the event");
 
@@ -717,8 +695,8 @@ mod tests {
         assert_eq!(stored_event.location, location);
     }
 
-    #[tokio::test]
-    async fn save_and_load_herc20_funded() {
+    #[test]
+    fn save_and_load_herc20_funded() {
         let db = Database::new_test().unwrap();
         let swap = Swap::default();
         let swap_id = SwapId::default();
@@ -734,11 +712,10 @@ mod tests {
             transaction: transaction.clone(),
             asset: asset.clone(),
         };
-        db.save(event, swap_id).await.unwrap();
+        db.save(event, swap_id).unwrap();
 
         let stored_event: herc20::Funded = db
             .load(swap_id)
-            .await
             .expect("No error loading")
             .expect("found the event");
 
@@ -746,8 +723,8 @@ mod tests {
         assert_eq!(stored_event.asset, asset);
     }
 
-    #[tokio::test]
-    async fn save_and_load_herc20_redeemed() {
+    #[test]
+    fn save_and_load_herc20_redeemed() {
         let db = Database::new_test().unwrap();
         let swap = Swap::default();
         let swap_id = SwapId::default();
@@ -760,11 +737,10 @@ mod tests {
             transaction: transaction.clone(),
             secret,
         };
-        db.save(event, swap_id).await.unwrap();
+        db.save(event, swap_id).unwrap();
 
         let stored_event: herc20::Redeemed = db
             .load(swap_id)
-            .await
             .expect("No error loading")
             .expect("found the event");
 
@@ -772,8 +748,8 @@ mod tests {
         assert_eq!(stored_event.secret, secret);
     }
 
-    #[tokio::test]
-    async fn save_and_load_herc20_refunded() {
+    #[test]
+    fn save_and_load_herc20_refunded() {
         let db = Database::new_test().unwrap();
         let swap = Swap::default();
         let swap_id = SwapId::default();
@@ -784,11 +760,10 @@ mod tests {
         let event = herc20::Refunded {
             transaction: transaction.clone(),
         };
-        db.save(event, swap_id).await.unwrap();
+        db.save(event, swap_id).unwrap();
 
         let stored_event: herc20::Refunded = db
             .load(swap_id)
-            .await
             .expect("No error loading")
             .expect("found the event");
 

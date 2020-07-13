@@ -33,7 +33,7 @@ where
         &self,
         execution_args: <Self as Execute<E>>::Args,
     ) -> anyhow::Result<E> {
-        if let Some(event) = self.look_up_event().await? {
+        if let Some(event) = self.look_up_event()? {
             return Ok(event);
         }
 
@@ -54,7 +54,7 @@ where
 
         match future::select(execute_future, beta_expired).await {
             Either::Left((Ok(event), _)) => {
-                self.store_event(event.clone()).await?;
+                self.store_event(event.clone())?;
                 Ok(event)
             }
             Either::Right(_) => anyhow::bail!(BetaHasExpiredError),
@@ -92,12 +92,12 @@ where
     <Self as Execute<E>>::Args: Send + Sync,
 {
     async fn do_it_once(&self, execution_args: <Self as Execute<E>>::Args) -> anyhow::Result<E> {
-        if let Some(event) = self.look_up_event().await? {
+        if let Some(event) = self.look_up_event()? {
             return Ok(event);
         }
 
         let event = Execute::<E>::execute(self, execution_args).await?;
-        self.store_event(event.clone()).await?;
+        self.store_event(event.clone())?;
 
         Ok(event)
     }
@@ -112,21 +112,19 @@ where
 {
 }
 
-#[async_trait::async_trait]
 pub trait LookUpEvent<E> {
-    async fn look_up_event(&self) -> anyhow::Result<Option<E>>;
+    fn look_up_event(&self) -> anyhow::Result<Option<E>>;
 }
 
 /// Look up swap event `E` by attempting to `Load` it from a database
 /// using our `SwapId`.
-#[async_trait::async_trait]
 impl<E, A> LookUpEvent<E> for A
 where
     A: db::Load<E> + AsSwapId,
     E: 'static,
 {
-    async fn look_up_event(&self) -> anyhow::Result<Option<E>> {
-        self.load(self.as_swap_id()).await
+    fn look_up_event(&self) -> anyhow::Result<Option<E>> {
+        self.load(self.as_swap_id())
     }
 }
 
@@ -154,21 +152,19 @@ pub trait Execute<E> {
     async fn execute(&self, args: Self::Args) -> anyhow::Result<E>;
 }
 
-#[async_trait::async_trait]
 pub trait StoreEvent<E> {
-    async fn store_event(&self, event: E) -> anyhow::Result<()>;
+    fn store_event(&self, event: E) -> anyhow::Result<()>;
 }
 
 /// Store the event `E` associated with our `SwapId` by saving it to a
 /// database through the `Save` trait.
-#[async_trait::async_trait]
 impl<E, A> StoreEvent<E> for A
 where
     A: db::Save<E> + AsSwapId,
     E: Send + 'static,
 {
-    async fn store_event(&self, event: E) -> anyhow::Result<()> {
-        self.save(event, self.as_swap_id()).await
+    fn store_event(&self, event: E) -> anyhow::Result<()> {
+        self.save(event, self.as_swap_id())
     }
 }
 
@@ -243,18 +239,16 @@ mod tests {
         }
     }
 
-    #[async_trait::async_trait]
     impl db::Load<ArbitraryEvent> for FakeActor {
-        async fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<ArbitraryEvent>> {
+        fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<ArbitraryEvent>> {
             let events = self.db.events.read().unwrap();
 
             Ok(events.get(&swap_id).cloned())
         }
     }
 
-    #[async_trait::async_trait]
     impl db::Save<ArbitraryEvent> for FakeActor {
-        async fn save(&self, deploy_event: ArbitraryEvent, swap_id: SwapId) -> anyhow::Result<()> {
+        fn save(&self, deploy_event: ArbitraryEvent, swap_id: SwapId) -> anyhow::Result<()> {
             let mut events = self.db.events.write().unwrap();
             events.insert(swap_id, deploy_event);
 
