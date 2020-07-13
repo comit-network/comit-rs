@@ -188,13 +188,13 @@ impl Orderbook {
     // Ideally this step should be executed automatically before making an order.
     // Unfortunately a brief delay is required to allow peers to acknowledge and
     // subscribe to the announced trading pair before publishing the order
-    pub fn announce_trading_pair(&mut self, trading_pair: TradingPair) {
-        let topic = TradingPairTopic::new(self.peer_id.clone(), trading_pair).to_topic();
+    pub fn announce_trading_pair(&mut self, tp: TradingPair) -> anyhow::Result<()> {
+        let topic = TradingPairTopic::new(self.peer_id.clone(), tp).to_topic();
+        let ser = bincode::serialize(&Message::TradingPair(tp))?;
         self.gossipsub.subscribe(topic.clone());
-        self.gossipsub.publish(
-            &topic,
-            bincode::serialize(&Message::TradingPair(trading_pair)).unwrap(),
-        );
+        self.gossipsub.publish(&topic, ser);
+
+        Ok(())
     }
 
     fn poll(

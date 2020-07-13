@@ -158,9 +158,9 @@ impl Swarm {
         Ok(())
     }
 
-    pub async fn announce_trading_pair(&mut self, trading_pair: TradingPair) {
+    pub async fn announce_trading_pair(&mut self, tp: TradingPair) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
-        guard.announce_trading_pair(trading_pair)
+        guard.announce_trading_pair(tp)
     }
 }
 
@@ -384,8 +384,8 @@ impl ComitNode {
         self.orderbook.get_orders()
     }
 
-    pub fn announce_trading_pair(&mut self, trading_pair: TradingPair) {
-        self.orderbook.announce_trading_pair(trading_pair)
+    pub fn announce_trading_pair(&mut self, tp: TradingPair) -> anyhow::Result<()> {
+        self.orderbook.announce_trading_pair(tp)
     }
 }
 

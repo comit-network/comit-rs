@@ -284,7 +284,9 @@ pub async fn post_announce_trading_pair(
             buy: body.buy,
             sell: body.sell,
         })
-        .await;
+        .await
+        .map_err(problem::from_anyhow)
+        .map_err(warp::reject::custom)?;
 
     Ok(warp::reply::reply())
 }

@@ -101,8 +101,8 @@ impl Facade {
         let _ = self.swarm.dial_addr(addr).await;
     }
 
-    pub async fn announce_trading_pair(&mut self, trading_pair: TradingPair) {
-        self.swarm.announce_trading_pair(trading_pair).await;
+    pub async fn announce_trading_pair(&mut self, tp: TradingPair) -> anyhow::Result<()> {
+        self.swarm.announce_trading_pair(tp).await
     }
 }
 
