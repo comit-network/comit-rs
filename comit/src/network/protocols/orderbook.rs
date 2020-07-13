@@ -85,14 +85,16 @@ impl Orderbook {
     }
 
     pub fn make(&mut self, order: Order) -> anyhow::Result<OrderId> {
-        self.gossipsub.publish(
-            &order.topic(&self.peer_id),
-            bincode::serialize(&Message::CreateOrder(order.clone())).unwrap(),
-        );
-        tracing::info!("order published");
-        self.orders.insert(order.id, order.clone());
+        let order_id = order.id;
+        let ser = bincode::serialize(&Message::CreateOrder(order.clone()))?;
+        let topic = order.topic(&self.peer_id);
 
-        Ok(order.id)
+        self.gossipsub.publish(&topic, ser);
+        tracing::info!("published order: {}", order_id);
+
+        self.orders.insert(order_id, order);
+
+        Ok(order_id)
     }
 
     /// Called by Alice i.e., the taker.  Does _not_ remove the order from the
