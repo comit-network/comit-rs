@@ -98,11 +98,9 @@ impl Orderbook {
     /// Called by Alice i.e., the taker.  Does _not_ remove the order from the
     /// order book.
     pub fn take(&mut self, order_id: OrderId) -> anyhow::Result<()> {
-        // TODO: Refactor this
-        let peer_id = match self.peer_id_for_order(order_id) {
-            Some(id) => Ok(id),
-            None => Err(anyhow::Error::from(OrderbookError::OrderNotFound(order_id))),
-        }?;
+        let peer_id = self
+            .peer_id_for_order(order_id)
+            .ok_or_else(|| OrderbookError::OrderNotFound(order_id))?;
 
         self.take_order.send_request(&peer_id, order_id);
 
