@@ -214,7 +214,7 @@ where
     Ok(Refunded { transaction })
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Params {
     pub network: Network,
     pub asset: asset::Bitcoin,
