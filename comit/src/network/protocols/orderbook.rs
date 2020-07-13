@@ -149,12 +149,6 @@ impl Orderbook {
         self.take_order.send_response(channel, Response::Error);
     }
 
-    /// Removes the order from the local order book i.e., does nothing on the
-    /// network.
-    pub fn local_remove_order() -> Option<OrderId> {
-        unimplemented!()
-    }
-
     pub fn get_orders(&self) -> Vec<Order> {
         #[allow(clippy::map_clone)]
         self.orders.values().map(|order| order.clone()).collect()
