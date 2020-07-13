@@ -71,10 +71,9 @@ pub fn data_dir() -> Option<std::path::PathBuf> {
 }
 
 #[derive(Debug, Copy, Clone, strum_macros::Display)]
+#[strum(serialize_all = "UPPERCASE")]
 pub enum Symbol {
-    #[strum(serialize = "BTC")]
     Btc,
-    #[strum(serialize = "DAI")]
     Dai,
 }
 

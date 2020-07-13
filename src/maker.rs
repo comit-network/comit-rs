@@ -6,9 +6,8 @@ use crate::{
     network::Order,
     order::{BtcDaiOrder, Position},
     rate::Spread,
-    MidMarketRate, PeersWithOngoingTrades, Rate, Symbol,
+    MidMarketRate, PeersWithOngoingTrades, Symbol,
 };
-use std::convert::TryFrom;
 
 #[derive(Debug, PartialEq)]
 pub enum NewOrder {
@@ -167,64 +166,46 @@ impl Maker {
                 let current_profitable_rate = self
                     .spread
                     .apply(current_mid_market_rate.into(), order.inner.position)?;
-                let order_rate = Rate::try_from(order.inner.clone())?;
+
+                if !order.inner.is_as_good_as(current_mid_market_rate)? {
+                    return Ok(TakeRequestDecision::RateNotProfitable);
+                }
+
                 match order.clone().into() {
                     order
                     @
                     BtcDaiOrder {
                         position: Position::Buy,
                         ..
-                    } => {
-                        match self.dai_balance {
-                            Some(ref dai_balance) => {
-                                // We are buying BTC for DAI
-                                // Given an order rate of: 1:9000
-                                // It is NOT profitable to buy, if the current rate is greater than the order rate.
-                                // 1:8800 -> We give less DAI for getting BTC -> Good.
-                                // 1:9200 -> We have to give more DAI for getting BTC -> Sucks.
-                                if order_rate > current_profitable_rate {
-                                    return Ok(TakeRequestDecision::RateNotProfitable);
-                                }
-
-                                let updated_dai_reserved_funds =
-                                    self.dai_reserved_funds.clone() + order.quote;
-                                if updated_dai_reserved_funds > *dai_balance {
-                                    return Ok(TakeRequestDecision::InsufficientFunds);
-                                }
-
-                                self.dai_reserved_funds = updated_dai_reserved_funds;
+                    } => match self.dai_balance {
+                        Some(ref dai_balance) => {
+                            let updated_dai_reserved_funds =
+                                self.dai_reserved_funds.clone() + order.quote;
+                            if updated_dai_reserved_funds > *dai_balance {
+                                return Ok(TakeRequestDecision::InsufficientFunds);
                             }
-                            None => anyhow::bail!(BalanceNotAvailable(Symbol::Dai)),
+
+                            self.dai_reserved_funds = updated_dai_reserved_funds;
                         }
-                    }
+                        None => anyhow::bail!(BalanceNotAvailable(Symbol::Dai)),
+                    },
                     order
                     @
                     BtcDaiOrder {
                         position: Position::Sell,
                         ..
-                    } => {
-                        match self.btc_balance {
-                            Some(btc_balance) => {
-                                // We are selling BTC for DAI
-                                // Given an order rate of: 1:9000
-                                // It is NOT profitable to sell, if the current rate is smaller than the order rate.
-                                // 1:8800 -> We get less DAI for our BTC -> Sucks.
-                                // 1:9200 -> We get more DAI for our BTC -> Good.
-                                if order_rate < current_profitable_rate {
-                                    return Ok(TakeRequestDecision::RateNotProfitable);
-                                }
-
-                                let updated_btc_reserved_funds =
-                                    self.btc_reserved_funds + order.base + self.btc_fee;
-                                if updated_btc_reserved_funds > btc_balance {
-                                    return Ok(TakeRequestDecision::InsufficientFunds);
-                                }
-
-                                self.btc_reserved_funds = updated_btc_reserved_funds;
+                    } => match self.btc_balance {
+                        Some(btc_balance) => {
+                            let updated_btc_reserved_funds =
+                                self.btc_reserved_funds + order.base + self.btc_fee;
+                            if updated_btc_reserved_funds > btc_balance {
+                                return Ok(TakeRequestDecision::InsufficientFunds);
                             }
-                            None => anyhow::bail!(BalanceNotAvailable(Symbol::Btc)),
+
+                            self.btc_reserved_funds = updated_btc_reserved_funds;
                         }
-                    }
+                        None => anyhow::bail!(BalanceNotAvailable(Symbol::Btc)),
+                    },
                 };
 
                 self.ongoing_takers
