@@ -391,7 +391,14 @@ pub enum BehaviourOutEvent {
 impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
     fn inject_event(&mut self, event: GossipsubEvent) {
         if let GossipsubEvent::Message(peer_id, _message_id, message) = event {
-            let decoded: Message = bincode::deserialize(&message.data[..]).unwrap();
+            let decoded: Message = match bincode::deserialize(&message.data[..]) {
+                Ok(msg) => msg,
+                Err(e) => {
+                    tracing::warn!("deserialization of gossipsub message failed: {}", e);
+                    return;
+                }
+            };
+
             match decoded {
                 Message::CreateOrder(order) => {
                     self.orders.insert(order.id, order);
