@@ -24,18 +24,18 @@ libp2p = { version = "0.18", default-features = false, features = ["tcp", "secio
 log = "0.4"
 num = "0.3"
 num256 = "0.2"
+pem = "0.8"
 reqwest = { version = "0.10", default-features = false, features = ["json", "native-tls"] }
 serde = { version = "1.0", features = ["derive"] }
 serde-hex = "0.1.0"
 serde_json = "1.0"
-sha3 = "0.9"
+sha2 = "0.9"
 sled = "0.32"
 spectral = "0.6"
 structopt = "0.3"
 strum = "0.18"
 strum_macros = "0.18"
 thiserror = "1.0"
-tiny-bip39 = "0.7"
 tokio = { version = "0.2", features = ["macros", "time"] }
 toml = "0.5"
 tracing = "0.1.15"
@@ -47,6 +47,7 @@ default-features = false
 version = "0.6"
 
 [dev-dependencies]
+base64 = "0.12"
 proptest = "0.10"
 tempdir = "0.3"
 testcontainers = "0.9"

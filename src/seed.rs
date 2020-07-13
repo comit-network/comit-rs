@@ -1,20 +1,13 @@
 use ::bitcoin::secp256k1;
-use bip39::{self, Language, Mnemonic};
+use ::bitcoin::secp256k1::constants::SECRET_KEY_SIZE;
 use rand::prelude::*;
-use sha3::{Digest, Sha3_256};
+use sha2::{Digest, Sha256};
+use std::fmt;
 
-/// The seed is used as a the root seed for both Ethereum and Bitcoin HD Wallets.
-/// API is also provided to allow the backup of the seed via a BIP39 24-words seed phrase
-/// (or mnemonic). Do note that that BIP-39/BIP-32/BIP-44 do not specify how the mnemonic
-/// seed should be used to make the extended/master/root private key.
-/// Here, we simply hash the mnemonic seed once with SHA3-256.
-#[derive(Debug, Clone, Copy)]
-pub struct Seed {
-    entropy: [u8; ENTROPY_SIZE],
-}
+pub const SEED_LENGTH: usize = 32;
 
-/// 32 bytes entropy => 24 seed words
-const ENTROPY_SIZE: usize = 32;
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub struct Seed([u8; SEED_LENGTH]);
 
 impl Seed {
     pub fn secret_key(&self) -> anyhow::Result<secp256k1::SecretKey> {
@@ -23,43 +16,43 @@ impl Seed {
         Ok(secp256k1::SecretKey::from_slice(&bytes)?)
     }
 
-    pub fn secret_key_bytes(&self) -> [u8; 32] {
-        let bytes = &self.bytes();
+    /// The secret key is a SHA-256 of the seed
+    pub fn secret_key_bytes(&self) -> [u8; SECRET_KEY_SIZE] {
+        let mut sha = Sha256::new();
+        sha.update(&self.0);
 
-        // TODO: pass it through hmac to get different key for Ethereum and Bitcoin?
-        // See https://github.com/trezor/python-mnemonic/blob/709c52e99ae05cdaf512a3d0e2847451d682820a/mnemonic/mnemonic.py#L251
-        // Or, look at the mnemonic use of other Bitcoin wallets?
-
-        let mut hasher = Sha3_256::new();
-        hasher.update(bytes);
-        let hash = hasher.finalize();
-
-        let mut bytes = [0u8; 32];
-        bytes.copy_from_slice(&hash);
-
-        bytes
+        sha.finalize().into()
     }
 
-    pub fn bytes(&self) -> Vec<u8> {
-        // TODO: Allow usage of password
-        bip39::Seed::new(&self.mnemonic(), "").as_bytes().to_vec()
-    }
-
-    pub fn phrase(&self) -> String {
-        self.mnemonic().phrase().to_owned()
-    }
-
-    fn mnemonic(&self) -> Mnemonic {
-        Mnemonic::from_entropy(&self.entropy, Language::English).expect("entropy size is supported")
+    pub fn seed_bytes(&self) -> [u8; SEED_LENGTH] {
+        self.0
     }
 }
 
 impl Default for Seed {
     fn default() -> Self {
-        let mut bytes = [0u8; ENTROPY_SIZE];
+        let mut bytes = [0u8; SECRET_KEY_SIZE];
 
         rand::thread_rng().fill_bytes(&mut bytes);
-        Seed { entropy: bytes }
+        Seed(bytes)
+    }
+}
+
+impl fmt::Debug for Seed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Seed([*****])")
+    }
+}
+
+impl fmt::Display for Seed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl From<[u8; SEED_LENGTH]> for Seed {
+    fn from(bytes: [u8; SEED_LENGTH]) -> Self {
+        Seed(bytes)
     }
 }
 
@@ -73,13 +66,5 @@ mod tests {
         let res = seed.secret_key();
 
         assert!(res.is_ok())
-    }
-
-    #[test]
-    fn generated_seed_is_twenty_four_words_seed_phrase() {
-        let seed = Seed::default();
-        let phrase = seed.phrase();
-        let words: Vec<_> = phrase.split(' ').collect();
-        assert_eq!(words.len(), 24)
     }
 }

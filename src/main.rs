@@ -286,22 +286,23 @@ async fn main() {
         .and_then(Settings::from_config_file_and_defaults)
         .expect("Could not initialize configuration");
 
+    let seed = config::Seed::from_file_or_generate(settings.data.dir)
+        .expect("Could not retrieve/initialize seed")
+        .into();
+
     let dai_contract_addr: comit::ethereum::Address = settings.ethereum.dai_contract_address;
 
     // TODO: Proper wallet initialisation from config
     let bitcoin_wallet = bitcoin_wallet::Wallet::new(
-        unimplemented!(),
+        seed,
         settings.bitcoin.bitcoind.node_url,
         settings.bitcoin.network,
     )
     .await
     .expect("can initialise bitcoin wallet");
-    let ethereum_wallet = ethereum_wallet::Wallet::new(
-        unimplemented!(),
-        settings.ethereum.node_url,
-        dai_contract_addr,
-    )
-    .expect("can initialise ethereum wallet");
+    let ethereum_wallet =
+        ethereum_wallet::Wallet::new(seed, settings.ethereum.node_url, dai_contract_addr)
+            .expect("can initialise ethereum wallet");
 
     let maker = init_maker(bitcoin_wallet, ethereum_wallet, settings.maker).await;
 
