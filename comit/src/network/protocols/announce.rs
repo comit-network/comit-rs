@@ -1,4 +1,4 @@
-use crate::{network::SwapDigest, LocalSwapId, SharedSwapId};
+use crate::{network::SwapDigest, SharedSwapId};
 use futures::{prelude::*, AsyncWriteExt};
 use libp2p::{
     core::upgrade,
@@ -13,7 +13,7 @@ use libp2p::{
 use serde::Deserialize;
 use std::{
     collections::{HashMap, VecDeque},
-    io,
+    fmt, io,
     task::{Context, Poll},
     time::Duration,
 };
@@ -23,31 +23,38 @@ use std::{
 /// We don't implement any connection handling here but assume that another
 /// network behaviour handles connections and peer-ID to address translation for
 /// us.
+///
+/// The type parameter `C` represents the context that is used by the caller to
+/// associate submitted announce requests with the events emitted by this
+/// NetworkBehaviour.
 #[derive(NetworkBehaviour)]
-#[behaviour(out_event = "BehaviourOutEvent", poll_method = "poll")]
+#[behaviour(out_event = "BehaviourOutEvent<C>", poll_method = "poll")]
 #[allow(missing_debug_implementations)]
-pub struct Announce {
+pub struct Announce<C>
+where
+    C: fmt::Display + Send + 'static,
+{
     inner: RequestResponse<AnnounceCodec>,
 
     #[behaviour(ignore)]
-    awaiting_announcements: HashMap<SwapDigest, AwaitingAnnouncement>,
+    awaiting_announcements: HashMap<SwapDigest, AwaitingAnnouncement<C>>,
     #[behaviour(ignore)]
-    sent_announcements: HashMap<RequestId, LocalSwapId>,
+    sent_announcements: HashMap<RequestId, C>,
     #[behaviour(ignore)]
     received_announcements: HashMap<SwapDigest, ReceivedAnnouncement>,
     #[behaviour(ignore)]
-    events: VecDeque<BehaviourOutEvent>,
+    events: VecDeque<BehaviourOutEvent<C>>,
 }
 
 #[derive(Debug)]
-struct AwaitingAnnouncement {
+struct AwaitingAnnouncement<C> {
     /// The peer we are awaiting the announcement from.
     from: PeerId,
-    /// The swap ID we use locally to refer to this swap.
-    local_swap_id: LocalSwapId,
+    /// The announce context provided by the user.
+    context: C,
 }
 
-impl AwaitingAnnouncement {
+impl<C> AwaitingAnnouncement<C> {
     fn is_from(&self, peer: &PeerId) -> bool {
         &self.from == peer
     }
@@ -67,13 +74,19 @@ impl ReceivedAnnouncement {
     }
 }
 
-impl Default for Announce {
+impl<C> Default for Announce<C>
+where
+    C: fmt::Display + Send + 'static,
+{
     fn default() -> Self {
         Self::new(Duration::from_secs(5 * 60))
     }
 }
 
-impl Announce {
+impl<C> Announce<C>
+where
+    C: fmt::Display + Send + 'static,
+{
     pub fn new(duration: Duration) -> Self {
         let mut config = RequestResponseConfig::default();
         config.set_request_timeout(duration);
@@ -91,31 +104,36 @@ impl Announce {
         }
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
-    pub fn announce_swap(&mut self, swap: SwapDigest, peer: PeerId, local_swap_id: LocalSwapId) {
+    /// Announce a swap to the given peer.
+    ///
+    /// The context argument will be stored locally and passed back to the user
+    /// in the emitted events and can therefore be used by the caller to
+    /// distinguish concurrent announcements.
+    #[tracing::instrument(level = "info", skip(self), fields(%context, %peer, %swap))]
+    pub fn announce_swap(&mut self, swap: SwapDigest, peer: PeerId, context: C) {
         let request_id = self.inner.send_request(&peer, swap);
 
         tracing::info!("sending announcement with {:?}", request_id);
 
-        self.sent_announcements.insert(request_id, local_swap_id);
+        self.sent_announcements.insert(request_id, context);
     }
 
-    #[tracing::instrument(level = "info", skip(self))]
-    pub fn await_announcement(
-        &mut self,
-        swap: SwapDigest,
-        peer: PeerId,
-        local_swap_id: LocalSwapId,
-    ) {
+    /// Await an announcement from a given peer.
+    ///
+    /// The context argument will be stored locally and passed back to the user
+    /// in the emitted events and can therefore be used by the caller to
+    /// distinguish concurrent announcements.
+    #[tracing::instrument(level = "info", skip(self), fields(%context, %peer, %swap))]
+    pub fn await_announcement(&mut self, swap: SwapDigest, peer: PeerId, context: C) {
         match self.received_announcements.remove(&swap) {
             Some(received_announcement)
                 if received_announcement.is_from(&peer)
                     && received_announcement.channel.is_open() =>
             {
-                self.confirm(peer, local_swap_id, received_announcement.channel);
+                self.confirm(peer, context, received_announcement.channel);
             }
             Some(received_announcement) => {
-                self.abort(peer, local_swap_id, received_announcement.channel);
+                self.abort(peer, context, received_announcement.channel);
             }
             None => {
                 tracing::info!("no pending announcement");
@@ -123,18 +141,13 @@ impl Announce {
                 self.awaiting_announcements
                     .insert(swap, AwaitingAnnouncement {
                         from: peer,
-                        local_swap_id,
+                        context,
                     });
             }
         }
     }
 
-    fn confirm(
-        &mut self,
-        peer: PeerId,
-        local_swap_id: LocalSwapId,
-        channel: ResponseChannel<Response>,
-    ) {
+    fn confirm(&mut self, peer: PeerId, context: C, channel: ResponseChannel<Response>) {
         let shared_swap_id = SharedSwapId::default();
 
         tracing::info!("confirming swap as {}", shared_swap_id);
@@ -144,22 +157,15 @@ impl Announce {
         self.events.push_back(BehaviourOutEvent::Confirmed {
             peer,
             shared_swap_id,
-            local_swap_id,
+            context,
         })
     }
 
-    fn abort(
-        &mut self,
-        peer: PeerId,
-        local_swap_id: LocalSwapId,
-        channel: ResponseChannel<Response>,
-    ) {
+    fn abort(&mut self, peer: PeerId, context: C, channel: ResponseChannel<Response>) {
         tracing::info!("aborting announce protocol with {}", peer);
 
-        self.events.push_back(BehaviourOutEvent::Failed {
-            peer,
-            local_swap_id,
-        });
+        self.events
+            .push_back(BehaviourOutEvent::Failed { peer, context });
         self.inner.send_response(channel, Response::Error);
     }
 
@@ -167,7 +173,7 @@ impl Announce {
         &mut self,
         _: &mut Context<'_>,
         _: &mut impl PollParameters,
-    ) -> Poll<NetworkBehaviourAction<RequestProtocol<AnnounceCodec>, BehaviourOutEvent>> {
+    ) -> Poll<NetworkBehaviourAction<RequestProtocol<AnnounceCodec>, BehaviourOutEvent<C>>> {
         if let Some(event) = self.events.pop_front() {
             return Poll::Ready(NetworkBehaviourAction::GenerateEvent(event));
         }
@@ -176,7 +182,9 @@ impl Announce {
     }
 }
 
-impl NetworkBehaviourEventProcess<RequestResponseEvent<SwapDigest, Response>> for Announce {
+impl<C: fmt::Display + Send>
+    NetworkBehaviourEventProcess<RequestResponseEvent<SwapDigest, Response>> for Announce<C>
+{
     fn inject_event(&mut self, event: RequestResponseEvent<SwapDigest, Response>) {
         match event {
             RequestResponseEvent::Message {
@@ -188,10 +196,10 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<SwapDigest, Response>> fo
 
                 match self.awaiting_announcements.remove(&request) {
                     Some(awaiting_announcement) if awaiting_announcement.is_from(&peer) => {
-                        self.confirm(peer, awaiting_announcement.local_swap_id, channel)
+                        self.confirm(peer, awaiting_announcement.context, channel)
                     }
                     Some(awaiting_announcement) => {
-                        self.abort(peer, awaiting_announcement.local_swap_id, channel);
+                        self.abort(peer, awaiting_announcement.context, channel);
                     }
                     None => {
                         tracing::info!("announcement hasn't been awaited yet, buffering it");
@@ -217,21 +225,21 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<SwapDigest, Response>> fo
                     Response::Error => unimplemented!("we never emit this for Alice"),
                 };
 
-                let local_swap_id = self
+                let context = self
                     .sent_announcements
                     .remove(&request_id)
                     .expect("must contain request id");
 
                 tracing::info!(
                     "swap {} confirmed with shared id {}",
-                    local_swap_id,
+                    context,
                     shared_swap_id
                 );
 
                 self.events.push_back(BehaviourOutEvent::Confirmed {
                     peer,
                     shared_swap_id,
-                    local_swap_id,
+                    context,
                 })
             }
             RequestResponseEvent::OutboundFailure {
@@ -243,7 +251,7 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<SwapDigest, Response>> fo
 
                 self.events.push_back(BehaviourOutEvent::Failed {
                     peer,
-                    local_swap_id,
+                    context: local_swap_id,
                 });
 
                 tracing::warn!("outbound failure: {:?}", error);
@@ -257,24 +265,21 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<SwapDigest, Response>> fo
 
 /// Event emitted  by the `Announce` behaviour.
 #[derive(Debug)]
-pub enum BehaviourOutEvent {
+pub enum BehaviourOutEvent<C> {
     Confirmed {
         /// The peer we have successfully confirmed the swap with.
         peer: PeerId,
         /// The shared swap id that we can now use to refer to this confirmed
         /// swap.
         shared_swap_id: SharedSwapId,
-        /// The swap id that we use locally to refer to this swap.
-        local_swap_id: LocalSwapId,
+        /// The announce context provided by the caller.
+        context: C,
     },
 
     /// The announcement for a given swap failed for some reason.
     /// More details error reporting will be added later.
     /// Most likely the announcement failed because it timed out.
-    Failed {
-        peer: PeerId,
-        local_swap_id: LocalSwapId,
-    },
+    Failed { peer: PeerId, context: C },
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -367,9 +372,10 @@ impl RequestResponseCodec for AnnounceCodec {
             Response::Error => {
                 // for now, errors just close the substream.
                 // we can send actual error responses at a later point
-                let _ = io.close().await;
             }
         }
+
+        let _ = io.close().await;
 
         Ok(())
     }
@@ -390,8 +396,8 @@ mod tests {
 
         let swap_digest = SwapDigest::random();
 
-        bob_swarm.await_announcement(swap_digest.clone(), alice_id, LocalSwapId::default());
-        alice_swarm.announce_swap(swap_digest, bob_id, LocalSwapId::default());
+        bob_swarm.await_announcement(swap_digest.clone(), alice_id, 1);
+        alice_swarm.announce_swap(swap_digest, bob_id, 2);
 
         assert_both_confirmed(alice_swarm.next(), bob_swarm.next()).await;
     }
@@ -407,12 +413,12 @@ mod tests {
 
         let swap_digest = SwapDigest::random();
 
-        alice_swarm.announce_swap(swap_digest.clone(), bob_id, LocalSwapId::default());
+        alice_swarm.announce_swap(swap_digest.clone(), bob_id, 1);
         let bob_event = await_announcement_with_delay(
             alice_id,
             &mut bob_swarm,
             swap_digest,
-            LocalSwapId::default(),
+            2,
             Duration::from_secs(3),
         );
 
@@ -431,12 +437,12 @@ mod tests {
 
         let swap_digest = SwapDigest::random();
 
-        alice_swarm.announce_swap(swap_digest.clone(), bob_id, LocalSwapId::default());
+        alice_swarm.announce_swap(swap_digest.clone(), bob_id, 1);
         let bob_event = await_announcement_with_delay(
             alice_id,
             &mut bob_swarm,
             swap_digest,
-            LocalSwapId::default(),
+            2,
             Duration::from_secs(4),
         );
 
@@ -452,12 +458,8 @@ mod tests {
         let swap_digest = SwapDigest::random();
         let definitely_not_alice_id = PeerId::random();
 
-        alice_swarm.announce_swap(swap_digest.clone(), bob_id, LocalSwapId::default());
-        bob_swarm.await_announcement(
-            swap_digest.clone(),
-            definitely_not_alice_id,
-            LocalSwapId::default(),
-        );
+        alice_swarm.announce_swap(swap_digest.clone(), bob_id, 1);
+        bob_swarm.await_announcement(swap_digest.clone(), definitely_not_alice_id, 2);
 
         assert_both_failed(alice_swarm.next(), bob_swarm.next()).await;
     }
@@ -476,8 +478,8 @@ mod tests {
         let alice_swap_digest = SwapDigest::random();
         let bob_swap_digest = SwapDigest::random();
 
-        alice_swarm.announce_swap(alice_swap_digest, bob_id, LocalSwapId::default());
-        bob_swarm.await_announcement(bob_swap_digest, alice_id, LocalSwapId::default());
+        alice_swarm.announce_swap(alice_swap_digest, bob_id, 1);
+        bob_swarm.await_announcement(bob_swap_digest, alice_id, 2);
 
         // bob is still waiting for an announcement for a different swap, hence we only
         // assert alice
@@ -487,25 +489,25 @@ mod tests {
         );
     }
 
-    async fn await_announcement_with_delay(
+    async fn await_announcement_with_delay<C: fmt::Display + fmt::Debug + Send>(
         alice_id: PeerId,
-        bob_swarm: &mut Swarm<Announce>,
+        bob_swarm: &mut Swarm<Announce<C>>,
         swap_digest: SwapDigest,
-        local_swap_id: LocalSwapId,
+        context: C,
         delay: Duration,
-    ) -> BehaviourOutEvent {
+    ) -> BehaviourOutEvent<C> {
         // poll Bob's swarm for some time. We don't expect any events though
         while let Ok(event) = tokio::time::timeout(delay, bob_swarm.next()).await {
             panic!("unexpected event emitted: {:?}", event)
         }
 
-        bob_swarm.await_announcement(swap_digest, alice_id.clone(), local_swap_id);
+        bob_swarm.await_announcement(swap_digest, alice_id.clone(), context);
         bob_swarm.next().await
     }
 
-    async fn assert_both_confirmed(
-        alice_event: impl Future<Output = BehaviourOutEvent>,
-        bob_event: impl Future<Output = BehaviourOutEvent>,
+    async fn assert_both_confirmed<C: fmt::Debug>(
+        alice_event: impl Future<Output = BehaviourOutEvent<C>>,
+        bob_event: impl Future<Output = BehaviourOutEvent<C>>,
     ) {
         match await_events_or_timeout(alice_event, bob_event).await {
             (
@@ -524,9 +526,9 @@ mod tests {
         }
     }
 
-    async fn assert_both_failed(
-        alice_event: impl Future<Output = BehaviourOutEvent>,
-        bob_event: impl Future<Output = BehaviourOutEvent>,
+    async fn assert_both_failed<C>(
+        alice_event: impl Future<Output = BehaviourOutEvent<C>>,
+        bob_event: impl Future<Output = BehaviourOutEvent<C>>,
     ) {
         let (alice_event, bob_event) = await_events_or_timeout(alice_event, bob_event).await;
 

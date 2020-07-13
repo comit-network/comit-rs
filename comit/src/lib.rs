@@ -31,7 +31,6 @@ pub mod network;
 pub mod proptest;
 mod secret;
 mod secret_hash;
-mod swap_id;
 mod timestamp;
 pub mod transaction;
 
@@ -56,9 +55,9 @@ pub mod export {
 }
 
 pub use self::{
+    network::SharedSwapId,
     secret::Secret,
     secret_hash::SecretHash,
-    swap_id::{LocalSwapId, SharedSwapId},
     timestamp::{RelativeTime, Timestamp},
 };
 
