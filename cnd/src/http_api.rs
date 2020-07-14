@@ -174,43 +174,6 @@ impl Serialize for Http<PeerId> {
     }
 }
 
-impl Serialize for Http<ledger::Bitcoin> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let str = match self {
-            Http(ledger::Bitcoin::Mainnet) => "mainnet",
-            Http(ledger::Bitcoin::Testnet) => "testnet",
-            Http(ledger::Bitcoin::Regtest) => "regtest",
-        };
-
-        serializer.serialize_str(str)
-    }
-}
-
-impl<'de> Deserialize<'de> for Http<ledger::Bitcoin> {
-    fn deserialize<D>(deserializer: D) -> Result<Http<ledger::Bitcoin>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let network = match String::deserialize(deserializer)?.as_str() {
-            "mainnet" => ledger::Bitcoin::Mainnet,
-            "testnet" => ledger::Bitcoin::Testnet,
-            "regtest" => ledger::Bitcoin::Regtest,
-
-            network => {
-                return Err(<D as Deserializer<'de>>::Error::custom(format!(
-                    "not regtest: {}",
-                    network
-                )))
-            }
-        };
-
-        Ok(Http(network))
-    }
-}
-
 impl Serialize for Http<bitcoin::Network> {
     fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
     where
