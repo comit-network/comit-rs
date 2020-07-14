@@ -1,7 +1,5 @@
 use crate::{
-    asset,
-    ethereum::ChainId,
-    hbit, herc20,
+    asset, hbit, herc20,
     http_api::problem,
     identity, ledger,
     storage::{CreatedSwap, Save},
@@ -23,18 +21,23 @@ struct MakeHerc20HbitOrderBody {
     // struct is a breaking API change so the e2e tests will break.
     #[serde(with = "asset::bitcoin::sats_as_string")]
     buy_quantity: asset::Bitcoin,
+    bitcoin_ledger: ledger::Bitcoin,
     sell_token_contract: ethereum::Address,
     sell_quantity: asset::Erc20Quantity,
+    ethereum_ledger: ledger::Ethereum,
     absolute_expiry: u32,
     refund_identity: bitcoin::Address,
     redeem_identity: identity::Ethereum,
 }
 
 impl MakeHerc20HbitOrderBody {
+    // TODO: This should implement From
     fn to_order(&self) -> NewOrder {
         NewOrder {
             buy: self.buy_quantity,
+            bitcoin_ledger: self.bitcoin_ledger,
             sell: asset::Erc20::new(self.sell_token_contract, self.sell_quantity.clone()),
+            ethereum_ledger: self.ethereum_ledger,
             absolute_expiry: self.absolute_expiry,
         }
     }
@@ -103,7 +106,7 @@ pub async fn post_take_herc20_hbit_order(
         alpha: herc20::CreatedSwap {
             asset: order.sell,
             identity: refund_identity,
-            chain_id: ChainId::regtest(),
+            chain_id: order.ethereum_ledger.chain_id,
             absolute_expiry: order.absolute_expiry,
         },
         beta: hbit::CreatedSwap {
@@ -155,6 +158,11 @@ pub async fn post_make_herc20_hbit_order(
 
     let reply = warp::reply::reply();
     let order: NewOrder = body.to_order();
+
+    order
+        .assert_valid_ledger_pair()
+        .map_err(problem::from_anyhow)
+        .map_err(warp::reject::custom)?;
 
     // TODO: We need to save the bitcoin address here else it is lost.
     let swap_id = LocalSwapId::default();
@@ -298,14 +306,17 @@ mod tests {
         let json = r#"
         {
             "sell_token_contract": "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280",
+            "bitcoin_ledger": "regtest",
             "buy_quantity": "300",
             "sell_quantity": "200",
+            "ethereum_ledger": {"chain_id":2},
             "absolute_expiry": 600,
             "refund_identity": "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX",
             "redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
             "maker_addr": "/ip4/127.0.0.1/tcp/39331"
         }"#;
 
-        let _body: MakeHerc20HbitOrderBody = serde_json::from_str(json).unwrap();
+        let _body: MakeHerc20HbitOrderBody =
+            serde_json::from_str(json).expect("failed to deserialize order");
     }
 }
