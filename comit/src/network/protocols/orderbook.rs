@@ -496,6 +496,7 @@ mod tests {
         network::test::{await_events_or_timeout, new_connected_swarm_pair},
     };
     use libp2p::Swarm;
+    use spectral::prelude::*;
 
     fn create_order(id: PeerId) -> Order {
         Order::new(id, NewOrder {
@@ -586,5 +587,17 @@ mod tests {
         while let Ok(event) = tokio::time::timeout(delay, swarm.next()).await {
             panic!("unexpected event emitted: {:?}", event)
         }
+    }
+
+    #[test]
+    fn peer_id_serializes_as_expected() {
+        let given = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY".to_string();
+        let peer_id = PeerId::from_str(&given).expect("failed to parse peer id");
+        let maker_id = MakerId(peer_id);
+
+        let want = format!("\"{}\"", given);
+        let got = serde_json::to_string(&maker_id).expect("failed to serialize peer id");
+
+        assert_that(&got).is_equal_to(want);
     }
 }
