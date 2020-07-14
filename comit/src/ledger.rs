@@ -1,4 +1,5 @@
 use crate::ethereum::ChainId;
+use serde::{de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Bitcoin {
@@ -30,6 +31,43 @@ impl From<::bitcoin::Network> for Bitcoin {
             bitcoin::Network::Testnet => Bitcoin::Testnet,
             bitcoin::Network::Regtest => Bitcoin::Regtest,
         }
+    }
+}
+
+impl Serialize for Bitcoin {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let str = match self {
+            Bitcoin::Mainnet => "mainnet",
+            Bitcoin::Testnet => "testnet",
+            Bitcoin::Regtest => "regtest",
+        };
+
+        serializer.serialize_str(str)
+    }
+}
+
+impl<'de> Deserialize<'de> for Bitcoin {
+    fn deserialize<D>(deserializer: D) -> Result<Bitcoin, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let network = match String::deserialize(deserializer)?.as_str() {
+            "mainnet" => Bitcoin::Mainnet,
+            "testnet" => Bitcoin::Testnet,
+            "regtest" => Bitcoin::Regtest,
+
+            network => {
+                return Err(<D as Deserializer<'de>>::Error::custom(format!(
+                    "not regtest: {}",
+                    network
+                )))
+            }
+        };
+
+        Ok(network)
     }
 }
 
