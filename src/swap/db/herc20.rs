@@ -302,8 +302,37 @@ pub struct Params {
 }
 
 impl From<Params> for comit::herc20::Params {
-    fn from(_: Params) -> Self {
-        todo!()
+    fn from(params: Params) -> Self {
+        let Params {
+            asset,
+            redeem_identity,
+            refund_identity,
+            expiry,
+            secret_hash,
+            chain_id,
+        } = params;
+
+        comit::herc20::Params {
+            asset: asset.into(),
+            redeem_identity,
+            refund_identity,
+            expiry,
+            secret_hash,
+            chain_id,
+        }
+    }
+}
+
+impl From<comit::herc20::Params> for Params {
+    fn from(params: comit::herc20::Params) -> Self {
+        Params {
+            asset: params.asset.into(),
+            redeem_identity: params.redeem_identity,
+            refund_identity: params.refund_identity,
+            expiry: params.expiry,
+            secret_hash: params.secret_hash,
+            chain_id: params.chain_id,
+        }
     }
 }
 

@@ -1,5 +1,4 @@
 use crate::{
-    swap,
     swap::{
         db::{Database, Load, Save},
         hbit,
@@ -203,9 +202,43 @@ pub struct Params {
     pub transient_sk: secp256k1::SecretKey,
 }
 
-impl From<Params> for swap::hbit::Params {
-    fn from(_: Params) -> Self {
-        todo!()
+impl From<Params> for hbit::Params {
+    fn from(params: Params) -> Self {
+        let Params {
+            network,
+            asset,
+            redeem_identity,
+            refund_identity,
+            expiry,
+            secret_hash,
+            transient_sk,
+        } = params;
+
+        hbit::Params {
+            shared: hbit::SharedParams {
+                network,
+                asset: asset.into(),
+                redeem_identity,
+                refund_identity,
+                expiry,
+                secret_hash,
+            },
+            transient_sk,
+        }
+    }
+}
+
+impl From<hbit::Params> for Params {
+    fn from(params: hbit::Params) -> Self {
+        Params {
+            network: params.shared.network,
+            asset: params.shared.asset.into(),
+            redeem_identity: params.shared.redeem_identity,
+            refund_identity: params.shared.refund_identity,
+            expiry: params.shared.expiry,
+            secret_hash: params.shared.secret_hash,
+            transient_sk: params.transient_sk,
+        }
     }
 }
 

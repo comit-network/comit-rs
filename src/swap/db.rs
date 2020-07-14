@@ -4,7 +4,7 @@ use self::{
 };
 use crate::{swap, swap::SwapKind, SwapId};
 use anyhow::{anyhow, Context};
-use chrono::{DateTime, Local};
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
 mod hbit;
@@ -57,12 +57,14 @@ impl Database {
         match stored_swap {
             Ok(_) => Err(anyhow!("Swap is already stored")),
             Err(_) => {
+                let key = serde_json::to_vec(&swap_id)?;
+
                 let swap: Swap = swap.into();
                 let new_value =
                     serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
 
                 self.db
-                    .compare_and_swap(swap_id.as_bytes(), Option::<Vec<u8>>::None, Some(new_value))
+                    .compare_and_swap(key, Option::<Vec<u8>>::None, Some(new_value))
                     .context("Could not write in the DB")?
                     .context("Stored swap somehow changed, aborting saving")
             }
@@ -70,11 +72,28 @@ impl Database {
     }
 
     pub fn load_all(&self) -> anyhow::Result<Vec<SwapKind>> {
-        todo!()
+        self.db
+            .iter()
+            .map(|item| match item {
+                Ok((key, value)) => {
+                    let swap_id = serde_json::from_slice::<SwapId>(&key)
+                        .context("Could not deserialize swap id");
+                    let swap = serde_json::from_slice::<Swap>(&value)
+                        .context("Could not deserialize swap");
+
+                    match (swap_id, swap) {
+                        (Ok(swap_id), Ok(swap)) => Ok(SwapKind::from((swap, swap_id))),
+                        (Err(err), _) => Err(err),
+                        (_, Err(err)) => Err(err),
+                    }
+                }
+                Err(err) => Err(err).context("Could not retrieve swap"),
+            })
+            .collect()
     }
 
     pub fn remove(&self, swap_id: &SwapId) -> anyhow::Result<()> {
-        let key = swap_id.as_bytes();
+        let key = serde_json::to_vec(swap_id)?;
 
         self.db
             .remove(key)
@@ -84,7 +103,7 @@ impl Database {
 
     // TODO: Add versioning to the data
     fn _insert(&self, swap_id: &SwapId, swap: &Swap) -> anyhow::Result<()> {
-        let key = swap_id.as_bytes();
+        let key = serde_json::to_vec(swap_id)?;
         // TODO: Consider using https://github.com/3Hren/msgpack-rust instead
         let value = serde_json::to_vec(&swap)
             .context(format!("Could not serialize the swap: {:?}", swap))?;
@@ -112,7 +131,7 @@ struct Swap {
     pub hbit_params: hbit::Params,
     pub herc20_params: herc20::Params,
     pub secret_hash: comit::SecretHash,
-    pub start_of_swap: DateTime<Local>,
+    pub start_of_swap: NaiveDateTime,
     pub hbit_funded: Option<HbitFunded>,
     pub hbit_redeemed: Option<HbitRedeemed>,
     pub hbit_refunded: Option<HbitRefunded>,
@@ -143,7 +162,7 @@ impl Default for Swap {
                 )
                 .unwrap(),
             ),
-            start_of_swap: Local::now(),
+            start_of_swap: chrono::Local::now().naive_local(),
             hbit_funded: None,
             hbit_redeemed: None,
             hbit_refunded: None,
@@ -173,7 +192,7 @@ impl From<(Swap, SwapId)> for SwapKind {
             hbit_params: hbit_params.into(),
             herc20_params: herc20_params.into(),
             secret_hash,
-            start_of_swap: start_of_swap.naive_local(),
+            start_of_swap,
             swap_id,
         };
 
@@ -185,8 +204,26 @@ impl From<(Swap, SwapId)> for SwapKind {
 }
 
 impl From<SwapKind> for Swap {
-    fn from(_: SwapKind) -> Self {
-        todo!()
+    fn from(swap_kind: SwapKind) -> Self {
+        let (kind, swap) = match swap_kind {
+            SwapKind::HbitHerc20(swap) => (Kind::HbitHerc20, swap),
+            SwapKind::Herc20Hbit(swap) => (Kind::Herc20Hbit, swap),
+        };
+
+        Swap {
+            kind,
+            hbit_params: swap.hbit_params.into(),
+            herc20_params: swap.herc20_params.into(),
+            secret_hash: swap.secret_hash,
+            start_of_swap: swap.start_of_swap,
+            hbit_funded: None,
+            hbit_redeemed: None,
+            hbit_refunded: None,
+            herc20_deployed: None,
+            herc20_funded: None,
+            herc20_redeemed: None,
+            herc20_refunded: None,
+        }
     }
 }
 
