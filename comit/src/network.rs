@@ -11,12 +11,7 @@ use crate::{identity, SecretHash};
 
 pub use self::{
     comit::*,
-    protocols::{
-        announce::Announce,
-        orderbook::*,
-        take_order::{behaviour::*, handler::*, protocol::*, *},
-        *,
-    },
+    protocols::{announce::Announce, orderbook::*, *},
     shared_swap_id::SharedSwapId,
     swap_digest::SwapDigest,
 };

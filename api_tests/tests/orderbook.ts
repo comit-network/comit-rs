@@ -13,18 +13,18 @@ it(
     twoActorTest(async ({ alice, bob }) => {
         // Get alice's listen address
         const aliceAddr = await alice.cnd.getPeerListenAddresses();
-        console.log("Alice's cnd addr: ${aliceAddr} ");
+        console.log(`Alice's cnd addr: ${aliceAddr}`);
 
         // Get bobs's listen address
         const bobAddr = await bob.cnd.getPeerListenAddresses();
-        console.log("Bob's cnd addr: ${aliceAddr}");
+        console.log(`Bob's cnd addr: ${aliceAddr}`);
 
         // Bob dials alice
         // @ts-ignore
         await bob.cnd.client.post("dial", { addresses: aliceAddr });
 
         /// Wait for alice to accept an incoming connection from Bob
-        await sleep(3000);
+        await sleep(1000);
 
         const bobMakeOrderBody = OrderFactory.newHerc20HbitOrder(bobAddr[0]);
         // @ts-ignore
@@ -36,7 +36,7 @@ it(
             bobMakeOrderBody
         );
         console.log(
-            "Url for the order created by Bob: ${bobMakeOrderResponse.headers.location}"
+            `Url for the order created by Bob: ${bobMakeOrderResponse.headers.location}`
         );
 
         // Poll until Alice receives an order. The order must be the one that Bob created above.
@@ -47,7 +47,7 @@ it(
         );
         const aliceOrderResponse: Entity = aliceOrdersResponse.entities[0];
 
-        console.log("aliceResponse body: ${aliceOrderResponse.properties}");
+        console.log(`aliceResponse body: ${aliceOrderResponse.properties}`);
 
         // Alice extracts the siren action to take the order
         const aliceOrderTakeAction = aliceOrderResponse.actions.find(
@@ -61,35 +61,29 @@ it(
         const aliceTakeOrderResponse = await alice.cnd.executeSirenAction(
             aliceOrderTakeAction,
             async (field) => {
-                const classes = field.class;
+                //                const classes = field.class;
 
-                if (
-                    classes.includes("bitcoin") &&
-                    classes.includes("address")
-                ) {
-                    // @ts-ignore
-                    return Promise.resolve(
-                        "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX"
-                    );
-                }
-
-                if (
-                    classes.includes("ethereum") &&
-                    classes.includes("address")
-                ) {
+                if (field.name === "refund_identity") {
                     // @ts-ignore
                     return Promise.resolve(
                         "0x00a329c0648769a73afac7f9381e08fb43dbea72"
+                    );
+                }
+
+                if (field.name === "redeem_identity") {
+                    // @ts-ignore
+                    return Promise.resolve(
+                        "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX"
                     );
                 }
             }
         );
 
         // Wait for bob to acknowledge that Alice has taken the order he created
-        await sleep(3000);
+        await sleep(1000);
 
         console.log(
-            "the url to the swap that was a created from the order that alice took: ${aliceTakeOrderResponse.headers.location}"
+            `the url to the swap that was a created from the order that alice took: ${aliceTakeOrderResponse.headers.location}`
         );
         // @ts-ignore
         const aliceSwapResponse = await alice.cnd.client.get(
@@ -97,23 +91,19 @@ it(
         );
         expect(aliceSwapResponse.status).toEqual(200);
 
-        console.log(
-            "Url for the order created on Bob's side: ${bobMakeOrderResponse.headers.location}"
-        );
         // Since Alice has taken the swap, the order created by Bob should have an associated swap in the navigational link
         const bobGetOrderResponse = await bob.cnd.fetch<Entity>(
             bobMakeOrderResponse.headers.location
         );
-        console.log(
-            "bobOrderResponse body: ${bobGetOrderResponse.data.properties}"
-        );
+        console.log(`bobOrderResponse body: ${bobGetOrderResponse.data.links}`);
+
         expect(bobGetOrderResponse.status).toEqual(200);
         const linkToBobSwap = bobGetOrderResponse.data.links.find(
             (link: Link) => link.rel.includes("swap")
         );
         expect(linkToBobSwap).toBeDefined();
         console.log(
-            "Url for the swap created on Bob's side: ${linkToBobSwap.href}"
+            `Url for the swap created on Bob's side: ${linkToBobSwap.href}`
         );
         // The link the Bobs swap should return 200
         // "GET /swaps/934dd090-f8eb-4244-9aba-78e23d3f79eb HTTP/1.1"

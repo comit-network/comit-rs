@@ -5,7 +5,7 @@ use crate::{
     http_api::problem,
     identity, ledger,
     storage::{CreatedSwap, Save},
-    Facade, LocalSwapId, Role, Side,
+    Facade, LocalSwapId, Role,
 };
 use chrono::Utc;
 use comit::{
@@ -19,6 +19,8 @@ use warp::{http, http::StatusCode, Rejection, Reply};
 
 #[derive(Deserialize)]
 struct MakeHerc20HbitOrderBody {
+    // TODO: Fix these names, buy/sell are incorrectly used here. Remember that changing this
+    // struct is a breaking API change so the e2e tests will break.
     #[serde(with = "asset::bitcoin::sats_as_string")]
     buy_quantity: asset::Bitcoin,
     sell_token_contract: ethereum::Address,
@@ -26,7 +28,6 @@ struct MakeHerc20HbitOrderBody {
     absolute_expiry: u32,
     refund_identity: bitcoin::Address,
     redeem_identity: identity::Ethereum,
-    maker_addr: Multiaddr,
 }
 
 impl MakeHerc20HbitOrderBody {
@@ -35,15 +36,14 @@ impl MakeHerc20HbitOrderBody {
             buy: self.buy_quantity,
             sell: asset::Erc20::new(self.sell_token_contract, self.sell_quantity.clone()),
             absolute_expiry: self.absolute_expiry,
-            maker_addr: self.maker_addr.clone(),
         }
     }
 }
 
 #[derive(Deserialize)]
-struct TakeHbitHerc20OrderBody {
-    refund_identity: bitcoin::Address,
-    redeem_identity: identity::Ethereum,
+struct TakeHerc20HbitOrderBody {
+    refund_identity: identity::Ethereum,
+    redeem_identity: bitcoin::Address,
 }
 
 #[derive(Serialize)]
@@ -70,20 +70,20 @@ impl Herc20HbitOrderResponse {
     }
 }
 
-pub async fn post_take_hbit_herc20_order(
+pub async fn post_take_herc20_hbit_order(
     order_id: OrderId,
     body: serde_json::Value,
     mut facade: Facade,
 ) -> Result<impl Reply, Rejection> {
     tracing::info!("entered take order controller");
-    let body = TakeHbitHerc20OrderBody::deserialize(&body)
+    let body = TakeHerc20HbitOrderBody::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
 
     let reply = warp::reply::reply();
 
-    let refund_identity = body.refund_identity.clone();
+    let refund_identity = body.refund_identity;
     let redeem_identity = body.redeem_identity;
 
     let swap_id = LocalSwapId::default();
@@ -94,25 +94,27 @@ pub async fn post_take_hbit_herc20_order(
         None => panic!("order not found"),
     };
 
+    // TODO: Consider putting the save in the network layer to be uniform with make?
+
     let start_of_swap = Utc::now().naive_local();
 
     let swap = CreatedSwap {
         swap_id,
-        alpha: hbit::CreatedSwap {
-            amount: asset::Bitcoin::from_sat(order.buy),
-            final_identity: refund_identity.clone(),
-            network: ledger::Bitcoin::Regtest,
-            absolute_expiry: order.absolute_expiry,
-        },
-        beta: herc20::CreatedSwap {
+        alpha: herc20::CreatedSwap {
             asset: order.sell,
-            identity: redeem_identity,
+            identity: refund_identity,
             chain_id: ChainId::regtest(),
             absolute_expiry: order.absolute_expiry,
         },
+        beta: hbit::CreatedSwap {
+            amount: asset::Bitcoin::from_sat(order.buy),
+            final_identity: redeem_identity.clone(),
+            network: ledger::Bitcoin::Regtest,
+            absolute_expiry: order.absolute_expiry,
+        },
         peer: order.maker.peer_id(),
-        address_hint: Some(order.maker_addr),
-        role: Role::Bob,
+        address_hint: None,
+        role: Role::Alice,
         start_of_swap,
     };
 
@@ -124,20 +126,8 @@ pub async fn post_take_hbit_herc20_order(
 
     tracing::info!("swap created and saved from order: {:?}", order_id);
 
-    let transient_key = facade
-        .storage
-        .derive_transient_identity(swap_id, Role::Bob, Side::Alpha);
-
-    tracing::info!("derivied transient key for swap: {}", swap_id);
-
     facade
-        .take_hbit_herc20_order(
-            order_id,
-            swap_id,
-            refund_identity.clone().into(),
-            transient_key,
-            redeem_identity,
-        )
+        .take_herc20_hbit_order(order_id, swap_id, redeem_identity.into(), refund_identity)
         .await
         .map(|_| {
             warp::reply::with_status(
@@ -153,7 +143,7 @@ pub async fn post_take_hbit_herc20_order(
 // when making an order, the swap cannot be created until the take provides his
 // identities. The swap is saved to the database when a TakeOrderRequest is
 // received from the the taker.
-pub async fn post_make_hbit_herc20_order(
+pub async fn post_make_herc20_hbit_order(
     body: serde_json::Value,
     facade: Facade,
 ) -> Result<impl Reply, Rejection> {
@@ -166,8 +156,16 @@ pub async fn post_make_hbit_herc20_order(
     let reply = warp::reply::reply();
     let order: NewOrder = body.to_order();
 
+    // TODO: We need to save the bitcoin address here else it is lost.
+    let swap_id = LocalSwapId::default();
+
     facade
-        .make_hbit_herc20_order(order, body.refund_identity.into(), body.redeem_identity)
+        .make_herc20_hbit_order(
+            order,
+            swap_id,
+            body.redeem_identity,
+            body.refund_identity.into(),
+        )
         .await
         .map(|order_id| {
             warp::reply::with_status(
@@ -284,7 +282,9 @@ pub async fn post_announce_trading_pair(
             buy: body.buy,
             sell: body.sell,
         })
-        .await;
+        .await
+        .map_err(problem::from_anyhow)
+        .map_err(warp::reject::custom)?;
 
     Ok(warp::reply::reply())
 }
