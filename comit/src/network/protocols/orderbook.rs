@@ -9,7 +9,6 @@ use libp2p::{
     core::either::EitherOutput,
     gossipsub,
     gossipsub::{Gossipsub, GossipsubEvent, GossipsubRpc, Topic},
-    multiaddr::Multiaddr,
     request_response::{
         handler::RequestProtocol, ProtocolSupport, RequestResponse, RequestResponseConfig,
         RequestResponseEvent, RequestResponseMessage, ResponseChannel,
@@ -307,7 +306,6 @@ impl<'de> Deserialize<'de> for MakerId {
 pub struct Order {
     pub id: OrderId,
     pub maker: MakerId,
-    pub maker_addr: Multiaddr,
     pub buy: u64,
     pub sell: asset::Erc20,
     pub absolute_expiry: u32,
@@ -318,7 +316,6 @@ pub struct NewOrder {
     pub buy: asset::Bitcoin,
     pub sell: asset::Erc20,
     pub absolute_expiry: u32,
-    pub maker_addr: Multiaddr,
 }
 
 impl Order {
@@ -326,7 +323,6 @@ impl Order {
         Order {
             id: Uuid::new_v4(),
             maker: MakerId(peer_id),
-            maker_addr: new_order.maker_addr,
             buy: new_order.buy.as_sat(),
             sell: new_order.sell,
             absolute_expiry: new_order.absolute_expiry,
@@ -500,7 +496,7 @@ mod tests {
     };
     use libp2p::Swarm;
 
-    fn create_order(id: PeerId, maker_addr: Multiaddr) -> Order {
+    fn create_order(id: PeerId) -> Order {
         Order::new(id, NewOrder {
             buy: asset::Bitcoin::from_sat(100),
             sell: Erc20 {
@@ -508,7 +504,6 @@ mod tests {
                 quantity: Erc20Quantity::max_value(),
             },
             absolute_expiry: 100,
-            maker_addr,
         })
     }
 
@@ -517,7 +512,7 @@ mod tests {
         // arrange
 
         let (mut alice, mut bob) = new_connected_swarm_pair(Orderbook::new).await;
-        let bob_order = create_order(bob.peer_id.clone(), bob.addr.clone());
+        let bob_order = create_order(bob.peer_id.clone());
 
         // act
 

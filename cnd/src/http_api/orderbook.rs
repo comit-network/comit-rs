@@ -28,7 +28,6 @@ struct MakeHerc20HbitOrderBody {
     absolute_expiry: u32,
     refund_identity: bitcoin::Address,
     redeem_identity: identity::Ethereum,
-    maker_addr: Multiaddr,
 }
 
 impl MakeHerc20HbitOrderBody {
@@ -37,7 +36,6 @@ impl MakeHerc20HbitOrderBody {
             buy: self.buy_quantity,
             sell: asset::Erc20::new(self.sell_token_contract, self.sell_quantity.clone()),
             absolute_expiry: self.absolute_expiry,
-            maker_addr: self.maker_addr.clone(),
         }
     }
 }
@@ -115,7 +113,7 @@ pub async fn post_take_herc20_hbit_order(
             absolute_expiry: order.absolute_expiry,
         },
         peer: order.maker.peer_id(),
-        address_hint: Some(order.maker_addr),
+        address_hint: None,
         role: Role::Alice,
         start_of_swap,
     };
