@@ -20,6 +20,7 @@ use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::{hash_map::DefaultHasher, HashMap, HashSet, VecDeque},
     fmt,
+    fmt::Display,
     hash::{Hash, Hasher},
     str::FromStr,
     task::{Context, Poll},
@@ -118,7 +119,7 @@ impl Orderbook {
     pub fn peer_id_for_order(&self, order_id: OrderId) -> Option<PeerId> {
         self.orders
             .get(&order_id)
-            .map(|order| order.maker.peer_id())
+            .map(|order| order.maker.clone().into())
     }
 
     /// Confirm a take order request, called by Bob i.e., the maker.
@@ -273,10 +274,21 @@ pub type OrderId = Uuid;
 #[derive(Debug, Clone, PartialEq)]
 pub struct MakerId(PeerId);
 
-impl MakerId {
-    /// Returns a clone of the inner peer id.
-    pub fn peer_id(&self) -> PeerId {
-        self.0.clone()
+impl From<PeerId> for MakerId {
+    fn from(id: PeerId) -> Self {
+        MakerId(id)
+    }
+}
+
+impl From<MakerId> for PeerId {
+    fn from(id: MakerId) -> Self {
+        id.0
+    }
+}
+
+impl Display for MakerId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.to_string())
     }
 }
 
@@ -599,5 +611,17 @@ mod tests {
         let got = serde_json::to_string(&maker_id).expect("failed to serialize peer id");
 
         assert_that(&got).is_equal_to(want);
+    }
+
+    #[test]
+    fn peer_id_serialization_roundtrip_test() {
+        let s = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY".to_string();
+        let peer_id = PeerId::from_str(&s).expect("failed to parse peer id");
+        let maker_id = MakerId::from(peer_id);
+
+        let json = serde_json::to_string(&maker_id).expect("failed to serialize peer id");
+        let rinsed: MakerId = serde_json::from_str(&json).expect("failed to deserialize peer id");
+
+        assert_that(&maker_id).is_equal_to(rinsed);
     }
 }
