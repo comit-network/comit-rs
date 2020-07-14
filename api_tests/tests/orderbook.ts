@@ -13,11 +13,9 @@ it(
     twoActorTest(async ({ alice, bob }) => {
         // Get alice's listen address
         const aliceAddr = await alice.cnd.getPeerListenAddresses();
-        console.log(`Alice's cnd addr: ${aliceAddr}`);
 
         // Get bobs's listen address
         const bobAddr = await bob.cnd.getPeerListenAddresses();
-        console.log(`Bob's cnd addr: ${aliceAddr}`);
 
         // Bob dials alice
         // @ts-ignore
@@ -35,9 +33,6 @@ it(
             "orders",
             bobMakeOrderBody
         );
-        console.log(
-            `Url for the order created by Bob: ${bobMakeOrderResponse.headers.location}`
-        );
 
         // Poll until Alice receives an order. The order must be the one that Bob created above.
         // @ts-ignore
@@ -46,8 +41,6 @@ it(
             (entity) => entity.entities.length > 0
         );
         const aliceOrderResponse: Entity = aliceOrdersResponse.entities[0];
-
-        console.log(`aliceResponse body: ${aliceOrderResponse.properties}`);
 
         // Alice extracts the siren action to take the order
         const aliceOrderTakeAction = aliceOrderResponse.actions.find(
@@ -82,9 +75,6 @@ it(
         // Wait for bob to acknowledge that Alice has taken the order he created
         await sleep(1000);
 
-        console.log(
-            `the url to the swap that was a created from the order that alice took: ${aliceTakeOrderResponse.headers.location}`
-        );
         // @ts-ignore
         const aliceSwapResponse = await alice.cnd.client.get(
             aliceTakeOrderResponse.headers.location
@@ -95,16 +85,13 @@ it(
         const bobGetOrderResponse = await bob.cnd.fetch<Entity>(
             bobMakeOrderResponse.headers.location
         );
-        console.log(`bobOrderResponse body: ${bobGetOrderResponse.data.links}`);
 
         expect(bobGetOrderResponse.status).toEqual(200);
         const linkToBobSwap = bobGetOrderResponse.data.links.find(
             (link: Link) => link.rel.includes("swap")
         );
         expect(linkToBobSwap).toBeDefined();
-        console.log(
-            `Url for the swap created on Bob's side: ${linkToBobSwap.href}`
-        );
+
         // The link the Bobs swap should return 200
         // "GET /swaps/934dd090-f8eb-4244-9aba-78e23d3f79eb HTTP/1.1"
         const bobSwapResponse = await bob.cnd.fetch<Entity>(linkToBobSwap.href);
