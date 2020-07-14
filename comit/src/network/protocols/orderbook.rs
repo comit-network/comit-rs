@@ -106,20 +106,18 @@ impl Orderbook {
     /// Take an order, called by Alice i.e., the taker.
     /// Does _not_ remove the order from the order book.
     pub fn take(&mut self, order_id: OrderId) -> anyhow::Result<()> {
-        let peer_id = self
-            .peer_id_for_order(order_id)
+        let maker_id = self
+            .maker_id(order_id)
             .ok_or_else(|| OrderbookError::OrderNotFound(order_id))?;
 
-        self.take_order.send_request(&peer_id, order_id);
+        self.take_order.send_request(&maker_id.into(), order_id);
 
         Ok(())
     }
 
-    /// Get the peer ID of the node that published this order.
-    pub fn peer_id_for_order(&self, order_id: OrderId) -> Option<PeerId> {
-        self.orders
-            .get(&order_id)
-            .map(|order| order.maker.clone().into())
+    /// Get the ID of the node that published this order.
+    fn maker_id(&self, order_id: OrderId) -> Option<MakerId> {
+        self.orders.get(&order_id).map(|order| order.maker.clone())
     }
 
     /// Confirm a take order request, called by Bob i.e., the maker.
