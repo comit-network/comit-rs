@@ -19,7 +19,7 @@ use nectar::{
     network::{self, Nectar, Orderbook, Taker},
     options::{self, Options},
     order::Position,
-    swap::{self, herc20, Database, Save, SwapKind, SwapParams},
+    swap::{self, herc20, Database, SwapKind, SwapParams},
     Maker, MidMarketRate, Spread, SwapId,
 };
 use std::{sync::Arc, time::Duration};
@@ -165,10 +165,8 @@ async fn execute_swap(
                 swap_id,
             };
 
-            // TODO: Probably remove swap ID from Swap. Otherwise this
-            // is weird because Swap already contains the swap ID
             let swap_kind = SwapKind::HbitHerc20(swap);
-            db.save(swap_kind, swap_id).await?;
+            db.insert(swap_kind)?;
 
             swap::nectar_hbit_herc20(
                 Arc::clone(&db),

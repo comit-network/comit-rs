@@ -50,6 +50,10 @@ impl Database {
         Ok(Database { db, tmp_dir })
     }
 
+    pub fn insert(&self, _swap: SwapKind) -> anyhow::Result<()> {
+        todo!()
+    }
+
     pub fn load_all(&self) -> anyhow::Result<Vec<SwapKind>> {
         todo!()
     }
@@ -63,7 +67,7 @@ impl Database {
             .map(|_| ())
     }
 
-    fn insert(&self, swap_id: &SwapId, swap: &Swap) -> anyhow::Result<()> {
+    fn _insert(&self, swap_id: &SwapId, swap: &Swap) -> anyhow::Result<()> {
         let key = swap_id.as_bytes();
         // TODO: Consider using https://github.com/3Hren/msgpack-rust instead
         let value = serde_json::to_vec(&swap)
@@ -609,7 +613,7 @@ mod tests {
         let swap = Swap::default();
         let swap_id = SwapId::default();
 
-        db.insert(&swap_id, &swap).unwrap();
+        db._insert(&swap_id, &swap).unwrap();
 
         let funded = hbit::Funded { asset, location };
         db.save(funded, swap_id).unwrap();
@@ -631,7 +635,7 @@ mod tests {
         let swap = Swap::default();
         let swap_id = SwapId::default();
 
-        db.insert(&swap_id, &swap).unwrap();
+        db._insert(&swap_id, &swap).unwrap();
 
         let event = hbit::Redeemed {
             transaction: transaction.clone(),
@@ -655,7 +659,7 @@ mod tests {
         let swap = Swap::default();
         let swap_id = SwapId::default();
 
-        db.insert(&swap_id, &swap).unwrap();
+        db._insert(&swap_id, &swap).unwrap();
 
         let event = hbit::Refunded {
             transaction: transaction.clone(),
@@ -678,7 +682,7 @@ mod tests {
         let transaction = comit::transaction::Ethereum::default();
         let location = comit::htlc_location::Ethereum::random();
 
-        db.insert(&swap_id, &swap).unwrap();
+        db._insert(&swap_id, &swap).unwrap();
 
         let event = herc20::Deployed {
             transaction: transaction.clone(),
@@ -706,7 +710,7 @@ mod tests {
             comit::asset::Erc20Quantity::from_wei_dec_str("123456789012345678").unwrap(),
         );
 
-        db.insert(&swap_id, &swap).unwrap();
+        db._insert(&swap_id, &swap).unwrap();
 
         let event = herc20::Funded {
             transaction: transaction.clone(),
@@ -731,7 +735,7 @@ mod tests {
         let transaction = comit::transaction::Ethereum::default();
         let secret = Secret::from_vec(b"are those thirty-two bytes? Hum.").unwrap();
 
-        db.insert(&swap_id, &swap).unwrap();
+        db._insert(&swap_id, &swap).unwrap();
 
         let event = herc20::Redeemed {
             transaction: transaction.clone(),
@@ -755,7 +759,7 @@ mod tests {
         let swap_id = SwapId::default();
         let transaction = comit::transaction::Ethereum::default();
 
-        db.insert(&swap_id, &swap).unwrap();
+        db._insert(&swap_id, &swap).unwrap();
 
         let event = herc20::Refunded {
             transaction: transaction.clone(),
