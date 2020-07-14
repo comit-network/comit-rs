@@ -1,5 +1,5 @@
 mod order;
-mod take_order;
+pub mod take_order;
 
 use crate::{
     network::protocols::orderbook::take_order::{Response, TakeOrderCodec, TakeOrderProtocol},
