@@ -80,7 +80,7 @@ impl Orderbook {
             events: VecDeque::new(),
         };
 
-        orderbook.gossipsub.subscribe(DefaultMakerTopic::to_topic());
+        orderbook.gossipsub.subscribe(Makers::topic());
 
         // Since we only support a single trading pair topic just subscribe to it now.
         orderbook.gossipsub.subscribe(Topic::new(TOPIC.to_string()));
@@ -338,11 +338,12 @@ impl Order {
     }
 }
 
+/// Used to publish/subscribe available makers.
 #[derive(Debug, Clone, Copy)]
-pub struct DefaultMakerTopic;
+pub struct Makers;
 
-impl DefaultMakerTopic {
-    pub fn to_topic() -> Topic {
+impl Makers {
+    pub fn topic() -> Topic {
         Topic::new("makers".to_string())
     }
 }
