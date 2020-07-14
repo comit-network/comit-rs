@@ -2,19 +2,85 @@
 
 mod action;
 mod alice;
-mod bitcoin;
+pub mod bitcoin;
 mod bob;
 mod db;
-mod ethereum;
-mod hbit;
-mod herc20;
+pub mod ethereum;
+pub mod hbit;
+pub mod herc20;
 
+use crate::{bitcoin_wallet, ethereum_wallet, SwapId};
 use comit::Secret;
 use futures::future::{self, Either};
 
 pub use action::{AsSwapId, BetaExpiry, BetaLedgerTime, DoItOnce, Execute, TryDoItOnce};
 pub use alice::WatchOnlyAlice;
 pub use bob::WalletBob;
+pub use db::{Database, Save};
+use std::sync::Arc;
+
+#[derive(Debug)]
+pub enum SwapKind {
+    HbitHerc20(SwapParams),
+    Herc20Hbit(SwapParams),
+}
+
+#[derive(Debug)]
+pub struct SwapParams {
+    pub hbit_params: hbit::Params,
+    pub herc20_params: herc20::Params,
+    pub secret_hash: comit::SecretHash,
+    pub start_of_swap: chrono::NaiveDateTime,
+    pub swap_id: SwapId,
+}
+
+pub async fn nectar_hbit_herc20(
+    db: Arc<Database>,
+    bitcoin_wallet: Arc<bitcoin_wallet::Wallet>,
+    ethereum_wallet: Arc<ethereum_wallet::Wallet>,
+    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
+    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
+    SwapParams {
+        hbit_params,
+        herc20_params,
+        secret_hash,
+        start_of_swap,
+        swap_id,
+    }: SwapParams,
+) -> anyhow::Result<()> {
+    let alice = WatchOnlyAlice {
+        alpha_connector: Arc::clone(&bitcoin_connector),
+        beta_connector: Arc::clone(&ethereum_connector),
+        db: Arc::clone(&db),
+        alpha_params: hbit_params.shared,
+        beta_params: herc20_params.clone(),
+        secret_hash,
+        start_of_swap,
+        swap_id,
+    };
+
+    let bitcoin_wallet = bitcoin::Wallet {
+        inner: bitcoin_wallet,
+        connector: Arc::clone(&bitcoin_connector),
+    };
+    let ethereum_wallet = ethereum::Wallet {
+        inner: ethereum_wallet,
+        connector: Arc::clone(&ethereum_connector),
+    };
+
+    let bob = WalletBob {
+        alpha_wallet: bitcoin_wallet,
+        beta_wallet: ethereum_wallet,
+        db,
+        alpha_params: hbit_params,
+        beta_params: herc20_params,
+        secret_hash,
+        start_of_swap,
+        swap_id,
+    };
+
+    hbit_herc20(alice, bob).await
+}
 
 /// Execute a Hbit<->Herc20 swap.
 pub async fn hbit_herc20<A, B>(alice: A, bob: B) -> anyhow::Result<()>
@@ -296,11 +362,11 @@ mod tests {
 
             (
                 bitcoin::Wallet {
-                    inner: bitcoin_wallet,
+                    inner: Arc::new(bitcoin_wallet),
                     connector: Arc::clone(&bitcoin_connector),
                 },
                 ethereum::Wallet {
-                    inner: ethereum_wallet,
+                    inner: Arc::new(ethereum_wallet),
                     connector: Arc::clone(&ethereum_connector),
                 },
             )
@@ -323,11 +389,11 @@ mod tests {
 
             (
                 bitcoin::Wallet {
-                    inner: bitcoin_wallet,
+                    inner: Arc::new(bitcoin_wallet),
                     connector: Arc::clone(&bitcoin_connector),
                 },
                 ethereum::Wallet {
-                    inner: ethereum_wallet,
+                    inner: Arc::new(ethereum_wallet),
                     connector: Arc::clone(&ethereum_connector),
                 },
             )

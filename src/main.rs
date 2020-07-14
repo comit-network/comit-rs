@@ -2,35 +2,32 @@
 #![recursion_limit = "256"]
 
 use anyhow::Context;
-use comit::{hbit, herc20};
-use futures::channel::mpsc::{Receiver, Sender};
-use futures::FutureExt;
-use futures::StreamExt;
-use futures::{Future, SinkExt};
+use chrono::Utc;
+use futures::{
+    channel::mpsc::{Receiver, Sender},
+    Future, FutureExt, SinkExt, StreamExt,
+};
 use futures_timer::Delay;
-use nectar::config::settings;
-use nectar::maker::Free;
-use nectar::maker::PublishOrders;
-use nectar::network::Taker;
-use nectar::order::Position;
 use nectar::{
     bitcoin, bitcoin_wallet, config,
-    config::Settings,
+    config::{settings, Settings},
     dai, ethereum_wallet,
-    maker::TakeRequestDecision,
+    maker::{Free, PublishOrders, TakeRequestDecision},
     mid_market_rate::get_btc_dai_mid_market_rate,
-    network::{self, Nectar, Orderbook},
+    network::{self, Nectar, Orderbook, Taker},
     options::{self, Options},
-    Maker, MidMarketRate, Spread,
+    order::Position,
+    swap::{self, hbit, herc20, Database, Save, SwapKind, SwapParams},
+    Maker, MidMarketRate, Spread, SwapId,
 };
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 use structopt::StructOpt;
 
 const ENSURED_CONSUME_ZERO_BUFFER: usize = 0;
 
 async fn init_maker(
-    bitcoin_wallet: bitcoin_wallet::Wallet,
-    ethereum_wallet: ethereum_wallet::Wallet,
+    bitcoin_wallet: Arc<bitcoin_wallet::Wallet>,
+    ethereum_wallet: Arc<ethereum_wallet::Wallet>,
     maker_settings: settings::Maker,
 ) -> Maker {
     let initial_btc_balance = bitcoin_wallet.balance().await;
@@ -88,7 +85,7 @@ fn init_rate_updates(
 
 fn init_bitcoin_balance_updates(
     update_interval: Duration,
-    wallet: bitcoin_wallet::Wallet,
+    wallet: Arc<bitcoin_wallet::Wallet>,
 ) -> (
     impl Future<Output = comit::Never> + Send,
     Receiver<anyhow::Result<bitcoin::Amount>>,
@@ -114,7 +111,7 @@ fn init_bitcoin_balance_updates(
 
 fn init_dai_balance_updates(
     update_interval: Duration,
-    wallet: ethereum_wallet::Wallet,
+    wallet: Arc<ethereum_wallet::Wallet>,
 ) -> (
     impl Future<Output = comit::Never> + Send,
     Receiver<anyhow::Result<dai::Amount>>,
@@ -137,7 +134,15 @@ fn init_dai_balance_updates(
     (future, receiver)
 }
 
-async fn execute_swap(sender: Sender<FinishedSwap>) -> anyhow::Result<()> {
+async fn execute_swap(
+    db: Arc<Database>,
+    bitcoin_wallet: Arc<bitcoin_wallet::Wallet>,
+    ethereum_wallet: Arc<ethereum_wallet::Wallet>,
+    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
+    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
+    swap_execution_finished_sender: Sender<FinishedSwap>,
+) -> anyhow::Result<()> {
+    let swap_id = SwapId::default();
     let position: Position =
         todo!("decision what kind of what swap it is hbit->herc20 or herc20->hbit");
 
@@ -145,13 +150,14 @@ async fn execute_swap(sender: Sender<FinishedSwap>) -> anyhow::Result<()> {
 
     match position {
         Position::Sell => {
-            let beta_params: hbit::Params = unimplemented!();
+            let hbit_params: hbit::Params = todo!("from arguments");
 
-            // TODO: await hbit->herc20 swap execution
+            todo!("handle this match arm like below");
 
-            if let Err(e) = sender
+            if let Err(e) = swap_execution_finished_sender
                 .send(FinishedSwap::new(
-                    Free::Btc(beta_params.asset.into()),
+                    swap_id,
+                    Free::Btc(hbit_params.shared.asset.into()),
                     taker,
                 ))
                 .await
@@ -160,13 +166,34 @@ async fn execute_swap(sender: Sender<FinishedSwap>) -> anyhow::Result<()> {
             }
         }
         Position::Buy => {
-            let beta_params: herc20::Params = unimplemented!();
+            let herc20_params: herc20::Params = unimplemented!();
 
-            // TODO: await herc20->hbit swap execution
+            let swap = SwapParams {
+                hbit_params: todo!("from arguments"),
+                herc20_params,
+                secret_hash: todo!("from arguments"),
+                start_of_swap: Utc::now().naive_local(), // Is this the correct start time?
+                swap_id,
+            };
 
-            if let Err(e) = sender
+            // TODO: Probably remove swap ID from Swap. Otherwise this
+            // is weird because Swap already contains the swap ID
+            db.save(SwapKind::HbitHerc20(swap), swap_id).await?;
+
+            swap::nectar_hbit_herc20(
+                Arc::clone(&db),
+                Arc::clone(&bitcoin_wallet),
+                Arc::clone(&ethereum_wallet),
+                Arc::clone(&bitcoin_connector),
+                Arc::clone(&ethereum_connector),
+                swap,
+            )
+            .await?;
+
+            if let Err(e) = swap_execution_finished_sender
                 .send(FinishedSwap::new(
-                    Free::Dai(beta_params.asset.into()),
+                    swap_id,
+                    Free::Dai(herc20_params.asset.into()),
                     taker,
                 ))
                 .await
@@ -179,10 +206,16 @@ async fn execute_swap(sender: Sender<FinishedSwap>) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn handle_network_event(
     network_event: network::Event,
     maker: &mut Maker,
     swarm: &mut libp2p::Swarm<Nectar>,
+    db: Arc<Database>,
+    bitcoin_wallet: Arc<bitcoin_wallet::Wallet>,
+    ethereum_wallet: Arc<ethereum_wallet::Wallet>,
+    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
+    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
     sender: Sender<FinishedSwap>,
 ) {
     match network_event {
@@ -213,7 +246,14 @@ fn handle_network_event(
             }
         }
         network::Event::SwapFinalized(local_swap_id, remote_data) => {
-            tokio::spawn(execute_swap(sender));
+            tokio::spawn(execute_swap(
+                Arc::clone(&db),
+                Arc::clone(&bitcoin_wallet),
+                Arc::clone(&ethereum_wallet),
+                todo!("bitcoin_connector"),
+                todo!("ethereum_connector"),
+                sender,
+            ));
         }
     }
 }
@@ -294,14 +334,32 @@ fn handle_dai_balance_update(
     }
 }
 
+// TODO: I don't think `finished_swap` should be an Option
+fn handle_finished_swap(finished_swap: Option<FinishedSwap>, maker: &mut Maker, db: &Database) {
+    if let Some(finished_swap) = finished_swap {
+        maker.process_finished_swap(finished_swap.funds_to_free, finished_swap.taker);
+        // TODO: Save to history.csv
+
+        let res = db.delete(&finished_swap.swap_id);
+        if let Err(e) = res {
+            tracing::error!(
+                "Unable to fetch latest rate! Fetching rate yielded error: {}",
+                e
+            );
+        }
+    }
+}
+
 struct FinishedSwap {
+    swap_id: SwapId,
     funds_to_free: Free,
     taker: Taker,
 }
 
 impl FinishedSwap {
-    pub fn new(funds_to_free: Free, taker: Taker) -> Self {
+    pub fn new(swap_id: SwapId, funds_to_free: Free, taker: Taker) -> Self {
         Self {
+            swap_id,
             funds_to_free,
             taker,
         }
@@ -330,10 +388,11 @@ async fn main() {
     )
     .await
     .expect("can initialise bitcoin wallet");
+    let bitcoin_wallet = Arc::new(bitcoin_wallet);
     let ethereum_wallet =
         ethereum_wallet::Wallet::new(seed, settings.ethereum.node_url, dai_contract_addr)
             .expect("can initialise ethereum wallet");
-
+    let ethereum_wallet = Arc::new(ethereum_wallet);
     let maker = init_maker(bitcoin_wallet, ethereum_wallet, settings.maker).await;
 
     let orderbook = Orderbook;
@@ -367,16 +426,36 @@ async fn main() {
     let (swap_execution_finished_sender, swap_execution_finished_receiver) =
         futures::channel::mpsc::channel::<FinishedSwap>(ENSURED_CONSUME_ZERO_BUFFER);
 
+    let db = Arc::new(Database::new(todo!("try to load from config, otherwise default?")).unwrap());
+
+    respawn_swaps(
+        Arc::clone(&db),
+        Arc::clone(&bitcoin_wallet),
+        Arc::clone(&ethereum_wallet),
+        todo!("bitcoin_connector"),
+        todo!("ethereum_connector"),
+        swap_execution_finished_sender.clone(),
+    )
+    .unwrap();
+
     loop {
         futures::select! {
+            // TODO: I don't think we need to handle the Option
             finished_swap = swap_execution_finished_receiver.next().fuse() => {
-                match finished_swap {
-                    Some(finished_swap) => maker.process_finished_swap(finished_swap.funds_to_free, finished_swap.taker),
-                    None => ()
-                }
+                handle_finished_swap(finished_swap, &mut maker, &db);
             },
             network_event = swarm.next().fuse() => {
-                handle_network_event(network_event, &mut maker, &mut swarm, swap_execution_finished_sender.clone());
+                handle_network_event(
+                    network_event,
+                    &mut maker,
+                    &mut swarm,
+                    Arc::clone(&db),
+                    Arc::clone(&bitcoin_wallet),
+                    Arc::clone(&ethereum_wallet),
+                    todo!("bitcoin_connector"),
+                    todo!("ethereum_connector"),
+                    swap_execution_finished_sender.clone()
+                );
             },
             rate_update = rate_update_receiver.next().fuse() => {
                 handle_rate_update(rate_update.unwrap(), &mut maker, &mut swarm);
@@ -389,6 +468,35 @@ async fn main() {
             }
         }
     }
+}
+
+fn respawn_swaps(
+    db: Arc<Database>,
+    bitcoin_wallet: Arc<bitcoin_wallet::Wallet>,
+    ethereum_wallet: Arc<ethereum_wallet::Wallet>,
+    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
+    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
+    swap_execution_finished_sender: Sender<FinishedSwap>,
+) -> anyhow::Result<()> {
+    for swap in db.load_all()?.into_iter() {
+        // TODO: Reserve funds
+
+        match swap {
+            SwapKind::HbitHerc20(swap) => {
+                tokio::spawn(swap::nectar_hbit_herc20(
+                    Arc::clone(&db),
+                    Arc::clone(&bitcoin_wallet),
+                    Arc::clone(&ethereum_wallet),
+                    Arc::clone(&bitcoin_connector),
+                    Arc::clone(&ethereum_connector),
+                    swap,
+                ));
+            }
+            SwapKind::Herc20Hbit(_) => todo!("implement swap::nectar_herc20_hbit"),
+        }
+    }
+
+    Ok(())
 }
 
 fn read_config(options: &Options) -> anyhow::Result<config::File> {
