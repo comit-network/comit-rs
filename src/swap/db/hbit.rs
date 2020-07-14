@@ -57,6 +57,8 @@ impl Save<hbit::Funded> for Database {
         match stored_swap.hbit_funded {
             Some(_) => Err(anyhow!("Hbit Funded event is already stored")),
             None => {
+                let key = serde_json::to_vec(&swap_id)?;
+
                 let mut swap = stored_swap.clone();
                 swap.hbit_funded = Some(event.into());
 
@@ -66,7 +68,7 @@ impl Save<hbit::Funded> for Database {
                     serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
 
                 self.db
-                    .compare_and_swap(swap_id.as_bytes(), Some(old_value), Some(new_value))
+                    .compare_and_swap(key, Some(old_value), Some(new_value))
                     .context("Could not write in the DB")?
                     .context("Stored swap somehow changed, aborting saving")
             }
@@ -113,6 +115,8 @@ impl Save<hbit::Redeemed> for Database {
         match stored_swap.hbit_redeemed {
             Some(_) => Err(anyhow!("Hbit Redeemed event is already stored")),
             None => {
+                let key = serde_json::to_vec(&swap_id)?;
+
                 let mut swap = stored_swap.clone();
                 swap.hbit_redeemed = Some(event.into());
 
@@ -122,7 +126,7 @@ impl Save<hbit::Redeemed> for Database {
                     serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
 
                 self.db
-                    .compare_and_swap(swap_id.as_bytes(), Some(old_value), Some(new_value))
+                    .compare_and_swap(key, Some(old_value), Some(new_value))
                     .context("Could not write in the DB")?
                     .context("Stored swap somehow changed, aborting saving")
             }
@@ -166,6 +170,8 @@ impl Save<hbit::Refunded> for Database {
         match stored_swap.hbit_refunded {
             Some(_) => Err(anyhow!("Hbit Refunded event is already stored")),
             None => {
+                let key = serde_json::to_vec(&swap_id)?;
+
                 let mut swap = stored_swap.clone();
                 swap.hbit_refunded = Some(event.into());
 
@@ -175,7 +181,7 @@ impl Save<hbit::Refunded> for Database {
                     serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
 
                 self.db
-                    .compare_and_swap(swap_id.as_bytes(), Some(old_value), Some(new_value))
+                    .compare_and_swap(key, Some(old_value), Some(new_value))
                     .context("Could not write in the DB")?
                     .context("Stored swap somehow changed, aborting saving")
             }
@@ -245,7 +251,26 @@ impl From<hbit::Params> for Params {
 #[cfg(test)]
 impl Default for Params {
     fn default() -> Self {
-        todo!()
+        use std::str::FromStr;
+
+        Params {
+            network: ::bitcoin::Network::Regtest,
+            asset: Amount::from(comit::asset::Bitcoin::from_sat(123456789)),
+            redeem_identity: comit::bitcoin::PublicKey::from_str(
+                "039b6347398505f5ec93826dc61c19f47c66c0283ee9be980e29ce325a0f4679ef",
+            )
+            .unwrap(),
+            refund_identity: comit::bitcoin::PublicKey::from_str(
+                "032e58afe51f9ed8ad3cc7897f634d881fdbe49a81564629ded8156bebd2ffd1af",
+            )
+            .unwrap(),
+            expiry: 12345678.into(),
+            secret_hash: SecretHash::new(Secret::from(*b"hello world, you are beautiful!!")),
+            transient_sk: secp256k1::SecretKey::from_str(
+                "01010101010101010001020304050607ffff0000ffff00006363636363636363",
+            )
+            .unwrap(),
+        }
     }
 }
 

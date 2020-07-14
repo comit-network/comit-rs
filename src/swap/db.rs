@@ -116,9 +116,11 @@ impl Database {
     }
 
     fn get(&self, swap_id: &SwapId) -> anyhow::Result<Swap> {
+        let key = serde_json::to_vec(swap_id)?;
+
         let swap = self
             .db
-            .get(swap_id.as_bytes())?
+            .get(&key)?
             .ok_or_else(|| anyhow!("Swap does not exists {}", swap_id))?;
 
         serde_json::from_slice(&swap).context("Could not deserialize swap")
@@ -243,7 +245,9 @@ mod tests {
 
         let stored_swaps = db.load_all().unwrap();
 
-        assert_eq!(stored_swaps, vec![swap_1, swap_2]);
+        assert_eq!(stored_swaps.len(), 2);
+        assert!(stored_swaps.contains(&swap_1));
+        assert!(stored_swaps.contains(&swap_2));
     }
 
     #[test]

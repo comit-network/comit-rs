@@ -46,6 +46,8 @@ impl Save<herc20::Deployed> for Database {
         match stored_swap.herc20_deployed {
             Some(_) => Err(anyhow!("Herc20 Deployed event is already stored")),
             None => {
+                let key = serde_json::to_vec(&swap_id)?;
+
                 let mut swap = stored_swap.clone();
                 swap.herc20_deployed = Some(event.into());
 
@@ -55,7 +57,7 @@ impl Save<herc20::Deployed> for Database {
                     serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
 
                 self.db
-                    .compare_and_swap(swap_id.as_bytes(), Some(old_value), Some(new_value))
+                    .compare_and_swap(key, Some(old_value), Some(new_value))
                     .context("Could not write in the DB")?
                     .context("Stored swap somehow changed, aborting saving")
             }
@@ -102,6 +104,8 @@ impl Save<herc20::Funded> for Database {
         match stored_swap.herc20_funded {
             Some(_) => Err(anyhow!("Herc20 Funded event is already stored")),
             None => {
+                let key = serde_json::to_vec(&swap_id)?;
+
                 let mut swap = stored_swap.clone();
                 swap.herc20_funded = Some(event.into());
 
@@ -111,7 +115,7 @@ impl Save<herc20::Funded> for Database {
                     serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
 
                 self.db
-                    .compare_and_swap(swap_id.as_bytes(), Some(old_value), Some(new_value))
+                    .compare_and_swap(key, Some(old_value), Some(new_value))
                     .context("Could not write in the DB")?
                     .context("Stored swap somehow changed, aborting saving")
             }
@@ -158,6 +162,8 @@ impl Save<herc20::Redeemed> for Database {
         match stored_swap.herc20_redeemed {
             Some(_) => Err(anyhow!("Herc20 Redeemed event is already stored")),
             None => {
+                let key = serde_json::to_vec(&swap_id)?;
+
                 let mut swap = stored_swap.clone();
                 swap.herc20_redeemed = Some(event.into());
 
@@ -167,7 +173,7 @@ impl Save<herc20::Redeemed> for Database {
                     serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
 
                 self.db
-                    .compare_and_swap(swap_id.as_bytes(), Some(old_value), Some(new_value))
+                    .compare_and_swap(key, Some(old_value), Some(new_value))
                     .context("Could not write in the DB")?
                     .context("Stored swap somehow changed, aborting saving")
             }
@@ -211,6 +217,8 @@ impl Save<herc20::Refunded> for Database {
         match stored_swap.herc20_refunded {
             Some(_) => Err(anyhow!("Herc20 Refunded event is already stored")),
             None => {
+                let key = serde_json::to_vec(&swap_id)?;
+
                 let mut swap = stored_swap.clone();
                 swap.herc20_refunded = Some(event.into());
 
@@ -220,7 +228,7 @@ impl Save<herc20::Refunded> for Database {
                     serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
 
                 self.db
-                    .compare_and_swap(swap_id.as_bytes(), Some(old_value), Some(new_value))
+                    .compare_and_swap(key, Some(old_value), Some(new_value))
                     .context("Could not write in the DB")?
                     .context("Stored swap somehow changed, aborting saving")
             }
@@ -339,7 +347,20 @@ impl From<comit::herc20::Params> for Params {
 #[cfg(test)]
 impl Default for Params {
     fn default() -> Self {
-        todo!()
+        Params {
+            asset: Erc20Asset {
+                token_contract: Default::default(),
+                quantity: comit::asset::Erc20Quantity::from_wei_dec_str(
+                    "34_000_000_000_000_000_000",
+                )
+                .unwrap(),
+            },
+            redeem_identity: Default::default(),
+            refund_identity: Default::default(),
+            expiry: 12345689.into(),
+            secret_hash: SecretHash::new(Secret::from(*b"hello world, you are beautiful!!")),
+            chain_id: comit::ethereum::ChainId::regtest(),
+        }
     }
 }
 
