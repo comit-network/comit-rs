@@ -16,22 +16,22 @@ use futures::future::{self, Either};
 pub use action::{AsSwapId, BetaExpiry, BetaLedgerTime, DoItOnce, Execute, TryDoItOnce};
 pub use alice::WatchOnlyAlice;
 pub use bob::WalletBob;
-pub use db::Database;
+pub use db::{Database, Save};
 use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum SwapKind {
-    HbitHerc20(Swap),
-    Herc20Hbit(Swap),
+    HbitHerc20(SwapParams),
+    Herc20Hbit(SwapParams),
 }
 
 #[derive(Debug)]
-pub struct Swap {
-    hbit_params: hbit::Params,
-    herc20_params: herc20::Params,
-    secret_hash: comit::SecretHash,
-    start_of_swap: chrono::NaiveDateTime,
-    swap_id: SwapId,
+pub struct SwapParams {
+    pub hbit_params: hbit::Params,
+    pub herc20_params: herc20::Params,
+    pub secret_hash: comit::SecretHash,
+    pub start_of_swap: chrono::NaiveDateTime,
+    pub swap_id: SwapId,
 }
 
 pub async fn nectar_hbit_herc20(
@@ -40,13 +40,13 @@ pub async fn nectar_hbit_herc20(
     ethereum_wallet: Arc<ethereum_wallet::Wallet>,
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    Swap {
+    SwapParams {
         hbit_params,
         herc20_params,
         secret_hash,
         start_of_swap,
         swap_id,
-    }: Swap,
+    }: SwapParams,
 ) -> anyhow::Result<()> {
     let alice = WatchOnlyAlice {
         alpha_connector: Arc::clone(&bitcoin_connector),

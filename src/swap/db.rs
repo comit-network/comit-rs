@@ -18,7 +18,7 @@ pub trait Load<T>: Send + Sync + 'static {
 
 #[async_trait::async_trait]
 pub trait Save<T>: Send + Sync + 'static {
-    async fn save(&self, event: T, swap_id: SwapId) -> anyhow::Result<()>;
+    async fn save(&self, elem: T, swap_id: SwapId) -> anyhow::Result<()>;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -182,6 +182,13 @@ impl Save<hbit::Funded> for Database {
                     .context("Stored swap somehow changed, aborting saving")
             }
         }
+    }
+}
+
+#[async_trait::async_trait]
+impl Save<SwapKind> for Database {
+    async fn save(&self, _elem: SwapKind, _swap_id: SwapId) -> anyhow::Result<()> {
+        todo!()
     }
 }
 
