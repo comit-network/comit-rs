@@ -1,7 +1,5 @@
 use crate::{
-    asset,
-    http_api::Http,
-    identity, ledger,
+    asset, identity, ledger,
     lnd::{AddHoldInvoice, Chain, SendPayment, SettleInvoice},
     RelativeTime, Secret, SecretHash,
 };
@@ -10,12 +8,12 @@ pub use crate::halbit::*;
 
 /// Data for the halbit protocol, wrapped where needed to control
 /// serialization/deserialization.
-#[derive(serde::Deserialize, Clone, Debug)]
+#[derive(serde::Deserialize, Clone, Copy, Debug)]
 pub struct Halbit {
     #[serde(with = "asset::bitcoin::sats_as_string")]
     pub amount: asset::Bitcoin,
     pub identity: identity::Lightning,
-    pub network: Http<ledger::Bitcoin>,
+    pub network: ledger::Bitcoin,
     pub cltv_expiry: u32,
 }
 
@@ -24,7 +22,7 @@ impl From<Halbit> for CreatedSwap {
         CreatedSwap {
             asset: p.amount,
             identity: p.identity,
-            network: *p.network,
+            network: p.network,
             cltv_expiry: p.cltv_expiry,
         }
     }
