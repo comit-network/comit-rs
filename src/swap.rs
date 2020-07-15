@@ -317,7 +317,7 @@ mod tests {
             (
                 Arc::new(BitcoindConnector::new(
                     node_url.clone(),
-                    ::bitcoin::Network::Regtest,
+                    crate::bitcoin::Network::Regtest,
                 )?),
                 node_url,
                 blockchain,

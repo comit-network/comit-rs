@@ -1,8 +1,6 @@
-use crate::bitcoin::{Amount, Client, WalletInfoResponse};
+use crate::bitcoin::{Address, Amount, Client, Network, WalletInfoResponse};
 use crate::seed::Seed;
-use ::bitcoin::{
-    hash_types::PubkeyHash, hashes::Hash, Address, Network, PrivateKey, Transaction, Txid,
-};
+use ::bitcoin::{hash_types::PubkeyHash, hashes::Hash, PrivateKey, Transaction, Txid};
 use url::Url;
 
 #[derive(Debug, Clone)]
@@ -81,7 +79,6 @@ impl Wallet {
         self.bitcoind_client
             .get_balance(&self.name, None, None, None)
             .await
-            .map(|amount| amount.into())
     }
 
     /// Returns the private key in wif format, this allows the user to import the wallet in a
@@ -102,7 +99,7 @@ impl Wallet {
 
         let txid = self
             .bitcoind_client
-            .send_to_address(&self.name, address, amount.into())
+            .send_to_address(&self.name, address, amount)
             .await?;
         Ok(txid)
     }

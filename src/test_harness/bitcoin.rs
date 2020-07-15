@@ -55,7 +55,7 @@ impl<'c> Blockchain<'c> {
     pub async fn mint(
         &self,
         address: bitcoin::Address,
-        amount: ::bitcoin::Amount,
+        amount: bitcoin::Amount,
     ) -> anyhow::Result<()> {
         let bitcoind_client = bitcoin::Client::new(self.node_url.clone());
 

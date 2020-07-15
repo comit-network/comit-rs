@@ -5,7 +5,7 @@ use crate::Rate;
 mod bitcoind;
 mod wallet;
 
-pub use ::bitcoin::Address;
+pub use ::bitcoin::{Address, Network};
 pub use bitcoind::*;
 pub use wallet::Wallet;
 

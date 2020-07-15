@@ -1,8 +1,6 @@
+use crate::bitcoin::{Address, Amount, Network};
 use crate::jsonrpc;
-use ::bitcoin::{
-    consensus::encode::serialize_hex, hashes::hex::FromHex, Address, Amount, Network, Transaction,
-    Txid,
-};
+use ::bitcoin::{consensus::encode::serialize_hex, hashes::hex::FromHex, Transaction, Txid};
 use anyhow::Context;
 use serde::Deserialize;
 
