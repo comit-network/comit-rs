@@ -595,16 +595,16 @@ mod tests {
             ..Default::default()
         };
 
-        let taker = Taker { 0: 0 };
+        let taker = Taker::default();
 
-        maker.ongoing_takers.insert(taker).unwrap();
+        maker.ongoing_takers.insert(taker.clone()).unwrap();
 
         let free_btc = Some(btc(0.5));
-        maker.process_finished_swap(None, free_btc, taker);
+        maker.process_finished_swap(None, free_btc, taker.clone());
         assert_eq!(maker.btc_reserved_funds, btc(0.5));
 
         let free_dai = Some(dai(0.5));
-        maker.process_finished_swap(free_dai, None, taker);
+        maker.process_finished_swap(free_dai, None, taker.clone());
         assert_eq!(maker.dai_reserved_funds, dai(0.5));
         assert!(!maker.ongoing_takers.has_an_ongoing_trade(&taker));
     }
