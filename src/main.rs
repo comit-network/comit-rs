@@ -340,15 +340,10 @@ fn handle_dai_balance_update(
 fn handle_finished_swap(finished_swap: Option<FinishedSwap>, maker: &mut Maker, db: &Database) {
     if let Some(finished_swap) = finished_swap {
         maker.process_finished_swap(finished_swap.funds_to_free, finished_swap.taker);
-        // TODO: Save to history.csv
 
-        let res = db.delete(&finished_swap.swap_id);
-        if let Err(e) = res {
-            tracing::error!(
-                "Unable to fetch latest rate! Fetching rate yielded error: {}",
-                e
-            );
-        }
+        let _ = db
+            .delete(&finished_swap.swap_id)
+            .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
     }
 }
 
@@ -382,7 +377,6 @@ async fn main() {
 
     let dai_contract_addr: comit::ethereum::Address = settings.ethereum.dai_contract_address;
 
-    // TODO: Proper wallet initialisation from config
     let bitcoin_wallet = bitcoin::Wallet::new(
         seed,
         settings.bitcoin.bitcoind.node_url,
@@ -403,8 +397,8 @@ async fn main() {
 
 async fn trade(
     maker_settings: settings::Maker,
-    bitcoin_wallet: Arc<bitcoin_wallet::Wallet>,
-    ethereum_wallet: Arc<ethereum_wallet::Wallet>,
+    bitcoin_wallet: Arc<bitcoin::Wallet>,
+    ethereum_wallet: Arc<ethereum::Wallet>,
 ) {
     let maker = init_maker(bitcoin_wallet, ethereum_wallet, maker_settings).await;
 
