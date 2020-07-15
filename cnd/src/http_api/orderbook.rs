@@ -2,13 +2,14 @@ use crate::{
     asset, hbit, herc20,
     http_api::problem,
     identity, ledger,
+    network::NewOrder,
     storage::{CreatedSwap, Save},
     Facade, LocalSwapId, Role,
 };
 use chrono::Utc;
 use comit::{
     ethereum,
-    network::{NewOrder, Order, OrderId, SwapType},
+    network::{Order, OrderId, SwapType},
 };
 use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};

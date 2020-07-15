@@ -94,7 +94,7 @@ impl Orderbook {
     pub fn make(&mut self, order: Order) -> anyhow::Result<OrderId> {
         let order_id = order.id;
         let ser = bincode::serialize(&Message::CreateOrder(order.clone()))?;
-        let topic = order.topic(&self.peer_id);
+        let topic = order.topic();
 
         self.gossipsub.publish(&topic, ser);
         tracing::info!("published order: {}", order_id);
@@ -473,7 +473,9 @@ mod tests {
     use spectral::prelude::*;
 
     fn create_order(id: PeerId) -> Order {
-        Order::new(id, NewOrder {
+        Order {
+            id: OrderId::random(),
+            maker: MakerId::from(id),
             buy: asset::Bitcoin::from_sat(100),
             bitcoin_ledger: ledger::Bitcoin::Regtest,
             sell: Erc20 {
@@ -482,7 +484,7 @@ mod tests {
             },
             ethereum_ledger: ledger::Ethereum::default(),
             absolute_expiry: 100,
-        })
+        }
     }
 
     #[tokio::test]

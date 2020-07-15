@@ -11,7 +11,7 @@ use crate::{
     config::Settings,
     ethereum::ChainId,
     hbit, herc20, identity,
-    network::{peer_tracker::PeerTracker, Comit, LocalData},
+    network::{peer_tracker::PeerTracker, Comit, LocalData, MakerId},
     spawn,
     storage::{CreatedSwap, ForSwap, Load, Save, SwapContext},
     LocalSwapId, Never, Protocol, ProtocolSpawner, Role, RootSeed, SecretHash, SharedSwapId, Side,
@@ -350,7 +350,7 @@ impl ComitNode {
     /// The maker plays the role of Bob.
     pub fn make_herc20_hbit_order(
         &mut self,
-        order: NewOrder,
+        new_order: NewOrder,
         swap_id: LocalSwapId,
         redeem_identity: identity::Ethereum,
         refund_identity: crate::bitcoin::Address,
@@ -369,7 +369,15 @@ impl ComitNode {
         };
         self.local_data.insert(swap_id, data);
 
-        let order = Order::new(self.peer_id.clone(), order);
+        let order = Order {
+            id: OrderId::random(),
+            maker: MakerId::from(self.peer_id.clone()),
+            buy: new_order.buy.as_sat(),
+            bitcoin_ledger: new_order.bitcoin_ledger,
+            sell: new_order.sell,
+            ethereum_ledger: new_order.ethereum_ledger,
+            absolute_expiry: new_order.absolute_expiry,
+        };
         let order_id = self.orderbook.make(order)?;
         self.order_swap_ids.insert(order_id, swap_id);
 
@@ -437,6 +445,28 @@ impl ListenAddresses for Swarm {
             .chain(libp2p::Swarm::external_addresses(&swarm))
             .cloned()
             .collect()
+    }
+}
+
+/// Used by the controller to pass in parameters for a new order.
+#[derive(Debug)]
+pub struct NewOrder {
+    pub buy: asset::Bitcoin,
+    pub bitcoin_ledger: ledger::Bitcoin,
+    pub sell: asset::Erc20,
+    pub ethereum_ledger: ledger::Ethereum,
+    pub absolute_expiry: u32,
+}
+
+impl NewOrder {
+    pub fn assert_valid_ledger_pair(&self) -> anyhow::Result<()> {
+        let a = self.bitcoin_ledger;
+        let b = self.ethereum_ledger;
+
+        if ledger::is_valid_ledger_pair(a, b) {
+            return Ok(());
+        }
+        Err(anyhow::anyhow!("invalid ledger pair {}/{}", a, b))
     }
 }
 
