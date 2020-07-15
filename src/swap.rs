@@ -470,7 +470,18 @@ mod tests {
 
         let alice_swap = {
             let swap_id = SwapId::default();
-            let swap: SwapKind = todo!();
+
+            let swap = SwapKind::HbitHerc20(SwapParams {
+                hbit_params: hbit::Params {
+                    shared: hbit_params,
+                    transient_sk: hbit_transient_refund_sk,
+                },
+                herc20_params: herc20_params.clone(),
+                secret_hash,
+                start_of_swap,
+                swap_id,
+            });
+
             alice_db.insert(swap).unwrap();
 
             let alice = WalletAlice {
@@ -499,7 +510,18 @@ mod tests {
 
         let bob_swap = {
             let swap_id = SwapId::default();
-            let swap: SwapKind = todo!();
+
+            let swap = SwapKind::HbitHerc20(SwapParams {
+                hbit_params: hbit::Params {
+                    shared: hbit_params,
+                    transient_sk: hbit_transient_redeem_sk,
+                },
+                herc20_params: herc20_params.clone(),
+                secret_hash,
+                start_of_swap,
+                swap_id,
+            });
+
             bob_db.insert(swap).unwrap();
 
             let alice = WatchOnlyAlice {
