@@ -137,7 +137,7 @@ pub enum None {
 mod tests {
     use super::*;
     use crate::config::{Bitcoind, Settings};
-    use crate::{bitcoin, dai};
+    use crate::{bitcoin, ethereum::dai};
     use spectral::prelude::*;
     use std::path::PathBuf;
 

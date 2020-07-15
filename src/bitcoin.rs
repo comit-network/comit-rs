@@ -1,5 +1,4 @@
-use crate::dai;
-use crate::dai::ATTOS_IN_DAI_EXP;
+use crate::ethereum::{dai, dai::ATTOS_IN_DAI_EXP};
 use crate::Rate;
 
 mod bitcoind;

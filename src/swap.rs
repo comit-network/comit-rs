@@ -9,7 +9,7 @@ pub mod ethereum;
 pub mod hbit;
 pub mod herc20;
 
-use crate::{ethereum_wallet, SwapId};
+use crate::SwapId;
 use comit::Secret;
 use futures::future::{self, Either};
 
@@ -37,7 +37,7 @@ pub struct SwapParams {
 pub async fn nectar_hbit_herc20(
     db: Arc<Database>,
     bitcoin_wallet: Arc<crate::bitcoin::Wallet>,
-    ethereum_wallet: Arc<ethereum_wallet::Wallet>,
+    ethereum_wallet: Arc<crate::ethereum::Wallet>,
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
     SwapParams {
@@ -357,7 +357,7 @@ mod tests {
                 wallet
             };
             let ethereum_wallet =
-                ethereum_wallet::Wallet::new(seed, ethereum_node_url.clone(), token_contract)?;
+                crate::ethereum::Wallet::new(seed, ethereum_node_url.clone(), token_contract)?;
 
             (
                 bitcoin::Wallet {
@@ -376,7 +376,7 @@ mod tests {
             let bitcoin_wallet =
                 crate::bitcoin::Wallet::new(seed, bitcoind_url.clone(), bitcoin_network).await?;
             let ethereum_wallet =
-                ethereum_wallet::Wallet::new(seed, ethereum_node_url, token_contract)?;
+                crate::ethereum::Wallet::new(seed, ethereum_node_url, token_contract)?;
 
             ethereum_blockchain
                 .mint(

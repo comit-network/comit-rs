@@ -1,5 +1,5 @@
 use crate::order::Position;
-use crate::{bitcoin, dai, float_maths::divide_pow_ten_trunc, order::BtcDaiOrder};
+use crate::{bitcoin, ethereum::dai, float_maths::divide_pow_ten_trunc, order::BtcDaiOrder};
 use anyhow::Context;
 use num::{BigUint, Integer, ToPrimitive};
 use serde::{Deserialize, Serialize};

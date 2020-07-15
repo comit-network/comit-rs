@@ -2,7 +2,8 @@
 
 use crate::network::Taker;
 use crate::{
-    bitcoin, dai,
+    bitcoin,
+    ethereum::dai,
     network::Order,
     order::{BtcDaiOrder, Position},
     rate::Spread,

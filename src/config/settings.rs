@@ -1,6 +1,6 @@
 use crate::bitcoin;
 use crate::config::{file, Bitcoind, Data, File, MaxSell, Network};
-use crate::dai::DaiContractAddress;
+use crate::ethereum::dai::DaiContractAddress;
 use crate::Spread;
 use anyhow::{anyhow, Context};
 use comit::ethereum::ChainId;

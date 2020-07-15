@@ -1,4 +1,4 @@
-use crate::dai::*;
+use crate::ethereum::dai::*;
 use serde::{de, Deserialize, Deserializer, Serializer};
 use std::convert::TryFrom;
 use std::fmt;

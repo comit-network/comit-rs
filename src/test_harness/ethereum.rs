@@ -1,4 +1,5 @@
-use crate::{ethereum_wallet, geth};
+use crate::ethereum;
+use crate::ethereum::Client;
 use anyhow::Context;
 use clarity::PrivateKey;
 use comit::{
@@ -28,7 +29,7 @@ pub const GETH_DEV_ACCOUNT_PRIVATE_KEY: &str =
 pub struct Blockchain<'c> {
     _container: Container<'c, clients::Cli, GenericImage>,
     token_contract: Option<Address>,
-    dev_account_wallet: ethereum_wallet::Wallet,
+    dev_account_wallet: ethereum::Wallet,
     pub node_url: Url,
 }
 
@@ -62,7 +63,7 @@ impl<'c> Blockchain<'c> {
         let url = format!("http://localhost:{}", port.unwrap());
         let url = Url::parse(&url)?;
 
-        let dev_account_wallet = ethereum_wallet::Wallet::new_from_private_key(
+        let dev_account_wallet = ethereum::Wallet::new_from_private_key(
             PrivateKey::from_str(GETH_DEV_ACCOUNT_PRIVATE_KEY).map_err(|_| {
                 anyhow::anyhow!("Failed to parse geth dev account private key from string")
             })?,
@@ -120,7 +121,7 @@ impl<'c> Blockchain<'c> {
     }
 
     async fn deploy_token_contract(&self) -> anyhow::Result<Address> {
-        let geth_client = geth::Client::new(self.node_url.clone());
+        let geth_client = Client::new(self.node_url.clone());
 
         let contract = TOKEN_CONTRACT[2..].trim(); // remove the 0x in the front and any whitespace
         let contract = hex::decode(contract).context("token contract should be valid hex")?;
