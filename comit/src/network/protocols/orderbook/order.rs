@@ -1,5 +1,5 @@
 use crate::{
-    asset, ledger,
+    asset, identity, ledger,
     network::protocols::orderbook::{MakerId, TradingPair, BTC_DAI},
 };
 use serde::{Deserialize, Serialize};
@@ -36,9 +36,10 @@ pub struct Order {
     pub maker: MakerId,
     pub trade: Trade,
     #[serde(with = "asset::bitcoin::sats_as_string")]
-    pub btc: asset::Bitcoin,
+    pub bitcoin_amount: asset::Bitcoin,
     pub bitcoin_ledger: ledger::Bitcoin,
-    pub dai: asset::Erc20,
+    pub ethereum_amount: asset::Erc20Quantity,
+    pub token_contract: identity::Ethereum,
     pub ethereum_ledger: ledger::Ethereum,
     // TODO: Add both expiries
     pub absolute_expiry: u32,
@@ -63,6 +64,8 @@ pub enum Trade {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use spectral::prelude::*;
 
     #[test]
     fn order_id_serialization_roundtrip() {
@@ -82,5 +85,28 @@ mod tests {
     #[test]
     fn btc_dai_order_serialization_stability() {
         // TODO: Implement btc_dai_order_serialization_stability()
+    }
+
+    #[test]
+    fn trade_serialization_roundtrip() {
+        let trade = Trade::Buy;
+        let json = serde_json::to_string(&trade).expect("failed to serialize trade");
+        let rinsed: Trade = serde_json::from_str(&json).expect("failed to deserialize trade");
+
+        assert_that(&rinsed).is_equal_to(&trade);
+    }
+
+    #[test]
+    fn trade_buy_serialization_stability() {
+        let trade = Trade::Buy;
+        let s = serde_json::to_string(&trade).expect("failed to serialize trade");
+        assert_that(&s).is_equal_to(r#""buy""#.to_string());
+    }
+
+    #[test]
+    fn trade_sell_serialization_stability() {
+        let trade = Trade::Sell;
+        let s = serde_json::to_string(&trade).expect("failed to serialize trade");
+        assert_that(&s).is_equal_to(r#""sell""#.to_string());
     }
 }

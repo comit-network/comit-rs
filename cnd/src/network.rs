@@ -9,7 +9,6 @@ pub use transport::ComitTransport;
 
 use crate::{
     config::Settings,
-    ethereum::ChainId,
     hbit, herc20, identity,
     network::{peer_tracker::PeerTracker, Comit, LocalData, MakerId},
     spawn,
@@ -372,9 +371,11 @@ impl ComitNode {
         let order = Order {
             id: OrderId::random(),
             maker: MakerId::from(self.peer_id.clone()),
-            buy: new_order.buy,
+            trade: new_order.trade,
+            bitcoin_amount: new_order.bitcoin_amount,
             bitcoin_ledger: new_order.bitcoin_ledger,
-            sell: new_order.sell,
+            ethereum_amount: new_order.ethereum_amount,
+            token_contract: new_order.token_contract,
             ethereum_ledger: new_order.ethereum_ledger,
             absolute_expiry: new_order.absolute_expiry,
         };
@@ -451,10 +452,13 @@ impl ListenAddresses for Swarm {
 /// Used by the controller to pass in parameters for a new order.
 #[derive(Debug)]
 pub struct NewOrder {
-    pub buy: asset::Bitcoin,
+    pub trade: Trade,
+    pub bitcoin_amount: asset::Bitcoin,
     pub bitcoin_ledger: ledger::Bitcoin,
-    pub sell: asset::Erc20,
+    pub ethereum_amount: asset::Erc20Quantity,
+    pub token_contract: identity::Ethereum,
     pub ethereum_ledger: ledger::Ethereum,
+    // TODO: Add both expiries
     pub absolute_expiry: u32,
 }
 
@@ -587,15 +591,18 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                 let swap = CreatedSwap {
                     swap_id: local_swap_id,
                     alpha: herc20::CreatedSwap {
-                        asset: order.sell,
+                        asset: asset::Erc20 {
+                            token_contract: order.token_contract,
+                            quantity: order.ethereum_amount,
+                        },
                         identity: redeem_identity,
-                        chain_id: ChainId::regtest(),
+                        chain_id: order.ethereum_ledger.chain_id,
                         absolute_expiry: order.absolute_expiry,
                     },
                     beta: hbit::CreatedSwap {
-                        amount: asset::Bitcoin::from_sat(order.buy.as_sat()),
+                        amount: order.bitcoin_amount,
                         final_identity: final_identity.into(),
-                        network: ledger::Bitcoin::Regtest,
+                        network: order.bitcoin_ledger,
                         absolute_expiry: order.absolute_expiry,
                     },
                     peer: peer_id.clone(),

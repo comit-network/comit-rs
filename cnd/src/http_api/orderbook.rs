@@ -1,5 +1,6 @@
 use crate::{
-    asset, hbit, herc20,
+    asset::{self, Erc20},
+    hbit, herc20,
     http_api::problem,
     identity, ledger,
     network::NewOrder,
@@ -9,70 +10,11 @@ use crate::{
 use chrono::Utc;
 use comit::{
     ethereum,
-    network::{Order, OrderId, SwapType},
+    network::{MakerId, Order, OrderId, Trade},
 };
 use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
 use warp::{http, http::StatusCode, Rejection, Reply};
-
-#[derive(Deserialize)]
-struct MakeHerc20HbitOrderBody {
-    // TODO: Fix these names, buy/sell are incorrectly used here. Remember that changing this
-    // struct is a breaking API change so the e2e tests will break.
-    #[serde(with = "asset::bitcoin::sats_as_string")]
-    buy_quantity: asset::Bitcoin,
-    bitcoin_ledger: ledger::Bitcoin,
-    sell_token_contract: ethereum::Address,
-    sell_quantity: asset::Erc20Quantity,
-    ethereum_ledger: ledger::Ethereum,
-    absolute_expiry: u32,
-    refund_identity: bitcoin::Address,
-    redeem_identity: identity::Ethereum,
-}
-
-impl MakeHerc20HbitOrderBody {
-    // TODO: This should implement From
-    fn to_order(&self) -> NewOrder {
-        NewOrder {
-            buy: self.buy_quantity,
-            bitcoin_ledger: self.bitcoin_ledger,
-            sell: asset::Erc20::new(self.sell_token_contract, self.sell_quantity.clone()),
-            ethereum_ledger: self.ethereum_ledger,
-            absolute_expiry: self.absolute_expiry,
-        }
-    }
-}
-
-#[derive(Deserialize)]
-struct TakeHerc20HbitOrderBody {
-    refund_identity: identity::Ethereum,
-    redeem_identity: bitcoin::Address,
-}
-
-#[derive(Serialize)]
-struct Herc20HbitOrderResponse {
-    #[serde(with = "asset::bitcoin::sats_as_string")]
-    buy_quantity: asset::Bitcoin,
-    sell_token_contract: ethereum::Address,
-    sell_quantity: asset::Erc20Quantity,
-    absolute_expiry: u32,
-    maker: String,
-    id: OrderId,
-}
-
-impl Herc20HbitOrderResponse {
-    // TODO: This should implement From
-    fn from_order(order: &Order) -> Self {
-        Herc20HbitOrderResponse {
-            buy_quantity: order.buy,
-            sell_token_contract: order.sell.token_contract,
-            sell_quantity: order.sell.quantity.clone(),
-            absolute_expiry: order.absolute_expiry,
-            maker: order.maker.to_string(),
-            id: order.id,
-        }
-    }
-}
 
 pub async fn post_take_herc20_hbit_order(
     order_id: OrderId,
@@ -105,15 +47,18 @@ pub async fn post_take_herc20_hbit_order(
     let swap = CreatedSwap {
         swap_id,
         alpha: herc20::CreatedSwap {
-            asset: order.sell,
+            asset: Erc20 {
+                token_contract: order.token_contract,
+                quantity: order.ethereum_amount,
+            },
             identity: refund_identity,
             chain_id: order.ethereum_ledger.chain_id,
             absolute_expiry: order.absolute_expiry,
         },
         beta: hbit::CreatedSwap {
-            amount: asset::Bitcoin::from_sat(order.buy.as_sat()),
+            amount: order.bitcoin_amount,
             final_identity: redeem_identity.clone(),
-            network: ledger::Bitcoin::Regtest,
+            network: order.bitcoin_ledger,
             absolute_expiry: order.absolute_expiry,
         },
         peer: order.maker.clone().into(),
@@ -144,9 +89,6 @@ pub async fn post_take_herc20_hbit_order(
         .map_err(warp::reject::custom)
 }
 
-// when making an order, the swap cannot be created until the take provides his
-// identities. The swap is saved to the database when a TakeOrderRequest is
-// received from the the taker.
 pub async fn post_make_herc20_hbit_order(
     body: serde_json::Value,
     facade: Facade,
@@ -158,7 +100,7 @@ pub async fn post_make_herc20_hbit_order(
         .map_err(warp::reject::custom)?;
 
     let reply = warp::reply::reply();
-    let order: NewOrder = body.to_order();
+    let order = NewOrder::from(body.clone());
 
     order
         .assert_valid_ledger_pair()
@@ -240,7 +182,7 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
         match siren::Entity::default()
             .with_action(action)
             .with_class_member("order")
-            .with_properties(Herc20HbitOrderResponse::from_order(&order.clone()))
+            .with_properties(Herc20HbitOrderResponse::from(order))
         {
             Ok(sub_entity) => {
                 entity.push_sub_entity(siren::SubEntity::from_entity(sub_entity, &["item"]))
@@ -249,6 +191,70 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
         }
     }
     Ok(warp::reply::json(&entity))
+}
+
+#[derive(Clone, Debug, Deserialize)]
+struct MakeHerc20HbitOrderBody {
+    trade: Trade,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    bitcoin_amount: asset::Bitcoin,
+    bitcoin_ledger: ledger::Bitcoin,
+    ethereum_amount: asset::Erc20Quantity,
+    token_contract: identity::Ethereum,
+    ethereum_ledger: ledger::Ethereum,
+    absolute_expiry: u32,
+    refund_identity: bitcoin::Address,
+    redeem_identity: identity::Ethereum,
+}
+
+impl From<MakeHerc20HbitOrderBody> for NewOrder {
+    fn from(body: MakeHerc20HbitOrderBody) -> Self {
+        NewOrder {
+            trade: body.trade,
+            bitcoin_amount: body.bitcoin_amount,
+            bitcoin_ledger: body.bitcoin_ledger,
+            ethereum_amount: body.ethereum_amount,
+            token_contract: body.token_contract,
+            ethereum_ledger: body.ethereum_ledger,
+            absolute_expiry: body.absolute_expiry,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+struct TakeHerc20HbitOrderBody {
+    refund_identity: identity::Ethereum,
+    redeem_identity: bitcoin::Address,
+}
+
+#[derive(Clone, Debug, Serialize)]
+struct Herc20HbitOrderResponse {
+    id: OrderId,
+    maker: MakerId,
+    trade: Trade,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    bitcoin_amount: asset::Bitcoin,
+    bitcoin_ledger: ledger::Bitcoin,
+    ethereum_amount: asset::Erc20Quantity,
+    token_contract: ethereum::Address,
+    ethereum_ledger: ledger::Ethereum,
+    absolute_expiry: u32,
+}
+
+impl From<Order> for Herc20HbitOrderResponse {
+    fn from(order: Order) -> Self {
+        Herc20HbitOrderResponse {
+            id: order.id,
+            maker: order.maker,
+            trade: order.trade,
+            bitcoin_amount: order.bitcoin_amount,
+            bitcoin_ledger: order.bitcoin_ledger,
+            ethereum_amount: order.ethereum_amount,
+            token_contract: order.token_contract,
+            ethereum_ledger: order.ethereum_ledger,
+            absolute_expiry: order.absolute_expiry,
+        }
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -271,26 +277,31 @@ pub async fn post_dial_peer(
     Ok(warp::reply::reply())
 }
 
+// TODO: Add ser stability and roundtrip tests.
 #[derive(Deserialize, Debug, Copy, Clone)]
-pub struct TradingPair {
-    buy: SwapType,
-    sell: SwapType,
+pub enum TradingPair {
+    BtcDai,
+}
+
+impl From<TradingPair> for comit::network::orderbook::TradingPair {
+    fn from(tp: TradingPair) -> Self {
+        match tp {
+            TradingPair::BtcDai => comit::network::orderbook::TradingPair::BtcDai,
+        }
+    }
 }
 
 pub async fn post_announce_trading_pair(
     body: serde_json::Value,
     mut facade: Facade,
 ) -> Result<impl Reply, Rejection> {
-    let body = TradingPair::deserialize(&body)
+    let tp = TradingPair::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
 
     facade
-        .announce_trading_pair(::comit::network::TradingPair {
-            buy: body.buy,
-            sell: body.sell,
-        })
+        .announce_trading_pair(tp.into())
         .await
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
@@ -306,15 +317,15 @@ mod tests {
     fn test_make_order_deserialization() {
         let json = r#"
         {
-            "sell_token_contract": "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280",
+            "trade": "sell",
+            "bitcoin_amount": "300",
             "bitcoin_ledger": "regtest",
-            "buy_quantity": "300",
-            "sell_quantity": "200",
+            "ethereum_amount": "200",
+            "token_contract": "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280",
             "ethereum_ledger": {"chain_id":2},
             "absolute_expiry": 600,
             "refund_identity": "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX",
-            "redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-            "maker_addr": "/ip4/127.0.0.1/tcp/39331"
+            "redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72"
         }"#;
 
         let _body: MakeHerc20HbitOrderBody =

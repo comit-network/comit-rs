@@ -20,11 +20,13 @@ it(
         // Bob dials alice
         // @ts-ignore
         await bob.cnd.client.post("dial", { addresses: aliceAddr });
+        // @ts-ignore
+        await alice.cnd.client.post("dial", { addresses: bobAddr });
 
         /// Wait for alice to accept an incoming connection from Bob
         await sleep(1000);
 
-        const bobMakeOrderBody = OrderFactory.newHerc20HbitOrder(bobAddr[0]);
+        const bobMakeOrderBody = OrderFactory.newHerc20HbitOrder();
         // @ts-ignore
         // make response contain url in the header to the created order
         // poll this order to see when when it has been converted to a swap

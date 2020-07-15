@@ -445,7 +445,7 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<OrderId, Response>> for O
 mod tests {
     use super::*;
     use crate::{
-        asset::{self, Erc20, Erc20Quantity},
+        asset::{self, Erc20Quantity},
         ledger,
         network::test::{await_events_or_timeout, new_connected_swarm_pair},
     };
@@ -457,13 +457,11 @@ mod tests {
             id: OrderId::random(),
             maker: MakerId::from(id),
             trade: Trade::Sell,
-            btc: asset::Bitcoin::from_sat(100),
+            bitcoin_amount: asset::Bitcoin::from_sat(100),
             bitcoin_ledger: ledger::Bitcoin::Regtest,
-            dai: Erc20 {
-                quantity: Erc20Quantity::max_value(),
-                // TODO: Use a more sane value?
-                token_contract: Default::default(),
-            },
+            // TODO: Use a more sane value?
+            ethereum_amount: Erc20Quantity::max_value(),
+            token_contract: Default::default(),
             ethereum_ledger: ledger::Ethereum::default(),
             absolute_expiry: 100,
         }
@@ -549,6 +547,7 @@ mod tests {
         }
     }
 
+    // TODO: Rename this - it should be maker_id_...
     #[test]
     fn peer_id_serializes_as_expected() {
         let given = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY".to_string();
@@ -561,6 +560,7 @@ mod tests {
         assert_that(&got).is_equal_to(want);
     }
 
+    // TODO: Rename this - it should be maker_id_...
     #[test]
     fn peer_id_serialization_roundtrip_test() {
         let s = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY".to_string();
