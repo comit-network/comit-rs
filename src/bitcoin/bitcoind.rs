@@ -1,9 +1,9 @@
 use crate::jsonrpc;
-use anyhow::Context;
-use bitcoin::{
+use ::bitcoin::{
     consensus::encode::serialize_hex, hashes::hex::FromHex, Address, Amount, Network, Transaction,
     Txid,
 };
+use anyhow::Context;
 use serde::Deserialize;
 
 pub const JSONRPC_VERSION: &str = "1.0";

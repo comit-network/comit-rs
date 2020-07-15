@@ -2,6 +2,13 @@ use crate::dai;
 use crate::dai::ATTOS_IN_DAI_EXP;
 use crate::Rate;
 
+mod bitcoind;
+mod wallet;
+
+pub use ::bitcoin::Address;
+pub use bitcoind::*;
+pub use wallet::Wallet;
+
 // TODO: Move all bitcoin things under a bitcoin module to allow `bitcoin::Wallet` call
 
 pub const SATS_IN_BITCOIN_EXP: u16 = 8;

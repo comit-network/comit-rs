@@ -7,7 +7,7 @@ pub use ::bitcoin::{secp256k1::SecretKey, Address, Block, BlockHash, OutPoint, T
 
 #[derive(Debug, Clone)]
 pub struct Wallet {
-    pub inner: Arc<crate::bitcoin_wallet::Wallet>,
+    pub inner: Arc<crate::bitcoin::Wallet>,
     pub connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
 }
 

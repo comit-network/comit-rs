@@ -9,7 +9,7 @@ pub mod ethereum;
 pub mod hbit;
 pub mod herc20;
 
-use crate::{bitcoin_wallet, ethereum_wallet, SwapId};
+use crate::{ethereum_wallet, SwapId};
 use comit::Secret;
 use futures::future::{self, Either};
 
@@ -36,7 +36,7 @@ pub struct SwapParams {
 
 pub async fn nectar_hbit_herc20(
     db: Arc<Database>,
-    bitcoin_wallet: Arc<bitcoin_wallet::Wallet>,
+    bitcoin_wallet: Arc<crate::bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum_wallet::Wallet>,
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
@@ -234,7 +234,6 @@ mod tests {
     use super::*;
     use crate::swap::db::Save;
     use crate::{
-        bitcoin_wallet, ethereum_wallet,
         swap::{alice::wallet_actor::WalletAlice, bitcoin, bob::watch_only_actor::WatchOnlyBob},
         test_harness, Seed, SwapId,
     };
@@ -345,7 +344,7 @@ mod tests {
             let seed = Seed::default();
             let bitcoin_wallet = {
                 let wallet =
-                    bitcoin_wallet::Wallet::new(seed, bitcoind_url.clone(), bitcoin_network)
+                    crate::bitcoin::Wallet::new(seed, bitcoind_url.clone(), bitcoin_network)
                         .await?;
 
                 bitcoin_blockchain
@@ -375,7 +374,7 @@ mod tests {
         let (bob_bitcoin_wallet, bob_ethereum_wallet) = {
             let seed = Seed::default();
             let bitcoin_wallet =
-                bitcoin_wallet::Wallet::new(seed, bitcoind_url.clone(), bitcoin_network).await?;
+                crate::bitcoin::Wallet::new(seed, bitcoind_url.clone(), bitcoin_network).await?;
             let ethereum_wallet =
                 ethereum_wallet::Wallet::new(seed, ethereum_node_url, token_contract)?;
 

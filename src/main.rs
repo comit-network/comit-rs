@@ -9,7 +9,7 @@ use futures::{
 };
 use futures_timer::Delay;
 use nectar::{
-    bitcoin, bitcoin_wallet, config,
+    bitcoin, config,
     config::{settings, Settings},
     dai, ethereum_wallet,
     maker::{Free, PublishOrders, TakeRequestDecision},
@@ -26,7 +26,7 @@ use structopt::StructOpt;
 const ENSURED_CONSUME_ZERO_BUFFER: usize = 0;
 
 async fn init_maker(
-    bitcoin_wallet: Arc<bitcoin_wallet::Wallet>,
+    bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum_wallet::Wallet>,
     maker_settings: settings::Maker,
 ) -> Maker {
@@ -85,7 +85,7 @@ fn init_rate_updates(
 
 fn init_bitcoin_balance_updates(
     update_interval: Duration,
-    wallet: Arc<bitcoin_wallet::Wallet>,
+    wallet: Arc<bitcoin::Wallet>,
 ) -> (
     impl Future<Output = comit::Never> + Send,
     Receiver<anyhow::Result<bitcoin::Amount>>,
@@ -136,7 +136,7 @@ fn init_dai_balance_updates(
 
 async fn execute_swap(
     db: Arc<Database>,
-    bitcoin_wallet: Arc<bitcoin_wallet::Wallet>,
+    bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum_wallet::Wallet>,
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
@@ -212,7 +212,7 @@ fn handle_network_event(
     maker: &mut Maker,
     swarm: &mut libp2p::Swarm<Nectar>,
     db: Arc<Database>,
-    bitcoin_wallet: Arc<bitcoin_wallet::Wallet>,
+    bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum_wallet::Wallet>,
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
@@ -381,7 +381,7 @@ async fn main() {
     let dai_contract_addr: comit::ethereum::Address = settings.ethereum.dai_contract_address;
 
     // TODO: Proper wallet initialisation from config
-    let bitcoin_wallet = bitcoin_wallet::Wallet::new(
+    let bitcoin_wallet = bitcoin::Wallet::new(
         seed,
         settings.bitcoin.bitcoind.node_url,
         settings.bitcoin.network,
@@ -472,7 +472,7 @@ async fn main() {
 
 fn respawn_swaps(
     db: Arc<Database>,
-    bitcoin_wallet: Arc<bitcoin_wallet::Wallet>,
+    bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum_wallet::Wallet>,
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
