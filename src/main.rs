@@ -8,6 +8,7 @@ use futures::{
     Future, FutureExt, SinkExt, StreamExt,
 };
 use futures_timer::Delay;
+use nectar::options::Command;
 use nectar::{
     bitcoin, config,
     config::{settings, Settings},
@@ -395,7 +396,9 @@ async fn main() {
             .expect("can initialise ethereum wallet");
     let ethereum_wallet = Arc::new(ethereum_wallet);
 
-    trade(settings.maker, bitcoin_wallet, ethereum_wallet).await
+    match options.cmd {
+        Command::Trade => trade(settings.maker, bitcoin_wallet, ethereum_wallet).await,
+    }
 }
 
 async fn trade(
