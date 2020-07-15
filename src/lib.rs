@@ -15,13 +15,9 @@
 // TODO: Add no unwrap policy
 
 pub mod bitcoin;
-pub mod bitcoin_wallet;
-pub mod bitcoind;
 pub mod config;
-pub mod dai;
-pub mod ethereum_wallet;
+pub mod ethereum;
 pub mod float_maths;
-pub mod geth;
 pub mod history;
 pub mod jsonrpc;
 pub mod maker;

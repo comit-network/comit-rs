@@ -4,7 +4,7 @@ mod serde;
 pub mod settings;
 pub mod validation;
 
-use crate::{bitcoin, dai};
+use crate::{bitcoin, ethereum::dai};
 use ::serde::{Deserialize, Serialize};
 use libp2p::Multiaddr;
 use std::path::PathBuf;

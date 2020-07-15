@@ -1,4 +1,5 @@
-use crate::{geth, Seed};
+use crate::ethereum::geth::Client;
+use crate::Seed;
 use comit::{
     actions::ethereum::{CallContract, DeployContract},
     asset::Erc20,
@@ -10,7 +11,7 @@ use url::Url;
 #[derive(Debug, Clone)]
 pub struct Wallet {
     private_key: clarity::PrivateKey,
-    geth_client: geth::Client,
+    geth_client: Client,
     dai_contract_addr: Address,
 }
 
@@ -23,7 +24,7 @@ impl Wallet {
         let private_key = clarity::PrivateKey::from_slice(&seed.secret_key_bytes())
             .map_err(|_| anyhow::anyhow!("Failed to derive private key from slice"))?;
 
-        let geth_client = geth::Client::new(url);
+        let geth_client = Client::new(url);
 
         Ok(Self {
             private_key,
@@ -34,7 +35,7 @@ impl Wallet {
 
     #[cfg(test)]
     pub fn new_from_private_key(private_key: clarity::PrivateKey, url: Url) -> Self {
-        let geth_client = geth::Client::new(url);
+        let geth_client = Client::new(url);
         let dai_contract_adr = Address::random();
 
         Self {

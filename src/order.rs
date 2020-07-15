@@ -1,5 +1,5 @@
 use crate::{bitcoin, Symbol};
-use crate::{dai, MidMarketRate};
+use crate::{ethereum::dai, MidMarketRate};
 use crate::{Rate, Spread};
 use std::cmp::min;
 use std::convert::TryFrom;

@@ -1,4 +1,4 @@
-use crate::bitcoind;
+use crate::bitcoin;
 use std::time::Duration;
 use testcontainers::{clients, images::coblox_bitcoincore::BitcoinCore, Container, Docker};
 use url::Url;
@@ -34,7 +34,7 @@ impl<'c> Blockchain<'c> {
     }
 
     pub async fn init(&self) -> anyhow::Result<()> {
-        let bitcoind_client = bitcoind::Client::new(self.node_url.clone());
+        let bitcoind_client = bitcoin::Client::new(self.node_url.clone());
 
         bitcoind_client
             .create_wallet(&self.wallet_name, None, None, None, None)
@@ -57,7 +57,7 @@ impl<'c> Blockchain<'c> {
         address: bitcoin::Address,
         amount: bitcoin::Amount,
     ) -> anyhow::Result<()> {
-        let bitcoind_client = bitcoind::Client::new(self.node_url.clone());
+        let bitcoind_client = bitcoin::Client::new(self.node_url.clone());
 
         bitcoind_client
             .send_to_address(&self.wallet_name, address.clone(), amount)
@@ -68,7 +68,7 @@ impl<'c> Blockchain<'c> {
 }
 
 async fn mine(
-    bitcoind_client: bitcoind::Client,
+    bitcoind_client: bitcoin::Client,
     reward_address: bitcoin::Address,
 ) -> anyhow::Result<()> {
     loop {

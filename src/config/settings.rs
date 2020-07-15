@@ -1,6 +1,6 @@
 use crate::bitcoin;
 use crate::config::{file, Bitcoind, Data, File, MaxSell, Network};
-use crate::dai::DaiContractAddress;
+use crate::ethereum::dai::DaiContractAddress;
 use crate::Spread;
 use anyhow::{anyhow, Context};
 use comit::ethereum::ChainId;
@@ -20,14 +20,14 @@ pub struct Settings {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Bitcoin {
-    pub network: ::bitcoin::Network,
+    pub network: bitcoin::Network,
     pub bitcoind: Bitcoind,
 }
 
 impl Default for Bitcoin {
     fn default() -> Self {
         Self {
-            network: ::bitcoin::Network::Regtest,
+            network: bitcoin::Network::Regtest,
             bitcoind: Bitcoind {
                 node_url: Url::parse("http://localhost:18443")
                     .expect("static string to be a valid url"),
@@ -160,13 +160,13 @@ fn derive_url_bitcoin(bitcoin: Option<file::Bitcoin>) -> Bitcoin {
             let node_url = match bitcoin.bitcoind {
                 Some(bitcoind) => bitcoind.node_url,
                 None => match bitcoin.network {
-                    ::bitcoin::Network::Bitcoin => "http://localhost:8332"
+                    bitcoin::Network::Bitcoin => "http://localhost:8332"
                         .parse()
                         .expect("to be valid static string"),
-                    ::bitcoin::Network::Testnet => "http://localhost:18332"
+                    bitcoin::Network::Testnet => "http://localhost:18332"
                         .parse()
                         .expect("to be valid static string"),
-                    ::bitcoin::Network::Regtest => "http://localhost:18443"
+                    bitcoin::Network::Regtest => "http://localhost:18443"
                         .parse()
                         .expect("to be valid static string"),
                 },

@@ -39,7 +39,7 @@ pub struct Fees {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Bitcoin {
     #[serde(with = "crate::config::serde::bitcoin_network")]
-    pub network: ::bitcoin::Network,
+    pub network: bitcoin::Network,
     pub bitcoind: Option<Bitcoind>,
 }
 
@@ -137,7 +137,7 @@ pub enum None {
 mod tests {
     use super::*;
     use crate::config::{Bitcoind, Settings};
-    use crate::{bitcoin, dai};
+    use crate::{bitcoin, ethereum::dai};
     use spectral::prelude::*;
     use std::path::PathBuf;
 
@@ -199,7 +199,7 @@ local_dai_contract_address = "0x31F42841c2db5173425b5223809CF3A38FEde360"
                 level: Some(Level::Debug),
             }),
             bitcoin: Some(Bitcoin {
-                network: ::bitcoin::Network::Regtest,
+                network: bitcoin::Network::Regtest,
                 bitcoind: Some(Bitcoind {
                     node_url: "http://localhost:18443".parse().unwrap(),
                 }),
@@ -258,19 +258,19 @@ local_dai_contract_address = "0x31F42841c2db5173425b5223809CF3A38FEde360"
 
         let expected = vec![
             Bitcoin {
-                network: ::bitcoin::Network::Bitcoin,
+                network: bitcoin::Network::Bitcoin,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:8332").unwrap(),
                 }),
             },
             Bitcoin {
-                network: ::bitcoin::Network::Testnet,
+                network: bitcoin::Network::Testnet,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:18332").unwrap(),
                 }),
             },
             Bitcoin {
-                network: ::bitcoin::Network::Regtest,
+                network: bitcoin::Network::Regtest,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:18443").unwrap(),
                 }),

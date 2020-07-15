@@ -9,9 +9,10 @@ use futures::{
 };
 use futures_timer::Delay;
 use nectar::{
-    bitcoin, bitcoin_wallet, config,
+    bitcoin, config,
     config::{settings, Settings},
-    dai, ethereum_wallet,
+    ethereum,
+    ethereum::dai,
     maker::{Free, PublishOrders, TakeRequestDecision},
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, Nectar, Orderbook, Taker},
@@ -26,8 +27,8 @@ use structopt::StructOpt;
 const ENSURED_CONSUME_ZERO_BUFFER: usize = 0;
 
 async fn init_maker(
-    bitcoin_wallet: Arc<bitcoin_wallet::Wallet>,
-    ethereum_wallet: Arc<ethereum_wallet::Wallet>,
+    bitcoin_wallet: Arc<bitcoin::Wallet>,
+    ethereum_wallet: Arc<ethereum::Wallet>,
     maker_settings: settings::Maker,
 ) -> Maker {
     let initial_btc_balance = bitcoin_wallet.balance().await;
@@ -85,7 +86,7 @@ fn init_rate_updates(
 
 fn init_bitcoin_balance_updates(
     update_interval: Duration,
-    wallet: Arc<bitcoin_wallet::Wallet>,
+    wallet: Arc<bitcoin::Wallet>,
 ) -> (
     impl Future<Output = comit::Never> + Send,
     Receiver<anyhow::Result<bitcoin::Amount>>,
@@ -111,7 +112,7 @@ fn init_bitcoin_balance_updates(
 
 fn init_dai_balance_updates(
     update_interval: Duration,
-    wallet: Arc<ethereum_wallet::Wallet>,
+    wallet: Arc<ethereum::Wallet>,
 ) -> (
     impl Future<Output = comit::Never> + Send,
     Receiver<anyhow::Result<dai::Amount>>,
@@ -136,8 +137,8 @@ fn init_dai_balance_updates(
 
 async fn execute_swap(
     db: Arc<Database>,
-    bitcoin_wallet: Arc<bitcoin_wallet::Wallet>,
-    ethereum_wallet: Arc<ethereum_wallet::Wallet>,
+    bitcoin_wallet: Arc<bitcoin::Wallet>,
+    ethereum_wallet: Arc<ethereum::Wallet>,
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
     swap_execution_finished_sender: Sender<FinishedSwap>,
@@ -212,8 +213,8 @@ fn handle_network_event(
     maker: &mut Maker,
     swarm: &mut libp2p::Swarm<Nectar>,
     db: Arc<Database>,
-    bitcoin_wallet: Arc<bitcoin_wallet::Wallet>,
-    ethereum_wallet: Arc<ethereum_wallet::Wallet>,
+    bitcoin_wallet: Arc<bitcoin::Wallet>,
+    ethereum_wallet: Arc<ethereum::Wallet>,
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
     sender: Sender<FinishedSwap>,
@@ -381,7 +382,7 @@ async fn main() {
     let dai_contract_addr: comit::ethereum::Address = settings.ethereum.dai_contract_address;
 
     // TODO: Proper wallet initialisation from config
-    let bitcoin_wallet = bitcoin_wallet::Wallet::new(
+    let bitcoin_wallet = bitcoin::Wallet::new(
         seed,
         settings.bitcoin.bitcoind.node_url,
         settings.bitcoin.network,
@@ -390,7 +391,7 @@ async fn main() {
     .expect("can initialise bitcoin wallet");
     let bitcoin_wallet = Arc::new(bitcoin_wallet);
     let ethereum_wallet =
-        ethereum_wallet::Wallet::new(seed, settings.ethereum.node_url, dai_contract_addr)
+        ethereum::Wallet::new(seed, settings.ethereum.node_url, dai_contract_addr)
             .expect("can initialise ethereum wallet");
     let ethereum_wallet = Arc::new(ethereum_wallet);
     let maker = init_maker(bitcoin_wallet, ethereum_wallet, settings.maker).await;
@@ -472,8 +473,8 @@ async fn main() {
 
 fn respawn_swaps(
     db: Arc<Database>,
-    bitcoin_wallet: Arc<bitcoin_wallet::Wallet>,
-    ethereum_wallet: Arc<ethereum_wallet::Wallet>,
+    bitcoin_wallet: Arc<bitcoin::Wallet>,
+    ethereum_wallet: Arc<ethereum::Wallet>,
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
     swap_execution_finished_sender: Sender<FinishedSwap>,
