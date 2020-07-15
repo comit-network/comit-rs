@@ -2,17 +2,17 @@ use crate::{
     asset, hbit, herc20,
     http_api::problem,
     identity, ledger,
+    network::NewOrder,
     storage::{CreatedSwap, Save},
     Facade, LocalSwapId, Role,
 };
 use chrono::Utc;
 use comit::{
     ethereum,
-    network::{NewOrder, Order, OrderId, SwapType},
+    network::{Order, OrderId, SwapType},
 };
 use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use warp::{http, http::StatusCode, Rejection, Reply};
 
 #[derive(Deserialize)]
@@ -57,13 +57,14 @@ struct Herc20HbitOrderResponse {
     sell_quantity: asset::Erc20Quantity,
     absolute_expiry: u32,
     maker: String,
-    id: Uuid,
+    id: OrderId,
 }
 
 impl Herc20HbitOrderResponse {
+    // TODO: This should implement From
     fn from_order(order: &Order) -> Self {
         Herc20HbitOrderResponse {
-            buy_quantity: asset::Bitcoin::from_sat(order.buy),
+            buy_quantity: order.buy,
             sell_token_contract: order.sell.token_contract,
             sell_quantity: order.sell.quantity.clone(),
             absolute_expiry: order.absolute_expiry,
@@ -110,7 +111,7 @@ pub async fn post_take_herc20_hbit_order(
             absolute_expiry: order.absolute_expiry,
         },
         beta: hbit::CreatedSwap {
-            amount: asset::Bitcoin::from_sat(order.buy),
+            amount: asset::Bitcoin::from_sat(order.buy.as_sat()),
             final_identity: redeem_identity.clone(),
             network: ledger::Bitcoin::Regtest,
             absolute_expiry: order.absolute_expiry,

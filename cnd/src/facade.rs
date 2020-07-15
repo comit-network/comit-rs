@@ -1,13 +1,13 @@
 use crate::{
     btsieve::LatestBlock,
     connectors::Connectors,
-    network::{ComitPeers, Identities, ListenAddresses, LocalPeerId, SwapDigest, Swarm},
+    network::{ComitPeers, Identities, ListenAddresses, LocalPeerId, NewOrder, SwapDigest, Swarm},
     storage::{Load, LoadAll, Save, Storage},
     LocalSwapId, Role, Timestamp,
 };
 use comit::{
     bitcoin, identity,
-    network::{NewOrder, Order, OrderId, TradingPair},
+    network::{Order, OrderId, TradingPair},
 };
 use libp2p::{Multiaddr, PeerId};
 
