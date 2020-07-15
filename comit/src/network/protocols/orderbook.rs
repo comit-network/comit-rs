@@ -20,6 +20,7 @@ use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::{hash_map::DefaultHasher, HashMap, HashSet, VecDeque},
     fmt,
+    fmt::Display,
     hash::{Hash, Hasher},
     str::FromStr,
     task::{Context, Poll},
@@ -105,20 +106,18 @@ impl Orderbook {
     /// Take an order, called by Alice i.e., the taker.
     /// Does _not_ remove the order from the order book.
     pub fn take(&mut self, order_id: OrderId) -> anyhow::Result<()> {
-        let peer_id = self
-            .peer_id_for_order(order_id)
+        let maker_id = self
+            .maker_id(order_id)
             .ok_or_else(|| OrderbookError::OrderNotFound(order_id))?;
 
-        self.take_order.send_request(&peer_id, order_id);
+        self.take_order.send_request(&maker_id.into(), order_id);
 
         Ok(())
     }
 
-    /// Get the peer ID of the node that published this order.
-    pub fn peer_id_for_order(&self, order_id: OrderId) -> Option<PeerId> {
-        self.orders
-            .get(&order_id)
-            .map(|order| order.maker.peer_id())
+    /// Get the ID of the node that published this order.
+    fn maker_id(&self, order_id: OrderId) -> Option<MakerId> {
+        self.orders.get(&order_id).map(|order| order.maker.clone())
     }
 
     /// Confirm a take order request, called by Bob i.e., the maker.
@@ -273,10 +272,21 @@ pub type OrderId = Uuid;
 #[derive(Debug, Clone, PartialEq)]
 pub struct MakerId(PeerId);
 
-impl MakerId {
-    /// Returns a clone of the inner peer id.
-    pub fn peer_id(&self) -> PeerId {
-        self.0.clone()
+impl From<PeerId> for MakerId {
+    fn from(id: PeerId) -> Self {
+        MakerId(id)
+    }
+}
+
+impl From<MakerId> for PeerId {
+    fn from(id: MakerId) -> Self {
+        id.0
+    }
+}
+
+impl Display for MakerId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.to_string())
     }
 }
 
@@ -496,6 +506,7 @@ mod tests {
         network::test::{await_events_or_timeout, new_connected_swarm_pair},
     };
     use libp2p::Swarm;
+    use spectral::prelude::*;
 
     fn create_order(id: PeerId) -> Order {
         Order::new(id, NewOrder {
@@ -586,5 +597,29 @@ mod tests {
         while let Ok(event) = tokio::time::timeout(delay, swarm.next()).await {
             panic!("unexpected event emitted: {:?}", event)
         }
+    }
+
+    #[test]
+    fn peer_id_serializes_as_expected() {
+        let given = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY".to_string();
+        let peer_id = PeerId::from_str(&given).expect("failed to parse peer id");
+        let maker_id = MakerId(peer_id);
+
+        let want = format!("\"{}\"", given);
+        let got = serde_json::to_string(&maker_id).expect("failed to serialize peer id");
+
+        assert_that(&got).is_equal_to(want);
+    }
+
+    #[test]
+    fn peer_id_serialization_roundtrip_test() {
+        let s = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY".to_string();
+        let peer_id = PeerId::from_str(&s).expect("failed to parse peer id");
+        let maker_id = MakerId::from(peer_id);
+
+        let json = serde_json::to_string(&maker_id).expect("failed to serialize peer id");
+        let rinsed: MakerId = serde_json::from_str(&json).expect("failed to deserialize peer id");
+
+        assert_that(&maker_id).is_equal_to(rinsed);
     }
 }

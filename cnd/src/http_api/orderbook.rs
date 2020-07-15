@@ -64,7 +64,7 @@ impl Herc20HbitOrderResponse {
             sell_token_contract: order.sell.token_contract,
             sell_quantity: order.sell.quantity.clone(),
             absolute_expiry: order.absolute_expiry,
-            maker: order.maker.peer_id().to_string(),
+            maker: order.maker.to_string(),
             id: order.id,
         }
     }
@@ -112,7 +112,7 @@ pub async fn post_take_herc20_hbit_order(
             network: ledger::Bitcoin::Regtest,
             absolute_expiry: order.absolute_expiry,
         },
-        peer: order.maker.peer_id(),
+        peer: order.maker.clone().into(),
         address_hint: None,
         role: Role::Alice,
         start_of_swap,
