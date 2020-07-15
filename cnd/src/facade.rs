@@ -59,7 +59,7 @@ impl Facade {
         Ok(timestamp)
     }
 
-    pub async fn take_btc_dai_buy_order(
+    pub async fn take_btc_dai_sell_order(
         &mut self,
         order_id: OrderId,
         swap_id: LocalSwapId,
@@ -73,11 +73,11 @@ impl Facade {
             .await;
 
         self.swarm
-            .take_btc_dai_buy_order(order_id, swap_id, redeem_identity, refund_identity)
+            .take_btc_dai_sell_order(order_id, swap_id, redeem_identity, refund_identity)
             .await
     }
 
-    pub async fn make_btc_dai_buy_order(
+    pub async fn make_btc_dai_sell_order(
         &self,
         order: NewOrder,
         swap_id: LocalSwapId,
@@ -85,7 +85,7 @@ impl Facade {
         refund_identity: crate::bitcoin::Address,
     ) -> anyhow::Result<OrderId> {
         self.swarm
-            .make_btc_dai_buy_order(order, swap_id, redeem_identity, refund_identity)
+            .make_btc_dai_sell_order(order, swap_id, redeem_identity, refund_identity)
             .await
     }
 

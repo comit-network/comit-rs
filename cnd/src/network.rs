@@ -117,7 +117,7 @@ impl Swarm {
     }
 
     /// The taker plays the role of Alice.
-    pub async fn take_btc_dai_buy_order(
+    pub async fn take_btc_dai_sell_order(
         &self,
         order_id: OrderId,
         swap_id: LocalSwapId,
@@ -125,11 +125,11 @@ impl Swarm {
         refund_identity: identity::Ethereum,
     ) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
-        guard.take_herc20_hbit_order(order_id, swap_id, redeem_identity, refund_identity)
+        guard.take_btc_dai_sell_order(order_id, swap_id, redeem_identity, refund_identity)
     }
 
     /// The maker plays the role of Bob.
-    pub async fn make_btc_dai_buy_order(
+    pub async fn make_btc_dai_sell_order(
         &self,
         order: NewOrder,
         swap_id: LocalSwapId,
@@ -137,7 +137,7 @@ impl Swarm {
         refund_identity: crate::bitcoin::Address,
     ) -> anyhow::Result<OrderId> {
         let mut guard = self.inner.lock().await;
-        guard.make_herc20_hbit_order(order, swap_id, redeem_identity, refund_identity)
+        guard.make_btc_dai_sell_order(order, swap_id, redeem_identity, refund_identity)
     }
 
     pub async fn get_orders(&self) -> Vec<Order> {
@@ -318,7 +318,7 @@ impl ComitNode {
     }
 
     /// The taker plays the role of Alice.
-    pub fn take_herc20_hbit_order(
+    pub fn take_btc_dai_sell_order(
         &mut self,
         order_id: OrderId,
         swap_id: LocalSwapId,
@@ -348,7 +348,7 @@ impl ComitNode {
     }
 
     /// The maker plays the role of Bob.
-    pub fn make_herc20_hbit_order(
+    pub fn make_btc_dai_sell_order(
         &mut self,
         order: NewOrder,
         swap_id: LocalSwapId,

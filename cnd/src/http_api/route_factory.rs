@@ -142,14 +142,14 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade.clone())
-        .and_then(orderbook::post_take_herc20_hbit_order);
+        .and_then(orderbook::post_take_btc_dai_sell_order);
 
     let make_herc20_hbit_order = warp::post()
         .and(warp::path!("orders"))
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade.clone())
-        .and_then(orderbook::post_make_btc_dai_buy_order);
+        .and_then(orderbook::post_make_btc_dai_sell_order);
 
     let post_dial_addr = warp::post()
         .and(warp::path!("dial"))
