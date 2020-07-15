@@ -1,7 +1,7 @@
 mod take_order;
 
 use crate::{
-    asset,
+    asset, ledger,
     network::protocols::orderbook::take_order::{Response, TakeOrderCodec, TakeOrderProtocol},
     SharedSwapId,
 };
@@ -317,14 +317,18 @@ pub struct Order {
     pub id: OrderId,
     pub maker: MakerId,
     pub buy: u64,
+    pub bitcoin_ledger: ledger::Bitcoin,
     pub sell: asset::Erc20,
+    pub ethereum_ledger: ledger::Ethereum,
     pub absolute_expiry: u32,
 }
 
 #[derive(Debug)]
 pub struct NewOrder {
     pub buy: asset::Bitcoin,
+    pub bitcoin_ledger: ledger::Bitcoin,
     pub sell: asset::Erc20,
+    pub ethereum_ledger: ledger::Ethereum,
     pub absolute_expiry: u32,
 }
 
@@ -334,7 +338,9 @@ impl Order {
             id: Uuid::new_v4(),
             maker: MakerId(peer_id),
             buy: new_order.buy.as_sat(),
+            bitcoin_ledger: new_order.bitcoin_ledger,
             sell: new_order.sell,
+            ethereum_ledger: new_order.ethereum_ledger,
             absolute_expiry: new_order.absolute_expiry,
         }
     }
@@ -345,6 +351,18 @@ impl Order {
             sell: SwapType::Herc20,
         }
         .to_topic(peer)
+    }
+}
+
+impl NewOrder {
+    pub fn assert_valid_ledger_pair(&self) -> anyhow::Result<()> {
+        let a = self.bitcoin_ledger;
+        let b = self.ethereum_ledger;
+
+        if ledger::is_valid_ledger_pair(a, b) {
+            return Ok(());
+        }
+        Err(anyhow::anyhow!("invalid ledger pair {}/{}", a, b))
     }
 }
 
@@ -511,10 +529,12 @@ mod tests {
     fn create_order(id: PeerId) -> Order {
         Order::new(id, NewOrder {
             buy: asset::Bitcoin::from_sat(100),
+            bitcoin_ledger: ledger::Bitcoin::Regtest,
             sell: Erc20 {
                 token_contract: Default::default(),
                 quantity: Erc20Quantity::max_value(),
             },
+            ethereum_ledger: ledger::Ethereum::default(),
             absolute_expiry: 100,
         })
     }
