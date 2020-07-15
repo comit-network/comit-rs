@@ -1,5 +1,7 @@
-use crate::{asset, ledger, network::protocols::orderbook::MakerId};
-use libp2p::gossipsub::Topic;
+use crate::{
+    asset, ledger,
+    network::protocols::orderbook::{MakerId, TradingPair, BTC_DAI},
+};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
@@ -32,19 +34,31 @@ impl FromStr for OrderId {
 pub struct Order {
     pub id: OrderId,
     pub maker: MakerId,
+    pub trade: Trade,
     #[serde(with = "asset::bitcoin::sats_as_string")]
-    pub buy: asset::Bitcoin,
+    pub btc: asset::Bitcoin,
     pub bitcoin_ledger: ledger::Bitcoin,
-    pub sell: asset::Erc20,
+    pub dai: asset::Erc20,
     pub ethereum_ledger: ledger::Ethereum,
+    // TODO: Add both expiries
     pub absolute_expiry: u32,
 }
 
 impl Order {
-    pub fn topic(&self) -> Topic {
-        // TODO: Do we need this?
-        unimplemented!();
+    pub fn tp(&self) -> TradingPair {
+        TradingPair::BtcDai
     }
+
+    pub fn topic(&self) -> String {
+        BTC_DAI.to_string()
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum Trade {
+    Buy,
+    Sell,
 }
 
 #[cfg(test)]
@@ -61,12 +75,12 @@ mod tests {
     }
 
     #[test]
-    fn order_serialization_roundtrip() {
-        // TODO: Implement order_serialization_roundtrip()
+    fn btc_dai_order_serialization_roundtrip() {
+        // TODO: Implement btc_dai_order_serialization_roundtrip()
     }
 
     #[test]
-    fn order_serialization_stability() {
-        // TODO: Implement order_serialization_stability()
+    fn btc_dai_order_serialization_stability() {
+        // TODO: Implement btc_dai_order_serialization_stability()
     }
 }

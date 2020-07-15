@@ -95,16 +95,16 @@ impl Orderbook {
 
     /// Create and publish a new 'make' order. Called by Bob i.e. the maker.
     pub fn make(&mut self, order: Order) -> anyhow::Result<OrderId> {
-        let order_id = order.id;
         let ser = bincode::serialize(&Message::CreateOrder(order.clone()))?;
-        let topic = order.topic();
+        let topic = Topic::new(order.topic());
+        let id = order.id;
 
         self.gossipsub.publish(&topic, ser);
-        tracing::info!("published order: {}", order_id);
+        tracing::info!("published order: {}", id);
 
-        self.orders.insert(order_id, order);
+        self.orders.insert(id, order);
 
-        Ok(order_id)
+        Ok(id)
     }
 
     /// Take an order, called by Alice i.e., the taker.
@@ -367,6 +367,7 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
 
             match decoded {
                 Message::CreateOrder(order) => {
+                    // TODO: Should we just blindly insert here?
                     self.orders.insert(order.id, order);
                 }
                 Message::DeleteOrder(order_id) => {
@@ -455,11 +456,13 @@ mod tests {
         Order {
             id: OrderId::random(),
             maker: MakerId::from(id),
-            buy: asset::Bitcoin::from_sat(100),
+            trade: Trade::Sell,
+            btc: asset::Bitcoin::from_sat(100),
             bitcoin_ledger: ledger::Bitcoin::Regtest,
-            sell: Erc20 {
-                token_contract: Default::default(),
+            dai: Erc20 {
                 quantity: Erc20Quantity::max_value(),
+                // TODO: Use a more sane value?
+                token_contract: Default::default(),
             },
             ethereum_ledger: ledger::Ethereum::default(),
             absolute_expiry: 100,
