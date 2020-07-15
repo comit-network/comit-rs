@@ -35,7 +35,8 @@ impl FromStr for OrderId {
 pub struct Order {
     pub id: OrderId,
     pub maker: MakerId,
-    pub buy: u64,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    pub buy: asset::Bitcoin,
     pub bitcoin_ledger: ledger::Bitcoin,
     pub sell: asset::Erc20,
     pub ethereum_ledger: ledger::Ethereum,
@@ -64,5 +65,15 @@ mod tests {
     #[test]
     fn order_id_serialization_stability() {
         // TODO: Implement order_id_serialization_stability()
+    }
+
+    #[test]
+    fn order_serialization_roundtrip() {
+        // TODO: Implement order_serialization_roundtrip()
+    }
+
+    #[test]
+    fn order_serialization_stability() {
+        // TODO: Implement order_serialization_stability()
     }
 }

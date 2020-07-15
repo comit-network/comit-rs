@@ -61,9 +61,10 @@ struct Herc20HbitOrderResponse {
 }
 
 impl Herc20HbitOrderResponse {
+    // TODO: This should implement From
     fn from_order(order: &Order) -> Self {
         Herc20HbitOrderResponse {
-            buy_quantity: asset::Bitcoin::from_sat(order.buy),
+            buy_quantity: order.buy,
             sell_token_contract: order.sell.token_contract,
             sell_quantity: order.sell.quantity.clone(),
             absolute_expiry: order.absolute_expiry,
@@ -110,7 +111,7 @@ pub async fn post_take_herc20_hbit_order(
             absolute_expiry: order.absolute_expiry,
         },
         beta: hbit::CreatedSwap {
-            amount: asset::Bitcoin::from_sat(order.buy),
+            amount: asset::Bitcoin::from_sat(order.buy.as_sat()),
             final_identity: redeem_identity.clone(),
             network: ledger::Bitcoin::Regtest,
             absolute_expiry: order.absolute_expiry,

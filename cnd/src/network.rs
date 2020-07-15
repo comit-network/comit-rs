@@ -372,7 +372,7 @@ impl ComitNode {
         let order = Order {
             id: OrderId::random(),
             maker: MakerId::from(self.peer_id.clone()),
-            buy: new_order.buy.as_sat(),
+            buy: new_order.buy,
             bitcoin_ledger: new_order.bitcoin_ledger,
             sell: new_order.sell,
             ethereum_ledger: new_order.ethereum_ledger,
@@ -593,7 +593,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                         absolute_expiry: order.absolute_expiry,
                     },
                     beta: hbit::CreatedSwap {
-                        amount: asset::Bitcoin::from_sat(order.buy),
+                        amount: asset::Bitcoin::from_sat(order.buy.as_sat()),
                         final_identity: final_identity.into(),
                         network: ledger::Bitcoin::Regtest,
                         absolute_expiry: order.absolute_expiry,
