@@ -166,7 +166,7 @@ impl From<hbit::Refunded> for HbitRefunded {
 impl Save<hbit::Refunded> for Database {
     fn save(&self, event: hbit::Refunded, swap_id: SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get(&swap_id)?;
-
+        // TODO: use merge operators instead of read and then write as per sled's doc
         match stored_swap.hbit_refunded {
             Some(_) => Err(anyhow!("Hbit Refunded event is already stored")),
             None => {
@@ -274,6 +274,8 @@ impl Default for Params {
     }
 }
 
+// TODO: deserialisation/serialisation round
+// TODO: proptests everywhere
 #[cfg(test)]
 mod tests {
     use super::*;
