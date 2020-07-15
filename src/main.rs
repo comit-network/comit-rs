@@ -394,7 +394,16 @@ async fn main() {
         ethereum::Wallet::new(seed, settings.ethereum.node_url, dai_contract_addr)
             .expect("can initialise ethereum wallet");
     let ethereum_wallet = Arc::new(ethereum_wallet);
-    let maker = init_maker(bitcoin_wallet, ethereum_wallet, settings.maker).await;
+
+    trade(settings.maker, bitcoin_wallet, ethereum_wallet).await
+}
+
+async fn trade(
+    maker_settings: settings::Maker,
+    bitcoin_wallet: Arc<bitcoin_wallet::Wallet>,
+    ethereum_wallet: Arc<ethereum_wallet::Wallet>,
+) {
+    let maker = init_maker(bitcoin_wallet, ethereum_wallet, maker_settings).await;
 
     let orderbook = Orderbook;
     let nectar = Nectar::new(orderbook);
