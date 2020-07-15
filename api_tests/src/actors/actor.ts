@@ -237,7 +237,7 @@ export class Actor {
         };
         this.betaAsset = {
             name: AssetKind.Erc20,
-            quantity: create.beta.amount,
+            quantity: create.alpha.amount,
             ledger: LedgerKind.Ethereum,
             tokenContract: create.beta.token_contract,
         };
@@ -252,6 +252,38 @@ export class Actor {
             new SdkWallets({
                 bitcoin: this.wallets.bitcoin.inner,
                 ethereum: this.wallets.ethereum.inner,
+            })
+        );
+    }
+
+    public async initOrderbookTest(swapUrl: string, create: Herc20HbitPayload) {
+        this.alphaLedger = {
+            name: LedgerKind.Ethereum,
+            chain_id: create.alpha.chain_id,
+        };
+        this.betaLedger = {
+            name: LedgerKind.Bitcoin,
+            network: create.beta.network,
+        };
+        this.alphaAsset = {
+            name: AssetKind.Erc20,
+            quantity: create.alpha.amount,
+            ledger: LedgerKind.Ethereum,
+            tokenContract: create.alpha.token_contract,
+        };
+        this.betaAsset = {
+            name: AssetKind.Bitcoin,
+            quantity: create.beta.amount,
+            ledger: LedgerKind.Bitcoin,
+        };
+        await this.setStartingBalances();
+
+        this.swap = new Swap(
+            this.cnd,
+            swapUrl,
+            new SdkWallets({
+                ethereum: this.wallets.ethereum.inner,
+                bitcoin: this.wallets.bitcoin.inner,
             })
         );
     }

@@ -36,11 +36,12 @@ pub struct Order {
     pub id: OrderId,
     pub maker: MakerId,
     #[serde(with = "asset::bitcoin::sats_as_string")]
-    pub buy: asset::Bitcoin,
+    pub btc_quantity: asset::Bitcoin,
     pub bitcoin_ledger: ledger::Bitcoin,
-    pub sell: asset::Erc20,
+    pub erc20_quantity: asset::Erc20,
     pub ethereum_ledger: ledger::Ethereum,
-    pub absolute_expiry: u32,
+    pub alpha_expiry: u32,
+    pub beta_expiry: u32,
 }
 
 impl Order {

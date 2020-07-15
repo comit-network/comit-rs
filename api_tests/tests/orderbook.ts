@@ -7,10 +7,21 @@ import OrderFactory from "../src/actors/order_factory";
 import { twoActorTest } from "../src/actor_test";
 import { Entity, Link } from "comit-sdk/dist/src/cnd/siren";
 import { sleep } from "../src/utils";
+import SwapFactory from "../src/actors/swap_factory";
 
 it(
-    "orderbook_bob_makes_order_alice_takes_order",
+    "orderbook_bob_makes_order_alice_takes_order_both_redeem",
     twoActorTest(async ({ alice, bob }) => {
+        // Bob and Alice both have a swap created from the order that Bob made and alice took.
+        const bodies = (
+            await SwapFactory.newSwap(alice, bob, {
+                ledgers: {
+                    alpha: "ethereum",
+                    beta: "bitcoin",
+                },
+            })
+        ).herc20Hbit;
+
         // Get alice's listen address
         const aliceAddr = await alice.cnd.getPeerListenAddresses();
 
@@ -24,7 +35,10 @@ it(
         /// Wait for alice to accept an incoming connection from Bob
         await sleep(1000);
 
-        const bobMakeOrderBody = OrderFactory.newHerc20HbitOrder(bobAddr[0]);
+        const bobMakeOrderBody = OrderFactory.bobOrderfromSwap(
+            bobAddr[0],
+            bodies.bob
+        );
         // @ts-ignore
         // make response contain url in the header to the created order
         // poll this order to see when when it has been converted to a swap
@@ -95,8 +109,28 @@ it(
         // The link the Bobs swap should return 200
         // "GET /swaps/934dd090-f8eb-4244-9aba-78e23d3f79eb HTTP/1.1"
         const bobSwapResponse = await bob.cnd.fetch<Entity>(linkToBobSwap.href);
+
         expect(bobSwapResponse.status).toEqual(200);
 
-        // Bob and Alice both have a swap created from the order that Bob made and alice took.
+        await bob.initOrderbookTest(linkToBobSwap.href, bodies.bob);
+
+        await alice.initOrderbookTest(
+            aliceTakeOrderResponse.headers.location,
+            bodies.alice
+        );
+
+        await alice.assertAndExecuteNextAction("fund");
+
+        await bob.assertAndExecuteNextAction("deploy");
+        await bob.assertAndExecuteNextAction("fund");
+
+        await alice.assertAndExecuteNextAction("redeem");
+        await bob.assertAndExecuteNextAction("redeem");
+
+        // Wait until the wallet sees the new balance.
+        await sleep(2000);
+
+        await alice.assertBalancesAfterSwap();
+        await bob.assertBalancesAfterSwap();
     })
 );

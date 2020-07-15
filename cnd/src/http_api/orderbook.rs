@@ -17,28 +17,31 @@ use warp::{http, http::StatusCode, Rejection, Reply};
 
 #[derive(Deserialize)]
 struct MakeHerc20HbitOrderBody {
-    // TODO: Fix these names, buy/sell are incorrectly used here. Remember that changing this
-    // struct is a breaking API change so the e2e tests will break.
     #[serde(with = "asset::bitcoin::sats_as_string")]
-    buy_quantity: asset::Bitcoin,
+    btc_quantity: asset::Bitcoin,
     bitcoin_ledger: ledger::Bitcoin,
-    sell_token_contract: ethereum::Address,
-    sell_quantity: asset::Erc20Quantity,
+    erc20_token_contract: ethereum::Address,
+    erc20_quantity: asset::Erc20Quantity,
     ethereum_ledger: ledger::Ethereum,
-    absolute_expiry: u32,
-    refund_identity: bitcoin::Address,
-    redeem_identity: identity::Ethereum,
+    alpha_expiry: u32,
+    beta_expiry: u32,
+    bob_refund_identity: bitcoin::Address,
+    bob_redeem_identity: identity::Ethereum,
 }
 
 impl MakeHerc20HbitOrderBody {
     // TODO: This should implement From
     fn to_order(&self) -> NewOrder {
         NewOrder {
-            buy: self.buy_quantity,
+            btc_quantity: self.btc_quantity,
             bitcoin_ledger: self.bitcoin_ledger,
-            sell: asset::Erc20::new(self.sell_token_contract, self.sell_quantity.clone()),
+            erc20_quantity: asset::Erc20::new(
+                self.erc20_token_contract,
+                self.erc20_quantity.clone(),
+            ),
             ethereum_ledger: self.ethereum_ledger,
-            absolute_expiry: self.absolute_expiry,
+            alpha_expiry: self.alpha_expiry,
+            beta_expiry: self.beta_expiry,
         }
     }
 }
@@ -52,10 +55,11 @@ struct TakeHerc20HbitOrderBody {
 #[derive(Serialize)]
 struct Herc20HbitOrderResponse {
     #[serde(with = "asset::bitcoin::sats_as_string")]
-    buy_quantity: asset::Bitcoin,
-    sell_token_contract: ethereum::Address,
-    sell_quantity: asset::Erc20Quantity,
-    absolute_expiry: u32,
+    btc_quantity: asset::Bitcoin,
+    erc20_token_contract: ethereum::Address,
+    erc20_quantity: asset::Erc20Quantity,
+    alpha_expiry: u32,
+    beta_expiry: u32,
     maker: String,
     id: OrderId,
 }
@@ -64,10 +68,11 @@ impl Herc20HbitOrderResponse {
     // TODO: This should implement From
     fn from_order(order: &Order) -> Self {
         Herc20HbitOrderResponse {
-            buy_quantity: order.buy,
-            sell_token_contract: order.sell.token_contract,
-            sell_quantity: order.sell.quantity.clone(),
-            absolute_expiry: order.absolute_expiry,
+            btc_quantity: order.btc_quantity,
+            erc20_token_contract: order.erc20_quantity.token_contract,
+            erc20_quantity: order.erc20_quantity.quantity.clone(),
+            alpha_expiry: order.alpha_expiry,
+            beta_expiry: order.beta_expiry,
             maker: order.maker.to_string(),
             id: order.id,
         }
@@ -105,16 +110,16 @@ pub async fn post_take_herc20_hbit_order(
     let swap = CreatedSwap {
         swap_id,
         alpha: herc20::CreatedSwap {
-            asset: order.sell,
+            asset: order.erc20_quantity,
             identity: refund_identity,
             chain_id: order.ethereum_ledger.chain_id,
-            absolute_expiry: order.absolute_expiry,
+            absolute_expiry: order.alpha_expiry,
         },
         beta: hbit::CreatedSwap {
-            amount: asset::Bitcoin::from_sat(order.buy.as_sat()),
+            amount: asset::Bitcoin::from_sat(order.btc_quantity.as_sat()),
             final_identity: redeem_identity.clone(),
             network: ledger::Bitcoin::Regtest,
-            absolute_expiry: order.absolute_expiry,
+            absolute_expiry: order.beta_expiry,
         },
         peer: order.maker.clone().into(),
         address_hint: None,
@@ -172,8 +177,8 @@ pub async fn post_make_herc20_hbit_order(
         .make_herc20_hbit_order(
             order,
             swap_id,
-            body.redeem_identity,
-            body.refund_identity.into(),
+            body.bob_redeem_identity,
+            body.bob_refund_identity.into(),
         )
         .await
         .map(|order_id| {
@@ -306,14 +311,15 @@ mod tests {
     fn test_make_order_deserialization() {
         let json = r#"
         {
-            "sell_token_contract": "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280",
+            "erc20_token_contract": "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280",
             "bitcoin_ledger": "regtest",
-            "buy_quantity": "300",
-            "sell_quantity": "200",
+            "erc20_quantity": "300",
+            "btc_quantity": "200",
             "ethereum_ledger": {"chain_id":2},
-            "absolute_expiry": 600,
-            "refund_identity": "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX",
-            "redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+            "alpha_expiry": 600,
+            "beta_expiry": 300,
+            "bob_refund_identity": "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX",
+            "bob_redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
             "maker_addr": "/ip4/127.0.0.1/tcp/39331"
         }"#;
 

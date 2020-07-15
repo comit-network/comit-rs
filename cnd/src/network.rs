@@ -238,9 +238,7 @@ pub struct ComitNode {
     #[behaviour(ignore)]
     bitcoin_addresses: HashMap<identity::Bitcoin, crate::bitcoin::Address>,
     #[behaviour(ignore)]
-    order_swap_ids: HashMap<OrderId, LocalSwapId>,
-    #[behaviour(ignore)]
-    confirmed_order_peers: HashMap<OrderId, PeerId>,
+    order_to_swap_id: HashMap<OrderId, LocalSwapId>,
 }
 
 impl ComitNode {
@@ -264,8 +262,7 @@ impl ComitNode {
             storage,
             protocol_spawner,
             bitcoin_addresses: HashMap::default(),
-            order_swap_ids: Default::default(),
-            confirmed_order_peers: Default::default(),
+            order_to_swap_id: Default::default(),
         })
     }
 
@@ -341,7 +338,7 @@ impl ComitNode {
         };
         self.local_data.insert(swap_id, data);
 
-        self.order_swap_ids.insert(order_id, swap_id);
+        self.order_to_swap_id.insert(order_id, swap_id);
         self.orderbook.take(order_id)?;
 
         Ok(())
@@ -372,14 +369,15 @@ impl ComitNode {
         let order = Order {
             id: OrderId::random(),
             maker: MakerId::from(self.peer_id.clone()),
-            buy: new_order.buy,
+            btc_quantity: new_order.btc_quantity,
             bitcoin_ledger: new_order.bitcoin_ledger,
-            sell: new_order.sell,
+            erc20_quantity: new_order.erc20_quantity,
             ethereum_ledger: new_order.ethereum_ledger,
-            absolute_expiry: new_order.absolute_expiry,
+            alpha_expiry: new_order.alpha_expiry,
+            beta_expiry: new_order.beta_expiry,
         };
         let order_id = self.orderbook.make(order)?;
-        self.order_swap_ids.insert(order_id, swap_id);
+        self.order_to_swap_id.insert(order_id, swap_id);
 
         Ok(order_id)
     }
@@ -451,11 +449,12 @@ impl ListenAddresses for Swarm {
 /// Used by the controller to pass in parameters for a new order.
 #[derive(Debug)]
 pub struct NewOrder {
-    pub buy: asset::Bitcoin,
+    pub btc_quantity: asset::Bitcoin,
     pub bitcoin_ledger: ledger::Bitcoin,
-    pub sell: asset::Erc20,
+    pub erc20_quantity: asset::Erc20,
     pub ethereum_ledger: ledger::Ethereum,
-    pub absolute_expiry: u32,
+    pub alpha_expiry: u32,
+    pub beta_expiry: u32,
 }
 
 impl NewOrder {
@@ -562,7 +561,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                     .orderbook
                     .get_order(&order_id)
                     .expect("orderbook only bubbles up existing orders");
-                let &local_swap_id = match self.order_swap_ids.get(&order_id) {
+                let &local_swap_id = match self.order_to_swap_id.get(&order_id) {
                     Some(id) => id,
                     None => {
                         tracing::warn!(
@@ -587,18 +586,18 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                 let swap = CreatedSwap {
                     swap_id: local_swap_id,
                     alpha: herc20::CreatedSwap {
-                        asset: order.sell,
+                        asset: order.erc20_quantity,
                         identity: redeem_identity,
                         chain_id: ChainId::regtest(),
-                        absolute_expiry: order.absolute_expiry,
+                        absolute_expiry: order.alpha_expiry,
                     },
                     beta: hbit::CreatedSwap {
-                        amount: asset::Bitcoin::from_sat(order.buy.as_sat()),
+                        amount: asset::Bitcoin::from_sat(order.btc_quantity.as_sat()),
                         final_identity: final_identity.into(),
                         network: ledger::Bitcoin::Regtest,
-                        absolute_expiry: order.absolute_expiry,
+                        absolute_expiry: order.beta_expiry,
                     },
-                    peer: peer_id.clone(),
+                    peer: peer_id,
                     address_hint: None,
                     role: Role::Bob,
                     start_of_swap,
@@ -618,8 +617,6 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                     }
                 });
 
-                self.confirmed_order_peers.insert(order_id, peer_id);
-
                 // No other validation, just take the order. This
                 // implies that an order can be taken multiple times.
                 self.orderbook.confirm(order_id, response_channel);
@@ -629,13 +626,22 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                 shared_swap_id,
             } => {
                 // TODO: Re-evaluate all the hashmap access
-                let local_swap_id = self.local_swap_ids.get(&shared_swap_id).unwrap();
+                let local_swap_id = match self.order_to_swap_id.get(&order_id) {
+                    Some(id) => id,
+                    None => {
+                        tracing::error!(
+                            "inconsistent swaps state, no local swap id found for order id: {}",
+                            shared_swap_id
+                        );
+                        return;
+                    }
+                };
                 let &data = match self.local_data.get(local_swap_id) {
                     Some(data) => data,
                     None => {
                         tracing::warn!(
-                            "inconsistent state, no local data found for swap id: {}",
-                            shared_swap_id
+                            "inconsistent state, no local data found for local swap id: {}",
+                            local_swap_id
                         );
                         return;
                     }
@@ -643,12 +649,19 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
 
                 // TODO: Consider creating/saving the swap here.
 
-                let peer_id = self
-                    .confirmed_order_peers
-                    .get(&order_id)
-                    .expect("peer id to be inserted during confirmation");
-                self.comit
-                    .communicate(peer_id.clone(), shared_swap_id, data); //
+                let peer_id = match self.orderbook.get_order(&order_id) {
+                    Some(order) => PeerId::from(order.maker),
+                    None => {
+                        tracing::error!(
+                            "order {} specified in take order confirmation not found in local store",
+                            order_id
+                        );
+                        return;
+                    }
+                };
+
+                tracing::info!("take order confirmation received, starting comit protocol");
+                self.comit.communicate(peer_id, shared_swap_id, data);
             }
 
             orderbook::BehaviourOutEvent::Failed { peer_id, order_id } => tracing::warn!(

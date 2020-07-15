@@ -476,14 +476,15 @@ mod tests {
         Order {
             id: OrderId::random(),
             maker: MakerId::from(id),
-            buy: asset::Bitcoin::from_sat(100),
+            btc_quantity: asset::Bitcoin::from_sat(100),
             bitcoin_ledger: ledger::Bitcoin::Regtest,
-            sell: Erc20 {
+            erc20_quantity: Erc20 {
                 token_contract: Default::default(),
                 quantity: Erc20Quantity::max_value(),
             },
             ethereum_ledger: ledger::Ethereum::default(),
-            absolute_expiry: 100,
+            alpha_expiry: 500,
+            beta_expiry: 300,
         }
     }
 
