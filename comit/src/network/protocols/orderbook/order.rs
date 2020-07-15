@@ -1,8 +1,5 @@
-use crate::{
-    asset, ledger,
-    network::protocols::orderbook::{MakerId, SwapType, TradingPair},
-};
-use libp2p::{gossipsub::Topic, PeerId};
+use crate::{asset, ledger, network::protocols::orderbook::MakerId};
+use libp2p::gossipsub::Topic;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
@@ -45,12 +42,8 @@ pub struct Order {
 
 impl Order {
     pub fn topic(&self) -> Topic {
-        let peer_id = PeerId::from(self.maker.clone());
-        TradingPair {
-            buy: SwapType::Hbit,
-            sell: SwapType::Herc20,
-        }
-        .to_topic(&peer_id)
+        // TODO: Do we need this?
+        unimplemented!();
     }
 }
 
