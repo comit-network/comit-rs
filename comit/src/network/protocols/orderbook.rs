@@ -43,7 +43,7 @@ pub struct Orderbook {
     #[behaviour(ignore)]
     orders: HashMap<OrderId, Order>,
     #[behaviour(ignore)]
-    trading_pairs: HashSet<TradingPairTopic>,
+    trading_pairs: HashSet<TradingPairFromMaker>,
     #[behaviour(ignore)]
     pub peer_id: PeerId,
 }
@@ -92,7 +92,7 @@ impl Orderbook {
     pub fn make(&mut self, order: Order) -> anyhow::Result<OrderId> {
         let order_id = order.id;
         let ser = bincode::serialize(&Message::CreateOrder(order.clone()))?;
-        let topic = order.topic(&self.peer_id);
+        let topic = order.topic();
 
         self.gossipsub.publish(&topic, ser);
         tracing::info!("published order: {}", order_id);
@@ -160,18 +160,18 @@ impl Orderbook {
         self.orders.get(id).cloned()
     }
 
-    pub fn get_trading_pairs(&self) -> Vec<TradingPairTopic> {
+    pub fn get_trading_pairs(&self) -> Vec<TradingPairFromMaker> {
         self.trading_pairs.iter().cloned().collect()
     }
 
     /// Add a trading pair, called when we receive a topic via gossipsub.
-    pub fn add_trading_pair(&mut self, topic: &TradingPairTopic) {
+    pub fn add_trading_pair(&mut self, topic: &TradingPairFromMaker) {
         self.trading_pairs.insert(topic.clone());
     }
 
     /// Subscribe to a trading pair topic from peer.
     pub fn subscribe(&mut self, peer: PeerId, trading_pair: TradingPair) -> anyhow::Result<()> {
-        let topic = TradingPairTopic::new(peer, trading_pair);
+        let topic = TradingPairFromMaker::new(peer, trading_pair);
         self.trading_pairs.insert(topic.clone());
         self.gossipsub.subscribe(topic.to_topic());
         Ok(())
@@ -179,7 +179,7 @@ impl Orderbook {
 
     /// Unsubscribe from a trading pair topic from peer.
     pub fn unsubscribe(&mut self, peer: PeerId, trading_pair: TradingPair) -> anyhow::Result<()> {
-        let topic = TradingPairTopic::new(peer, trading_pair);
+        let topic = TradingPairFromMaker::new(peer, trading_pair);
         self.trading_pairs.remove(&topic);
         self.gossipsub.unsubscribe(topic.to_topic());
         Ok(())
@@ -190,7 +190,7 @@ impl Orderbook {
     // subscribe to the announced trading pair before publishing the order
     /// Announce a trading pair topic to the network.
     pub fn announce_trading_pair(&mut self, tp: TradingPair) -> anyhow::Result<()> {
-        let topic = TradingPairTopic::new(self.peer_id.clone(), tp).to_topic();
+        let topic = TradingPairFromMaker::new(self.peer_id.clone(), tp).to_topic();
         let ser = bincode::serialize(&Message::TradingPair(tp))?;
         self.gossipsub.subscribe(topic.clone());
         self.gossipsub.publish(&topic, ser);
@@ -229,37 +229,36 @@ pub enum OrderbookError {
     #[error("could not unsubscribe to all peers for topic")]
     UnSubscribe,
 }
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum TradeDirection {
+    Buy,
+    Sell,
+}
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub struct TradingPair {
-    pub buy: SwapType,
-    pub sell: SwapType,
+pub enum TradingPair {
+    BtcDai,
 }
 
 impl TradingPair {
-    pub fn to_topic(&self, peer: &PeerId) -> Topic {
-        let trading_pair_topic = TradingPairTopic {
-            peer: PeerId::into_bytes(peer.clone()),
-            buy: self.buy,
-            sell: self.sell,
-        };
-        trading_pair_topic.to_topic()
+    pub fn to_topic(&self) -> Topic {
+        match self {
+            TradingPair::BtcDai => Topic::new("BTC_DAI".to_string()),
+        }
     }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub struct TradingPairTopic {
-    peer: Vec<u8>,
-    buy: SwapType,
-    sell: SwapType,
+pub struct TradingPairFromMaker {
+    pair: TradingPair,
+    maker: MakerId,
 }
 
-impl TradingPairTopic {
-    fn new(peer: PeerId, trading_pair: TradingPair) -> TradingPairTopic {
-        TradingPairTopic {
-            peer: PeerId::into_bytes(peer),
-            buy: trading_pair.buy,
-            sell: trading_pair.sell,
+impl TradingPairFromMaker {
+    fn new(peer: PeerId, trading_pair: TradingPair) -> Self {
+        Self {
+            pair: trading_pair,
+            maker: MakerId(peer),
         }
     }
     fn to_topic(&self) -> Topic {
@@ -270,7 +269,7 @@ impl TradingPairTopic {
 pub type OrderId = Uuid;
 
 /// MakerId is a PeerId wrapper so we control serialization/deserialization.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MakerId(PeerId);
 
 impl MakerId {
@@ -306,15 +305,19 @@ impl<'de> Deserialize<'de> for MakerId {
 pub struct Order {
     pub id: OrderId,
     pub maker: MakerId,
-    pub buy: u64,
-    pub sell: asset::Erc20,
+    pub pair: TradingPair,
+    pub direction: TradeDirection,
+    pub dai_quantity: asset::Erc20Quantity,
+    pub bitcoin_quantity_sat: u64,
     pub absolute_expiry: u32,
 }
 
 #[derive(Debug)]
 pub struct NewOrder {
-    pub buy: asset::Bitcoin,
-    pub sell: asset::Erc20,
+    pub pair: TradingPair,
+    pub direction: TradeDirection,
+    pub dai_quantity: asset::Erc20Quantity,
+    pub bitcoin_quantity: asset::Bitcoin,
     pub absolute_expiry: u32,
 }
 
@@ -323,18 +326,16 @@ impl Order {
         Order {
             id: Uuid::new_v4(),
             maker: MakerId(peer_id),
-            buy: new_order.buy.as_sat(),
-            sell: new_order.sell,
+            pair: TradingPair::BtcDai,
+            direction: new_order.direction,
+            dai_quantity: new_order.dai_quantity,
+            bitcoin_quantity_sat: new_order.bitcoin_quantity.as_sat(),
             absolute_expiry: new_order.absolute_expiry,
         }
     }
 
-    pub fn topic(&self, peer: &PeerId) -> Topic {
-        TradingPair {
-            buy: SwapType::Hbit,
-            sell: SwapType::Herc20,
-        }
-        .to_topic(peer)
+    pub fn topic(&self) -> Topic {
+        TradingPairFromMaker::new(self.maker.peer_id(), self.pair).to_topic()
     }
 }
 
@@ -363,7 +364,7 @@ pub enum Message {
 
 impl fmt::Debug for Orderbook {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BasicOrderbook")
+        f.debug_struct("Orderbook")
             .field("peer_id", &self.peer_id)
             .field("orders", &self.orders)
             .finish()
@@ -419,9 +420,12 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
                     self.orders.remove(&order_id);
                 }
                 Message::TradingPair(trading_pair) => {
-                    self.add_trading_pair(&TradingPairTopic::new(peer_id.clone(), trading_pair));
+                    self.add_trading_pair(&TradingPairFromMaker::new(
+                        peer_id.clone(),
+                        trading_pair,
+                    ));
                     self.gossipsub
-                        .subscribe(TradingPairTopic::new(peer_id, trading_pair).to_topic());
+                        .subscribe(TradingPairFromMaker::new(peer_id, trading_pair).to_topic());
                 }
             }
         }
@@ -492,19 +496,18 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<OrderId, Response>> for O
 mod tests {
     use super::*;
     use crate::{
-        asset::{self, Erc20, Erc20Quantity},
+        asset::{self, Erc20Quantity},
         network::test::{await_events_or_timeout, new_connected_swarm_pair},
     };
     use libp2p::Swarm;
 
     fn create_order(id: PeerId) -> Order {
         Order::new(id, NewOrder {
-            buy: asset::Bitcoin::from_sat(100),
-            sell: Erc20 {
-                token_contract: Default::default(),
-                quantity: Erc20Quantity::max_value(),
-            },
+            pair: TradingPair::BtcDai,
+            direction: TradeDirection::Buy,
+            dai_quantity: Erc20Quantity::max_value(),
             absolute_expiry: 100,
+            bitcoin_quantity: asset::Bitcoin::from_sat(100),
         })
     }
 

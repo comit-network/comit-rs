@@ -117,7 +117,7 @@ impl Swarm {
     }
 
     /// The taker plays the role of Alice.
-    pub async fn take_herc20_hbit_order(
+    pub async fn take_btc_dai_buy_order(
         &self,
         order_id: OrderId,
         swap_id: LocalSwapId,
@@ -129,7 +129,7 @@ impl Swarm {
     }
 
     /// The maker plays the role of Bob.
-    pub async fn make_herc20_hbit_order(
+    pub async fn make_btc_dai_buy_order(
         &self,
         order: NewOrder,
         swap_id: LocalSwapId,

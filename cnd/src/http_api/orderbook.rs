@@ -4,6 +4,7 @@ use crate::{
     hbit, herc20,
     http_api::problem,
     identity, ledger,
+    network::TradeDirection,
     storage::{CreatedSwap, Save},
     Facade, LocalSwapId, Role,
 };
@@ -18,30 +19,32 @@ use uuid::Uuid;
 use warp::{http, http::StatusCode, Rejection, Reply};
 
 #[derive(Deserialize)]
-struct MakeHerc20HbitOrderBody {
+struct MakeBtcDaiBuyOrderBody {
     // TODO: Fix these names, buy/sell are incorrectly used here. Remember that changing this
     // struct is a breaking API change so the e2e tests will break.
     #[serde(with = "asset::bitcoin::sats_as_string")]
-    buy_quantity: asset::Bitcoin,
+    bitcoin_quantity: asset::Bitcoin,
     sell_token_contract: ethereum::Address,
-    sell_quantity: asset::Erc20Quantity,
+    dai_quantity: asset::Erc20Quantity,
     absolute_expiry: u32,
     refund_identity: bitcoin::Address,
     redeem_identity: identity::Ethereum,
 }
 
-impl MakeHerc20HbitOrderBody {
+impl MakeBtcDaiBuyOrderBody {
     fn to_order(&self) -> NewOrder {
         NewOrder {
-            buy: self.buy_quantity,
-            sell: asset::Erc20::new(self.sell_token_contract, self.sell_quantity.clone()),
+            pair: TradingPair::BtcDai,
+            direction: TradeDirection::Buy,
+            dai_quantity: self.dai_quantity,
             absolute_expiry: self.absolute_expiry,
+            bitcoin_quantity: self.bitcoin_quantity,
         }
     }
 }
 
 #[derive(Deserialize)]
-struct TakeHerc20HbitOrderBody {
+struct TakeBtcDaiBuyOrderBody {
     refund_identity: identity::Ethereum,
     redeem_identity: bitcoin::Address,
 }
@@ -76,7 +79,7 @@ pub async fn post_take_herc20_hbit_order(
     mut facade: Facade,
 ) -> Result<impl Reply, Rejection> {
     tracing::info!("entered take order controller");
-    let body = TakeHerc20HbitOrderBody::deserialize(&body)
+    let body = TakeBtcDaiBuyOrderBody::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
@@ -127,7 +130,7 @@ pub async fn post_take_herc20_hbit_order(
     tracing::info!("swap created and saved from order: {:?}", order_id);
 
     facade
-        .take_herc20_hbit_order(order_id, swap_id, redeem_identity.into(), refund_identity)
+        .take_btc_dai_buy_order(order_id, swap_id, redeem_identity.into(), refund_identity)
         .await
         .map(|_| {
             warp::reply::with_status(
@@ -143,12 +146,12 @@ pub async fn post_take_herc20_hbit_order(
 // when making an order, the swap cannot be created until the take provides his
 // identities. The swap is saved to the database when a TakeOrderRequest is
 // received from the the taker.
-pub async fn post_make_herc20_hbit_order(
+pub async fn post_make_btc_dai_buy_order(
     body: serde_json::Value,
     facade: Facade,
 ) -> Result<impl Reply, Rejection> {
     tracing::info!("entered take order controller");
-    let body = MakeHerc20HbitOrderBody::deserialize(&body)
+    let body = MakeBtcDaiBuyOrderBody::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
@@ -160,7 +163,7 @@ pub async fn post_make_herc20_hbit_order(
     let swap_id = LocalSwapId::default();
 
     facade
-        .make_herc20_hbit_order(
+        .make_btc_dai_buy_order(
             order,
             swap_id,
             body.redeem_identity,
@@ -306,6 +309,6 @@ mod tests {
             "maker_addr": "/ip4/127.0.0.1/tcp/39331"
         }"#;
 
-        let _body: MakeHerc20HbitOrderBody = serde_json::from_str(json).unwrap();
+        let _body: MakeBtcDaiBuyOrderBody = serde_json::from_str(json).unwrap();
     }
 }
