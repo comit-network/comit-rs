@@ -4,9 +4,32 @@ use crate::{
 };
 use libp2p::{gossipsub::Topic, PeerId};
 use serde::{Deserialize, Serialize};
+use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
 
-pub type OrderId = Uuid;
+#[derive(Debug, Clone, Copy, Hash, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OrderId(Uuid);
+
+impl OrderId {
+    pub fn random() -> OrderId {
+        OrderId(Uuid::new_v4())
+    }
+}
+
+impl Display for OrderId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl FromStr for OrderId {
+    type Err = uuid::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let uuid = Uuid::from_str(s)?;
+        Ok(OrderId(uuid))
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Order {
@@ -31,7 +54,7 @@ pub struct NewOrder {
 impl Order {
     pub fn new(peer_id: PeerId, new_order: NewOrder) -> Self {
         Order {
-            id: Uuid::new_v4(),
+            id: OrderId::random(),
             maker: MakerId(peer_id),
             buy: new_order.buy.as_sat(),
             bitcoin_ledger: new_order.bitcoin_ledger,
@@ -59,5 +82,19 @@ impl NewOrder {
             return Ok(());
         }
         Err(anyhow::anyhow!("invalid ledger pair {}/{}", a, b))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn order_id_serialization_roundtrip() {
+        // TODO: Implement order_id_serialization_roundtrip()
+    }
+
+    #[test]
+    fn order_id_serialization_stability() {
+        // TODO: Implement order_id_serialization_stability()
     }
 }

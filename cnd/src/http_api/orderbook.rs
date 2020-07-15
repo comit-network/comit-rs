@@ -12,7 +12,6 @@ use comit::{
 };
 use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use warp::{http, http::StatusCode, Rejection, Reply};
 
 #[derive(Deserialize)]
@@ -57,7 +56,7 @@ struct Herc20HbitOrderResponse {
     sell_quantity: asset::Erc20Quantity,
     absolute_expiry: u32,
     maker: String,
-    id: Uuid,
+    id: OrderId,
 }
 
 impl Herc20HbitOrderResponse {
