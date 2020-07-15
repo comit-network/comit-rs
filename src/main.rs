@@ -152,20 +152,7 @@ async fn execute_swap(
 
     match position {
         Position::Sell => {
-            let hbit_params: hbit::Params = todo!("from arguments");
-
             todo!("handle this match arm like below");
-
-            if let Err(e) = swap_execution_finished_sender
-                .send(FinishedSwap::new(
-                    swap_id,
-                    Free::Btc(hbit_params.shared.asset.into()),
-                    taker,
-                ))
-                .await
-            {
-                tracing::trace!("Error when sending execution finished from sender to receiver.")
-            }
         }
         Position::Buy => {
             let herc20_params: herc20::Params = unimplemented!();
