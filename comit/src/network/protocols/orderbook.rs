@@ -100,8 +100,6 @@ impl Orderbook {
         let id = order.id;
 
         self.gossipsub.publish(&topic, ser);
-        tracing::info!("published order: {}", id);
-
         self.orders.insert(id, order);
 
         Ok(id)
