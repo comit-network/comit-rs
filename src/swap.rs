@@ -12,26 +12,79 @@ pub mod herc20;
 use crate::SwapId;
 use comit::Secret;
 use futures::future::{self, Either};
+use std::sync::Arc;
 
 pub use action::{AsSwapId, BetaExpiry, BetaLedgerTime, DoItOnce, Execute, TryDoItOnce};
 pub use alice::WatchOnlyAlice;
 pub use bob::WalletBob;
 pub use db::{Database, Save};
-use std::sync::Arc;
 
-#[derive(Clone, Debug)]
+// TODO: This is awkward to manipulate
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SwapKind {
     HbitHerc20(SwapParams),
     Herc20Hbit(SwapParams),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SwapParams {
     pub hbit_params: hbit::Params,
     pub herc20_params: herc20::Params,
     pub secret_hash: comit::SecretHash,
+    // TODO: Why naive and not DateTime<Local>?
     pub start_of_swap: chrono::NaiveDateTime,
     pub swap_id: SwapId,
+}
+
+#[cfg(test)]
+impl Default for SwapParams {
+    fn default() -> Self {
+        use crate::swap::hbit::SecretHash;
+        use ::bitcoin::secp256k1;
+        use std::str::FromStr;
+
+        let secret_hash = SecretHash::new(Secret::from(*b"hello world, you are beautiful!!"));
+
+        SwapParams {
+            hbit_params: hbit::Params {
+                shared: comit::hbit::Params {
+                    network: ::bitcoin::Network::Regtest,
+                    asset: comit::asset::Bitcoin::from_sat(12_345_678),
+                    redeem_identity: comit::bitcoin::PublicKey::from_str(
+                        "039b6347398505f5ec93826dc61c19f47c66c0283ee9be980e29ce325a0f4679ef",
+                    )
+                    .unwrap(),
+                    refund_identity: comit::bitcoin::PublicKey::from_str(
+                        "032e58afe51f9ed8ad3cc7897f634d881fdbe49a81564629ded8156bebd2ffd1af",
+                    )
+                    .unwrap(),
+                    expiry: 12345678u32.into(),
+                    secret_hash,
+                },
+                transient_sk: secp256k1::SecretKey::from_str(
+                    "01010101010101010001020304050607ffff0000ffff00006363636363636363",
+                )
+                .unwrap(),
+            },
+            herc20_params: herc20::Params {
+                asset: comit::asset::Erc20 {
+                    token_contract: Default::default(),
+                    quantity: comit::asset::Erc20Quantity::from_wei_dec_str(
+                        "4_000_000_000_000_000_000",
+                    )
+                    .unwrap(),
+                },
+                redeem_identity: Default::default(),
+                refund_identity: Default::default(),
+                expiry: 987654321.into(),
+                secret_hash,
+                chain_id: 42.into(),
+            },
+            secret_hash: SecretHash::new(Secret::from(*b"hello world, you are beautiful!!")),
+            start_of_swap: chrono::Local::now().naive_local(),
+            swap_id: Default::default(),
+        }
+    }
 }
 
 pub async fn nectar_hbit_herc20(
@@ -232,7 +285,6 @@ where
 #[cfg(all(test, feature = "test-docker"))]
 mod tests {
     use super::*;
-    use crate::swap::db::Save;
     use crate::{
         swap::{alice::wallet_actor::WalletAlice, bitcoin, bob::watch_only_actor::WatchOnlyBob},
         test_harness, Seed, SwapId,
@@ -418,7 +470,19 @@ mod tests {
 
         let alice_swap = {
             let swap_id = SwapId::default();
-            alice_db.save(db::Created, swap_id).await.unwrap();
+
+            let swap = SwapKind::HbitHerc20(SwapParams {
+                hbit_params: hbit::Params {
+                    shared: hbit_params,
+                    transient_sk: hbit_transient_refund_sk,
+                },
+                herc20_params: herc20_params.clone(),
+                secret_hash,
+                start_of_swap,
+                swap_id,
+            });
+
+            alice_db.insert(swap).unwrap();
 
             let alice = WalletAlice {
                 alpha_wallet: alice_bitcoin_wallet.clone(),
@@ -446,7 +510,19 @@ mod tests {
 
         let bob_swap = {
             let swap_id = SwapId::default();
-            bob_db.save(db::Created, swap_id).await.unwrap();
+
+            let swap = SwapKind::HbitHerc20(SwapParams {
+                hbit_params: hbit::Params {
+                    shared: hbit_params,
+                    transient_sk: hbit_transient_redeem_sk,
+                },
+                herc20_params: herc20_params.clone(),
+                secret_hash,
+                start_of_swap,
+                swap_id,
+            });
+
+            bob_db.insert(swap).unwrap();
 
             let alice = WatchOnlyAlice {
                 alpha_connector: Arc::clone(&bitcoin_connector),
