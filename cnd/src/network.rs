@@ -646,7 +646,16 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                 order_id,
                 shared_swap_id,
             } => {
-                let local_swap_id = self.local_swap_ids.get(&shared_swap_id).unwrap();
+                let local_swap_id = match self.order_swap_ids.get(&order_id) {
+                    Some(id) => id,
+                    None => {
+                        tracing::error!(
+                            "inconsistent swaps state, no local swap id found for order id: {}",
+                            shared_swap_id
+                        );
+                        return;
+                    }
+                };
                 let &data = match self.local_data.get(local_swap_id) {
                     Some(data) => data,
                     None => {
@@ -663,7 +672,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                     .get(&order_id)
                     .expect("peer id to be inserted during confirmation");
                 self.comit
-                    .communicate(peer_id.clone(), shared_swap_id, data); //
+                    .communicate(peer_id.clone(), shared_swap_id, data);
             }
 
             orderbook::BehaviourOutEvent::Failed { peer_id, order_id } => tracing::warn!(
