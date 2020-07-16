@@ -106,9 +106,9 @@ impl RequestResponseCodec for TakeOrderCodec {
             }
             Response::Error => {
                 debug!("closing write response channel");
-                // for now, errors just close the substream.
-                // we can send actual error responses at a later point
-                // denied take order request is an error
+                // For now, errors just close the substream. We can
+                // send actual error responses at a later point. A
+                // denied take order request is defined as an error.
                 let _ = io.close().await;
             }
         }
