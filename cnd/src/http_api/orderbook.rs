@@ -107,7 +107,6 @@ pub async fn post_make_herc20_hbit_order(
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
 
-    // TODO: We need to save the bitcoin address here else it is lost.
     let swap_id = LocalSwapId::default();
 
     facade
