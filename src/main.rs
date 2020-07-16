@@ -37,33 +37,36 @@ async fn init_maker(
     bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum::Wallet>,
     maker_settings: settings::Maker,
-) -> Maker {
-    let initial_btc_balance = bitcoin_wallet.balance().await;
+) -> anyhow::Result<Maker> {
+    let initial_btc_balance = bitcoin_wallet
+        .balance()
+        .await
+        .context("Could not get Bitcoin balance")?;
 
-    let initial_dai_balance = ethereum_wallet.dai_balance().await;
+    let initial_dai_balance = ethereum_wallet
+        .dai_balance()
+        .await
+        .context("Could not get Dai balance")?;
 
     let btc_max_sell = maker_settings.max_sell.bitcoin;
     let dai_max_sell = maker_settings.max_sell.dai;
     let btc_fee_reserve = maker_settings.maximum_possible_fee.bitcoin;
 
-    let initial_rate = get_btc_dai_mid_market_rate().await;
+    let initial_rate = get_btc_dai_mid_market_rate()
+        .await
+        .context("Could not get rate")?;
 
     let spread: Spread = maker_settings.spread;
 
-    // TODO: This match is weird. If the settings does not give you want you want then it should fail earlier.
-    match (initial_btc_balance, initial_dai_balance, initial_rate) {
-        (Ok(initial_btc_balance), Ok(initial_dai_balance), Ok(initial_rate)) => Maker::new(
-            initial_btc_balance,
-            initial_dai_balance.into(),
-            btc_fee_reserve,
-            btc_max_sell,
-            dai_max_sell,
-            initial_rate,
-            spread,
-        ),
-        // TODO better error handling
-        _ => panic!("Maker initialisation failed!"),
-    }
+    Ok(Maker::new(
+        initial_btc_balance,
+        initial_dai_balance.into(),
+        btc_fee_reserve,
+        btc_max_sell,
+        dai_max_sell,
+        initial_rate,
+        spread,
+    ))
 }
 
 fn init_rate_updates(
@@ -448,7 +451,9 @@ async fn main() {
     let ethereum_wallet = Arc::new(ethereum_wallet);
 
     match options.cmd {
-        Command::Trade => trade(settings, bitcoin_wallet, ethereum_wallet).await,
+        Command::Trade => trade(settings, bitcoin_wallet, ethereum_wallet)
+            .await
+            .expect("Start trading"),
     }
 }
 
@@ -456,24 +461,25 @@ async fn trade(
     settings: Settings,
     bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum::Wallet>,
-) {
-    let maker = init_maker(bitcoin_wallet, ethereum_wallet, settings.maker).await;
+) -> anyhow::Result<()> {
+    let maker = init_maker(bitcoin_wallet, ethereum_wallet, settings.maker)
+        .await
+        .context("Could not initialise Maker")?;
 
     let orderbook = Orderbook;
     let nectar = Nectar::new(orderbook);
 
     let mut swarm: libp2p::Swarm<Nectar> = unimplemented!();
 
-    let initial_sell_order = maker.new_sell_order();
-    let initial_buy_order = maker.new_buy_order();
+    let initial_sell_order = maker
+        .new_sell_order()
+        .context("Could not generate sell order")?;
+    let initial_buy_order = maker
+        .new_buy_order()
+        .context("Could not generate buy order")?;
 
-    match (initial_sell_order, initial_buy_order) {
-        (Ok(sell_order), Ok(buy_order)) => {
-            swarm.orderbook.publish(sell_order.into());
-            swarm.orderbook.publish(buy_order.into());
-        }
-        _ => panic!("Unable to publish initial orders!"),
-    }
+    swarm.orderbook.publish(initial_sell_order.into());
+    swarm.orderbook.publish(initial_buy_order.into());
 
     let update_interval = Duration::from_secs(15u64);
 
@@ -504,7 +510,7 @@ async fn trade(
         todo!("ethereum_connector"),
         swap_execution_finished_sender.clone(),
     )
-    .unwrap();
+    .context("Could not respawn swaps")?;
 
     loop {
         futures::select! {
@@ -537,6 +543,8 @@ async fn trade(
             }
         }
     }
+
+    Ok(())
 }
 
 fn respawn_swaps(
