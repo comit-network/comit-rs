@@ -237,7 +237,7 @@ export class Actor {
         };
         this.betaAsset = {
             name: AssetKind.Erc20,
-            quantity: create.alpha.amount,
+            quantity: create.beta.amount,
             ledger: LedgerKind.Ethereum,
             tokenContract: create.beta.token_contract,
         };

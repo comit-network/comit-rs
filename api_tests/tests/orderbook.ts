@@ -35,7 +35,7 @@ it(
         /// Wait for alice to accept an incoming connection from Bob
         await sleep(1000);
 
-        const bobMakeOrderBody = OrderFactory.bobOrderfromSwap(
+        const bobMakeOrderBody = OrderFactory.bobOrderFromSwap(
             bobAddr[0],
             bodies.bob
         );
@@ -73,14 +73,14 @@ it(
                 if (field.name === "refund_identity") {
                     // @ts-ignore
                     return Promise.resolve(
-                        "0x00a329c0648769a73afac7f9381e08fb43dbea72"
+                        bodies.alice.alpha.identity
                     );
                 }
 
                 if (field.name === "redeem_identity") {
                     // @ts-ignore
                     return Promise.resolve(
-                        "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX"
+                        bodies.alice.beta.final_identity
                     );
                 }
             }
