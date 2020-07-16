@@ -29,6 +29,9 @@ use std::{
 
 pub use self::order::*;
 
+// TODO: Audit function scope
+// TODO: Rethink topic logic
+
 /// String representing the BTC/DAI trading pair.
 const BTC_DAI: &str = "BTC/DAI";
 
