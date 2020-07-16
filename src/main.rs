@@ -2,28 +2,24 @@
 #![recursion_limit = "256"]
 
 use anyhow::Context;
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, Local};
 use futures::{
     channel::mpsc::{Receiver, Sender},
     Future, FutureExt, SinkExt, StreamExt,
 };
 use futures_timer::Delay;
 use libp2p::PeerId;
-use nectar::options::Command;
 use nectar::{
     bitcoin, config,
     config::{settings, Settings},
-    ethereum,
-    ethereum::dai,
-    history,
-    history::History,
+    ethereum::{self, dai},
+    history::{self, History},
     maker::{PublishOrders, TakeRequestDecision},
     mid_market_rate::get_btc_dai_mid_market_rate,
-    network::{self, Nectar, Orderbook, Taker},
-    options::{self, Options},
-    order::Position,
-    swap::{self, herc20, Database, SwapKind, SwapParams},
-    Maker, MidMarketRate, Spread, SwapId,
+    network::{self, Swarm, Taker},
+    options::{self, Command, Options},
+    swap::{self, Database, SwapKind},
+    Maker, MidMarketRate, Seed, Spread,
 };
 use num::BigUint;
 use std::str::FromStr;
@@ -49,7 +45,7 @@ async fn init_maker(
         .context("Could not get Dai balance")?;
 
     let btc_max_sell = maker_settings.max_sell.bitcoin;
-    let dai_max_sell = maker_settings.max_sell.dai;
+    let dai_max_sell = maker_settings.max_sell.dai.clone();
     let btc_fee_reserve = maker_settings.maximum_possible_fee.bitcoin;
 
     let initial_rate = get_btc_dai_mid_market_rate()
@@ -157,37 +153,33 @@ fn init_dai_balance_updates(
     (future, receiver)
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn execute_swap(
     db: Arc<Database>,
     bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum::Wallet>,
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    swap_execution_finished_sender: Sender<FinishedSwap>,
+    finished_swap_sender: &mut Sender<FinishedSwap>,
+    taker: Taker,
+    swap: SwapKind,
 ) -> anyhow::Result<()> {
-    let swap_id = SwapId::default();
-    let position: Position =
-        todo!("decision what kind of what swap it is hbit->herc20 or herc20->hbit");
+    match swap {
+        SwapKind::HbitHerc20(params) => {
+            unimplemented!("comit::orderbook does not yet handle sell orders");
 
-    let taker: Taker = todo!("Taker has to be available after execution, e.g. load from db");
-
-    match position {
-        Position::Sell => {
-            todo!("handle this match arm like below");
+            let _ = finished_swap_sender
+                .send(FinishedSwap::new(swap, taker, Local::now()))
+                .await
+                .map_err(|e| {
+                    tracing::trace!(
+                        "Error when sending execution finished from sender to receiver: {}",
+                        e
+                    )
+                });
         }
-        Position::Buy => {
-            let herc20_params: herc20::Params = unimplemented!();
-
-            let swap = SwapParams {
-                hbit_params: todo!("from arguments"),
-                herc20_params,
-                secret_hash: todo!("from arguments"),
-                start_of_swap: Utc::now().naive_local(), // Is this the correct start time?
-                swap_id,
-            };
-
-            let swap_kind = SwapKind::HbitHerc20(swap);
-            db.insert(swap_kind)?;
+        SwapKind::Herc20Hbit(ref params) => {
+            db.insert(swap.clone())?;
 
             swap::nectar_hbit_herc20(
                 Arc::clone(&db),
@@ -195,12 +187,12 @@ async fn execute_swap(
                 Arc::clone(&ethereum_wallet),
                 Arc::clone(&bitcoin_connector),
                 Arc::clone(&ethereum_connector),
-                swap,
+                params.clone(),
             )
             .await?;
 
-            let _ = swap_execution_finished_sender
-                .send(FinishedSwap::new(swap_kind, taker, Local::now()))
+            let _ = finished_swap_sender
+                .send(FinishedSwap::new(swap, taker, Local::now()))
                 .await
                 .map_err(|e| {
                     tracing::trace!(
@@ -217,49 +209,66 @@ async fn execute_swap(
 fn handle_network_event(
     network_event: network::Event,
     maker: &mut Maker,
-    swarm: &mut libp2p::Swarm<Nectar>,
+    swarm: &mut Swarm,
     db: Arc<Database>,
     bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum::Wallet>,
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    sender: Sender<FinishedSwap>,
+    finished_swap_sender: Sender<FinishedSwap>,
 ) {
     match network_event {
-        network::Event::TakeRequest(order) => {
-            // decide & take & reserve
-            let result = maker.process_taken_order(order.clone());
+        network::Event::TakeOrderRequest(order) => {
+            let order_ref = &order;
+            let result = maker.process_taken_order(order_ref.into());
 
             match result {
                 Ok(TakeRequestDecision::GoForSwap) => {
-                    swarm.orderbook.take(order.clone());
+                    let position = order_ref.inner.position;
+                    swarm.confirm(order);
 
-                    match maker.new_order(order.inner.position) {
+                    match maker.new_order(position) {
                         Ok(new_order) => {
-                            swarm.orderbook.publish(new_order.into());
+                            let _ = swarm
+                                .publish(new_order.into())
+                                .map_err(|e| tracing::error!("Failed to publish order: {}", e));
                         }
-                        Err(e) => tracing::error!("Error when trying to create new order: {}", e),
+                        Err(e) => tracing::error!("Error when trying to create order: {}", e),
                     }
                 }
                 Ok(TakeRequestDecision::RateNotProfitable)
                 | Ok(TakeRequestDecision::InsufficientFunds)
                 | Ok(TakeRequestDecision::CannotTradeWithTaker) => {
-                    swarm.orderbook.ignore(order);
+                    swarm.deny(order);
                 }
                 Err(e) => {
-                    swarm.orderbook.ignore(order);
+                    swarm.deny(order);
                     tracing::error!("Processing taken order yielded error: {}", e)
                 }
             }
         }
-        network::Event::SwapFinalized(local_swap_id, remote_data) => {
+        network::Event::SetSwapIdentities(swap_metadata) => {
+            let bitcoin_identity = match bitcoin_wallet.random_transient_sk() {
+                Ok(bitcoin_identity) => bitcoin_identity,
+                Err(e) => {
+                    tracing::error!("Generating transient sk yielded error: {}", e);
+                    return;
+                }
+            };
+            let ethereum_identity = ethereum_wallet.account();
+
+            swarm.set_swap_identities(swap_metadata, bitcoin_identity, ethereum_identity)
+        }
+        network::Event::SpawnSwap(swap, taker) => {
             tokio::spawn(execute_swap(
                 Arc::clone(&db),
                 Arc::clone(&bitcoin_wallet),
                 Arc::clone(&ethereum_wallet),
                 todo!("bitcoin_connector"),
                 todo!("ethereum_connector"),
-                sender,
+                &mut finished_swap_sender,
+                taker,
+                swap,
             ));
         }
     }
@@ -268,7 +277,7 @@ fn handle_network_event(
 fn handle_rate_update(
     rate_update: anyhow::Result<MidMarketRate>,
     maker: &mut Maker,
-    swarm: &mut libp2p::Swarm<Nectar>,
+    swarm: &mut Swarm,
 ) {
     match rate_update {
         Ok(new_rate) => {
@@ -278,8 +287,12 @@ fn handle_rate_update(
                     new_sell_order,
                     new_buy_order,
                 })) => {
-                    swarm.orderbook.publish(new_sell_order.into());
-                    swarm.orderbook.publish(new_buy_order.into());
+                    let _ = swarm
+                        .publish(new_sell_order.into())
+                        .map_err(|e| tracing::error!("Failed to publish new sell order: {}", e));
+                    let _ = swarm
+                        .publish(new_buy_order.into())
+                        .map_err(|e| tracing::error!("Failed to publish new buy order: {}", e));
                 }
                 Ok(None) => (),
                 Err(e) => tracing::warn!("Rate update yielded error: {}", e),
@@ -298,12 +311,14 @@ fn handle_rate_update(
 fn handle_btc_balance_update(
     btc_balance_update: anyhow::Result<bitcoin::Amount>,
     maker: &mut Maker,
-    swarm: &mut libp2p::Swarm<Nectar>,
+    swarm: &mut Swarm,
 ) {
     match btc_balance_update {
         Ok(btc_balance) => match maker.update_bitcoin_balance(btc_balance) {
             Ok(Some(new_sell_order)) => {
-                swarm.orderbook.publish(new_sell_order.into());
+                let _ = swarm
+                    .publish(new_sell_order.into())
+                    .map_err(|e| tracing::error!("Failed to publish new order: {}", e));
             }
             Ok(None) => (),
             Err(e) => tracing::warn!("Bitcoin balance update yielded error: {}", e),
@@ -321,12 +336,14 @@ fn handle_btc_balance_update(
 fn handle_dai_balance_update(
     dai_balance_update: anyhow::Result<dai::Amount>,
     maker: &mut Maker,
-    swarm: &mut libp2p::Swarm<Nectar>,
+    swarm: &mut Swarm,
 ) {
     match dai_balance_update {
         Ok(dai_balance) => match maker.update_dai_balance(dai_balance) {
             Ok(Some(new_buy_order)) => {
-                swarm.orderbook.publish(new_buy_order.into());
+                let _ = swarm
+                    .publish(new_buy_order.into())
+                    .map_err(|e| tracing::error!("Failed to publish order: {}", e));
             }
             Ok(None) => (),
             Err(e) => tracing::warn!("Dai balance update yielded error: {}", e),
@@ -425,6 +442,8 @@ impl FinishedSwap {
 
 #[tokio::main]
 async fn main() {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+
     let options = options::Options::from_args();
 
     let settings = read_config(&options)
@@ -451,25 +470,35 @@ async fn main() {
     let ethereum_wallet = Arc::new(ethereum_wallet);
 
     match options.cmd {
-        Command::Trade => trade(settings, bitcoin_wallet, ethereum_wallet)
-            .await
-            .expect("Start trading"),
+        Command::Trade => trade(
+            runtime.handle().clone(),
+            &seed,
+            settings,
+            bitcoin_wallet,
+            ethereum_wallet,
+        )
+        .await
+        .expect("Start trading"),
     }
 }
 
 async fn trade(
+    runtime_handle: tokio::runtime::Handle,
+    seed: &Seed,
     settings: Settings,
     bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum::Wallet>,
 ) -> anyhow::Result<()> {
-    let maker = init_maker(bitcoin_wallet, ethereum_wallet, settings.maker)
-        .await
-        .context("Could not initialise Maker")?;
+    let maker = init_maker(
+        Arc::clone(&bitcoin_wallet),
+        Arc::clone(&ethereum_wallet),
+        settings.maker.clone(),
+    )
+    .await
+    .context("Could not initialise Maker")?;
 
-    let orderbook = Orderbook;
-    let nectar = Nectar::new(orderbook);
-
-    let mut swarm: libp2p::Swarm<Nectar> = unimplemented!();
+    let mut swarm = Swarm::new(&seed, &settings, runtime_handle).unwrap();
+    swarm.announce_btc_dai_trading_pair().unwrap();
 
     let initial_sell_order = maker
         .new_sell_order()
@@ -478,16 +507,20 @@ async fn trade(
         .new_buy_order()
         .context("Could not generate buy order")?;
 
-    swarm.orderbook.publish(initial_sell_order.into());
-    swarm.orderbook.publish(initial_buy_order.into());
+    swarm
+        .publish(initial_sell_order.into())
+        .context("Could not publish initial sell order")?;
+    swarm
+        .publish(initial_buy_order.into())
+        .context("Could not publish initial buy order")?;
 
     let update_interval = Duration::from_secs(15u64);
 
     let (rate_future, rate_update_receiver) = init_rate_updates(update_interval);
     let (btc_balance_future, btc_balance_update_receiver) =
-        init_bitcoin_balance_updates(update_interval, bitcoin_wallet);
+        init_bitcoin_balance_updates(update_interval, Arc::clone(&bitcoin_wallet));
     let (dai_balance_future, dai_balance_update_receiver) =
-        init_dai_balance_updates(update_interval, ethereum_wallet);
+        init_dai_balance_updates(update_interval, Arc::clone(&ethereum_wallet));
 
     tokio::spawn(rate_future);
     tokio::spawn(btc_balance_future);
@@ -519,7 +552,7 @@ async fn trade(
                     handle_finished_swap(finished_swap, &mut maker, &db, history);
                 }
             },
-            network_event = swarm.next().fuse() => {
+            network_event = swarm.as_inner().next().fuse() => {
                 handle_network_event(
                     network_event,
                     &mut maker,
@@ -553,24 +586,26 @@ fn respawn_swaps(
     ethereum_wallet: Arc<ethereum::Wallet>,
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    swap_execution_finished_sender: Sender<FinishedSwap>,
+    mut finished_swap_sender: Sender<FinishedSwap>,
 ) -> anyhow::Result<()> {
     for swap in db.load_all()?.into_iter() {
-        // TODO: Reserve funds
+        // TODO: Reserve funds. It's a tricky problem because:
+        //
+        // If we have already funded, but the swap hasn't finished, we
+        // should not need to reserve funds (and we may not be able to
+        // if the actual wallet balance is too low), but we don't know
+        // the state of the swap here.
 
-        match swap {
-            SwapKind::HbitHerc20(swap) => {
-                tokio::spawn(swap::nectar_hbit_herc20(
-                    Arc::clone(&db),
-                    Arc::clone(&bitcoin_wallet),
-                    Arc::clone(&ethereum_wallet),
-                    Arc::clone(&bitcoin_connector),
-                    Arc::clone(&ethereum_connector),
-                    swap,
-                ));
-            }
-            SwapKind::Herc20Hbit(_) => todo!("implement swap::nectar_herc20_hbit"),
-        }
+        tokio::spawn(execute_swap(
+            Arc::clone(&db),
+            Arc::clone(&bitcoin_wallet),
+            Arc::clone(&ethereum_wallet),
+            Arc::clone(&bitcoin_connector),
+            Arc::clone(&ethereum_connector),
+            &mut finished_swap_sender,
+            todo!("what taker does this swap correspond to?"),
+            swap,
+        ));
     }
 
     Ok(())

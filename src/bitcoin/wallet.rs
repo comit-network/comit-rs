@@ -1,6 +1,13 @@
-use crate::bitcoin::{Address, Amount, Client, Network, WalletInfoResponse};
-use crate::seed::Seed;
-use ::bitcoin::{hash_types::PubkeyHash, hashes::Hash, PrivateKey, Transaction, Txid};
+use crate::{
+    bitcoin::{Address, Amount, Client, Network, WalletInfoResponse},
+    seed::Seed,
+};
+use anyhow::Context;
+use bitcoin::{
+    hash_types::PubkeyHash, hashes::Hash, secp256k1::SecretKey, PrivateKey, Transaction, Txid,
+};
+use rand::RngCore;
+use sha2::{Digest, Sha256};
 use url::Url;
 
 #[derive(Debug, Clone)]
@@ -57,6 +64,20 @@ impl Wallet {
         }
 
         Ok(())
+    }
+
+    pub fn random_transient_sk(&self) -> anyhow::Result<SecretKey> {
+        // TODO: Replace random bytes with SwapId or SharedSwapId?
+        let mut random_bytes = [0u8; 32];
+
+        rand::thread_rng().fill_bytes(&mut random_bytes);
+
+        let mut hash = Sha256::new();
+        hash.update(random_bytes);
+
+        let sk = hash.finalize();
+
+        SecretKey::from_slice(&sk).context("failed to generate random transient key")
     }
 
     pub async fn info(&self) -> anyhow::Result<WalletInfoResponse> {
