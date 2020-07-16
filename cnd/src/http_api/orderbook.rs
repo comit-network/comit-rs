@@ -324,10 +324,11 @@ mod tests {
             "position": "sell",
             "bitcoin_amount": "300",
             "bitcoin_ledger": "regtest",
+            "bitcoin_absolute_expiry": 600,
             "ethereum_amount": "200",
             "token_contract": "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280",
             "ethereum_ledger": {"chain_id":2},
-            "absolute_expiry": 600,
+            "ethereum_absolute_expiry": 600,
             "refund_identity": "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX",
             "redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72"
         }"#;
