@@ -50,8 +50,9 @@ impl From<hbit::Funded> for HbitFunded {
     }
 }
 
+#[async_trait::async_trait]
 impl Save<hbit::Funded> for Database {
-    fn save(&self, event: hbit::Funded, swap_id: SwapId) -> anyhow::Result<()> {
+    async fn save(&self, event: hbit::Funded, swap_id: SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get(&swap_id)?;
 
         match stored_swap.hbit_funded {
@@ -70,7 +71,13 @@ impl Save<hbit::Funded> for Database {
                 self.db
                     .compare_and_swap(key, Some(old_value), Some(new_value))
                     .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")
+                    .context("Stored swap somehow changed, aborting saving")?;
+
+                self.db
+                    .flush_async()
+                    .await
+                    .map(|_| ())
+                    .context("Could not flush db")
             }
         }
     }
@@ -108,8 +115,9 @@ impl From<hbit::Redeemed> for HbitRedeemed {
     }
 }
 
+#[async_trait::async_trait]
 impl Save<hbit::Redeemed> for Database {
-    fn save(&self, event: hbit::Redeemed, swap_id: SwapId) -> anyhow::Result<()> {
+    async fn save(&self, event: hbit::Redeemed, swap_id: SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get(&swap_id)?;
 
         match stored_swap.hbit_redeemed {
@@ -128,7 +136,13 @@ impl Save<hbit::Redeemed> for Database {
                 self.db
                     .compare_and_swap(key, Some(old_value), Some(new_value))
                     .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")
+                    .context("Stored swap somehow changed, aborting saving")?;
+
+                self.db
+                    .flush_async()
+                    .await
+                    .map(|_| ())
+                    .context("Could not flush db")
             }
         }
     }
@@ -163,8 +177,9 @@ impl From<hbit::Refunded> for HbitRefunded {
     }
 }
 
+#[async_trait::async_trait]
 impl Save<hbit::Refunded> for Database {
-    fn save(&self, event: hbit::Refunded, swap_id: SwapId) -> anyhow::Result<()> {
+    async fn save(&self, event: hbit::Refunded, swap_id: SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get(&swap_id)?;
         // TODO: use merge operators instead of read and then write as per sled's doc
         match stored_swap.hbit_refunded {
@@ -183,7 +198,13 @@ impl Save<hbit::Refunded> for Database {
                 self.db
                     .compare_and_swap(key, Some(old_value), Some(new_value))
                     .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")
+                    .context("Stored swap somehow changed, aborting saving")?;
+
+                self.db
+                    .flush_async()
+                    .await
+                    .map(|_| ())
+                    .context("Could not flush db")
             }
         }
     }
@@ -298,8 +319,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn save_and_load_hbit_funded() {
+    #[tokio::test]
+    async fn save_and_load_hbit_funded() {
         let db = Database::new_test().unwrap();
         let asset = comit::asset::Bitcoin::from_sat(123456);
         let location = comit::htlc_location::Bitcoin::default();
@@ -309,7 +330,7 @@ mod tests {
         db._insert(&swap_id, &swap).unwrap();
 
         let funded = hbit::Funded { asset, location };
-        db.save(funded, swap_id).unwrap();
+        db.save(funded, swap_id).await.unwrap();
 
         let stored_funded: hbit::Funded = db
             .load(swap_id)
@@ -320,8 +341,8 @@ mod tests {
         assert_eq!(stored_funded.location, location);
     }
 
-    #[test]
-    fn save_and_load_hbit_redeemed() {
+    #[tokio::test]
+    async fn save_and_load_hbit_redeemed() {
         let db = Database::new_test().unwrap();
         let transaction = bitcoin_transaction();
         let secret = Secret::from_vec(b"are those thirty-two bytes? Hum.").unwrap();
@@ -334,7 +355,7 @@ mod tests {
             transaction: transaction.clone(),
             secret,
         };
-        db.save(event, swap_id).unwrap();
+        db.save(event, swap_id).await.unwrap();
 
         let stored_event: hbit::Redeemed = db
             .load(swap_id)
@@ -345,8 +366,8 @@ mod tests {
         assert_eq!(stored_event.secret, secret);
     }
 
-    #[test]
-    fn save_and_load_hbit_refunded() {
+    #[tokio::test]
+    async fn save_and_load_hbit_refunded() {
         let db = Database::new_test().unwrap();
         let transaction = bitcoin_transaction();
         let swap = Swap::default();
@@ -357,7 +378,7 @@ mod tests {
         let event = hbit::Refunded {
             transaction: transaction.clone(),
         };
-        db.save(event, swap_id).unwrap();
+        db.save(event, swap_id).await.unwrap();
 
         let stored_event: hbit::Refunded = db
             .load(swap_id)

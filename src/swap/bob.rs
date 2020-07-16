@@ -189,6 +189,7 @@ where
     }
 }
 
+#[async_trait::async_trait]
 impl<E, AW, BW, DB, AP, BP> db::Save<E> for WalletBob<AW, BW, DB, AP, BP>
 where
     E: Send + 'static,
@@ -198,8 +199,8 @@ where
     AP: Send + Sync + 'static,
     BP: Send + Sync + 'static,
 {
-    fn save(&self, event: E, swap_id: SwapId) -> anyhow::Result<()> {
-        self.db.save(event, swap_id)
+    async fn save(&self, event: E, swap_id: SwapId) -> anyhow::Result<()> {
+        self.db.save(event, swap_id).await
     }
 }
 
@@ -371,8 +372,8 @@ pub mod watch_only_actor {
         AP: Send + Sync + 'static,
         BP: Send + Sync + 'static,
     {
-        fn save(&self, event: E, swap_id: SwapId) -> anyhow::Result<()> {
-            self.db.save(event, swap_id)
+        async fn save(&self, event: E, swap_id: SwapId) -> anyhow::Result<()> {
+            self.db.save(event, swap_id).await
         }
     }
 

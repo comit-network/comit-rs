@@ -14,8 +14,9 @@ pub trait Load<T>: Send + Sync + 'static {
     fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<T>>;
 }
 
+#[async_trait::async_trait]
 pub trait Save<T>: Send + Sync + 'static {
-    fn save(&self, elem: T, swap_id: SwapId) -> anyhow::Result<()>;
+    async fn save(&self, elem: T, swap_id: SwapId) -> anyhow::Result<()>;
 }
 
 #[derive(Debug)]
