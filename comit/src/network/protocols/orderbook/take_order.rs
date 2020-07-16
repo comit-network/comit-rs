@@ -39,7 +39,7 @@ impl RequestResponseCodec for TakeOrderCodec {
     type Request = OrderId;
     type Response = Response;
 
-    // handling take order req
+    /// Reads a take order request from the given I/O stream.
     async fn read_request<T>(&mut self, _: &Self::Protocol, io: &mut T) -> io::Result<Self::Request>
     where
         T: AsyncRead + Unpin + Send,
@@ -54,7 +54,7 @@ impl RequestResponseCodec for TakeOrderCodec {
         Ok(order_id)
     }
 
-    // handling take order resp
+    /// Reads a response (to a take order request) from the given I/O stream.
     async fn read_response<T>(
         &mut self,
         _: &Self::Protocol,
@@ -72,7 +72,7 @@ impl RequestResponseCodec for TakeOrderCodec {
         Ok(res)
     }
 
-    // sending take order req
+    /// Writes a take order request to the given I/O stream.
     async fn write_request<T>(
         &mut self,
         _: &Self::Protocol,
@@ -89,7 +89,7 @@ impl RequestResponseCodec for TakeOrderCodec {
         Ok(())
     }
 
-    // sending take order resp
+    /// Writes a response (to a take order request) to the given I/O stream.
     async fn write_response<T>(
         &mut self,
         _: &Self::Protocol,
