@@ -256,6 +256,20 @@ export class Actor {
         );
     }
 
+    /**
+     * Makes a BtcDai sell order (herc20-hbit Swap)
+     */
+    public async makeOrder(_payload: Herc20HbitPayload) {
+        // TODO: Implement makeOrder()
+    }
+
+    /**
+     * Takes a BtcDai sell order (herc20-hbit Swap)
+     */
+    public async takeOrder(_payload: Herc20HbitPayload) {
+        // TODO: Implement takeOrder()
+    }
+
     private async setStartingBalances() {
         switch (this.name) {
             case "alice": {

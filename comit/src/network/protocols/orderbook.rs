@@ -18,7 +18,7 @@ use libp2p::{
 };
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
-    collections::{hash_map::DefaultHasher, HashMap, HashSet, VecDeque},
+    collections::{hash_map::DefaultHasher, HashMap, VecDeque},
     fmt,
     fmt::Display,
     hash::{Hash, Hasher},
@@ -29,8 +29,9 @@ use std::{
 
 pub use self::order::*;
 
-// We only support a single topic at the moment.
-const TOPIC: &str = "Herc20Hbit";
+/// String representing the BTC/DAI trading pair.
+const BTC_DAI: &str = "BTC/DAI";
+
 /// The time we wait for a take order request to be confirmed or denied.
 const REQUEST_TIMEOUT_SECS: u64 = 10;
 
@@ -44,8 +45,6 @@ pub struct Orderbook {
     events: VecDeque<BehaviourOutEvent>,
     #[behaviour(ignore)]
     orders: HashMap<OrderId, Order>,
-    #[behaviour(ignore)]
-    trading_pairs: HashSet<TradingPairTopic>,
     #[behaviour(ignore)]
     pub peer_id: PeerId,
 }
@@ -77,7 +76,6 @@ impl Orderbook {
             peer_id,
             gossipsub,
             take_order: behaviour,
-            trading_pairs: HashSet::new(),
             orders: HashMap::new(),
             events: VecDeque::new(),
         };
@@ -85,23 +83,25 @@ impl Orderbook {
         orderbook.gossipsub.subscribe(Makers::topic());
 
         // Since we only support a single trading pair topic just subscribe to it now.
-        orderbook.gossipsub.subscribe(Topic::new(TOPIC.to_string()));
+        orderbook
+            .gossipsub
+            .subscribe(Topic::new(BTC_DAI.to_string()));
 
         orderbook
     }
 
     /// Create and publish a new 'make' order. Called by Bob i.e. the maker.
     pub fn make(&mut self, order: Order) -> anyhow::Result<OrderId> {
-        let order_id = order.id;
         let ser = bincode::serialize(&Message::CreateOrder(order.clone()))?;
-        let topic = order.topic();
+        let topic = order.tp().topic();
+        let id = order.id;
 
         self.gossipsub.publish(&topic, ser);
-        tracing::info!("published order: {}", order_id);
+        tracing::info!("published order: {}", id);
 
-        self.orders.insert(order_id, order);
+        self.orders.insert(id, order);
 
-        Ok(order_id)
+        Ok(id)
     }
 
     /// Take an order, called by Alice i.e., the taker.
@@ -160,40 +160,16 @@ impl Orderbook {
         self.orders.get(id).cloned()
     }
 
-    pub fn get_trading_pairs(&self) -> Vec<TradingPairTopic> {
-        self.trading_pairs.iter().cloned().collect()
-    }
-
-    /// Add a trading pair, called when we receive a topic via gossipsub.
-    pub fn add_trading_pair(&mut self, topic: &TradingPairTopic) {
-        self.trading_pairs.insert(topic.clone());
-    }
-
-    /// Subscribe to a trading pair topic from peer.
-    pub fn subscribe(&mut self, peer: PeerId, trading_pair: TradingPair) -> anyhow::Result<()> {
-        let topic = TradingPairTopic::new(peer, trading_pair);
-        self.trading_pairs.insert(topic.clone());
-        self.gossipsub.subscribe(topic.to_topic());
-        Ok(())
-    }
-
-    /// Unsubscribe from a trading pair topic from peer.
-    pub fn unsubscribe(&mut self, peer: PeerId, trading_pair: TradingPair) -> anyhow::Result<()> {
-        let topic = TradingPairTopic::new(peer, trading_pair);
-        self.trading_pairs.remove(&topic);
-        self.gossipsub.unsubscribe(topic.to_topic());
-        Ok(())
-    }
-
     // Ideally this step should be executed automatically before making an order.
     // Unfortunately a brief delay is required to allow peers to acknowledge and
     // subscribe to the announced trading pair before publishing the order
     /// Announce a trading pair topic to the network.
     pub fn announce_trading_pair(&mut self, tp: TradingPair) -> anyhow::Result<()> {
-        let topic = TradingPairTopic::new(self.peer_id.clone(), tp).to_topic();
+        // TOOD: This code is contrived, why do we sub here?
+        self.gossipsub.subscribe(tp.topic());
+
         let ser = bincode::serialize(&Message::TradingPair(tp))?;
-        self.gossipsub.subscribe(topic.clone());
-        self.gossipsub.publish(&topic, ser);
+        self.gossipsub.publish(&tp.topic(), ser);
 
         Ok(())
     }
@@ -231,39 +207,13 @@ pub enum OrderbookError {
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub struct TradingPair {
-    pub buy: SwapType,
-    pub sell: SwapType,
+pub enum TradingPair {
+    BtcDai,
 }
 
 impl TradingPair {
-    pub fn to_topic(&self, peer: &PeerId) -> Topic {
-        let trading_pair_topic = TradingPairTopic {
-            peer: PeerId::into_bytes(peer.clone()),
-            buy: self.buy,
-            sell: self.sell,
-        };
-        trading_pair_topic.to_topic()
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub struct TradingPairTopic {
-    peer: Vec<u8>,
-    buy: SwapType,
-    sell: SwapType,
-}
-
-impl TradingPairTopic {
-    fn new(peer: PeerId, trading_pair: TradingPair) -> TradingPairTopic {
-        TradingPairTopic {
-            peer: PeerId::into_bytes(peer),
-            buy: trading_pair.buy,
-            sell: trading_pair.sell,
-        }
-    }
-    fn to_topic(&self) -> Topic {
-        Topic::new(TOPIC.to_string())
+    pub fn topic(&self) -> Topic {
+        Topic::new(BTC_DAI.to_string())
     }
 }
 
@@ -375,7 +325,7 @@ pub enum BehaviourOutEvent {
 
 impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
     fn inject_event(&mut self, event: GossipsubEvent) {
-        if let GossipsubEvent::Message(peer_id, _message_id, message) = event {
+        if let GossipsubEvent::Message(_peer_id, _message_id, message) = event {
             let decoded: Message = match bincode::deserialize(&message.data[..]) {
                 Ok(msg) => msg,
                 Err(e) => {
@@ -386,15 +336,20 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
 
             match decoded {
                 Message::CreateOrder(order) => {
+                    // This implies new orders remove old orders from
+                    // the orderbook. This means nodes can spoof the
+                    // network using previously seen order ids in
+                    // order to override orders.
                     self.orders.insert(order.id, order);
                 }
                 Message::DeleteOrder(order_id) => {
+                    // Same consideration here, nodes can cause orders
+                    // they did not create to be removed by spoofing
+                    // the network with a previously seen order id.
                     self.orders.remove(&order_id);
                 }
-                Message::TradingPair(trading_pair) => {
-                    self.add_trading_pair(&TradingPairTopic::new(peer_id.clone(), trading_pair));
-                    self.gossipsub
-                        .subscribe(TradingPairTopic::new(peer_id, trading_pair).to_topic());
+                Message::TradingPair(tp) => {
+                    self.gossipsub.subscribe(tp.topic());
                 }
             }
         }
@@ -464,35 +419,16 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<OrderId, Response>> for O
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        asset::{self, Erc20, Erc20Quantity},
-        ledger,
-        network::test::{await_events_or_timeout, new_connected_swarm_pair},
-    };
+    use crate::network::test::{await_events_or_timeout, new_connected_swarm_pair};
     use libp2p::Swarm;
     use spectral::prelude::*;
-
-    fn create_order(id: PeerId) -> Order {
-        Order {
-            id: OrderId::random(),
-            maker: MakerId::from(id),
-            buy: asset::Bitcoin::from_sat(100),
-            bitcoin_ledger: ledger::Bitcoin::Regtest,
-            sell: Erc20 {
-                token_contract: Default::default(),
-                quantity: Erc20Quantity::max_value(),
-            },
-            ethereum_ledger: ledger::Ethereum::default(),
-            absolute_expiry: 100,
-        }
-    }
 
     #[tokio::test]
     async fn take_order_request_confirmation() {
         // arrange
 
         let (mut alice, mut bob) = new_connected_swarm_pair(Orderbook::new).await;
-        let bob_order = create_order(bob.peer_id.clone());
+        let bob_order = order::meaningless_test_order(MakerId::from(bob.peer_id.clone()));
 
         // act
 
@@ -568,7 +504,7 @@ mod tests {
     }
 
     #[test]
-    fn peer_id_serializes_as_expected() {
+    fn maker_id_serializes_as_expected() {
         let given = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY".to_string();
         let peer_id = PeerId::from_str(&given).expect("failed to parse peer id");
         let maker_id = MakerId(peer_id);
@@ -580,7 +516,7 @@ mod tests {
     }
 
     #[test]
-    fn peer_id_serialization_roundtrip_test() {
+    fn maker_id_serialization_roundtrip_test() {
         let s = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY".to_string();
         let peer_id = PeerId::from_str(&s).expect("failed to parse peer id");
         let maker_id = MakerId::from(peer_id);

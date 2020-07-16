@@ -9,7 +9,6 @@ pub use transport::ComitTransport;
 
 use crate::{
     config::Settings,
-    ethereum::ChainId,
     hbit, herc20, identity,
     network::{peer_tracker::PeerTracker, Comit, LocalData, MakerId},
     spawn,
@@ -152,9 +151,7 @@ impl Swarm {
 
     pub async fn dial_addr(&mut self, addr: Multiaddr) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
-        // todo: log error
-        libp2p::Swarm::dial_addr(&mut *guard, addr).unwrap();
-        // guard.dial_addr(addr);
+        let _ = libp2p::Swarm::dial_addr(&mut *guard, addr)?;
         Ok(())
     }
 
@@ -372,11 +369,14 @@ impl ComitNode {
         let order = Order {
             id: OrderId::random(),
             maker: MakerId::from(self.peer_id.clone()),
-            buy: new_order.buy,
+            position: new_order.position,
+            bitcoin_amount: new_order.bitcoin_amount,
             bitcoin_ledger: new_order.bitcoin_ledger,
-            sell: new_order.sell,
+            bitcoin_absolute_expiry: new_order.bitcoin_absolute_expiry,
+            ethereum_amount: new_order.ethereum_amount,
+            token_contract: new_order.token_contract,
             ethereum_ledger: new_order.ethereum_ledger,
-            absolute_expiry: new_order.absolute_expiry,
+            ethereum_absolute_expiry: new_order.ethereum_absolute_expiry,
         };
         let order_id = self.orderbook.make(order)?;
         self.order_swap_ids.insert(order_id, swap_id);
@@ -448,14 +448,17 @@ impl ListenAddresses for Swarm {
     }
 }
 
-/// Used by the controller to pass in parameters for a new order.
+/// Used by the controller to pass in data for a new order.
 #[derive(Debug)]
 pub struct NewOrder {
-    pub buy: asset::Bitcoin,
+    pub position: Position,
+    pub bitcoin_amount: asset::Bitcoin,
     pub bitcoin_ledger: ledger::Bitcoin,
-    pub sell: asset::Erc20,
+    pub bitcoin_absolute_expiry: u32,
+    pub ethereum_amount: asset::Erc20Quantity,
+    pub token_contract: identity::Ethereum,
     pub ethereum_ledger: ledger::Ethereum,
-    pub absolute_expiry: u32,
+    pub ethereum_absolute_expiry: u32,
 }
 
 impl NewOrder {
@@ -571,32 +574,56 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                         return;
                     }
                 };
-                // TODO: Unwraps
-                let data = self.local_data.get(&local_swap_id).unwrap();
-                let refund_identity = data.bitcoin_identity.unwrap();
-                let redeem_identity = data.ethereum_identity.unwrap();
-                let start_of_swap = Utc::now().naive_local();
 
-                // TODO: Remove unwrap.
-                let final_identity = self
-                    .bitcoin_addresses
-                    .get(&refund_identity)
-                    .unwrap()
-                    .clone();
+                let data = match self.local_data.get(&local_swap_id) {
+                    Some(data) => data,
+                    None => {
+                        tracing::error!(
+                            "inconsistent state, local data missing: {}",
+                            local_swap_id
+                        );
+                        return;
+                    }
+                };
+                let (refund_identity, redeem_identity) =
+                    match (data.bitcoin_identity, data.ethereum_identity) {
+                        (Some(bitcoin), Some(ethereum)) => (bitcoin, ethereum),
+                        _ => {
+                            tracing::error!(
+                                "inconsistent state, identit[y|ies] missing: {}",
+                                local_swap_id
+                            );
+                            return;
+                        }
+                    };
+                let final_identity = match self.bitcoin_addresses.get(&refund_identity) {
+                    Some(identity) => identity.clone(),
+                    None => {
+                        tracing::error!(
+                            "inconsistent state, bitcoin address missing: {}",
+                            local_swap_id
+                        );
+                        return;
+                    }
+                };
+                let start_of_swap = Utc::now().naive_local();
 
                 let swap = CreatedSwap {
                     swap_id: local_swap_id,
                     alpha: herc20::CreatedSwap {
-                        asset: order.sell,
+                        asset: asset::Erc20 {
+                            token_contract: order.token_contract,
+                            quantity: order.ethereum_amount,
+                        },
                         identity: redeem_identity,
-                        chain_id: ChainId::regtest(),
-                        absolute_expiry: order.absolute_expiry,
+                        chain_id: order.ethereum_ledger.chain_id,
+                        absolute_expiry: order.ethereum_absolute_expiry,
                     },
                     beta: hbit::CreatedSwap {
-                        amount: asset::Bitcoin::from_sat(order.buy.as_sat()),
+                        amount: order.bitcoin_amount,
                         final_identity: final_identity.into(),
-                        network: ledger::Bitcoin::Regtest,
-                        absolute_expiry: order.absolute_expiry,
+                        network: order.bitcoin_ledger,
+                        absolute_expiry: order.bitcoin_absolute_expiry,
                     },
                     peer: peer_id.clone(),
                     address_hint: None,
@@ -628,7 +655,6 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                 order_id,
                 shared_swap_id,
             } => {
-                // TODO: Re-evaluate all the hashmap access
                 let local_swap_id = self.local_swap_ids.get(&shared_swap_id).unwrap();
                 let &data = match self.local_data.get(local_swap_id) {
                     Some(data) => data,
@@ -640,8 +666,6 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                         return;
                     }
                 };
-
-                // TODO: Consider creating/saving the swap here.
 
                 let peer_id = self
                     .confirmed_order_peers

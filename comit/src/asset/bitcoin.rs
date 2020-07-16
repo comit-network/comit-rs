@@ -16,6 +16,11 @@ impl Bitcoin {
     pub fn to_le_bytes(self) -> [u8; 8] {
         self.0.as_sat().to_le_bytes()
     }
+
+    #[cfg(test)]
+    pub fn meaningless_test_value() -> Self {
+        Bitcoin::from_sat(1_000u64)
+    }
 }
 
 impl From<Bitcoin> for Amount {

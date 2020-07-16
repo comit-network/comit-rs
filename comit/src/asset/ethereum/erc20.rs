@@ -35,6 +35,11 @@ impl Erc20Quantity {
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_bytes_le()
     }
+
+    #[cfg(test)]
+    pub fn meaningless_test_value() -> Self {
+        Erc20Quantity::from_wei(1_000u32)
+    }
 }
 
 impl FromWei<U256> for Erc20Quantity {
