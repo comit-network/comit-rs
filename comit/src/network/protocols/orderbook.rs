@@ -110,7 +110,7 @@ impl Orderbook {
     pub fn take(&mut self, order_id: OrderId) -> anyhow::Result<()> {
         let maker_id = self
             .maker_id(order_id)
-            .ok_or_else(|| OrderbookError::OrderNotFound(order_id))?;
+            .ok_or_else(|| OrderNotFound(order_id))?;
 
         self.take_order.send_request(&maker_id.into(), order_id);
 
@@ -179,19 +179,9 @@ impl Orderbook {
     }
 }
 
-#[derive(thiserror::Error, Debug, Clone, Copy)]
-pub enum OrderbookError {
-    #[error("could not make order")]
-    Make,
-    #[error("could not take order because identities not found")]
-    IdentitiesForOrderNotFound(OrderId),
-    #[error("could not take order because not found")]
-    OrderNotFound(OrderId),
-    #[error("could not subscribe to all peers for topic")]
-    Subscribe,
-    #[error("could not unsubscribe to all peers for topic")]
-    UnSubscribe,
-}
+#[derive(PartialEq, Clone, Copy, Debug, thiserror::Error)]
+#[error("order not found in orderbook: {0:?}")]
+pub struct OrderNotFound(OrderId);
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum TradingPair {
