@@ -18,7 +18,7 @@ use libp2p::{
 };
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
-    collections::{hash_map::DefaultHasher, HashMap, HashSet, VecDeque},
+    collections::{hash_map::DefaultHasher, HashMap, VecDeque},
     fmt,
     fmt::Display,
     hash::{Hash, Hasher},
@@ -49,8 +49,6 @@ pub struct Orderbook {
     orders: HashMap<OrderId, Order>,
     #[behaviour(ignore)]
     pub peer_id: PeerId,
-    #[behaviour(ignore)]
-    subs: HashSet<String>, // Topics we are subscribed to, Topic does not `Eq`.
 }
 
 impl Orderbook {
@@ -80,7 +78,6 @@ impl Orderbook {
             peer_id,
             gossipsub,
             take_order: behaviour,
-            subs: HashSet::new(),
             orders: HashMap::new(),
             events: VecDeque::new(),
         };
@@ -96,7 +93,7 @@ impl Orderbook {
     /// Create and publish a new 'make' order. Called by Bob i.e. the maker.
     pub fn make(&mut self, order: Order) -> anyhow::Result<OrderId> {
         let ser = bincode::serialize(&Message::CreateOrder(order.clone()))?;
-        let topic = Topic::new(order.topic());
+        let topic = order.tp().topic();
         let id = order.id;
 
         self.gossipsub.publish(&topic, ser);
@@ -163,44 +160,16 @@ impl Orderbook {
         self.orders.get(id).cloned()
     }
 
-    fn is_subscribed(&self, topic: &str) -> bool {
-        self.subs.contains(topic)
-    }
-
-    /// Subscribe to a trading pair topic from peer.
-    /// Returns true if the subscription worked. Returns false if we were
-    /// already subscribed.
-    pub fn subscribe(&mut self, topic: String) -> bool {
-        if self.is_subscribed(&topic) {
-            return false;
-        }
-
-        self.subs.insert(topic.clone());
-        self.gossipsub.subscribe(Topic::new(topic))
-    }
-
-    /// Unsubscribe from a trading pair topic from peer.
-    /// Returns true if we were subscribed to this topic.
-    pub fn unsubscribe(&mut self, topic: String) -> bool {
-        if !self.is_subscribed(&topic) {
-            return false;
-        }
-
-        self.subs.remove(&topic);
-        self.gossipsub.unsubscribe(Topic::new(topic))
-    }
-
     // Ideally this step should be executed automatically before making an order.
     // Unfortunately a brief delay is required to allow peers to acknowledge and
     // subscribe to the announced trading pair before publishing the order
     /// Announce a trading pair topic to the network.
     pub fn announce_trading_pair(&mut self, tp: TradingPair) -> anyhow::Result<()> {
         // TOOD: This code is contrived, why do we sub here?
-        let topic = Topic::new(tp.topic());
-        self.gossipsub.subscribe(topic.clone());
+        self.gossipsub.subscribe(tp.topic());
 
         let ser = bincode::serialize(&Message::TradingPair(tp))?;
-        self.gossipsub.publish(&topic, ser);
+        self.gossipsub.publish(&tp.topic(), ser);
 
         Ok(())
     }
@@ -243,8 +212,8 @@ pub enum TradingPair {
 }
 
 impl TradingPair {
-    pub fn topic(&self) -> String {
-        BTC_DAI.to_string()
+    pub fn topic(&self) -> Topic {
+        Topic::new(BTC_DAI.to_string())
     }
 }
 
@@ -374,7 +343,7 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
                     self.orders.remove(&order_id);
                 }
                 Message::TradingPair(tp) => {
-                    self.subscribe(tp.topic());
+                    self.gossipsub.subscribe(tp.topic());
                 }
             }
         }

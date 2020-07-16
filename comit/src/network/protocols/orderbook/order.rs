@@ -1,6 +1,6 @@
 use crate::{
     asset, identity, ledger,
-    network::protocols::orderbook::{MakerId, TradingPair, BTC_DAI},
+    network::protocols::orderbook::{MakerId, TradingPair},
 };
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
@@ -48,10 +48,6 @@ pub struct Order {
 impl Order {
     pub fn tp(&self) -> TradingPair {
         TradingPair::BtcDai
-    }
-
-    pub fn topic(&self) -> String {
-        BTC_DAI.to_string()
     }
 }
 
