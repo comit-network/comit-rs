@@ -325,50 +325,45 @@ fn handle_dai_balance_update(
     }
 }
 
-// TODO: I don't think `finished_swap` should be an Option
 fn handle_finished_swap(
-    finished_swap: Option<FinishedSwap>,
+    finished_swap: FinishedSwap,
     maker: &mut Maker,
     db: &Database,
     history: Arc<Mutex<History>>,
 ) {
-    if let Some(finished_swap) = finished_swap {
-        {
-            let trade = into_trade(
-                finished_swap.taker.peer_id(),
-                finished_swap.swap.clone(),
-                finished_swap.final_timestamp,
-            );
+    {
+        let trade = into_trade(
+            finished_swap.taker.peer_id(),
+            finished_swap.swap.clone(),
+            finished_swap.final_timestamp,
+        );
 
-            let mut history = history
-                .lock()
-                .expect("No thread panicked while holding the lock");
-            let _ = history.write(trade).map_err(|error| {
-                tracing::error!(
-                    "Unable to register history entry: {}; {:?}",
-                    error,
-                    finished_swap
-                )
-            });
-        }
-
-        let (dai, btc, swap_id) = match finished_swap.swap {
-            SwapKind::HbitHerc20(swap) => {
-                (Some(swap.herc20_params.asset.into()), None, swap.swap_id)
-            }
-            SwapKind::Herc20Hbit(swap) => (
-                None,
-                Some(swap.hbit_params.shared.asset.into()),
-                swap.swap_id,
-            ),
-        };
-
-        maker.process_finished_swap(dai, btc, finished_swap.taker);
-
-        let _ = db
-            .remove(&swap_id)
-            .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
+        let mut history = history
+            .lock()
+            .expect("No thread panicked while holding the lock");
+        let _ = history.write(trade).map_err(|error| {
+            tracing::error!(
+                "Unable to register history entry: {}; {:?}",
+                error,
+                finished_swap
+            )
+        });
     }
+
+    let (dai, btc, swap_id) = match finished_swap.swap {
+        SwapKind::HbitHerc20(swap) => (Some(swap.herc20_params.asset.into()), None, swap.swap_id),
+        SwapKind::Herc20Hbit(swap) => (
+            None,
+            Some(swap.hbit_params.shared.asset.into()),
+            swap.swap_id,
+        ),
+    };
+
+    maker.process_finished_swap(dai, btc, finished_swap.taker);
+
+    let _ = db
+        .remove(&swap_id)
+        .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
 }
 
 // TODO: Move all this stuff in trade.rs
@@ -500,9 +495,10 @@ async fn trade(
 
     loop {
         futures::select! {
-            // TODO: I don't think we need to handle the Option
             finished_swap = swap_execution_finished_receiver.next().fuse() => {
-                handle_finished_swap(finished_swap, &mut maker, &db, history);
+                if let Some(finished_swap) = finished_swap {
+                    handle_finished_swap(finished_swap, &mut maker, &db, history);
+                }
             },
             network_event = swarm.next().fuse() => {
                 handle_network_event(
