@@ -523,9 +523,8 @@ mod tests {
         }
     }
 
-    // TODO: Rename this - it should be maker_id_...
     #[test]
-    fn peer_id_serializes_as_expected() {
+    fn maker_id_serializes_as_expected() {
         let given = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY".to_string();
         let peer_id = PeerId::from_str(&given).expect("failed to parse peer id");
         let maker_id = MakerId(peer_id);
@@ -536,9 +535,8 @@ mod tests {
         assert_that(&got).is_equal_to(want);
     }
 
-    // TODO: Rename this - it should be maker_id_...
     #[test]
-    fn peer_id_serialization_roundtrip_test() {
+    fn maker_id_serialization_roundtrip_test() {
         let s = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY".to_string();
         let peer_id = PeerId::from_str(&s).expect("failed to parse peer id");
         let maker_id = MakerId::from(peer_id);
