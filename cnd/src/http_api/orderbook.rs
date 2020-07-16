@@ -10,7 +10,7 @@ use crate::{
 use chrono::Utc;
 use comit::{
     ethereum,
-    network::{MakerId, Order, OrderId, Trade},
+    network::{MakerId, Order, OrderId, Position},
 };
 use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
@@ -195,7 +195,7 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
 
 #[derive(Clone, Debug, Deserialize)]
 struct MakeHerc20HbitOrderBody {
-    trade: Trade,
+    position: Position,
     #[serde(with = "asset::bitcoin::sats_as_string")]
     bitcoin_amount: asset::Bitcoin,
     bitcoin_ledger: ledger::Bitcoin,
@@ -210,7 +210,7 @@ struct MakeHerc20HbitOrderBody {
 impl From<MakeHerc20HbitOrderBody> for NewOrder {
     fn from(body: MakeHerc20HbitOrderBody) -> Self {
         NewOrder {
-            trade: body.trade,
+            position: body.position,
             bitcoin_amount: body.bitcoin_amount,
             bitcoin_ledger: body.bitcoin_ledger,
             ethereum_amount: body.ethereum_amount,
@@ -231,7 +231,7 @@ struct TakeHerc20HbitOrderBody {
 struct Herc20HbitOrderResponse {
     id: OrderId,
     maker: MakerId,
-    trade: Trade,
+    position: Position,
     #[serde(with = "asset::bitcoin::sats_as_string")]
     bitcoin_amount: asset::Bitcoin,
     bitcoin_ledger: ledger::Bitcoin,
@@ -246,7 +246,7 @@ impl From<Order> for Herc20HbitOrderResponse {
         Herc20HbitOrderResponse {
             id: order.id,
             maker: order.maker,
-            trade: order.trade,
+            position: order.position,
             bitcoin_amount: order.bitcoin_amount,
             bitcoin_ledger: order.bitcoin_ledger,
             ethereum_amount: order.ethereum_amount,
@@ -317,7 +317,7 @@ mod tests {
     fn test_make_order_deserialization() {
         let json = r#"
         {
-            "trade": "sell",
+            "position": "sell",
             "bitcoin_amount": "300",
             "bitcoin_ledger": "regtest",
             "ethereum_amount": "200",

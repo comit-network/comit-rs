@@ -371,7 +371,7 @@ impl ComitNode {
         let order = Order {
             id: OrderId::random(),
             maker: MakerId::from(self.peer_id.clone()),
-            trade: new_order.trade,
+            position: new_order.position,
             bitcoin_amount: new_order.bitcoin_amount,
             bitcoin_ledger: new_order.bitcoin_ledger,
             ethereum_amount: new_order.ethereum_amount,
@@ -452,7 +452,7 @@ impl ListenAddresses for Swarm {
 /// Used by the controller to pass in parameters for a new order.
 #[derive(Debug)]
 pub struct NewOrder {
-    pub trade: Trade,
+    pub position: Position,
     pub bitcoin_amount: asset::Bitcoin,
     pub bitcoin_ledger: ledger::Bitcoin,
     pub ethereum_amount: asset::Erc20Quantity,

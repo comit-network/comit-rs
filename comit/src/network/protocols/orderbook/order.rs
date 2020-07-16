@@ -34,7 +34,7 @@ impl FromStr for OrderId {
 pub struct Order {
     pub id: OrderId,
     pub maker: MakerId,
-    pub trade: Trade,
+    pub position: Position,
     #[serde(with = "asset::bitcoin::sats_as_string")]
     pub bitcoin_amount: asset::Bitcoin,
     pub bitcoin_ledger: ledger::Bitcoin,
@@ -52,8 +52,8 @@ impl Order {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum Trade {
+#[serde(rename_all = "lowercase")]
+pub enum Position {
     Buy,
     Sell,
 }
@@ -85,23 +85,23 @@ mod tests {
 
     #[test]
     fn trade_serialization_roundtrip() {
-        let trade = Trade::Buy;
+        let trade = Position::Buy;
         let json = serde_json::to_string(&trade).expect("failed to serialize trade");
-        let rinsed: Trade = serde_json::from_str(&json).expect("failed to deserialize trade");
+        let rinsed: Position = serde_json::from_str(&json).expect("failed to deserialize trade");
 
         assert_that(&rinsed).is_equal_to(&trade);
     }
 
     #[test]
     fn trade_buy_serialization_stability() {
-        let trade = Trade::Buy;
+        let trade = Position::Buy;
         let s = serde_json::to_string(&trade).expect("failed to serialize trade");
         assert_that(&s).is_equal_to(r#""buy""#.to_string());
     }
 
     #[test]
     fn trade_sell_serialization_stability() {
-        let trade = Trade::Sell;
+        let trade = Position::Sell;
         let s = serde_json::to_string(&trade).expect("failed to serialize trade");
         assert_that(&s).is_equal_to(r#""sell""#.to_string());
     }

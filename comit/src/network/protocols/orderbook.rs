@@ -425,7 +425,7 @@ mod tests {
         Order {
             id: OrderId::random(),
             maker: MakerId::from(id),
-            trade: Trade::Sell,
+            position: Position::Sell,
             bitcoin_amount: asset::Bitcoin::from_sat(100),
             bitcoin_ledger: ledger::Bitcoin::Regtest,
             // TODO: Use a more sane value?
