@@ -183,17 +183,6 @@ impl Orderbook {
 #[error("order not found in orderbook: {0:?}")]
 pub struct OrderNotFound(OrderId);
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub enum TradingPair {
-    BtcDai,
-}
-
-impl TradingPair {
-    pub fn topic(&self) -> Topic {
-        Topic::new(BTC_DAI.to_string())
-    }
-}
-
 /// MakerId is a PeerId wrapper so we control serialization/deserialization.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MakerId(PeerId);

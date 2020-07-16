@@ -1,7 +1,8 @@
 use crate::{
     asset, identity, ledger,
-    network::protocols::orderbook::{MakerId, TradingPair},
+    network::protocols::orderbook::{MakerId, BTC_DAI},
 };
+use libp2p::gossipsub::Topic;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
@@ -57,6 +58,22 @@ pub struct Order {
 impl Order {
     pub fn tp(&self) -> TradingPair {
         TradingPair::BtcDai
+    }
+}
+
+// Since we only support a single trading pair this struct is actually
+// not needed, the information is implicit in the Order struct. Keep
+// this and the calls to order.tp().topic() to make it explicit that
+// there is only a single trading pair and the trading pair is
+// defined by the order struct.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum TradingPair {
+    BtcDai,
+}
+
+impl TradingPair {
+    pub fn topic(&self) -> Topic {
+        Topic::new(BTC_DAI.to_string())
     }
 }
 
