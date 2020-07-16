@@ -574,18 +574,39 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                         return;
                     }
                 };
-                // TODO: Unwraps
-                let data = self.local_data.get(&local_swap_id).unwrap();
-                let refund_identity = data.bitcoin_identity.unwrap();
-                let redeem_identity = data.ethereum_identity.unwrap();
-                let start_of_swap = Utc::now().naive_local();
 
-                // TODO: Remove unwrap.
-                let final_identity = self
-                    .bitcoin_addresses
-                    .get(&refund_identity)
-                    .unwrap()
-                    .clone();
+                let data = match self.local_data.get(&local_swap_id) {
+                    Some(data) => data,
+                    None => {
+                        tracing::error!(
+                            "inconsistent state, local data missing: {}",
+                            local_swap_id
+                        );
+                        return;
+                    }
+                };
+                let (refund_identity, redeem_identity) =
+                    match (data.bitcoin_identity, data.ethereum_identity) {
+                        (Some(bitcoin), Some(ethereum)) => (bitcoin, ethereum),
+                        _ => {
+                            tracing::error!(
+                                "inconsistent state, identit[y|ies] missing: {}",
+                                local_swap_id
+                            );
+                            return;
+                        }
+                    };
+                let final_identity = match self.bitcoin_addresses.get(&refund_identity) {
+                    Some(identity) => identity.clone(),
+                    None => {
+                        tracing::error!(
+                            "inconsistent state, bitcoin address missing: {}",
+                            local_swap_id
+                        );
+                        return;
+                    }
+                };
+                let start_of_swap = Utc::now().naive_local();
 
                 let swap = CreatedSwap {
                     swap_id: local_swap_id,
