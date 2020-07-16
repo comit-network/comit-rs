@@ -88,26 +88,50 @@ pub enum Position {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use libp2p::PeerId;
     use spectral::prelude::*;
 
     #[test]
     fn order_id_serialization_roundtrip() {
-        // TODO: Implement order_id_serialization_roundtrip()
+        let order_id = meaningless_test_order_id();
+        let json = serde_json::to_string(&order_id).expect("failed to serialize order id");
+        let rinsed: OrderId = serde_json::from_str(&json).expect("failed to deserialize order id");
+        assert_that(&rinsed).is_equal_to(&order_id);
     }
 
     #[test]
     fn order_id_serialization_stability() {
-        // TODO: Implement order_id_serialization_stability()
-    }
+        let s = "936DA01F9ABD4d9d80C702AF85C822A8";
+        let uuid = Uuid::from_str(s).expect("failed to parse uuid string");
+        let order_id = OrderId(uuid);
 
-    #[test]
-    fn btc_dai_order_serialization_roundtrip() {
-        // TODO: Implement btc_dai_order_serialization_roundtrip()
+        let want = format!("\"{}\"", s);
+        let got = serde_json::to_string(&order_id).expect("failed to serialize order id");
+        assert_that(&got).is_equal_to(want);
     }
 
     #[test]
     fn btc_dai_order_serialization_stability() {
-        // TODO: Implement btc_dai_order_serialization_stability()
+        let given = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY".to_string();
+        let peer_id = PeerId::from_str(&given).expect("failed to parse peer id");
+        let maker_id = MakerId(peer_id);
+
+        let order = Order {
+            id: meaningless_test_order_id(),
+            maker: maker_id,
+            position: Position::Sell,
+            bitcoin_amount: asset::Bitcoin::meaningless_test_value(),
+            bitcoin_ledger: ledger::Bitcoin::Regtest,
+            bitcoin_absolute_expiry: meaningless_expiry_value(),
+            ethereum_amount: asset::Erc20Quantity::meaningless_test_value(),
+            token_contract: Default::default(),
+            ethereum_ledger: ledger::Ethereum::default(),
+            ethereum_absolute_expiry: meaningless_expiry_value(),
+        };
+
+        let got = serde_json::to_string(&order).expect("failed to serialize order");
+        let want = r#"{"id":"936da01f-9abd-4d9d-80c7-02af85c822a8","maker":"QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY","position":"sell","bitcoin_amount":"1000","bitcoin_ledger":"regtest","bitcoin_absolute_expiry":100,"ethereum_amount":"1000","token_contract":"0x0000000000000000000000000000000000000000","ethereum_ledger":{"chain_id":1337},"ethereum_absolute_expiry":100}"#.to_string();
+        assert_that(&got).is_equal_to(want);
     }
 
     #[test]
