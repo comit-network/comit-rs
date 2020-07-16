@@ -38,11 +38,11 @@ pub struct Order {
     #[serde(with = "asset::bitcoin::sats_as_string")]
     pub bitcoin_amount: asset::Bitcoin,
     pub bitcoin_ledger: ledger::Bitcoin,
+    pub bitcoin_absolute_expiry: u32,
     pub ethereum_amount: asset::Erc20Quantity,
     pub token_contract: identity::Ethereum,
     pub ethereum_ledger: ledger::Ethereum,
-    // TODO: Add both expiries
-    pub absolute_expiry: u32,
+    pub ethereum_absolute_expiry: u32,
 }
 
 impl Order {

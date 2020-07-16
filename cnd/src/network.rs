@@ -374,10 +374,11 @@ impl ComitNode {
             position: new_order.position,
             bitcoin_amount: new_order.bitcoin_amount,
             bitcoin_ledger: new_order.bitcoin_ledger,
+            bitcoin_absolute_expiry: new_order.bitcoin_absolute_expiry,
             ethereum_amount: new_order.ethereum_amount,
             token_contract: new_order.token_contract,
             ethereum_ledger: new_order.ethereum_ledger,
-            absolute_expiry: new_order.absolute_expiry,
+            ethereum_absolute_expiry: new_order.ethereum_absolute_expiry,
         };
         let order_id = self.orderbook.make(order)?;
         self.order_swap_ids.insert(order_id, swap_id);
@@ -449,17 +450,17 @@ impl ListenAddresses for Swarm {
     }
 }
 
-/// Used by the controller to pass in parameters for a new order.
+/// Used by the controller to pass in data for a new order.
 #[derive(Debug)]
 pub struct NewOrder {
     pub position: Position,
     pub bitcoin_amount: asset::Bitcoin,
     pub bitcoin_ledger: ledger::Bitcoin,
+    pub bitcoin_absolute_expiry: u32,
     pub ethereum_amount: asset::Erc20Quantity,
     pub token_contract: identity::Ethereum,
     pub ethereum_ledger: ledger::Ethereum,
-    // TODO: Add both expiries
-    pub absolute_expiry: u32,
+    pub ethereum_absolute_expiry: u32,
 }
 
 impl NewOrder {
@@ -597,13 +598,13 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                         },
                         identity: redeem_identity,
                         chain_id: order.ethereum_ledger.chain_id,
-                        absolute_expiry: order.absolute_expiry,
+                        absolute_expiry: order.ethereum_absolute_expiry,
                     },
                     beta: hbit::CreatedSwap {
                         amount: order.bitcoin_amount,
                         final_identity: final_identity.into(),
                         network: order.bitcoin_ledger,
-                        absolute_expiry: order.absolute_expiry,
+                        absolute_expiry: order.bitcoin_absolute_expiry,
                     },
                     peer: peer_id.clone(),
                     address_hint: None,

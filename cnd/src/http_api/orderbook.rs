@@ -53,13 +53,13 @@ pub async fn post_take_herc20_hbit_order(
             },
             identity: refund_identity,
             chain_id: order.ethereum_ledger.chain_id,
-            absolute_expiry: order.absolute_expiry,
+            absolute_expiry: order.ethereum_absolute_expiry,
         },
         beta: hbit::CreatedSwap {
             amount: order.bitcoin_amount,
             final_identity: redeem_identity.clone(),
             network: order.bitcoin_ledger,
-            absolute_expiry: order.absolute_expiry,
+            absolute_expiry: order.bitcoin_absolute_expiry,
         },
         peer: order.maker.clone().into(),
         address_hint: None,
@@ -199,10 +199,11 @@ struct MakeHerc20HbitOrderBody {
     #[serde(with = "asset::bitcoin::sats_as_string")]
     bitcoin_amount: asset::Bitcoin,
     bitcoin_ledger: ledger::Bitcoin,
+    bitcoin_absolute_expiry: u32,
     ethereum_amount: asset::Erc20Quantity,
     token_contract: identity::Ethereum,
     ethereum_ledger: ledger::Ethereum,
-    absolute_expiry: u32,
+    ethereum_absolute_expiry: u32,
     refund_identity: bitcoin::Address,
     redeem_identity: identity::Ethereum,
 }
@@ -213,10 +214,11 @@ impl From<MakeHerc20HbitOrderBody> for NewOrder {
             position: body.position,
             bitcoin_amount: body.bitcoin_amount,
             bitcoin_ledger: body.bitcoin_ledger,
+            bitcoin_absolute_expiry: body.bitcoin_absolute_expiry,
             ethereum_amount: body.ethereum_amount,
             token_contract: body.token_contract,
             ethereum_ledger: body.ethereum_ledger,
-            absolute_expiry: body.absolute_expiry,
+            ethereum_absolute_expiry: body.ethereum_absolute_expiry,
         }
     }
 }
@@ -235,10 +237,11 @@ struct Herc20HbitOrderResponse {
     #[serde(with = "asset::bitcoin::sats_as_string")]
     bitcoin_amount: asset::Bitcoin,
     bitcoin_ledger: ledger::Bitcoin,
+    bitcoin_absolute_expiry: u32,
     ethereum_amount: asset::Erc20Quantity,
     token_contract: ethereum::Address,
     ethereum_ledger: ledger::Ethereum,
-    absolute_expiry: u32,
+    ethereum_absolute_expiry: u32,
 }
 
 impl From<Order> for Herc20HbitOrderResponse {
@@ -249,10 +252,11 @@ impl From<Order> for Herc20HbitOrderResponse {
             position: order.position,
             bitcoin_amount: order.bitcoin_amount,
             bitcoin_ledger: order.bitcoin_ledger,
+            bitcoin_absolute_expiry: order.bitcoin_absolute_expiry,
             ethereum_amount: order.ethereum_amount,
             token_contract: order.token_contract,
             ethereum_ledger: order.ethereum_ledger,
-            absolute_expiry: order.absolute_expiry,
+            ethereum_absolute_expiry: order.ethereum_absolute_expiry,
         }
     }
 }

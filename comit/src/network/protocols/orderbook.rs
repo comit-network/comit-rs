@@ -428,11 +428,12 @@ mod tests {
             position: Position::Sell,
             bitcoin_amount: asset::Bitcoin::from_sat(100),
             bitcoin_ledger: ledger::Bitcoin::Regtest,
+            bitcoin_absolute_expiry: 100, // TODO: Use more meaningful value.
             // TODO: Use a more sane value?
             ethereum_amount: Erc20Quantity::max_value(),
             token_contract: Default::default(),
             ethereum_ledger: ledger::Ethereum::default(),
-            absolute_expiry: 100,
+            ethereum_absolute_expiry: 100, // TODO: Use more meaningful value.
         }
     }
 
