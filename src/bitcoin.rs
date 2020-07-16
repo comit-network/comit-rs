@@ -93,6 +93,12 @@ impl From<comit::asset::Bitcoin> for Amount {
     }
 }
 
+impl From<Amount> for comit::asset::Bitcoin {
+    fn from(from: Amount) -> Self {
+        Self::from_sat(from.as_sat())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

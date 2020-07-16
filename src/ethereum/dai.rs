@@ -1,9 +1,14 @@
-use crate::bitcoin::{self, SATS_IN_BITCOIN_EXP};
-use crate::float_maths::{divide_pow_ten_trunc, multiply_pow_ten, truncate};
-use crate::Rate;
-use comit::asset::Erc20;
-use comit::ethereum::{Address, ChainId};
+use crate::{
+    bitcoin::{self, SATS_IN_BITCOIN_EXP},
+    float_maths::{divide_pow_ten_trunc, multiply_pow_ten, truncate},
+    Rate,
+};
+use comit::{
+    asset::{ethereum::FromWei, Erc20, Erc20Quantity},
+    ethereum::{Address, ChainId},
+};
 use conquer_once::Lazy;
+use ethereum_types::U256;
 use num::{pow::Pow, BigUint, CheckedAdd, ToPrimitive, Zero};
 use std::str::FromStr;
 
@@ -198,6 +203,15 @@ impl From<Erc20> for Amount {
     fn from(erc20: Erc20) -> Self {
         let quantity = BigUint::from_bytes_le(erc20.quantity.to_bytes().as_slice());
         Amount { 0: quantity }
+    }
+}
+
+impl From<Amount> for Erc20Quantity {
+    fn from(amount: Amount) -> Self {
+        let buf = amount.0.to_bytes_be();
+        let wei = U256::from_big_endian(&buf);
+
+        Self::from_wei(wei)
     }
 }
 

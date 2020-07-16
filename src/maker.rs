@@ -1,18 +1,24 @@
 #![allow(unused_variables)]
 
-use crate::network::Taker;
 use crate::{
     bitcoin,
     ethereum::dai,
-    network::Order,
+    network::{self, Taker},
     order::{BtcDaiOrder, Position},
     rate::Spread,
     MidMarketRate, PeersWithOngoingTrades, Symbol,
 };
 
+// TODO: Figure out why this is an enum
 #[derive(Debug, PartialEq)]
 pub enum NewOrder {
     Created(BtcDaiOrder),
+}
+
+#[derive(Debug, Clone)]
+pub struct TakenOrder {
+    pub inner: BtcDaiOrder,
+    pub taker: Taker,
 }
 
 // Bundles the state of the application
@@ -157,7 +163,10 @@ impl Maker {
     /// Decide whether we should proceed with order,
     /// Confirm with the order book
     /// Re & take & reserve
-    pub fn process_taken_order(&mut self, order: Order) -> anyhow::Result<TakeRequestDecision> {
+    pub fn process_taken_order(
+        &mut self,
+        order: TakenOrder,
+    ) -> anyhow::Result<TakeRequestDecision> {
         if self.ongoing_takers.has_an_ongoing_trade(&order.taker) {
             return Ok(TakeRequestDecision::CannotTradeWithTaker);
         }
@@ -172,7 +181,7 @@ impl Maker {
                     return Ok(TakeRequestDecision::RateNotProfitable);
                 }
 
-                match order.clone().into() {
+                match order.clone().inner {
                     order
                     @
                     BtcDaiOrder {
@@ -259,12 +268,20 @@ pub struct RateNotAvailable(Position);
 #[error("{0} balance not available.")]
 pub struct BalanceNotAvailable(Symbol);
 
+impl From<&network::TakenOrder> for TakenOrder {
+    fn from(from: &network::TakenOrder) -> Self {
+        Self {
+            inner: from.inner.clone(),
+            taker: from.taker.clone(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::network::Taker;
     use crate::{
-        network::Order,
         order::{BtcDaiOrder, Position},
         MidMarketRate, Rate,
     };
@@ -283,6 +300,15 @@ mod tests {
                 mid_market_rate: Some(MidMarketRate::default()),
                 spread: Spread::default(),
                 ongoing_takers: PeersWithOngoingTrades::default(),
+            }
+        }
+    }
+
+    impl Default for TakenOrder {
+        fn default() -> Self {
+            Self {
+                inner: BtcDaiOrder::default(),
+                taker: Taker::default(),
             }
         }
     }
@@ -319,7 +345,7 @@ mod tests {
             ..Default::default()
         };
 
-        let order_taken = Order {
+        let taken_order = TakenOrder {
             inner: BtcDaiOrder {
                 position: Position::Sell,
                 base: btc(1.5),
@@ -328,7 +354,7 @@ mod tests {
             ..Default::default()
         };
 
-        let event = maker.process_taken_order(order_taken).unwrap();
+        let event = maker.process_taken_order(taken_order).unwrap();
 
         assert_eq!(event, TakeRequestDecision::GoForSwap);
         assert_eq!(maker.btc_reserved_funds, btc(1.5))
@@ -342,7 +368,7 @@ mod tests {
             ..Default::default()
         };
 
-        let order_taken = Order {
+        let taken_order = TakenOrder {
             inner: BtcDaiOrder {
                 position: Position::Sell,
                 base: btc(1.5),
@@ -351,7 +377,7 @@ mod tests {
             ..Default::default()
         };
 
-        let event = maker.process_taken_order(order_taken).unwrap();
+        let event = maker.process_taken_order(taken_order).unwrap();
 
         assert_eq!(event, TakeRequestDecision::GoForSwap);
         assert_eq!(maker.btc_reserved_funds, btc(2.5))
@@ -365,7 +391,7 @@ mod tests {
             ..Default::default()
         };
 
-        let order_taken = Order {
+        let taken_order = TakenOrder {
             inner: BtcDaiOrder {
                 position: Position::Buy,
                 base: btc(1.0),
@@ -374,7 +400,7 @@ mod tests {
             ..Default::default()
         };
 
-        let result = maker.process_taken_order(order_taken).unwrap();
+        let result = maker.process_taken_order(taken_order).unwrap();
 
         assert_eq!(result, TakeRequestDecision::GoForSwap);
         assert_eq!(maker.dai_reserved_funds, dai(1.5))
@@ -388,7 +414,7 @@ mod tests {
             ..Default::default()
         };
 
-        let order_taken = Order {
+        let taken_order = TakenOrder {
             inner: BtcDaiOrder {
                 position: Position::Buy,
                 base: btc(1.0),
@@ -397,7 +423,7 @@ mod tests {
             ..Default::default()
         };
 
-        let result = maker.process_taken_order(order_taken).unwrap();
+        let result = maker.process_taken_order(taken_order).unwrap();
 
         assert_eq!(result, TakeRequestDecision::GoForSwap);
         assert_eq!(maker.dai_reserved_funds, dai(1.5))
@@ -410,7 +436,7 @@ mod tests {
             ..Default::default()
         };
 
-        let order_taken = Order {
+        let taken_order = TakenOrder {
             inner: BtcDaiOrder {
                 position: Position::Sell,
                 base: btc(1.5),
@@ -419,7 +445,7 @@ mod tests {
             ..Default::default()
         };
 
-        let result = maker.process_taken_order(order_taken).unwrap();
+        let result = maker.process_taken_order(taken_order).unwrap();
 
         assert_eq!(result, TakeRequestDecision::InsufficientFunds);
     }
@@ -432,7 +458,7 @@ mod tests {
             ..Default::default()
         };
 
-        let order_taken = Order {
+        let taken_order = TakenOrder {
             inner: BtcDaiOrder {
                 position: Position::Buy,
                 base: btc(1.0),
@@ -441,7 +467,7 @@ mod tests {
             ..Default::default()
         };
 
-        let result = maker.process_taken_order(order_taken).unwrap();
+        let result = maker.process_taken_order(taken_order).unwrap();
 
         assert_eq!(result, TakeRequestDecision::InsufficientFunds);
     }
@@ -454,7 +480,7 @@ mod tests {
             ..Default::default()
         };
 
-        let order_taken = Order {
+        let taken_order = TakenOrder {
             inner: BtcDaiOrder {
                 position: Position::Sell,
                 base: btc(1.0),
@@ -463,7 +489,7 @@ mod tests {
             ..Default::default()
         };
 
-        let result = maker.process_taken_order(order_taken).unwrap();
+        let result = maker.process_taken_order(taken_order).unwrap();
 
         assert_eq!(result, TakeRequestDecision::InsufficientFunds);
     }
@@ -475,7 +501,7 @@ mod tests {
             ..Default::default()
         };
 
-        let order_taken = Order {
+        let taken_order = TakenOrder {
             inner: BtcDaiOrder {
                 position: Position::Sell,
                 ..Default::default()
@@ -483,11 +509,11 @@ mod tests {
             ..Default::default()
         };
 
-        let result = maker.process_taken_order(order_taken.clone()).unwrap();
+        let result = maker.process_taken_order(taken_order.clone()).unwrap();
 
         assert_eq!(result, TakeRequestDecision::GoForSwap);
 
-        let result = maker.process_taken_order(order_taken).unwrap();
+        let result = maker.process_taken_order(taken_order).unwrap();
 
         assert_eq!(result, TakeRequestDecision::CannotTradeWithTaker);
     }
@@ -499,11 +525,11 @@ mod tests {
             ..Default::default()
         };
 
-        let order_taken = Order {
+        let taken_order = TakenOrder {
             ..Default::default()
         };
 
-        let result = maker.process_taken_order(order_taken);
+        let result = maker.process_taken_order(taken_order);
         assert!(result.is_err());
 
         let result = maker.new_buy_order();
@@ -520,7 +546,7 @@ mod tests {
             ..Default::default()
         };
 
-        let order_taken = Order {
+        let taken_order = TakenOrder {
             inner: BtcDaiOrder {
                 position: Position::Sell,
                 base: btc(1.0),
@@ -529,7 +555,7 @@ mod tests {
             ..Default::default()
         };
 
-        let result = maker.process_taken_order(order_taken).unwrap();
+        let result = maker.process_taken_order(taken_order).unwrap();
 
         assert_eq!(result, TakeRequestDecision::RateNotProfitable);
     }
@@ -541,7 +567,7 @@ mod tests {
             ..Default::default()
         };
 
-        let order_taken = Order {
+        let taken_order = TakenOrder {
             inner: BtcDaiOrder {
                 position: Position::Buy,
                 base: btc(1.0),
@@ -550,7 +576,7 @@ mod tests {
             ..Default::default()
         };
 
-        let result = maker.process_taken_order(order_taken).unwrap();
+        let result = maker.process_taken_order(taken_order).unwrap();
 
         assert_eq!(result, TakeRequestDecision::RateNotProfitable);
     }
@@ -682,7 +708,7 @@ mod tests {
 
         let taker = Taker::default();
         let result = maker
-            .process_taken_order(Order {
+            .process_taken_order(TakenOrder {
                 inner: new_sell_order,
                 taker,
             })
@@ -706,7 +732,7 @@ mod tests {
 
         let taker = Taker::default();
         let result = maker
-            .process_taken_order(Order {
+            .process_taken_order(TakenOrder {
                 inner: new_buy_order,
                 taker,
             })
