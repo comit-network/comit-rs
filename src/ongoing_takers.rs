@@ -8,7 +8,7 @@ pub struct PeersWithOngoingTrades(HashSet<Taker>);
 impl PeersWithOngoingTrades {
     pub fn insert(&mut self, taker: Taker) -> anyhow::Result<()> {
         if self.0.contains(&taker) {
-            anyhow::bail!("taker {} is already part of ongoing takers", taker.0)
+            anyhow::bail!("taker {:?} is already part of ongoing takers", taker)
         }
 
         self.0.insert(taker);
@@ -43,7 +43,7 @@ mod tests {
         let mut state = PeersWithOngoingTrades::default();
         let taker = Taker::default();
 
-        let insertion_1 = state.insert(taker);
+        let insertion_1 = state.insert(taker.clone());
         let insertion_2 = state.insert(taker);
 
         assert!(insertion_1.is_ok());
@@ -53,8 +53,8 @@ mod tests {
     #[test]
     fn insert_two_different_takers_is_ok() {
         let mut state = PeersWithOngoingTrades::default();
-        let taker_1 = Taker::new(1);
-        let taker_2 = Taker::new(2);
+        let taker_1 = Taker::default();
+        let taker_2 = Taker::default();
 
         let insertion_1 = state.insert(taker_1);
         let insertion_2 = state.insert(taker_2);
@@ -68,7 +68,7 @@ mod tests {
         let mut state = PeersWithOngoingTrades::default();
         let taker = Taker::default();
 
-        let insertion_1 = state.insert(taker);
+        let insertion_1 = state.insert(taker.clone());
         state.remove(&taker);
         let insertion_2 = state.insert(taker);
 

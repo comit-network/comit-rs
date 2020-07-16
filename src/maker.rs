@@ -219,24 +219,22 @@ impl Maker {
         }
     }
 
-    pub fn process_finished_swap(&mut self, free: Free, taker: Taker) {
-        match free {
-            Free::Dai(amount) => {
-                self.dai_reserved_funds = self.dai_reserved_funds.clone() - amount;
-            }
-            Free::Btc(amount) => {
-                self.btc_reserved_funds = self.btc_reserved_funds - (amount + self.btc_fee);
-            }
+    pub fn process_finished_swap(
+        &mut self,
+        dai: Option<dai::Amount>,
+        bitcoin: Option<bitcoin::Amount>,
+        taker: Taker,
+    ) {
+        if let Some(amount) = dai {
+            self.dai_reserved_funds = self.dai_reserved_funds.clone() - amount;
+        }
+
+        if let Some(amount) = bitcoin {
+            self.btc_reserved_funds = self.btc_reserved_funds - (amount + self.btc_fee);
         }
 
         self.ongoing_takers.remove(&taker);
     }
-}
-
-#[derive(Debug)]
-pub enum Free {
-    Dai(dai::Amount),
-    Btc(bitcoin::Amount),
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -597,17 +595,16 @@ mod tests {
             ..Default::default()
         };
 
-        let taker = Taker { 0: 0 };
+        let taker = Taker::default();
 
-        maker.ongoing_takers.insert(taker).unwrap();
+        maker.ongoing_takers.insert(taker.clone()).unwrap();
 
-        let free_btc = Free::Btc(btc(0.5));
-        let free_dai = Free::Dai(dai(0.5));
-
-        maker.process_finished_swap(free_btc, taker);
+        let free_btc = Some(btc(0.5));
+        maker.process_finished_swap(None, free_btc, taker.clone());
         assert_eq!(maker.btc_reserved_funds, btc(0.5));
 
-        maker.process_finished_swap(free_dai, taker);
+        let free_dai = Some(dai(0.5));
+        maker.process_finished_swap(free_dai, None, taker.clone());
         assert_eq!(maker.dai_reserved_funds, dai(0.5));
         assert!(!maker.ongoing_takers.has_an_ongoing_trade(&taker));
     }

@@ -19,13 +19,13 @@ pub use bob::WalletBob;
 pub use db::{Database, Save};
 use std::sync::Arc;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum SwapKind {
     HbitHerc20(SwapParams),
     Herc20Hbit(SwapParams),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SwapParams {
     pub hbit_params: hbit::Params,
     pub herc20_params: herc20::Params,

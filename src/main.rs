@@ -8,17 +8,18 @@ use futures::{
     Future, FutureExt, SinkExt, StreamExt,
 };
 use futures_timer::Delay;
+use nectar::options::Command;
 use nectar::{
     bitcoin, config,
     config::{settings, Settings},
     ethereum,
     ethereum::dai,
-    maker::{Free, PublishOrders, TakeRequestDecision},
+    maker::{PublishOrders, TakeRequestDecision},
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, Nectar, Orderbook, Taker},
     options::{self, Options},
     order::Position,
-    swap::{self, hbit, herc20, Database, Save, SwapKind, SwapParams},
+    swap::{self, herc20, Database, Save, SwapKind, SwapParams},
     Maker, MidMarketRate, Spread, SwapId,
 };
 use std::{sync::Arc, time::Duration};
@@ -151,20 +152,7 @@ async fn execute_swap(
 
     match position {
         Position::Sell => {
-            let hbit_params: hbit::Params = todo!("from arguments");
-
             todo!("handle this match arm like below");
-
-            if let Err(e) = swap_execution_finished_sender
-                .send(FinishedSwap::new(
-                    swap_id,
-                    Free::Btc(hbit_params.shared.asset.into()),
-                    taker,
-                ))
-                .await
-            {
-                tracing::trace!("Error when sending execution finished from sender to receiver.")
-            }
         }
         Position::Buy => {
             let herc20_params: herc20::Params = unimplemented!();
@@ -179,7 +167,8 @@ async fn execute_swap(
 
             // TODO: Probably remove swap ID from Swap. Otherwise this
             // is weird because Swap already contains the swap ID
-            db.save(SwapKind::HbitHerc20(swap), swap_id).await?;
+            let swap_kind = SwapKind::HbitHerc20(swap);
+            db.save(swap_kind, swap_id).await?;
 
             swap::nectar_hbit_herc20(
                 Arc::clone(&db),
@@ -192,11 +181,7 @@ async fn execute_swap(
             .await?;
 
             if let Err(e) = swap_execution_finished_sender
-                .send(FinishedSwap::new(
-                    swap_id,
-                    Free::Dai(herc20_params.asset.into()),
-                    taker,
-                ))
+                .send(FinishedSwap::new(swap_kind, taker))
                 .await
             {
                 tracing::trace!("Error when sending execution finished from sender to receiver.")
@@ -338,32 +323,34 @@ fn handle_dai_balance_update(
 // TODO: I don't think `finished_swap` should be an Option
 fn handle_finished_swap(finished_swap: Option<FinishedSwap>, maker: &mut Maker, db: &Database) {
     if let Some(finished_swap) = finished_swap {
-        maker.process_finished_swap(finished_swap.funds_to_free, finished_swap.taker);
-        // TODO: Save to history.csv
+        let (dai, btc, swap_id) = match finished_swap.swap {
+            SwapKind::HbitHerc20(swap) => {
+                (Some(swap.herc20_params.asset.into()), None, swap.swap_id)
+            }
+            SwapKind::Herc20Hbit(swap) => (
+                None,
+                Some(swap.hbit_params.shared.asset.into()),
+                swap.swap_id,
+            ),
+        };
 
-        let res = db.delete(&finished_swap.swap_id);
-        if let Err(e) = res {
-            tracing::error!(
-                "Unable to fetch latest rate! Fetching rate yielded error: {}",
-                e
-            );
-        }
+        maker.process_finished_swap(dai, btc, finished_swap.taker);
+
+        let _ = db
+            .delete(&swap_id)
+            .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
     }
 }
 
+#[derive(Debug, Clone)]
 struct FinishedSwap {
-    swap_id: SwapId,
-    funds_to_free: Free,
-    taker: Taker,
+    pub swap: SwapKind,
+    pub taker: Taker,
 }
 
 impl FinishedSwap {
-    pub fn new(swap_id: SwapId, funds_to_free: Free, taker: Taker) -> Self {
-        Self {
-            swap_id,
-            funds_to_free,
-            taker,
-        }
+    pub fn new(swap: SwapKind, taker: Taker) -> Self {
+        Self { swap, taker }
     }
 }
 
@@ -381,7 +368,6 @@ async fn main() {
 
     let dai_contract_addr: comit::ethereum::Address = settings.ethereum.dai_contract_address;
 
-    // TODO: Proper wallet initialisation from config
     let bitcoin_wallet = bitcoin::Wallet::new(
         seed,
         settings.bitcoin.bitcoind.node_url,
@@ -394,7 +380,18 @@ async fn main() {
         ethereum::Wallet::new(seed, settings.ethereum.node_url, dai_contract_addr)
             .expect("can initialise ethereum wallet");
     let ethereum_wallet = Arc::new(ethereum_wallet);
-    let maker = init_maker(bitcoin_wallet, ethereum_wallet, settings.maker).await;
+
+    match options.cmd {
+        Command::Trade => trade(settings.maker, bitcoin_wallet, ethereum_wallet).await,
+    }
+}
+
+async fn trade(
+    maker_settings: settings::Maker,
+    bitcoin_wallet: Arc<bitcoin::Wallet>,
+    ethereum_wallet: Arc<ethereum::Wallet>,
+) {
+    let maker = init_maker(bitcoin_wallet, ethereum_wallet, maker_settings).await;
 
     let orderbook = Orderbook;
     let nectar = Nectar::new(orderbook);

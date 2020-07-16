@@ -2,7 +2,7 @@ use crate::order::BtcDaiOrder;
 use comit::network::{Comit, RemoteData};
 use comit::LocalSwapId;
 use libp2p::swarm::{NetworkBehaviourAction, PollParameters};
-use libp2p::NetworkBehaviour;
+use libp2p::{NetworkBehaviour, PeerId};
 use std::collections::VecDeque;
 use std::task::{Context, Poll};
 
@@ -44,18 +44,33 @@ pub struct Order {
     pub taker: Taker,
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Default)]
-pub struct Taker(pub u32);
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct Taker {
+    peer_id: PeerId,
+}
 
 impl Taker {
-    pub fn new(index: u32) -> Taker {
-        Taker(index)
+    pub fn new(peer_id: PeerId) -> Taker {
+        Taker { peer_id }
+    }
+
+    pub fn peer_id(&self) -> PeerId {
+        self.peer_id.clone()
     }
 }
 
 impl From<Order> for BtcDaiOrder {
     fn from(order: Order) -> Self {
         order.inner
+    }
+}
+
+#[cfg(test)]
+impl Default for Taker {
+    fn default() -> Self {
+        Taker {
+            peer_id: PeerId::random(),
+        }
     }
 }
 
