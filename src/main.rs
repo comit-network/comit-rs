@@ -482,7 +482,7 @@ async fn trade(
     let (swap_execution_finished_sender, swap_execution_finished_receiver) =
         futures::channel::mpsc::channel::<FinishedSwap>(ENSURED_CONSUME_ZERO_BUFFER);
 
-    let db = Arc::new(Database::new(todo!("try to load from config, otherwise default?")).unwrap());
+    let db = Arc::new(Database::new(&settings.data.dir.join("database")).unwrap());
 
     let history = Arc::new(Mutex::new(
         History::new(settings.data.dir.join("history.csv").as_path()).unwrap(),
