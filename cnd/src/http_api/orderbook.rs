@@ -93,7 +93,7 @@ pub async fn post_make_herc20_hbit_order(
     body: serde_json::Value,
     facade: Facade,
 ) -> Result<impl Reply, Rejection> {
-    tracing::info!("entered take order controller");
+    tracing::info!("entered make order controller");
     let body = MakeHerc20HbitOrderBody::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
