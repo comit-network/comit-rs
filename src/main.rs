@@ -2,18 +2,21 @@
 #![recursion_limit = "256"]
 
 use anyhow::Context;
-use chrono::Utc;
+use chrono::{DateTime, Local, Utc};
 use futures::{
     channel::mpsc::{Receiver, Sender},
     Future, FutureExt, SinkExt, StreamExt,
 };
 use futures_timer::Delay;
+use libp2p::PeerId;
 use nectar::options::Command;
 use nectar::{
     bitcoin, config,
     config::{settings, Settings},
     ethereum,
     ethereum::dai,
+    history,
+    history::History,
     maker::{PublishOrders, TakeRequestDecision},
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, Nectar, Orderbook, Taker},
@@ -22,6 +25,9 @@ use nectar::{
     swap::{self, herc20, Database, SwapKind, SwapParams},
     Maker, MidMarketRate, Spread, SwapId,
 };
+use num::BigUint;
+use std::str::FromStr;
+use std::sync::Mutex;
 use std::{sync::Arc, time::Duration};
 use structopt::StructOpt;
 
@@ -178,8 +184,9 @@ async fn execute_swap(
             )
             .await?;
 
+            // TODO: use map_err
             if let Err(e) = swap_execution_finished_sender
-                .send(FinishedSwap::new(swap_kind, taker))
+                .send(FinishedSwap::new(swap_kind, taker, Local::now()))
                 .await
             {
                 tracing::trace!("Error when sending execution finished from sender to receiver.")
@@ -319,8 +326,32 @@ fn handle_dai_balance_update(
 }
 
 // TODO: I don't think `finished_swap` should be an Option
-fn handle_finished_swap(finished_swap: Option<FinishedSwap>, maker: &mut Maker, db: &Database) {
+fn handle_finished_swap(
+    finished_swap: Option<FinishedSwap>,
+    maker: &mut Maker,
+    db: &Database,
+    history: Arc<Mutex<History>>,
+) {
     if let Some(finished_swap) = finished_swap {
+        {
+            let trade = into_trade(
+                finished_swap.taker.peer_id(),
+                finished_swap.swap.clone(),
+                finished_swap.final_timestamp,
+            );
+
+            let mut history = history
+                .lock()
+                .expect("No thread panicked while holding the lock");
+            let _ = history.write(trade).map_err(|error| {
+                tracing::error!(
+                    "Unable to register history entry: {}; {:?}",
+                    error,
+                    finished_swap
+                )
+            });
+        }
+
         let (dai, btc, swap_id) = match finished_swap.swap {
             SwapKind::HbitHerc20(swap) => {
                 (Some(swap.herc20_params.asset.into()), None, swap.swap_id)
@@ -340,15 +371,44 @@ fn handle_finished_swap(finished_swap: Option<FinishedSwap>, maker: &mut Maker, 
     }
 }
 
+// TODO: Move all this stuff in trade.rs
+
+fn into_trade(peer_id: PeerId, swap: SwapKind, final_timestamp: DateTime<Local>) -> history::Trade {
+    use history::*;
+
+    let (swap, position) = match swap {
+        SwapKind::HbitHerc20(swap) => (swap, Position::Sell),
+        SwapKind::Herc20Hbit(swap) => (swap, Position::Buy),
+    };
+
+    Trade {
+        start_timestamp: history::LocalDateTime::from_utc_naive(&swap.start_of_swap),
+        final_timestamp: final_timestamp.into(),
+        base_symbol: Symbol::Btc,
+        quote_symbol: Symbol::Dai,
+        position,
+        base_precise_amount: swap.hbit_params.shared.asset.as_sat().into(),
+        quote_precise_amount: BigUint::from_str(&swap.herc20_params.asset.quantity.to_wei_dec())
+            .expect("number to number conversion")
+            .into(),
+        peer: peer_id.into(),
+    }
+}
+
 #[derive(Debug, Clone)]
 struct FinishedSwap {
     pub swap: SwapKind,
     pub taker: Taker,
+    pub final_timestamp: DateTime<Local>,
 }
 
 impl FinishedSwap {
-    pub fn new(swap: SwapKind, taker: Taker) -> Self {
-        Self { swap, taker }
+    pub fn new(swap: SwapKind, taker: Taker, final_timestamp: DateTime<Local>) -> Self {
+        Self {
+            swap,
+            taker,
+            final_timestamp,
+        }
     }
 }
 
@@ -360,7 +420,7 @@ async fn main() {
         .and_then(Settings::from_config_file_and_defaults)
         .expect("Could not initialize configuration");
 
-    let seed = config::Seed::from_file_or_generate(settings.data.dir)
+    let seed = config::Seed::from_file_or_generate(&settings.data.dir)
         .expect("Could not retrieve/initialize seed")
         .into();
 
@@ -368,28 +428,28 @@ async fn main() {
 
     let bitcoin_wallet = bitcoin::Wallet::new(
         seed,
-        settings.bitcoin.bitcoind.node_url,
+        settings.bitcoin.bitcoind.node_url.clone(),
         settings.bitcoin.network,
     )
     .await
     .expect("can initialise bitcoin wallet");
     let bitcoin_wallet = Arc::new(bitcoin_wallet);
     let ethereum_wallet =
-        ethereum::Wallet::new(seed, settings.ethereum.node_url, dai_contract_addr)
+        ethereum::Wallet::new(seed, settings.ethereum.node_url.clone(), dai_contract_addr)
             .expect("can initialise ethereum wallet");
     let ethereum_wallet = Arc::new(ethereum_wallet);
 
     match options.cmd {
-        Command::Trade => trade(settings.maker, bitcoin_wallet, ethereum_wallet).await,
+        Command::Trade => trade(settings, bitcoin_wallet, ethereum_wallet).await,
     }
 }
 
 async fn trade(
-    maker_settings: settings::Maker,
+    settings: Settings,
     bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum::Wallet>,
 ) {
-    let maker = init_maker(bitcoin_wallet, ethereum_wallet, maker_settings).await;
+    let maker = init_maker(bitcoin_wallet, ethereum_wallet, settings.maker).await;
 
     let orderbook = Orderbook;
     let nectar = Nectar::new(orderbook);
@@ -424,6 +484,10 @@ async fn trade(
 
     let db = Arc::new(Database::new(todo!("try to load from config, otherwise default?")).unwrap());
 
+    let history = Arc::new(Mutex::new(
+        History::new(settings.data.dir.join("history.csv").as_path()).unwrap(),
+    ));
+
     respawn_swaps(
         Arc::clone(&db),
         Arc::clone(&bitcoin_wallet),
@@ -438,7 +502,7 @@ async fn trade(
         futures::select! {
             // TODO: I don't think we need to handle the Option
             finished_swap = swap_execution_finished_receiver.next().fuse() => {
-                handle_finished_swap(finished_swap, &mut maker, &db);
+                handle_finished_swap(finished_swap, &mut maker, &db, history);
             },
             network_event = swarm.next().fuse() => {
                 handle_network_event(
