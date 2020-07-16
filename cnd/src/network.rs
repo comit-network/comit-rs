@@ -655,7 +655,6 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                 order_id,
                 shared_swap_id,
             } => {
-                // TODO: Re-evaluate all the hashmap access
                 let local_swap_id = self.local_swap_ids.get(&shared_swap_id).unwrap();
                 let &data = match self.local_data.get(local_swap_id) {
                     Some(data) => data,
@@ -667,8 +666,6 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                         return;
                     }
                 };
-
-                // TODO: Consider creating/saving the swap here.
 
                 let peer_id = self
                     .confirmed_order_peers
