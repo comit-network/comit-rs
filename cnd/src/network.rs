@@ -151,9 +151,7 @@ impl Swarm {
 
     pub async fn dial_addr(&mut self, addr: Multiaddr) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
-        // todo: log error
-        libp2p::Swarm::dial_addr(&mut *guard, addr).unwrap();
-        // guard.dial_addr(addr);
+        let _ = libp2p::Swarm::dial_addr(&mut *guard, addr)?;
         Ok(())
     }
 
