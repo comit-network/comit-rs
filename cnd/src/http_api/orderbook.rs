@@ -16,13 +16,13 @@ use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
 use warp::{http, http::StatusCode, Rejection, Reply};
 
-pub async fn post_take_herc20_hbit_order(
+pub async fn post_take_order(
     order_id: OrderId,
     body: serde_json::Value,
     mut facade: Facade,
 ) -> Result<impl Reply, Rejection> {
     tracing::info!("entered take order controller");
-    let body = TakeHerc20HbitOrderBody::deserialize(&body)
+    let body = TakeOrderBody::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
@@ -76,7 +76,7 @@ pub async fn post_take_herc20_hbit_order(
     tracing::info!("swap created and saved from order: {:?}", order_id);
 
     facade
-        .take_herc20_hbit_order(order_id, swap_id, redeem_identity.into(), refund_identity)
+        .take_order(order_id, swap_id, redeem_identity.into(), refund_identity)
         .await
         .map(|_| {
             warp::reply::with_status(
@@ -89,12 +89,12 @@ pub async fn post_take_herc20_hbit_order(
         .map_err(warp::reject::custom)
 }
 
-pub async fn post_make_herc20_hbit_order(
+pub async fn post_make_order(
     body: serde_json::Value,
     facade: Facade,
 ) -> Result<impl Reply, Rejection> {
     tracing::info!("entered make order controller");
-    let body = MakeHerc20HbitOrderBody::deserialize(&body)
+    let body = MakeOrderBody::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
@@ -110,7 +110,7 @@ pub async fn post_make_herc20_hbit_order(
     let swap_id = LocalSwapId::default();
 
     facade
-        .make_herc20_hbit_order(
+        .make_order(
             order,
             swap_id,
             body.redeem_identity,
@@ -181,7 +181,7 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
         match siren::Entity::default()
             .with_action(action)
             .with_class_member("order")
-            .with_properties(Herc20HbitOrderResponse::from(order))
+            .with_properties(OrderResponse::from(order))
         {
             Ok(sub_entity) => {
                 entity.push_sub_entity(siren::SubEntity::from_entity(sub_entity, &["item"]))
@@ -193,7 +193,7 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-struct MakeHerc20HbitOrderBody {
+struct MakeOrderBody {
     position: Position,
     #[serde(with = "asset::bitcoin::sats_as_string")]
     bitcoin_amount: asset::Bitcoin,
@@ -207,8 +207,8 @@ struct MakeHerc20HbitOrderBody {
     redeem_identity: identity::Ethereum,
 }
 
-impl From<MakeHerc20HbitOrderBody> for NewOrder {
-    fn from(body: MakeHerc20HbitOrderBody) -> Self {
+impl From<MakeOrderBody> for NewOrder {
+    fn from(body: MakeOrderBody) -> Self {
         NewOrder {
             position: body.position,
             bitcoin_amount: body.bitcoin_amount,
@@ -223,13 +223,13 @@ impl From<MakeHerc20HbitOrderBody> for NewOrder {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-struct TakeHerc20HbitOrderBody {
+struct TakeOrderBody {
     refund_identity: identity::Ethereum,
     redeem_identity: bitcoin::Address,
 }
 
 #[derive(Clone, Debug, Serialize)]
-struct Herc20HbitOrderResponse {
+struct OrderResponse {
     id: OrderId,
     maker: MakerId,
     position: Position,
@@ -243,9 +243,9 @@ struct Herc20HbitOrderResponse {
     ethereum_absolute_expiry: u32,
 }
 
-impl From<Order> for Herc20HbitOrderResponse {
+impl From<Order> for OrderResponse {
     fn from(order: Order) -> Self {
-        Herc20HbitOrderResponse {
+        OrderResponse {
             id: order.id,
             maker: order.maker,
             position: order.position,
@@ -300,7 +300,6 @@ mod tests {
             "redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72"
         }"#;
 
-        let _body: MakeHerc20HbitOrderBody =
-            serde_json::from_str(json).expect("failed to deserialize order");
+        let _body: MakeOrderBody = serde_json::from_str(json).expect("failed to deserialize order");
     }
 }
