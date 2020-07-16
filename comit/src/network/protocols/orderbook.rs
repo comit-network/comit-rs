@@ -336,10 +336,16 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
 
             match decoded {
                 Message::CreateOrder(order) => {
-                    // TODO: Should we just blindly insert here?
+                    // This implies new orders remove old orders from
+                    // the orderbook. This means nodes can spoof the
+                    // network using previously seen order ids in
+                    // order to override orders.
                     self.orders.insert(order.id, order);
                 }
                 Message::DeleteOrder(order_id) => {
+                    // Same consideration here, nodes can cause orders
+                    // they did not create to be removed by spoofing
+                    // the network with a previously seen order id.
                     self.orders.remove(&order_id);
                 }
                 Message::TradingPair(tp) => {
