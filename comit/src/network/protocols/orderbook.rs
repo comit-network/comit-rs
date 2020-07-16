@@ -419,36 +419,16 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<OrderId, Response>> for O
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        asset::{self, Erc20Quantity},
-        ledger,
-        network::test::{await_events_or_timeout, new_connected_swarm_pair},
-    };
+    use crate::network::test::{await_events_or_timeout, new_connected_swarm_pair};
     use libp2p::Swarm;
     use spectral::prelude::*;
-
-    fn create_order(id: PeerId) -> Order {
-        Order {
-            id: OrderId::random(),
-            maker: MakerId::from(id),
-            position: Position::Sell,
-            bitcoin_amount: asset::Bitcoin::from_sat(100),
-            bitcoin_ledger: ledger::Bitcoin::Regtest,
-            bitcoin_absolute_expiry: 100, // TODO: Use more meaningful value.
-            // TODO: Use a more sane value?
-            ethereum_amount: Erc20Quantity::max_value(),
-            token_contract: Default::default(),
-            ethereum_ledger: ledger::Ethereum::default(),
-            ethereum_absolute_expiry: 100, // TODO: Use more meaningful value.
-        }
-    }
 
     #[tokio::test]
     async fn take_order_request_confirmation() {
         // arrange
 
         let (mut alice, mut bob) = new_connected_swarm_pair(Orderbook::new).await;
-        let bob_order = create_order(bob.peer_id.clone());
+        let bob_order = order::meaningless_test_order(MakerId::from(bob.peer_id.clone()));
 
         // act
 

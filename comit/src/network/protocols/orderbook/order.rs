@@ -15,6 +15,12 @@ impl OrderId {
     }
 }
 
+#[cfg(test)]
+fn meaningless_test_order_id() -> OrderId {
+    let uuid = Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap();
+    OrderId(uuid)
+}
+
 impl Display for OrderId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
@@ -49,6 +55,27 @@ impl Order {
     pub fn tp(&self) -> TradingPair {
         TradingPair::BtcDai
     }
+}
+
+#[cfg(test)]
+pub fn meaningless_test_order(maker: MakerId) -> Order {
+    Order {
+        id: meaningless_test_order_id(),
+        maker,
+        position: Position::Sell,
+        bitcoin_amount: asset::Bitcoin::meaningless_test_value(),
+        bitcoin_ledger: ledger::Bitcoin::Regtest,
+        bitcoin_absolute_expiry: meaningless_expiry_value(),
+        ethereum_amount: asset::Erc20Quantity::meaningless_test_value(),
+        token_contract: Default::default(),
+        ethereum_ledger: ledger::Ethereum::default(),
+        ethereum_absolute_expiry: meaningless_expiry_value(),
+    }
+}
+
+#[cfg(test)]
+fn meaningless_expiry_value() -> u32 {
+    100
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
