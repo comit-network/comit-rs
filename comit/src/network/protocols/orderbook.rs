@@ -32,8 +32,6 @@ pub use self::order::*;
 /// String representing the BTC/DAI trading pair.
 const BTC_DAI: &str = "BTC/DAI";
 
-// We only support a single topic at the moment.
-const TOPIC: &str = "Herc20Hbit";
 /// The time we wait for a take order request to be confirmed or denied.
 const REQUEST_TIMEOUT_SECS: u64 = 10;
 
@@ -85,7 +83,9 @@ impl Orderbook {
         orderbook.gossipsub.subscribe(Makers::topic());
 
         // Since we only support a single trading pair topic just subscribe to it now.
-        orderbook.gossipsub.subscribe(Topic::new(TOPIC.to_string()));
+        orderbook
+            .gossipsub
+            .subscribe(Topic::new(BTC_DAI.to_string()));
 
         orderbook
     }

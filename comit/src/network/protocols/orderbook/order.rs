@@ -105,7 +105,7 @@ mod tests {
         let uuid = Uuid::from_str(s).expect("failed to parse uuid string");
         let order_id = OrderId(uuid);
 
-        let want = format!("\"{}\"", s);
+        let want = "\"936da01f-9abd-4d9d-80c7-02af85c822a8\"".to_string();
         let got = serde_json::to_string(&order_id).expect("failed to serialize order id");
         assert_that(&got).is_equal_to(want);
     }
