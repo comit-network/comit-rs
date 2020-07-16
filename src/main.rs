@@ -80,9 +80,12 @@ fn init_rate_updates(
         loop {
             let rate = get_btc_dai_mid_market_rate().await;
 
-            if let Err(e) = sender.send(rate).await {
-                tracing::trace!("Error when sending rate update from sender to receiver.")
-            }
+            let _ = sender.send(rate).await.map_err(|e| {
+                tracing::trace!(
+                    "Error when sending rate update from sender to receiver: {}",
+                    e
+                )
+            });
 
             Delay::new(update_interval).await;
         }
@@ -106,9 +109,12 @@ fn init_bitcoin_balance_updates(
         loop {
             let balance = wallet.balance().await;
 
-            if let Err(e) = sender.send(balance).await {
-                tracing::trace!("Error when sending balance update from sender to receiver.")
-            }
+            let _ = sender.send(balance).await.map_err(|e| {
+                tracing::trace!(
+                    "Error when sending balance update from sender to receiver: {}",
+                    e
+                )
+            });
 
             Delay::new(update_interval).await;
         }
@@ -131,9 +137,15 @@ fn init_dai_balance_updates(
         loop {
             let balance = wallet.dai_balance().await;
 
-            if let Err(e) = sender.send(balance.map(|balance| balance.into())).await {
-                tracing::trace!("Error when sending rate balance from sender to receiver.")
-            }
+            let _ = sender
+                .send(balance.map(|balance| balance.into()))
+                .await
+                .map_err(|e| {
+                    tracing::trace!(
+                        "Error when sending rate balance from sender to receiver: {}",
+                        e
+                    )
+                });
 
             Delay::new(update_interval).await;
         }
@@ -184,13 +196,14 @@ async fn execute_swap(
             )
             .await?;
 
-            // TODO: use map_err
-            if let Err(e) = swap_execution_finished_sender
+            let _ = swap_execution_finished_sender
                 .send(FinishedSwap::new(swap_kind, taker, Local::now()))
                 .await
-            {
-                tracing::trace!("Error when sending execution finished from sender to receiver.")
-            }
+                .map_err(|e| {
+                    tracing::trace!(
+                        "Error when sending execution finished from sender to receiver."
+                    )
+                });
         }
     }
 
