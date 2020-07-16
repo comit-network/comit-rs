@@ -1,11 +1,14 @@
+import { Herc20HbitPayload } from "../payload";
+
 export interface Herc20HbitOrder {
-    trade: string;
+    position: string;
     bitcoin_amount: string;
     bitcoin_ledger: string;
     ethereum_amount: string;
     token_contract: string;
     ethereum_ledger: Ethereum;
-    absolute_expiry: number;
+    bitcoin_absolute_expiry: number;
+    ethereum_absolute_expiry: number;
     refund_identity: string;
     redeem_identity: string;
 }
@@ -15,19 +18,23 @@ interface Ethereum {
 }
 
 export default class OrderFactory {
-    public static newHerc20HbitOrder(): Herc20HbitOrder {
+    public static newHerc20HbitOrder(
+        swap: Herc20HbitPayload,
+        position: string
+    ): Herc20HbitOrder {
         return {
-            trade: "sell",
-            bitcoin_amount: "100000",
-            bitcoin_ledger: "regtest",
-            ethereum_amount: "200",
-            token_contract: "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280",
+            position,
+            bitcoin_amount: swap.alpha.amount,
+            bitcoin_ledger: swap.beta.network,
+            token_contract: swap.alpha.token_contract,
+            ethereum_amount: swap.alpha.amount,
             ethereum_ledger: {
-                chain_id: 1337,
+                chain_id: swap.alpha.chain_id,
             },
-            absolute_expiry: 600,
-            refund_identity: "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX",
-            redeem_identity: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+            ethereum_absolute_expiry: swap.alpha.absolute_expiry,
+            bitcoin_absolute_expiry: swap.beta.absolute_expiry,
+            refund_identity: swap.beta.final_identity,
+            redeem_identity: swap.alpha.identity,
         };
     }
 }

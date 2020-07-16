@@ -3,14 +3,17 @@
  * @ledger bitcoin
  */
 
-import SwapFactory from "../src/actors/swap_factory";
+import OrderFactory from "../src/actors/order_factory";
 import { twoActorTest } from "../src/actor_test";
-// import { sleep } from "../src/utils";
+import { Entity, Link } from "comit-sdk/dist/src/cnd/siren";
+import { sleep } from "../src/utils";
+import SwapFactory from "../src/actors/swap_factory";
 
 describe("orderbook", () => {
     it(
         "btc_dai_sell_order",
         twoActorTest(async ({ alice, bob }) => {
+            // Bob and Alice both have a swap created from the order that Bob made and alice took.
             const bodies = (
                 await SwapFactory.newSwap(alice, bob, {
                     ledgers: {
@@ -20,22 +23,113 @@ describe("orderbook", () => {
                 })
             ).herc20Hbit;
 
-            await bob.makeOrder(bodies.bob);
-            await alice.takeOrder(bodies.alice);
+            // Get alice's listen address
+            const aliceAddr = await alice.cnd.getPeerListenAddresses();
 
-            // await alice.assertAndExecuteNextAction("deploy");
-            // await alice.assertAndExecuteNextAction("fund");
+            // Bob dials alices
+            // @ts-ignore
+            await bob.cnd.client.post("dial", { addresses: aliceAddr });
 
-            // await bob.assertAndExecuteNextAction("fund");
+            /// Wait for alice to accept an incoming connection from Bob
+            await sleep(1000);
 
-            // await alice.assertAndExecuteNextAction("redeem");
-            // await bob.assertAndExecuteNextAction("redeem");
+            const bobMakeOrderBody = OrderFactory.newHerc20HbitOrder(
+                bodies.bob,
+                "sell"
+            );
+            // @ts-ignore
+            // make response contain url in the header to the created order
+            // poll this order to see when when it has been converted to a swap
+            // "POST /orders"
+            const bobMakeOrderResponse = await bob.cnd.client.post(
+                "orders",
+                bobMakeOrderBody
+            );
 
-            // // Wait until the wallet sees the new balance.
-            // await sleep(2000);
+            // Poll until Alice receives an order. The order must be the one that Bob created above.
+            // @ts-ignore
+            const aliceOrdersResponse = await alice.pollCndUntil<Entity>(
+                "orders",
+                (entity) => entity.entities.length > 0
+            );
+            const aliceOrderResponse: Entity = aliceOrdersResponse.entities[0];
 
-            // await alice.assertBalancesAfterSwap();
-            // await bob.assertBalancesAfterSwap();
+            // Alice extracts the siren action to take the order
+            const aliceOrderTakeAction = aliceOrderResponse.actions.find(
+                (action: any) => action.name === "take"
+            );
+            // Alice executes the siren take action extracted in the previous line
+            // The resolver function fills the refund and redeem address fields required
+            // "POST /orders/63c0f8bd-beb2-4a9c-8591-a46f65913b0a/take"
+            // Alice receives a url to the swap that was created as a result of taking the order
+            // @ts-ignore
+            const aliceTakeOrderResponse = await alice.cnd.executeSirenAction(
+                aliceOrderTakeAction,
+                async (field) => {
+                    //                const classes = field.class;
+
+                    if (field.name === "refund_identity") {
+                        // @ts-ignore
+                        return Promise.resolve(bodies.alice.alpha.identity);
+                    }
+
+                    if (field.name === "redeem_identity") {
+                        // @ts-ignore
+                        return Promise.resolve(
+                            bodies.alice.beta.final_identity
+                        );
+                    }
+                }
+            );
+
+            // Wait for bob to acknowledge that Alice has taken the order he created
+            await sleep(1000);
+
+            // @ts-ignore
+            const aliceSwapResponse = await alice.cnd.client.get(
+                aliceTakeOrderResponse.headers.location
+            );
+            expect(aliceSwapResponse.status).toEqual(200);
+
+            // Since Alice has taken the swap, the order created by Bob should have an associated swap in the navigational link
+            const bobGetOrderResponse = await bob.cnd.fetch<Entity>(
+                bobMakeOrderResponse.headers.location
+            );
+
+            expect(bobGetOrderResponse.status).toEqual(200);
+            const linkToBobSwap = bobGetOrderResponse.data.links.find(
+                (link: Link) => link.rel.includes("swap")
+            );
+            expect(linkToBobSwap).toBeDefined();
+
+            // The link the Bobs swap should return 200
+            // "GET /swaps/934dd090-f8eb-4244-9aba-78e23d3f79eb HTTP/1.1"
+            const bobSwapResponse = await bob.cnd.fetch<Entity>(
+                linkToBobSwap.href
+            );
+
+            expect(bobSwapResponse.status).toEqual(200);
+
+            await bob.initOrderbookTest(linkToBobSwap.href, bodies.bob);
+
+            await alice.initOrderbookTest(
+                aliceTakeOrderResponse.headers.location,
+                bodies.alice
+            );
+
+            await alice.assertAndExecuteNextAction("fund");
+
+            await bob.assertAndExecuteNextAction("deploy");
+            await bob.assertAndExecuteNextAction("fund");
+
+            await alice.assertAndExecuteNextAction("redeem");
+            await bob.assertAndExecuteNextAction("redeem");
+
+            // Wait until the wallet sees the new balance.
+            await sleep(2000);
+
+            await alice.assertBalancesAfterSwap();
+            await bob.assertBalancesAfterSwap();
         })
     );
 });

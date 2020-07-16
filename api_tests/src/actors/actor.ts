@@ -256,6 +256,38 @@ export class Actor {
         );
     }
 
+    public async initOrderbookTest(swapUrl: string, create: Herc20HbitPayload) {
+        this.alphaLedger = {
+            name: LedgerKind.Ethereum,
+            chain_id: create.alpha.chain_id,
+        };
+        this.betaLedger = {
+            name: LedgerKind.Bitcoin,
+            network: create.beta.network,
+        };
+        this.alphaAsset = {
+            name: AssetKind.Erc20,
+            quantity: create.alpha.amount,
+            ledger: LedgerKind.Ethereum,
+            tokenContract: create.alpha.token_contract,
+        };
+        this.betaAsset = {
+            name: AssetKind.Bitcoin,
+            quantity: create.beta.amount,
+            ledger: LedgerKind.Bitcoin,
+        };
+        await this.setStartingBalances();
+
+        this.swap = new Swap(
+            this.cnd,
+            swapUrl,
+            new SdkWallets({
+                ethereum: this.wallets.ethereum.inner,
+                bitcoin: this.wallets.bitcoin.inner,
+            })
+        );
+    }
+
     /**
      * Makes a BtcDai sell order (herc20-hbit Swap)
      */
