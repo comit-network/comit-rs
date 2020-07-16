@@ -161,20 +161,6 @@ impl Orderbook {
         self.orders.get(id).cloned()
     }
 
-    // Ideally this step should be executed automatically before making an order.
-    // Unfortunately a brief delay is required to allow peers to acknowledge and
-    // subscribe to the announced trading pair before publishing the order
-    /// Announce a trading pair topic to the network.
-    pub fn announce_trading_pair(&mut self, tp: TradingPair) -> anyhow::Result<()> {
-        // TOOD: This code is contrived, why do we sub here?
-        self.gossipsub.subscribe(tp.topic());
-
-        let ser = bincode::serialize(&Message::TradingPair(tp))?;
-        self.gossipsub.publish(&tp.topic(), ser);
-
-        Ok(())
-    }
-
     fn poll(
         &mut self,
         _: &mut Context<'_>,
@@ -280,7 +266,6 @@ pub enum SwapType {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub enum Message {
-    TradingPair(TradingPair),
     CreateOrder(Order),
     DeleteOrder(OrderId),
 }
@@ -348,9 +333,6 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
                     // they did not create to be removed by spoofing
                     // the network with a previously seen order id.
                     self.orders.remove(&order_id);
-                }
-                Message::TradingPair(tp) => {
-                    self.gossipsub.subscribe(tp.topic());
                 }
             }
         }

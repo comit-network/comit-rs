@@ -154,11 +154,6 @@ impl Swarm {
         let _ = libp2p::Swarm::dial_addr(&mut *guard, addr)?;
         Ok(())
     }
-
-    pub async fn announce_trading_pair(&mut self, tp: TradingPair) -> anyhow::Result<()> {
-        let mut guard = self.inner.lock().await;
-        guard.announce_trading_pair(tp)
-    }
 }
 
 struct TokioExecutor {
@@ -390,10 +385,6 @@ impl ComitNode {
 
     pub fn get_orders(&self) -> Vec<Order> {
         self.orderbook.get_orders()
-    }
-
-    pub fn announce_trading_pair(&mut self, tp: TradingPair) -> anyhow::Result<()> {
-        self.orderbook.announce_trading_pair(tp)
     }
 }
 

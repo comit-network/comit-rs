@@ -155,15 +155,8 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .and(warp::path!("dial"))
         .and(warp::path::end())
         .and(warp::body::json())
-        .and(facade.clone())
-        .and_then(orderbook::post_dial_peer);
-
-    let post_announce_trading_pair = warp::post()
-        .and(warp::path!("announce"))
-        .and(warp::path::end())
-        .and(warp::body::json())
         .and(facade)
-        .and_then(orderbook::post_announce_trading_pair);
+        .and_then(orderbook::post_dial_peer);
 
     preflight_cors_route
         .or(get_peers)
@@ -184,7 +177,6 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .or(get_orders)
         .or(get_order)
         .or(post_dial_addr)
-        .or(post_announce_trading_pair)
         //.or(get_makers)
         //.or(subscribe)
         .recover(http_api::unpack_problem)
