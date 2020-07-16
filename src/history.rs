@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::DateTime;
+use chrono::{DateTime, NaiveDateTime, TimeZone};
 use csv::*;
 use num::BigUint;
 use serde::{Serialize, Serializer};
@@ -14,13 +14,13 @@ use chrono::FixedOffset;
 
 #[derive(Debug, Copy, Clone, Serialize)]
 #[serde(rename_all = "UPPERCASE")]
-enum Symbol {
+pub enum Symbol {
     Btc,
     Dai,
 }
 
 #[derive(Debug, Copy, Clone, Serialize)]
-enum Position {
+pub enum Position {
     Buy,
     Sell,
 }
@@ -35,7 +35,7 @@ impl From<f64> for Float {
 }
 
 #[derive(Debug, Clone)]
-struct Integer(BigUint);
+pub struct Integer(BigUint);
 
 impl From<BigUint> for Integer {
     fn from(int: BigUint) -> Self {
@@ -59,7 +59,7 @@ impl Serialize for Integer {
 }
 
 #[derive(Debug, Clone)]
-struct PeerId(libp2p::PeerId);
+pub struct PeerId(libp2p::PeerId);
 
 impl From<libp2p::PeerId> for PeerId {
     fn from(peer_id: libp2p::PeerId) -> Self {
@@ -76,8 +76,8 @@ impl Serialize for PeerId {
     }
 }
 
-#[derive(Debug, Clone)]
-struct LocalDateTime {
+#[derive(Debug, Clone, Copy)]
+pub struct LocalDateTime {
     #[cfg(not(test))]
     inner: DateTime<Local>,
     // Allows the test to pass on all machines, no matter their timezone.
@@ -85,6 +85,24 @@ struct LocalDateTime {
     // This should not stay if we start to manipulate the dates
     #[cfg(test)]
     inner: DateTime<FixedOffset>,
+}
+
+#[cfg(not(test))]
+impl LocalDateTime {
+    pub fn from_utc_naive(naive_date_time: &NaiveDateTime) -> Self {
+        LocalDateTime {
+            inner: Local.from_utc_datetime(&naive_date_time),
+        }
+    }
+}
+
+#[cfg(test)]
+impl LocalDateTime {
+    pub fn from_utc_naive(naive_date_time: &NaiveDateTime) -> Self {
+        LocalDateTime {
+            inner: FixedOffset::east(0).from_utc_datetime(&naive_date_time),
+        }
+    }
 }
 
 #[cfg(not(test))]
@@ -110,28 +128,28 @@ impl Serialize for LocalDateTime {
     }
 }
 
-/// ⚠️ If you change this then you need to think about versioning
 /// All the information to write in the CVS file per trade
+// ⚠️ If you change this then you need to think about versioning
 #[derive(Debug, Clone, Serialize)]
-struct Trade {
+pub struct Trade {
     /// When the trade was taken and accepted
-    start_timestamp: LocalDateTime,
+    pub start_timestamp: LocalDateTime,
     /// When the last transaction (redeem or refund) was seen (can be changed to confirmed in the future)
-    final_timestamp: LocalDateTime,
+    pub final_timestamp: LocalDateTime,
     /// The symbol of the base currency
-    base_symbol: Symbol,
+    pub base_symbol: Symbol,
     /// The symbol of the quote currency
-    quote_symbol: Symbol,
+    pub quote_symbol: Symbol,
     /// The position of the trade from the user's point of view (note: Sell = sell the base)
-    position: Position,
+    pub position: Position,
     /// The base currency traded amount in the most precise unit (e.g. Satoshi)
     /// Note: it does not include fees
-    base_precise_amount: Integer,
+    pub base_precise_amount: Integer,
     /// The quote currency traded amount in the most precise unit (e.g. attodai)
     /// Note: it does not include fees
-    quote_precise_amount: Integer,
+    pub quote_precise_amount: Integer,
     /// the Peer id of the counterpart/taker
-    peer: PeerId,
+    pub peer: PeerId,
     // TODO: Add fees?
 }
 
@@ -193,7 +211,8 @@ impl Trade {
     }
 }
 
-struct History {
+#[derive(Debug)]
+pub struct History {
     writer: Writer<File>,
 }
 
@@ -211,8 +230,7 @@ impl History {
         Ok(History { writer })
     }
 
-    pub fn write<T: Into<Trade>>(&mut self, trade: T) -> anyhow::Result<()> {
-        let trade: Trade = trade.into();
+    pub fn write(&mut self, trade: Trade) -> anyhow::Result<()> {
         self.writer.serialize(trade)?;
         self.writer.flush()?;
         Ok(())

@@ -13,7 +13,7 @@ use std::{
 pub struct Seed(seed::Seed);
 
 impl Seed {
-    pub fn from_file_or_generate(data_dir: PathBuf) -> Result<Self, Error> {
+    pub fn from_file_or_generate(data_dir: &PathBuf) -> Result<Self, Error> {
         let file_path_buf = data_dir.join("seed.pem");
         let file_path = Path::new(&file_path_buf);
 
