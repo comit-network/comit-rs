@@ -536,7 +536,7 @@ impl From<PublishOrder> for comit::network::orderbook::NewOrder {
 
 fn derive_key_pair(seed: &Seed) -> libp2p::identity::Keypair {
     let mut sha = Sha256::new();
-    sha.update(seed.seed_bytes());
+    sha.update(seed.bytes());
     sha.update(b"LIBP2P_KEYPAIR");
 
     let bytes = sha.finalize();

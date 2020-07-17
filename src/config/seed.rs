@@ -13,6 +13,10 @@ use std::{
 pub struct Seed(seed::Seed);
 
 impl Seed {
+    pub fn random() -> Result<Self, Error> {
+        Ok(Seed(seed::Seed::random()?))
+    }
+
     pub fn from_file_or_generate(data_dir: &PathBuf) -> Result<Self, Error> {
         let file_path_buf = data_dir.join("seed.pem");
         let file_path = Path::new(&file_path_buf);
@@ -23,7 +27,7 @@ impl Seed {
 
         tracing::info!("No seed file found, creating at: {}", file_path.display());
 
-        let random_seed = Seed::default();
+        let random_seed = Seed::random()?;
         random_seed.write_to(file_path.to_path_buf())?;
 
         Ok(random_seed)
@@ -58,7 +62,7 @@ impl Seed {
     fn write_to(&self, seed_file: PathBuf) -> Result<(), Error> {
         ensure_directory_exists(&seed_file)?;
 
-        let data = (self.0).seed_bytes();
+        let data = (self.0).bytes();
         let pem = Pem {
             tag: String::from("SEED"),
             contents: data.to_vec(),
@@ -85,12 +89,6 @@ impl fmt::Display for Seed {
     }
 }
 
-impl Default for Seed {
-    fn default() -> Self {
-        Seed(seed::Seed::default())
-    }
-}
-
 impl From<[u8; SEED_LENGTH]> for Seed {
     fn from(bytes: [u8; 32]) -> Self {
         Seed(seed::Seed::from(bytes))
@@ -105,6 +103,8 @@ impl From<Seed> for seed::Seed {
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("Seed generation: ")]
+    SeedGeneration(#[from] crate::seed::Error),
     #[error("io: ")]
     Io(#[from] io::Error),
     #[error("PEM parse: ")]
@@ -141,7 +141,7 @@ syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=
         let pem = pem::parse(pem_string).unwrap();
         let got = Seed::from_pem(pem).unwrap();
 
-        assert_eq!((got.0).seed_bytes(), *want);
+        assert_eq!((got.0).bytes(), *want);
     }
 
     #[test]
@@ -186,7 +186,7 @@ mbKANv2qKGmNVg1qtquj6Hx1pFPelpqOfE2JaJJAMEg1FlFhNRNlFlE=
     fn round_trip_through_file_write_read() {
         let tmpfile = temp_dir().join("seed.pem");
 
-        let seed = Seed::default();
+        let seed = Seed::random().unwrap();
         seed.write_to(tmpfile.clone())
             .expect("Write seed to temp file");
 

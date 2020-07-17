@@ -393,7 +393,7 @@ mod tests {
         };
 
         let (alice_bitcoin_wallet, alice_ethereum_wallet) = {
-            let seed = Seed::default();
+            let seed = Seed::random().unwrap();
             let bitcoin_wallet = {
                 let wallet =
                     crate::bitcoin::Wallet::new(seed, bitcoind_url.clone(), bitcoin_network)
@@ -424,7 +424,7 @@ mod tests {
         };
 
         let (bob_bitcoin_wallet, bob_ethereum_wallet) = {
-            let seed = Seed::default();
+            let seed = Seed::random().unwrap();
             let bitcoin_wallet =
                 crate::bitcoin::Wallet::new(seed, bitcoind_url.clone(), bitcoin_network).await?;
             let ethereum_wallet =

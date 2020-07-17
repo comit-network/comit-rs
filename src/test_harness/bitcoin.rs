@@ -65,6 +65,10 @@ impl<'c> Blockchain<'c> {
 
         Ok(())
     }
+
+    pub fn container_id(&self) -> &str {
+        self._container.id()
+    }
 }
 
 async fn mine(

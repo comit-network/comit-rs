@@ -21,7 +21,7 @@ impl Wallet {
         url: Url,
         dai_contract_addr: comit::ethereum::Address,
     ) -> anyhow::Result<Self> {
-        let private_key = clarity::PrivateKey::from_slice(&seed.secret_key_bytes())
+        let private_key = clarity::PrivateKey::from_slice(&seed.bytes())
             .map_err(|_| anyhow::anyhow!("Failed to derive private key from slice"))?;
 
         let geth_client = Client::new(url);
@@ -52,6 +52,10 @@ impl Wallet {
         bytes.copy_from_slice(pk.as_bytes());
 
         Address::from(bytes)
+    }
+
+    pub fn private_key(&self) -> clarity::PrivateKey {
+        self.private_key
     }
 
     pub async fn deploy_contract(
