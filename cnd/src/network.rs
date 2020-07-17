@@ -635,9 +635,10 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
 
                 // No other validation, just take the order. This
                 // implies that an order can be taken multiple times.
-                self.orderbook.confirm(order_id, response_channel);
+                self.orderbook.confirm(order_id, response_channel, peer_id);
             }
             orderbook::BehaviourOutEvent::TakeOrderConfirmation {
+                peer_id,
                 order_id,
                 shared_swap_id,
             } => {
@@ -657,17 +658,6 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                         tracing::warn!(
                             "inconsistent state, no local data found for swap id: {}",
                             shared_swap_id
-                        );
-                        return;
-                    }
-                };
-
-                let peer_id = match self.orderbook.get_order(&order_id) {
-                    Some(order) => PeerId::from(order.maker),
-                    None => {
-                        tracing::error!(
-                            "order {} specified in take order confirmation not found in local store",
-                            order_id
                         );
                         return;
                     }
