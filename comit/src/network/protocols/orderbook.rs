@@ -180,7 +180,7 @@ impl Orderbook {
 }
 
 #[derive(PartialEq, Clone, Copy, Debug, thiserror::Error)]
-#[error("order not found in orderbook: {0:?}")]
+#[error("order {0} not found in orderbook")]
 pub struct OrderNotFound(OrderId);
 
 /// MakerId is a PeerId wrapper so we control serialization/deserialization.
