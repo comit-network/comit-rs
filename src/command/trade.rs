@@ -1,4 +1,4 @@
-#![allow(unreachable_code, unused_variables, clippy::unit_arg)]
+#![allow(unreachable_code, unused_variables)]
 
 use crate::{
     bitcoin,
@@ -8,7 +8,7 @@ use crate::{
     maker::{PublishOrders, TakeRequestDecision},
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, Swarm, Taker},
-    swap::{self, Database, SwapKind},
+    swap::{self, Database, SwapKind, SwapParams},
     Maker, MidMarketRate, Seed, Spread,
 };
 use anyhow::Context;
@@ -20,9 +20,11 @@ use futures::{
 use futures_timer::Delay;
 use libp2p::PeerId;
 use num::BigUint;
-use std::str::FromStr;
-use std::sync::Mutex;
-use std::{sync::Arc, time::Duration};
+use std::{
+    str::FromStr,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 const ENSURED_CONSUME_ZERO_BUFFER: usize = 0;
 
@@ -36,7 +38,7 @@ pub async fn trade(
     let bitcoin_wallet = Arc::new(bitcoin_wallet);
     let ethereum_wallet = Arc::new(ethereum_wallet);
 
-    let maker = init_maker(
+    let mut maker = init_maker(
         Arc::clone(&bitcoin_wallet),
         Arc::clone(&ethereum_wallet),
         settings.clone(),
@@ -88,6 +90,7 @@ pub async fn trade(
 
     respawn_swaps(
         Arc::clone(&db),
+        &mut maker,
         Arc::clone(&bitcoin_wallet),
         Arc::clone(&ethereum_wallet),
         todo!("bitcoin_connector"),
@@ -313,6 +316,7 @@ async fn execute_swap(
 
 fn respawn_swaps(
     db: Arc<Database>,
+    maker: &mut Maker,
     bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum::Wallet>,
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
@@ -320,12 +324,25 @@ fn respawn_swaps(
     finished_swap_sender: Sender<FinishedSwap>,
 ) -> anyhow::Result<()> {
     for swap in db.load_all()?.into_iter() {
-        // TODO: Reserve funds. It's a tricky problem because:
-        //
-        // If we have already funded, but the swap hasn't finished, we
-        // should not need to reserve funds (and we may not be able to
-        // if the actual wallet balance is too low), but we don't know
-        // the state of the swap here.
+        // Reserve funds
+        match swap {
+            SwapKind::HbitHerc20(SwapParams {
+                swap_id,
+                ref herc20_params,
+                ..
+            }) => {
+                let fund_amount = herc20_params.asset.clone().into();
+                maker.dai_reserved_funds = maker.dai_reserved_funds.clone() + fund_amount;
+            }
+            SwapKind::Herc20Hbit(SwapParams {
+                swap_id,
+                hbit_params,
+                ..
+            }) => {
+                let fund_amount = hbit_params.shared.asset.into();
+                maker.btc_reserved_funds = maker.btc_reserved_funds + fund_amount + maker.btc_fee;
+            }
+        };
 
         tokio::spawn(execute_swap(
             Arc::clone(&db),
