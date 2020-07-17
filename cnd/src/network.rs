@@ -231,8 +231,6 @@ pub struct ComitNode {
     bitcoin_addresses: HashMap<identity::Bitcoin, crate::bitcoin::Address>,
     #[behaviour(ignore)]
     order_swap_ids: HashMap<OrderId, LocalSwapId>,
-    #[behaviour(ignore)]
-    confirmed_order_peers: HashMap<OrderId, PeerId>,
 }
 
 impl ComitNode {
@@ -257,7 +255,6 @@ impl ComitNode {
             protocol_spawner,
             bitcoin_addresses: HashMap::default(),
             order_swap_ids: Default::default(),
-            confirmed_order_peers: Default::default(),
         })
     }
 
@@ -636,8 +633,6 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                     }
                 });
 
-                self.confirmed_order_peers.insert(order_id, peer_id);
-
                 // No other validation, just take the order. This
                 // implies that an order can be taken multiple times.
                 self.orderbook.confirm(order_id, response_channel);
@@ -667,10 +662,16 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                     }
                 };
 
-                let peer_id = self
-                    .confirmed_order_peers
-                    .get(&order_id)
-                    .expect("peer id to be inserted during confirmation");
+                let peer_id = match self.orderbook.get_order(&order_id) {
+                    Some(order) => PeerId::from(order.maker),
+                    None => {
+                        tracing::error!(
+                            "order {} specified in take order confirmation not found in local store",
+                            order_id
+                        );
+                        return;
+                    }
+                };
                 self.comit
                     .communicate(peer_id.clone(), shared_swap_id, data);
             }
