@@ -231,8 +231,6 @@ pub struct ComitNode {
     bitcoin_addresses: HashMap<identity::Bitcoin, crate::bitcoin::Address>,
     #[behaviour(ignore)]
     order_swap_ids: HashMap<OrderId, LocalSwapId>,
-    #[behaviour(ignore)]
-    confirmed_order_peers: HashMap<OrderId, PeerId>,
 }
 
 impl ComitNode {
@@ -257,7 +255,6 @@ impl ComitNode {
             protocol_spawner,
             bitcoin_addresses: HashMap::default(),
             order_swap_ids: Default::default(),
-            confirmed_order_peers: Default::default(),
         })
     }
 
@@ -636,17 +633,25 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                     }
                 });
 
-                self.confirmed_order_peers.insert(order_id, peer_id);
-
                 // No other validation, just take the order. This
                 // implies that an order can be taken multiple times.
-                self.orderbook.confirm(order_id, response_channel);
+                self.orderbook.confirm(order_id, response_channel, peer_id);
             }
             orderbook::BehaviourOutEvent::TakeOrderConfirmation {
+                peer_id,
                 order_id,
                 shared_swap_id,
             } => {
-                let local_swap_id = self.local_swap_ids.get(&shared_swap_id).unwrap();
+                let local_swap_id = match self.order_swap_ids.get(&order_id) {
+                    Some(id) => id,
+                    None => {
+                        tracing::error!(
+                            "inconsistent swaps state, no local swap id found for order id: {}",
+                            shared_swap_id
+                        );
+                        return;
+                    }
+                };
                 let &data = match self.local_data.get(local_swap_id) {
                     Some(data) => data,
                     None => {
@@ -657,15 +662,9 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                         return;
                     }
                 };
-
-                let peer_id = self
-                    .confirmed_order_peers
-                    .get(&order_id)
-                    .expect("peer id to be inserted during confirmation");
-                self.comit
-                    .communicate(peer_id.clone(), shared_swap_id, data); //
+                self.local_swap_ids.insert(shared_swap_id, *local_swap_id);
+                self.comit.communicate(peer_id, shared_swap_id, data);
             }
-
             orderbook::BehaviourOutEvent::Failed { peer_id, order_id } => tracing::warn!(
                 "take order request failed, peer: {}, order: {}",
                 peer_id,

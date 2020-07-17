@@ -124,7 +124,12 @@ impl Orderbook {
 
     /// Confirm a take order request, called by Bob i.e., the maker.
     /// Does _not_ remove the order from the order book.
-    pub fn confirm(&mut self, order_id: OrderId, channel: ResponseChannel<Response>) {
+    pub fn confirm(
+        &mut self,
+        order_id: OrderId,
+        channel: ResponseChannel<Response>,
+        peer_id: PeerId,
+    ) {
         let shared_swap_id = SharedSwapId::default();
         tracing::debug!(
             "confirming take order request with swap id: {}",
@@ -139,6 +144,7 @@ impl Orderbook {
 
         self.events
             .push_back(BehaviourOutEvent::TakeOrderConfirmation {
+                peer_id,
                 order_id,
                 shared_swap_id,
             });
@@ -273,6 +279,8 @@ pub enum BehaviourOutEvent {
     /// Event emitted in both Alice and Bob's node when a take order is
     /// confirmed.
     TakeOrderConfirmation {
+        /// The peer from whom request originated.
+        peer_id: PeerId,
         /// The ID of the order taken.
         order_id: OrderId,
         /// Identifier for the swap, used by the COMIT communication protocols.
@@ -340,7 +348,7 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<OrderId, Response>> for O
                 None => tracing::info!("received take order request for non-existent order"),
             },
             RequestResponseEvent::Message {
-                peer: _,
+                peer: peer_id,
                 message:
                     RequestResponseMessage::Response {
                         request_id: _,
@@ -353,6 +361,7 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<OrderId, Response>> for O
             } => {
                 self.events
                     .push_back(BehaviourOutEvent::TakeOrderConfirmation {
+                        peer_id,
                         order_id,
                         shared_swap_id,
                     });
@@ -425,7 +434,7 @@ mod tests {
             .await
             .expect("failed to get TakeOrderRequest event");
 
-        let (_peer_id, channel, order_id) = match bob_event {
+        let (alice_peer_id, channel, order_id) = match bob_event {
             BehaviourOutEvent::TakeOrderRequest {
                 peer_id,
                 response_channel,
@@ -433,22 +442,25 @@ mod tests {
             } => (peer_id, response_channel, order_id),
             _ => panic!("unexepected bob event"),
         };
-        bob.swarm.confirm(order_id, channel);
+        bob.swarm.confirm(order_id, channel, alice_peer_id);
 
         let (alice_event, bob_event) =
             await_events_or_timeout(alice.swarm.next(), bob.swarm.next()).await;
         match (alice_event, bob_event) {
             (
                 BehaviourOutEvent::TakeOrderConfirmation {
-                    order_id: alice_got_order_id,
+                    peer_id: alice_got_peer_id,
+                    order_id: _,
                     shared_swap_id: alice_got_swap_id,
                 },
                 BehaviourOutEvent::TakeOrderConfirmation {
+                    peer_id: bob_got_peer_id,
                     order_id: bob_got_order_id,
                     shared_swap_id: bob_got_swap_id,
                 },
             ) => {
-                assert_eq!(alice_got_order_id, bob_order.id);
+                assert_eq!(alice_got_peer_id, bob.peer_id);
+                assert_eq!(bob_got_peer_id, alice.peer_id);
                 assert_eq!(bob_got_order_id, alice_order.id);
                 assert_eq!(alice_got_swap_id, bob_got_swap_id);
             }

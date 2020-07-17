@@ -93,7 +93,7 @@ pub async fn post_make_herc20_hbit_order(
     body: serde_json::Value,
     facade: Facade,
 ) -> Result<impl Reply, Rejection> {
-    tracing::info!("entered take order controller");
+    tracing::info!("entered make order controller");
     let body = MakeHerc20HbitOrderBody::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
@@ -155,7 +155,7 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
     for order in orders.into_iter() {
         let redeem_field = siren::Field {
             name: "redeem_identity".to_string(),
-            class: vec!["ethereum".to_string(), "address".to_string()],
+            class: vec!["bitcoin".to_string(), "address".to_string()],
             _type: None,
             value: None,
             title: None,
@@ -163,7 +163,7 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
 
         let refund_field = siren::Field {
             name: "refund_identity".to_string(),
-            class: vec!["bitcoin".to_string(), "address".to_string()],
+            class: vec!["ethereum".to_string(), "address".to_string()],
             _type: None,
             value: None,
             title: None,
