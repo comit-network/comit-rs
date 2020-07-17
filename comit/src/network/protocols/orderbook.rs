@@ -122,7 +122,7 @@ impl Orderbook {
         self.orders.get(&order_id).map(|order| order.maker.clone())
     }
 
-    /// Confirm a take order request, called by Bob i.e., the maker
+    /// Confirm a take order request, called by Bob i.e., the maker.
     /// Does _not_ remove the order from the order book.
     pub fn confirm(
         &mut self,
