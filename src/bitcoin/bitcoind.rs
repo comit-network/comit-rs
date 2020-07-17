@@ -230,6 +230,37 @@ impl Client {
         Ok(())
     }
 
+    pub async fn derive_addresses(
+        &self,
+        descriptor: &str,
+        range: Option<[u64; 2]>,
+    ) -> anyhow::Result<Vec<Address>> {
+        let addresses: Vec<Address> = self
+            .rpc_client
+            .send(jsonrpc::Request::new(
+                "deriveaddresses",
+                vec![jsonrpc::serialize(descriptor)?, jsonrpc::serialize(range)?],
+                JSONRPC_VERSION.into(),
+            ))
+            .await
+            .context("failed to derive addresses")?;
+        Ok(addresses)
+    }
+
+    pub async fn get_descriptor_info(
+        &self,
+        descriptor: &str,
+    ) -> anyhow::Result<GetDescriptorInfoResponse> {
+        self.rpc_client
+            .send(jsonrpc::Request::new(
+                "getdescriptorinfo",
+                vec![jsonrpc::serialize(descriptor)?],
+                JSONRPC_VERSION.into(),
+            ))
+            .await
+            .context("failed to get descriptor info")
+    }
+
     #[cfg(test)]
     pub async fn generate_to_address(
         &self,
@@ -293,6 +324,18 @@ pub struct WalletInfoResponse {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 struct DumpWalletResponse {
     filename: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub struct GetDescriptorInfoResponse {
+    pub descriptor: String,
+    pub checksum: String,
+    #[serde(rename = "isrange")]
+    pub is_range: bool,
+    #[serde(rename = "issolvable")]
+    pub is_solvable: bool,
+    #[serde(rename = "hasprivatekeys")]
+    pub has_private_keys: bool,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq)]

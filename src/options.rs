@@ -14,4 +14,5 @@ pub struct Options {
 #[derive(StructOpt, Debug, Copy, Clone)]
 pub enum Command {
     Trade,
+    WalletInfo,
 }

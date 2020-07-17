@@ -16,6 +16,9 @@ use sha2::{Digest, Sha256};
 use std::path::Path;
 use url::Url;
 
+const BITCOIND_DEFAULT_EXTERNAL_DERIVATION_PATH: &str = "/0h/0h/*h";
+const BITCOIND_DEFAULT_INTERNAL_DERIVATION_PATH: &str = "/0h/1h/*h";
+
 #[derive(Debug, Clone)]
 pub struct Wallet {
     /// The wallet is named `nectar_x` with `x` being the first 4 byte of the public key hash
@@ -159,6 +162,45 @@ impl Wallet {
             private_key,
             chain_code,
         }
+    }
+
+    /// Wallet descriptors as specified in https://github.com/bitcoin/bitcoin/blob/master/doc/descriptors.md
+    pub fn descriptors(&self) -> Vec<String> {
+        let ext_priv_key = self.root_extended_private_key();
+        self.hd_paths()
+            .iter()
+            .map(|path| format!("wpkh({}{})", ext_priv_key, path))
+            .collect()
+    }
+
+    /// Some bitcoind rpc command requires the descriptor to be
+    /// suffixed with a checksum. For now we are going to ask bitcoind
+    /// to calculate the checksum for us.
+    pub async fn descriptors_with_checksums(&self) -> anyhow::Result<Vec<String>> {
+        let mut descriptors = Vec::new();
+        for descriptor in self.descriptors() {
+            let response = self
+                .bitcoind_client
+                .get_descriptor_info(&descriptor)
+                .await?;
+            let descriptor = format!("{}#{}", descriptor, response.checksum);
+            descriptors.push(descriptor);
+        }
+
+        Ok(descriptors)
+    }
+
+    /// In accordance with [BIP32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki),
+    /// bitcoind uses 2 derivations paths to generate new keys and addresses,
+    /// "m/iH/0/k corresponds to the k'th keypair of the external chain of account number i of the
+    /// HDW derived from master m." ie, the addresses to give to someone else to receive bitcoin.
+    /// "m/iH/1/k corresponds to the k'th keypair of the internal chain of account number i of the
+    /// HDW derived from master m." ie, the addresses to send change.
+    fn hd_paths(&self) -> Vec<&str> {
+        vec![
+            BITCOIND_DEFAULT_EXTERNAL_DERIVATION_PATH,
+            BITCOIND_DEFAULT_INTERNAL_DERIVATION_PATH,
+        ]
     }
 
     pub async fn send_to_address(
@@ -345,6 +387,57 @@ mod docker_tests {
                 .unwrap();
 
             let _address = wallet.new_address().await.unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn descriptor_generates_same_addresses_than_bitcoin_wallet() {
+        let seed = Seed::random().unwrap();
+
+        let addresses = {
+            let tc_client = clients::Cli::default();
+            let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
+            blockchain.init().await.unwrap();
+
+            let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+                .await
+                .unwrap();
+
+            let mut addresses = Vec::new();
+
+            // This is not ideal because it only returns the "external" addresses
+            for _ in 0u8..20 {
+                addresses.push(wallet.new_address().await.unwrap())
+            }
+            addresses
+        };
+
+        assert_ne!(addresses.len(), 0);
+
+        // Start a new node just to be sure there is no mix up
+        let tc_client = clients::Cli::default();
+        let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
+        blockchain.init().await.unwrap();
+        let bitcoind_client = Client::new(blockchain.node_url.clone());
+        let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+            .await
+            .unwrap();
+
+        let descriptors = wallet.descriptors_with_checksums().await.unwrap();
+
+        // This returns 40 addresses, 20 per path but the "internal" path used for change
+        // Addresses will not be tested.
+        let mut derived_addresses = Vec::new();
+        for descriptor in descriptors {
+            let mut addresses = bitcoind_client
+                .derive_addresses(descriptor.as_str(), Some([0, 20]))
+                .await
+                .unwrap();
+            derived_addresses.append(&mut addresses);
+        }
+
+        for address in addresses {
+            assert!(derived_addresses.contains(&address))
         }
     }
 }
