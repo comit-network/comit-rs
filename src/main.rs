@@ -165,7 +165,7 @@ async fn execute_swap(
     swap: SwapKind,
 ) -> anyhow::Result<()> {
     match swap {
-        SwapKind::HbitHerc20(params) => {
+        SwapKind::Herc20Hbit(params) => {
             unimplemented!("comit::orderbook does not yet handle sell orders");
 
             let _ = finished_swap_sender
@@ -178,7 +178,7 @@ async fn execute_swap(
                     )
                 });
         }
-        SwapKind::Herc20Hbit(ref params) => {
+        SwapKind::HbitHerc20(ref params) => {
             db.insert(swap.clone())?;
 
             swap::nectar_hbit_herc20(
