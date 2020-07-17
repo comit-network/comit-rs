@@ -8,7 +8,7 @@ edition = "2018"
 anyhow = "1"
 async-trait = "0.1"
 bimap = "0.4"
-bitcoin = { version = "0.23.0", features = ["rand", "serde"] }
+bitcoin = { version = "0.23.0", features = ["rand", "use-serde"] }
 chrono = "0.4"
 clarity = "0.1"
 comit = { git = "https://github.com/comit-network/comit-rs", package = "comit", branch = "nectar" }
