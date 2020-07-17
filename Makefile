@@ -78,8 +78,8 @@ clippy: install_clippy
 	$(CARGO) clippy --all-targets -- -D warnings
 
 test:
-
 	$(CARGO) test --workspace
+
 doc:
 	$(CARGO) doc
 

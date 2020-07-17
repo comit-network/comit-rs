@@ -97,10 +97,14 @@ jobs:
       - name: Build docs
         run: make doc
 
-      # Ignore tests on macos due to missing docker
       - name: Run unit tests
-        if: matrix.os == 'ubuntu-latest'
         run: make test
+
+      - name: Run testcontainers tests
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cd comit
+          cargo test --features testcontainers
 
       - name: Upload cnd-${{ matrix.os }} archive that contains the cnd binary
         if: matrix.os == 'ubuntu-latest'

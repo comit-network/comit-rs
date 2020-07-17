@@ -508,7 +508,6 @@ dependencies = [
  "strum",
  "strum_macros",
  "tempfile",
- "testcontainers",
  "thiserror",
  "tokio",
  "tokio-socks",
