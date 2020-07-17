@@ -33,9 +33,8 @@ describe("orderbook", () => {
             /// Wait for alice to accept an incoming connection from Bob
             await sleep(1000);
 
-            const bobMakeOrderBody = OrderFactory.newHerc20HbitOrder(
-                bodies.bob,
-                "sell"
+            const bobMakeOrderBody = OrderFactory.newHerc20HbitSellOrder(
+                bodies.bob
             );
             // @ts-ignore
             // make response contain url in the header to the created order

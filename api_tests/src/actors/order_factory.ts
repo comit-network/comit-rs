@@ -18,12 +18,11 @@ interface Ethereum {
 }
 
 export default class OrderFactory {
-    public static newHerc20HbitOrder(
-        swap: Herc20HbitPayload,
-        position: string
+    public static newHerc20HbitSellOrder(
+        swap: Herc20HbitPayload
     ): Herc20HbitOrder {
         return {
-            position,
+            position: "sell",
             bitcoin_amount: swap.alpha.amount,
             bitcoin_ledger: swap.beta.network,
             token_contract: swap.alpha.token_contract,
