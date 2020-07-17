@@ -34,6 +34,9 @@ serdebug = "1"
 sha2 = "0.9"
 strum = "0.18.0"
 strum_macros = "0.18.0"
+# dev-dependencies can't be optional :(
+# https://github.com/rust-lang/cargo/issues/1596
+testcontainers = { version = "0.9", optional = true }
 thiserror = "1"
 tokio = { version = "0.2.21", features = ["sync"] }
 tracing = "0.1.16"
@@ -47,7 +50,6 @@ libp2p = { version = "0.21", default-features = false, features = ["secio", "yam
 log = { version = "0.4", features = ["serde"] }
 proptest = "0.10.0"
 spectral = { version = "0.6", default-features = false }
-testcontainers = "0.9"
 tokio = { version = "0.2.21", features = ["macros"] }
 tracing = { version = "0.1", features = ["attributes"] }
 tracing-core = "0.1"
@@ -58,3 +60,7 @@ tracing-subscriber = "0.2"
 [features]
 default = []
 test = ["libp2p/secio", "libp2p/yamux"]
+
+[[test]]
+name = "bitcoin_transaction_pattern_e2e"
+required-features = ["testcontainers"]

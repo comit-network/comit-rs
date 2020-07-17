@@ -57,6 +57,8 @@ jobs:
         include:
           - os: ubuntu-latest
             e2e: true
+          - os: macos-latest
+            e2e: true
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout sources
@@ -97,13 +99,17 @@ jobs:
       - name: Build docs
         run: make doc
 
-      # Ignore tests on macos due to missing docker
       - name: Run unit tests
-        if: matrix.os == 'ubuntu-latest'
         run: make test
 
-      - name: Upload cnd-${{ matrix.os }} archive that contains the cnd binary
+      - name: Run testcontainers tests
         if: matrix.os == 'ubuntu-latest'
+        run: |
+          cd comit
+          cargo test --features testcontainers
+
+      - name: Upload cnd-${{ matrix.os }} archive that contains the cnd binary
+        if: matrix.e2e
         uses: actions/upload-artifact@v1
         with:
           name: cnd-${{ matrix.os }}
@@ -135,26 +141,26 @@ jobs:
         if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
-          name: e2e-logs-bitcoind.log
+          name: ${{ matrix.os }}-e2e-logs-bitcoind.log
           path: api_tests/log/bitcoind/regtest/debug.log
 
       - name: Upload parity log
         if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
-          name: e2e-logs-parity.log
+          name: ${{ matrix.os }}-e2e-logs-parity.log
           path: api_tests/log/parity/parity.log
 
       - name: Upload lnd logs
         if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
-          name: e2e-logs-lnd
+          name: ${{ matrix.os }}-e2e-logs-lnd
           path: api_tests/log/lnd-*/logs/bitcoin/regtest/lnd.log
 
       - name: Upload e2e logs
         if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
-          name: e2e-test-logs
+          name: ${{ matrix.os }}-e2e-test-logs
           path: api_tests/log/tests/
