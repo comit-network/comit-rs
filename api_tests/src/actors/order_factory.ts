@@ -23,7 +23,7 @@ export default class OrderFactory {
     ): Herc20HbitOrder {
         return {
             position: "sell",
-            bitcoin_amount: swap.alpha.amount,
+            bitcoin_amount: swap.beta.amount,
             bitcoin_ledger: swap.beta.network,
             token_contract: swap.alpha.token_contract,
             ethereum_amount: swap.alpha.amount,

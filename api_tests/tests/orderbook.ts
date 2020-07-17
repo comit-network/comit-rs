@@ -69,8 +69,7 @@ describe("orderbook", () => {
             const aliceTakeOrderResponse = await alice.cnd.executeSirenAction(
                 aliceOrderTakeAction,
                 async (field) => {
-
-                        // this could be wrong
+                    // this could be wrong
                     if (field.name === "refund_identity") {
                         // @ts-ignore
                         return Promise.resolve(bodies.alice.alpha.identity);
