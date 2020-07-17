@@ -26,6 +26,7 @@ describe("orderbook", () => {
             // Get alice's listen address
             const aliceAddr = await alice.cnd.getPeerListenAddresses();
 
+            // is this required still?
             // Bob dials alices
             // @ts-ignore
             await bob.cnd.client.post("dial", { addresses: aliceAddr });
@@ -33,6 +34,9 @@ describe("orderbook", () => {
             /// Wait for alice to accept an incoming connection from Bob
             await sleep(1000);
 
+            // assuming the nodes are connected from now on
+
+            // this payload could be wrong
             const bobMakeOrderBody = OrderFactory.newHerc20HbitSellOrder(
                 bodies.bob
             );
@@ -65,8 +69,8 @@ describe("orderbook", () => {
             const aliceTakeOrderResponse = await alice.cnd.executeSirenAction(
                 aliceOrderTakeAction,
                 async (field) => {
-                    //                const classes = field.class;
 
+                        // this could be wrong
                     if (field.name === "refund_identity") {
                         // @ts-ignore
                         return Promise.resolve(bodies.alice.alpha.identity);
@@ -116,9 +120,9 @@ describe("orderbook", () => {
                 bodies.alice
             );
 
+            await alice.assertAndExecuteNextAction("deploy");
             await alice.assertAndExecuteNextAction("fund");
 
-            await bob.assertAndExecuteNextAction("deploy");
             await bob.assertAndExecuteNextAction("fund");
 
             await alice.assertAndExecuteNextAction("redeem");
