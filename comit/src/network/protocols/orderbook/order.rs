@@ -72,7 +72,7 @@ pub enum TradingPair {
 }
 
 impl TradingPair {
-    pub fn topic(&self) -> Topic {
+    pub fn to_topic(&self) -> Topic {
         Topic::new(BTC_DAI.to_string())
     }
 }

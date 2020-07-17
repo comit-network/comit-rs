@@ -96,7 +96,7 @@ impl Orderbook {
     /// Create and publish a new 'make' order. Called by Bob i.e. the maker.
     pub fn make(&mut self, order: Order) -> anyhow::Result<OrderId> {
         let ser = bincode::serialize(&Message::CreateOrder(order.clone()))?;
-        let topic = order.tp().topic();
+        let topic = order.tp().to_topic();
         self.gossipsub.publish(&topic, ser);
 
         let id = order.id;
