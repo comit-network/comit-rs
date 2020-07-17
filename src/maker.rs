@@ -4,9 +4,9 @@ use crate::{
     bitcoin,
     ethereum::dai,
     network::{self, Taker},
-    order::{BtcDaiOrder, Position},
+    order::{BtcDaiOrder, Position, Symbol},
     rate::Spread,
-    MidMarketRate, Symbol,
+    MidMarketRate,
 };
 
 // TODO: Figure out why this is an enum

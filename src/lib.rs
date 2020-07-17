@@ -78,26 +78,5 @@ pub fn ensure_directory_exists(file: &Path) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-#[derive(Debug, Copy, Clone, strum_macros::Display)]
-#[strum(serialize_all = "UPPERCASE")]
-pub enum Symbol {
-    Btc,
-    Dai,
-}
-
 #[cfg(all(test, feature = "test-docker"))]
 pub mod test_harness;
-
-#[cfg(test)]
-mod tests {
-    use crate::Symbol;
-
-    #[test]
-    fn symbol_serializes_correctly() {
-        let btc = Symbol::Btc;
-        let dai = Symbol::Dai;
-
-        assert_eq!(String::from("BTC"), btc.to_string());
-        assert_eq!(String::from("DAI"), dai.to_string());
-    }
-}
