@@ -281,38 +281,6 @@ pub async fn post_dial_peer(
     Ok(warp::reply::reply())
 }
 
-// TODO: Add ser stability and roundtrip tests.
-#[derive(Deserialize, Debug, Copy, Clone)]
-pub enum TradingPair {
-    BtcDai,
-}
-
-impl From<TradingPair> for comit::network::orderbook::TradingPair {
-    fn from(tp: TradingPair) -> Self {
-        match tp {
-            TradingPair::BtcDai => comit::network::orderbook::TradingPair::BtcDai,
-        }
-    }
-}
-
-pub async fn post_announce_trading_pair(
-    body: serde_json::Value,
-    mut facade: Facade,
-) -> Result<impl Reply, Rejection> {
-    let tp = TradingPair::deserialize(&body)
-        .map_err(anyhow::Error::new)
-        .map_err(problem::from_anyhow)
-        .map_err(warp::reject::custom)?;
-
-    facade
-        .announce_trading_pair(tp.into())
-        .await
-        .map_err(problem::from_anyhow)
-        .map_err(warp::reject::custom)?;
-
-    Ok(warp::reply::reply())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

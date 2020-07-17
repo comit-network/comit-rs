@@ -1,7 +1,8 @@
 use crate::{
     asset, identity, ledger,
-    network::protocols::orderbook::{MakerId, TradingPair},
+    network::protocols::orderbook::{MakerId, BTC_DAI},
 };
+use libp2p::gossipsub::Topic;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
@@ -36,6 +37,8 @@ impl FromStr for OrderId {
     }
 }
 
+/// An order, created by a maker (Bob) and shared with the network via
+/// gossipsub.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Order {
     pub id: OrderId,
@@ -51,9 +54,26 @@ pub struct Order {
     pub ethereum_absolute_expiry: u32,
 }
 
+// We explicitly only support BTC/DAI.
 impl Order {
     pub fn tp(&self) -> TradingPair {
         TradingPair::BtcDai
+    }
+}
+
+// Since we only support a single trading pair this struct is actually
+// not needed, the information is implicit in the Order struct. Keep
+// this and the calls to order.tp().topic() to make it explicit that
+// there is only a single trading pair and the trading pair is
+// defined by the order struct.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum TradingPair {
+    BtcDai,
+}
+
+impl TradingPair {
+    pub fn to_topic(&self) -> Topic {
+        Topic::new(BTC_DAI.to_string())
     }
 }
 
@@ -78,6 +98,16 @@ fn meaningless_expiry_value() -> u32 {
     100
 }
 
+/// The position of the maker for this order. A BTC/DAI buy order,
+/// also described as an order that buys the trading pair BTC/DAI,
+/// means that the maker buys the base currency (in this case BTC) in
+/// return for DAI. A sell order means that the maker sells BTC and
+/// receives DAI.
+///
+/// Please note: we do not set the base currency to 1 and use rate
+/// (i.e., quote currency) and amount as is commonly done in Forex
+/// trading. We use the amounts of each currency to determine the
+/// rate.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Position {

@@ -7,7 +7,7 @@ use crate::{
 };
 use comit::{
     bitcoin, identity,
-    network::{Order, OrderId, TradingPair},
+    network::{Order, OrderId},
 };
 use libp2p::{Multiaddr, PeerId};
 
@@ -99,10 +99,6 @@ impl Facade {
 
     pub async fn dial_addr(&mut self, addr: Multiaddr) {
         let _ = self.swarm.dial_addr(addr).await;
-    }
-
-    pub async fn announce_trading_pair(&mut self, tp: TradingPair) -> anyhow::Result<()> {
-        self.swarm.announce_trading_pair(tp).await
     }
 }
 

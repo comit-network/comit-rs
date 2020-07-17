@@ -29,6 +29,9 @@ use std::{
 
 pub use self::order::*;
 
+// TODO: Audit function scope
+// TODO: Rethink topic logic
+
 /// String representing the BTC/DAI trading pair.
 const BTC_DAI: &str = "BTC/DAI";
 
@@ -93,12 +96,10 @@ impl Orderbook {
     /// Create and publish a new 'make' order. Called by Bob i.e. the maker.
     pub fn make(&mut self, order: Order) -> anyhow::Result<OrderId> {
         let ser = bincode::serialize(&Message::CreateOrder(order.clone()))?;
-        let topic = order.tp().topic();
-        let id = order.id;
-
+        let topic = order.tp().to_topic();
         self.gossipsub.publish(&topic, ser);
-        tracing::info!("published order: {}", id);
 
+        let id = order.id;
         self.orders.insert(id, order);
 
         Ok(id)
@@ -109,7 +110,7 @@ impl Orderbook {
     pub fn take(&mut self, order_id: OrderId) -> anyhow::Result<()> {
         let maker_id = self
             .maker_id(order_id)
-            .ok_or_else(|| OrderbookError::OrderNotFound(order_id))?;
+            .ok_or_else(|| OrderNotFound(order_id))?;
 
         self.take_order.send_request(&maker_id.into(), order_id);
 
@@ -160,20 +161,6 @@ impl Orderbook {
         self.orders.get(id).cloned()
     }
 
-    // Ideally this step should be executed automatically before making an order.
-    // Unfortunately a brief delay is required to allow peers to acknowledge and
-    // subscribe to the announced trading pair before publishing the order
-    /// Announce a trading pair topic to the network.
-    pub fn announce_trading_pair(&mut self, tp: TradingPair) -> anyhow::Result<()> {
-        // TOOD: This code is contrived, why do we sub here?
-        self.gossipsub.subscribe(tp.topic());
-
-        let ser = bincode::serialize(&Message::TradingPair(tp))?;
-        self.gossipsub.publish(&tp.topic(), ser);
-
-        Ok(())
-    }
-
     fn poll(
         &mut self,
         _: &mut Context<'_>,
@@ -192,30 +179,9 @@ impl Orderbook {
     }
 }
 
-#[derive(thiserror::Error, Debug, Clone, Copy)]
-pub enum OrderbookError {
-    #[error("could not make order")]
-    Make,
-    #[error("could not take order because identities not found")]
-    IdentitiesForOrderNotFound(OrderId),
-    #[error("could not take order because not found")]
-    OrderNotFound(OrderId),
-    #[error("could not subscribe to all peers for topic")]
-    Subscribe,
-    #[error("could not unsubscribe to all peers for topic")]
-    UnSubscribe,
-}
-
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub enum TradingPair {
-    BtcDai,
-}
-
-impl TradingPair {
-    pub fn topic(&self) -> Topic {
-        Topic::new(BTC_DAI.to_string())
-    }
-}
+#[derive(PartialEq, Clone, Copy, Debug, thiserror::Error)]
+#[error("order {0} not found in orderbook")]
+pub struct OrderNotFound(OrderId);
 
 /// MakerId is a PeerId wrapper so we control serialization/deserialization.
 #[derive(Debug, Clone, PartialEq)]
@@ -279,7 +245,6 @@ pub enum SwapType {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub enum Message {
-    TradingPair(TradingPair),
     CreateOrder(Order),
     DeleteOrder(OrderId),
 }
@@ -347,9 +312,6 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
                     // they did not create to be removed by spoofing
                     // the network with a previously seen order id.
                     self.orders.remove(&order_id);
-                }
-                Message::TradingPair(tp) => {
-                    self.gossipsub.subscribe(tp.topic());
                 }
             }
         }
