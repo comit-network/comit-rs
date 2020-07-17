@@ -31,6 +31,10 @@ pub async fn post_take_order(
     let refund_identity = body.refund_identity;
     let redeem_identity = body.redeem_identity;
 
+    // TODO: We can just pass the identities down to the network layer
+    // in the `take_order` method. Then swap creation and save would
+    // be done down there as it is for make order.
+
     let swap_id = LocalSwapId::default();
 
     let order_id = order_id;
@@ -129,8 +133,12 @@ pub async fn post_make_order(
 pub async fn get_order(order_id: OrderId, facade: Facade) -> Result<impl Reply, Rejection> {
     let swap_id = facade
         .storage
+        // TODO: Rename this, its a simple mapping - why the unusually long name?
         .get_swap_associated_with_order(&order_id)
         .await;
+
+    // TODO: This only returns the order data if a swap has not been created. Surely
+    // that's not what we want?
 
     // let entity = siren::Entity::default().with_class_member("order");
     let entity = match swap_id {
@@ -145,6 +153,8 @@ pub async fn get_order(order_id: OrderId, facade: Facade) -> Result<impl Reply, 
     Ok(warp::reply::json(&entity))
 }
 
+// TODO: This code smells, these identities are specific to the
+// role but this function can be called by a user in either role.
 pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
     let orders = facade.get_orders().await;
 
