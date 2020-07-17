@@ -98,11 +98,11 @@ fn meaningless_expiry_value() -> u32 {
     100
 }
 
-/// The position the maker takes in this order. A BTC/DAI buy order,
+/// The position of the maker for this order. A BTC/DAI buy order,
 /// also described as an order that buys the trading pair BTC/DAI,
-/// means that the order maker buys the base currency (in this case
-/// BTC) in return for DAI. A sell order means that the maker sells
-/// BTC and receives DAI.
+/// means that the maker buys the base currency (in this case BTC) in
+/// return for DAI. A sell order means that the maker sells BTC and
+/// receives DAI.
 ///
 /// Please note: we do not set the base currency to 1 and use rate
 /// (i.e., quote currency) and amount as is commonly done in Forex
