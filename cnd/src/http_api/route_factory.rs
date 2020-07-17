@@ -2,7 +2,8 @@ use crate::{
     config::AllowedOrigins,
     http_api,
     http_api::{
-        halbit_herc20, hbit_herc20, herc20_halbit, herc20_hbit, info, orderbook, peers, swaps,
+        dial_addr, halbit_herc20, hbit_herc20, herc20_halbit, herc20_hbit, info, orderbook, peers,
+        swaps,
     },
     network::OrderId,
     Facade, LocalSwapId,
@@ -156,7 +157,7 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade)
-        .and_then(orderbook::post_dial_peer);
+        .and_then(dial_addr::post_dial_addr);
 
     preflight_cors_route
         .or(get_peers)

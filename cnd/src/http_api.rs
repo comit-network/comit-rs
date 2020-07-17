@@ -11,6 +11,7 @@ mod route_factory;
 #[macro_use]
 mod impl_serialize_http;
 mod action;
+mod dial_addr;
 mod peers;
 mod problem;
 mod protocol;

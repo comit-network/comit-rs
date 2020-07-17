@@ -12,7 +12,6 @@ use comit::{
     ethereum,
     network::{MakerId, Order, OrderId, Position},
 };
-use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
 use warp::{http, http::StatusCode, Rejection, Reply};
 
@@ -222,12 +221,16 @@ impl From<MakeOrderBody> for NewOrder {
     }
 }
 
+// TODO: Add deser stability test.
 #[derive(Clone, Debug, Deserialize)]
 struct TakeOrderBody {
     refund_identity: identity::Ethereum,
     redeem_identity: bitcoin::Address,
 }
 
+// TODO: Add ser stability test.
+// TODO: This is just an order. Can we not just use Order directly, rely on the
+// serialization in comit crate and add a stability test?
 #[derive(Clone, Debug, Serialize)]
 struct OrderResponse {
     id: OrderId,
@@ -258,26 +261,6 @@ impl From<Order> for OrderResponse {
             ethereum_absolute_expiry: order.ethereum_absolute_expiry,
         }
     }
-}
-
-#[derive(Deserialize, Debug)]
-pub struct DialPeerBody {
-    addresses: Vec<Multiaddr>,
-}
-
-pub async fn post_dial_peer(
-    body: serde_json::Value,
-    mut facade: Facade,
-) -> Result<impl Reply, Rejection> {
-    let body = DialPeerBody::deserialize(&body)
-        .map_err(anyhow::Error::new)
-        .map_err(problem::from_anyhow)
-        .map_err(warp::reject::custom)?;
-    // todo: find out if the dial sucessful?
-    for addr in body.addresses {
-        facade.dial_addr(addr).await;
-    }
-    Ok(warp::reply::reply())
 }
 
 #[cfg(test)]
