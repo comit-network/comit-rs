@@ -450,7 +450,7 @@ mod tests {
             (
                 BehaviourOutEvent::TakeOrderConfirmation {
                     peer_id: alice_got_peer_id,
-                    order_id: alice_got_order_id,
+                    order_id: _,
                     shared_swap_id: alice_got_swap_id,
                 },
                 BehaviourOutEvent::TakeOrderConfirmation {

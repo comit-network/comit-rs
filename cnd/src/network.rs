@@ -662,12 +662,9 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                         return;
                     }
                 };
-                self.local_swap_ids
-                    .insert(shared_swap_id, local_swap_id.clone());
-                self.comit
-                    .communicate(peer_id.clone(), shared_swap_id, data);
+                self.local_swap_ids.insert(shared_swap_id, *local_swap_id);
+                self.comit.communicate(peer_id, shared_swap_id, data);
             }
-
             orderbook::BehaviourOutEvent::Failed { peer_id, order_id } => tracing::warn!(
                 "take order request failed, peer: {}, order: {}",
                 peer_id,
