@@ -54,7 +54,7 @@ where
 
         match future::select(execute_future, beta_expired).await {
             Either::Left((Ok(event), _)) => {
-                self.store_event(event.clone())?;
+                self.store_event(event.clone()).await?;
                 Ok(event)
             }
             Either::Right(_) => anyhow::bail!(BetaHasExpiredError),
@@ -97,7 +97,7 @@ where
         }
 
         let event = Execute::<E>::execute(self, execution_args).await?;
-        self.store_event(event.clone())?;
+        self.store_event(event.clone()).await?;
 
         Ok(event)
     }
@@ -152,19 +152,21 @@ pub trait Execute<E> {
     async fn execute(&self, args: Self::Args) -> anyhow::Result<E>;
 }
 
+#[async_trait::async_trait]
 pub trait StoreEvent<E> {
-    fn store_event(&self, event: E) -> anyhow::Result<()>;
+    async fn store_event(&self, event: E) -> anyhow::Result<()>;
 }
 
 /// Store the event `E` associated with our `SwapId` by saving it to a
 /// database through the `Save` trait.
+#[async_trait::async_trait]
 impl<E, A> StoreEvent<E> for A
 where
     A: db::Save<E> + AsSwapId,
     E: Send + 'static,
 {
-    fn store_event(&self, event: E) -> anyhow::Result<()> {
-        self.save(event, self.as_swap_id())
+    async fn store_event(&self, event: E) -> anyhow::Result<()> {
+        self.save(event, self.as_swap_id()).await
     }
 }
 
@@ -247,8 +249,9 @@ mod tests {
         }
     }
 
+    #[async_trait::async_trait]
     impl db::Save<ArbitraryEvent> for FakeActor {
-        fn save(&self, deploy_event: ArbitraryEvent, swap_id: SwapId) -> anyhow::Result<()> {
+        async fn save(&self, deploy_event: ArbitraryEvent, swap_id: SwapId) -> anyhow::Result<()> {
             let mut events = self.db.events.write().unwrap();
             events.insert(swap_id, deploy_event);
 

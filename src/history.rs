@@ -9,6 +9,7 @@ use std::path::Path;
 #[cfg(not(test))]
 use chrono::Local;
 
+use crate::ensure_directory_exists;
 #[cfg(test)]
 use chrono::FixedOffset;
 
@@ -235,20 +236,6 @@ impl History {
         self.writer.flush()?;
         Ok(())
     }
-}
-
-// TODO: Merge that with the seed file function of the same name
-fn ensure_directory_exists(file: &Path) -> Result<(), Error> {
-    if let Some(path) = file.parent() {
-        if !path.exists() {
-            tracing::info!(
-                "Parent directory does not exist, creating recursively: {}",
-                file.display()
-            );
-            std::fs::create_dir_all(path)?;
-        }
-    }
-    Ok(())
 }
 
 #[cfg(test)]

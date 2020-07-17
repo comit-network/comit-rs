@@ -39,8 +39,9 @@ impl From<herc20::Deployed> for Herc20Deployed {
     }
 }
 
+#[async_trait::async_trait]
 impl Save<herc20::Deployed> for Database {
-    fn save(&self, event: herc20::Deployed, swap_id: SwapId) -> anyhow::Result<()> {
+    async fn save(&self, event: herc20::Deployed, swap_id: SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get(&swap_id)?;
 
         match stored_swap.herc20_deployed {
@@ -59,7 +60,13 @@ impl Save<herc20::Deployed> for Database {
                 self.db
                     .compare_and_swap(key, Some(old_value), Some(new_value))
                     .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")
+                    .context("Stored swap somehow changed, aborting saving")?;
+
+                self.db
+                    .flush_async()
+                    .await
+                    .map(|_| ())
+                    .context("Could not flush db")
             }
         }
     }
@@ -97,8 +104,9 @@ impl From<herc20::Funded> for Herc20Funded {
     }
 }
 
+#[async_trait::async_trait]
 impl Save<herc20::Funded> for Database {
-    fn save(&self, event: herc20::Funded, swap_id: SwapId) -> anyhow::Result<()> {
+    async fn save(&self, event: herc20::Funded, swap_id: SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get(&swap_id)?;
 
         match stored_swap.herc20_funded {
@@ -117,7 +125,13 @@ impl Save<herc20::Funded> for Database {
                 self.db
                     .compare_and_swap(key, Some(old_value), Some(new_value))
                     .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")
+                    .context("Stored swap somehow changed, aborting saving")?;
+
+                self.db
+                    .flush_async()
+                    .await
+                    .map(|_| ())
+                    .context("Could not flush db")
             }
         }
     }
@@ -155,8 +169,9 @@ impl From<herc20::Redeemed> for Herc20Redeemed {
     }
 }
 
+#[async_trait::async_trait]
 impl Save<herc20::Redeemed> for Database {
-    fn save(&self, event: herc20::Redeemed, swap_id: SwapId) -> anyhow::Result<()> {
+    async fn save(&self, event: herc20::Redeemed, swap_id: SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get(&swap_id)?;
 
         match stored_swap.herc20_redeemed {
@@ -175,7 +190,13 @@ impl Save<herc20::Redeemed> for Database {
                 self.db
                     .compare_and_swap(key, Some(old_value), Some(new_value))
                     .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")
+                    .context("Stored swap somehow changed, aborting saving")?;
+
+                self.db
+                    .flush_async()
+                    .await
+                    .map(|_| ())
+                    .context("Could not flush db")
             }
         }
     }
@@ -210,8 +231,9 @@ impl From<herc20::Refunded> for Herc20Refunded {
     }
 }
 
+#[async_trait::async_trait]
 impl Save<herc20::Refunded> for Database {
-    fn save(&self, event: herc20::Refunded, swap_id: SwapId) -> anyhow::Result<()> {
+    async fn save(&self, event: herc20::Refunded, swap_id: SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get(&swap_id)?;
 
         match stored_swap.herc20_refunded {
@@ -230,7 +252,13 @@ impl Save<herc20::Refunded> for Database {
                 self.db
                     .compare_and_swap(key, Some(old_value), Some(new_value))
                     .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")
+                    .context("Stored swap somehow changed, aborting saving")?;
+
+                self.db
+                    .flush_async()
+                    .await
+                    .map(|_| ())
+                    .context("Could not flush db")
             }
         }
     }
@@ -369,8 +397,8 @@ mod tests {
     use super::*;
     use crate::swap::db::Swap;
 
-    #[test]
-    fn save_and_load_herc20_deployed() {
+    #[tokio::test]
+    async fn save_and_load_herc20_deployed() {
         let db = Database::new_test().unwrap();
         let swap = Swap::default();
         let swap_id = SwapId::default();
@@ -383,7 +411,7 @@ mod tests {
             transaction: transaction.clone(),
             location,
         };
-        db.save(event, swap_id).unwrap();
+        db.save(event, swap_id).await.unwrap();
 
         let stored_event: herc20::Deployed = db
             .load(swap_id)
@@ -394,8 +422,8 @@ mod tests {
         assert_eq!(stored_event.location, location);
     }
 
-    #[test]
-    fn save_and_load_herc20_funded() {
+    #[tokio::test]
+    async fn save_and_load_herc20_funded() {
         let db = Database::new_test().unwrap();
         let swap = Swap::default();
         let swap_id = SwapId::default();
@@ -411,7 +439,7 @@ mod tests {
             transaction: transaction.clone(),
             asset: asset.clone(),
         };
-        db.save(event, swap_id).unwrap();
+        db.save(event, swap_id).await.unwrap();
 
         let stored_event: herc20::Funded = db
             .load(swap_id)
@@ -422,8 +450,8 @@ mod tests {
         assert_eq!(stored_event.asset, asset);
     }
 
-    #[test]
-    fn save_and_load_herc20_redeemed() {
+    #[tokio::test]
+    async fn save_and_load_herc20_redeemed() {
         let db = Database::new_test().unwrap();
         let swap = Swap::default();
         let swap_id = SwapId::default();
@@ -436,7 +464,7 @@ mod tests {
             transaction: transaction.clone(),
             secret,
         };
-        db.save(event, swap_id).unwrap();
+        db.save(event, swap_id).await.unwrap();
 
         let stored_event: herc20::Redeemed = db
             .load(swap_id)
@@ -447,8 +475,8 @@ mod tests {
         assert_eq!(stored_event.secret, secret);
     }
 
-    #[test]
-    fn save_and_load_herc20_refunded() {
+    #[tokio::test]
+    async fn save_and_load_herc20_refunded() {
         let db = Database::new_test().unwrap();
         let swap = Swap::default();
         let swap_id = SwapId::default();
@@ -459,7 +487,7 @@ mod tests {
         let event = herc20::Refunded {
             transaction: transaction.clone(),
         };
-        db.save(event, swap_id).unwrap();
+        db.save(event, swap_id).await.unwrap();
 
         let stored_event: herc20::Refunded = db
             .load(swap_id)

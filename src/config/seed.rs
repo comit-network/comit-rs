@@ -1,4 +1,4 @@
-use crate::seed;
+use crate::{ensure_directory_exists, seed};
 use pem::{encode, Pem};
 use seed::SEED_LENGTH;
 use std::{
@@ -56,7 +56,7 @@ impl Seed {
     }
 
     fn write_to(&self, seed_file: PathBuf) -> Result<(), Error> {
-        ensure_directory_exists(seed_file.clone())?;
+        ensure_directory_exists(&seed_file)?;
 
         let data = (self.0).seed_bytes();
         let pem = Pem {
@@ -101,19 +101,6 @@ impl From<Seed> for seed::Seed {
     fn from(seed: Seed) -> Self {
         seed.0
     }
-}
-
-fn ensure_directory_exists(file: PathBuf) -> Result<(), Error> {
-    if let Some(path) = file.parent() {
-        if !path.exists() {
-            tracing::info!(
-                "Seed file parent directory does not exist, creating recursively: {}",
-                file.display()
-            );
-            fs::create_dir_all(path)?;
-        }
-    }
-    Ok(())
 }
 
 #[derive(Debug, thiserror::Error)]
