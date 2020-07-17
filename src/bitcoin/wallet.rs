@@ -215,6 +215,7 @@ impl Wallet {
         Ok(())
     }
 
+    // TODO: Just hash the seed instead of the public key of the seed (as a private key)
     fn gen_name(private_key: PrivateKey) -> String {
         let mut hash_engine = PubkeyHash::engine();
         private_key
