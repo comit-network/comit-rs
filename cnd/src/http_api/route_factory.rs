@@ -2,7 +2,8 @@ use crate::{
     config::AllowedOrigins,
     http_api,
     http_api::{
-        halbit_herc20, hbit_herc20, herc20_halbit, herc20_hbit, info, orderbook, peers, swaps,
+        dial_addr, halbit_herc20, hbit_herc20, herc20_halbit, herc20_hbit, info, orderbook, peers,
+        swaps,
     },
     network::OrderId,
     Facade, LocalSwapId,
@@ -135,28 +136,28 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .and(facade.clone())
         .and_then(orderbook::get_orders);
 
-    let take_herc20_hbit_order = warp::post()
+    let take_order = warp::post()
         .and(warp::path("orders"))
         .and(warp::path::param::<OrderId>())
         .and(warp::path("take"))
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade.clone())
-        .and_then(orderbook::post_take_herc20_hbit_order);
+        .and_then(orderbook::post_take_order);
 
-    let make_herc20_hbit_order = warp::post()
+    let make_order = warp::post()
         .and(warp::path!("orders"))
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade.clone())
-        .and_then(orderbook::post_make_herc20_hbit_order);
+        .and_then(orderbook::post_make_order);
 
     let post_dial_addr = warp::post()
         .and(warp::path!("dial"))
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade)
-        .and_then(orderbook::post_dial_peer);
+        .and_then(dial_addr::post_dial_addr);
 
     preflight_cors_route
         .or(get_peers)
@@ -172,8 +173,8 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .or(action_refund)
         .or(hbit_herc20)
         .or(herc20_hbit)
-        .or(take_herc20_hbit_order)
-        .or(make_herc20_hbit_order)
+        .or(take_order)
+        .or(make_order)
         .or(get_orders)
         .or(get_order)
         .or(post_dial_addr)

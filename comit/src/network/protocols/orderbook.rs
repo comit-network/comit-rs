@@ -450,7 +450,7 @@ mod tests {
             (
                 BehaviourOutEvent::TakeOrderConfirmation {
                     peer_id: alice_got_peer_id,
-                    order_id: _,
+                    order_id: alice_got_order_id,
                     shared_swap_id: alice_got_swap_id,
                 },
                 BehaviourOutEvent::TakeOrderConfirmation {
@@ -461,7 +461,10 @@ mod tests {
             ) => {
                 assert_eq!(alice_got_peer_id, bob.peer_id);
                 assert_eq!(bob_got_peer_id, alice.peer_id);
-                assert_eq!(bob_got_order_id, alice_order.id);
+
+                assert_eq!(alice_got_order_id, alice_order.id);
+                assert_eq!(bob_got_order_id, alice_got_order_id);
+
                 assert_eq!(alice_got_swap_id, bob_got_swap_id);
             }
             _ => panic!("failed to get take order confirmation"),
