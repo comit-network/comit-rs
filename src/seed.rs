@@ -1,7 +1,5 @@
-use ::bitcoin::secp256k1;
-use ::bitcoin::secp256k1::constants::SECRET_KEY_SIZE;
+use ::bitcoin::secp256k1::{self, constants::SECRET_KEY_SIZE, SecretKey};
 use rand::prelude::*;
-use sha2::{Digest, Sha256};
 use std::fmt;
 
 pub const SEED_LENGTH: usize = 32;
@@ -10,31 +8,26 @@ pub const SEED_LENGTH: usize = 32;
 pub struct Seed([u8; SEED_LENGTH]);
 
 impl Seed {
-    pub fn secret_key(&self) -> anyhow::Result<secp256k1::SecretKey> {
-        let bytes = self.secret_key_bytes();
+    pub fn random() -> Result<Self, Error> {
+        let mut bytes = [0u8; SECRET_KEY_SIZE];
+        rand::thread_rng().fill_bytes(&mut bytes);
 
-        Ok(secp256k1::SecretKey::from_slice(&bytes)?)
+        // If it succeeds once, it'll always succeed
+        let _ = SecretKey::from_slice(&bytes)?;
+
+        Ok(Seed(bytes))
     }
 
-    /// The secret key is a SHA-256 of the seed
-    pub fn secret_key_bytes(&self) -> [u8; SECRET_KEY_SIZE] {
-        let mut sha = Sha256::new();
-        sha.update(&self.0);
-
-        sha.finalize().into()
-    }
-
-    pub fn seed_bytes(&self) -> [u8; SEED_LENGTH] {
+    pub fn bytes(&self) -> [u8; SEED_LENGTH] {
         self.0
     }
-}
 
-impl Default for Seed {
-    fn default() -> Self {
-        let mut bytes = [0u8; SECRET_KEY_SIZE];
-
-        rand::thread_rng().fill_bytes(&mut bytes);
-        Seed(bytes)
+    /// Do note that the secret key returned only contains the seed bytes.
+    /// This helper function provides a different format but does not
+    /// manipulate the seed. Further computation may be needed to match
+    /// the practice of the given blockchain
+    pub fn as_secret_key(&self) -> SecretKey {
+        SecretKey::from_slice(&self.0).expect("It worked in ::random()")
     }
 }
 
@@ -56,15 +49,18 @@ impl From<[u8; SEED_LENGTH]> for Seed {
     }
 }
 
+#[derive(Debug, Copy, Clone, thiserror::Error)]
+pub enum Error {
+    #[error("Secp256k1: ")]
+    Secp256k1(#[from] secp256k1::Error),
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn generate_random_seed() {
-        let seed = Seed::default();
-        let res = seed.secret_key();
-
-        assert!(res.is_ok())
+        let _ = Seed::random().unwrap();
     }
 }
