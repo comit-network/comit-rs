@@ -15,6 +15,7 @@
 // TODO: Add no unwrap policy
 
 pub mod bitcoin;
+pub mod command;
 pub mod config;
 pub mod ethereum;
 pub mod float_maths;
@@ -29,7 +30,6 @@ pub mod rate;
 pub mod seed;
 pub mod swap;
 pub mod swap_id;
-pub mod wallet_info;
 
 use anyhow::Context;
 use conquer_once::Lazy;

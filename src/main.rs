@@ -10,7 +10,9 @@ use futures::{
 use futures_timer::Delay;
 use libp2p::PeerId;
 use nectar::{
-    bitcoin, config,
+    bitcoin,
+    command::wallet_info,
+    config,
     config::Settings,
     ethereum::{self, dai},
     history::{self, History},
@@ -19,7 +21,7 @@ use nectar::{
     network::{self, Swarm, Taker},
     options::{self, Command, Options},
     swap::{self, Database, SwapKind},
-    wallet_info, Maker, MidMarketRate, Seed, Spread,
+    Maker, MidMarketRate, Seed, Spread,
 };
 use num::BigUint;
 use std::str::FromStr;
@@ -495,9 +497,7 @@ async fn main() {
         .await
         .expect("Start trading"),
         Command::WalletInfo => {
-            let wallet_info = wallet_info::wallet_info(ethereum_wallet, bitcoin_wallet)
-                .await
-                .unwrap();
+            let wallet_info = wallet_info(ethereum_wallet, bitcoin_wallet).await.unwrap();
             println!("{}", wallet_info);
         }
     }
