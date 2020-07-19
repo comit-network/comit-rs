@@ -4,8 +4,10 @@ use crate::Rate;
 mod bitcoind;
 mod wallet;
 
+use crate::float_maths::string_int_to_float;
 pub use ::bitcoin::{Address, Network};
 pub use bitcoind::*;
+use std::fmt;
 pub use wallet::Wallet;
 
 // TODO: Move all bitcoin things under a bitcoin module to allow `bitcoin::Wallet` call
@@ -99,6 +101,13 @@ impl From<Amount> for comit::asset::Bitcoin {
     }
 }
 
+impl fmt::Display for Amount {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let bitcoin = string_int_to_float(self.as_sat().to_string(), SATS_IN_BITCOIN_EXP as usize);
+        write!(f, "{} BTC", bitcoin)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -147,6 +156,20 @@ mod tests {
 
         let dai = dai::Amount::from_dai_trunc(99990.0).unwrap();
         assert_eq!(res, dai);
+    }
+
+    #[test]
+    fn one_bitcoin_displays_as_one_btc() {
+        let bitcoin = Amount::from_sat(100_000_000);
+
+        assert_eq!(bitcoin.to_string(), "1 BTC".to_string())
+    }
+
+    #[test]
+    fn one_sat_displays_as_ten_nano_btc() {
+        let bitcoin = Amount::from_sat(1);
+
+        assert_eq!(bitcoin.to_string(), "0.00000001 BTC".to_string())
     }
 
     proptest! {

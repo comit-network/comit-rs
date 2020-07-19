@@ -77,6 +77,33 @@ pub fn divide_pow_ten_trunc(uint: BigUint, inv_pow: usize) -> BigUint {
     }
 }
 
+pub fn string_int_to_float(int: String, precision: usize) -> String {
+    let mut str = int;
+
+    let str = if str.len() <= precision {
+        // Need to add "0." in front and some zeros
+        let mut prefix = String::from("0.");
+        let number_of_zeros = precision - str.len();
+        let zeros = "0".repeat(number_of_zeros);
+        prefix.push_str(&zeros);
+        prefix.push_str(&str);
+        prefix
+    } else {
+        // Need to put a decimal point somewhere
+        str.insert(str.len() - precision, '.');
+        str
+    };
+
+    let str = str.trim_end_matches('0');
+    let str = str.trim_end_matches('.');
+
+    if !str.is_empty() {
+        str.to_string()
+    } else {
+        "0".to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

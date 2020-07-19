@@ -1,10 +1,12 @@
 use crate::ethereum::geth::Client;
+use crate::ethereum::{dai, ether};
 use crate::Seed;
 use comit::{
     actions::ethereum::{CallContract, DeployContract},
     asset::Erc20,
     ethereum::{Address, ChainId, Hash, TransactionReceipt},
 };
+use num::BigUint;
 use url::Url;
 
 // TODO: Add network; assert network on all calls to geth
@@ -208,18 +210,51 @@ impl Wallet {
             .await
     }
 
-    // QUESTION: Do we need to handle decimal places?
+    // TODO: handle decimals
     pub async fn erc20_balance(&self, token_contract: Address) -> anyhow::Result<Erc20> {
         self.geth_client
             .erc20_balance(self.account(), token_contract)
             .await
     }
 
-    pub async fn dai_balance(&self) -> anyhow::Result<Erc20> {
-        self.erc20_balance(self.dai_contract_addr).await
+    pub async fn dai_balance(&self) -> anyhow::Result<dai::Amount> {
+        let balance = self.erc20_balance(self.dai_contract_addr).await?;
+        let int = BigUint::from_bytes_le(&balance.quantity.to_bytes());
+        Ok(dai::Amount::from_atto(int))
     }
 
     pub async fn get_transaction_count(&self) -> anyhow::Result<u32> {
         self.geth_client.get_transaction_count(self.account()).await
+    }
+
+    pub async fn ether_balance(&self) -> anyhow::Result<ether::Amount> {
+        self.geth_client.get_balance(self.account()).await
+    }
+}
+
+#[cfg(all(test, feature = "test-docker"))]
+mod tests {
+    use super::*;
+    use crate::ethereum::ether;
+    use crate::test_harness::ethereum::Blockchain;
+
+    #[tokio::test]
+    async fn ether_balance() {
+        let client = testcontainers::clients::Cli::default();
+
+        let mut blockchain = Blockchain::new(&client).unwrap();
+        blockchain.init().await.unwrap();
+
+        let seed = Seed::random().unwrap();
+        let wallet = Wallet::new(
+            seed,
+            blockchain.node_url.clone(),
+            blockchain.token_contract().unwrap(),
+        )
+        .unwrap();
+
+        let balance = wallet.ether_balance().await.unwrap();
+
+        assert_eq!(balance, ether::Amount::zero())
     }
 }

@@ -58,7 +58,7 @@ async fn init_maker(
 
     Ok(Maker::new(
         initial_btc_balance,
-        initial_dai_balance.into(),
+        initial_dai_balance,
         btc_fee_reserve,
         btc_max_sell,
         dai_max_sell,
@@ -138,15 +138,12 @@ fn init_dai_balance_updates(
         loop {
             let balance = wallet.dai_balance().await;
 
-            let _ = sender
-                .send(balance.map(|balance| balance.into()))
-                .await
-                .map_err(|e| {
-                    tracing::trace!(
-                        "Error when sending rate balance from sender to receiver: {}",
-                        e
-                    )
-                });
+            let _ = sender.send(balance).await.map_err(|e| {
+                tracing::trace!(
+                    "Error when sending rate balance from sender to receiver: {}",
+                    e
+                )
+            });
 
             Delay::new(update_interval).await;
         }
