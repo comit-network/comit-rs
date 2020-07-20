@@ -230,6 +230,19 @@ impl Client {
         Ok(())
     }
 
+    pub async fn list_wallets(&self) -> anyhow::Result<Vec<String>> {
+        let wallets: Vec<String> = self
+            .rpc_client
+            .send::<Vec<()>, _>(jsonrpc::Request::new(
+                "listwallets",
+                vec![],
+                JSONRPC_VERSION.into(),
+            ))
+            .await
+            .context("failed to list wallets")?;
+        Ok(wallets)
+    }
+
     pub async fn derive_addresses(
         &self,
         descriptor: &str,
@@ -302,23 +315,23 @@ pub struct CreateWalletResponse {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct WalletInfoResponse {
     #[serde(rename = "walletname")]
-    wallet_name: String,
+    pub wallet_name: String,
     #[serde(rename = "walletversion")]
-    wallet_version: u32,
+    pub wallet_version: u32,
     #[serde(rename = "txcount")]
-    tx_count: u32,
+    pub tx_count: u32,
     #[serde(rename = "keypoololdest")]
-    keypool_oldest: u32,
+    pub keypool_oldest: u32,
     #[serde(rename = "keypoolsize_hd_internal")]
-    keypool_size_hd_internal: u32,
-    unlocked_until: Option<u32>,
+    pub keypool_size_hd_internal: u32,
+    pub unlocked_until: Option<u32>,
     #[serde(rename = "paytxfee")]
-    pay_tx_fee: f64,
+    pub pay_tx_fee: f64,
     #[serde(rename = "hdseedid")]
-    hd_seed_id: Option<String>, // Hash 160
-    private_keys_enabled: bool,
-    avoid_reuse: bool,
-    scanning: ScanProgress,
+    pub hd_seed_id: Option<String>, // Hash 160
+    pub private_keys_enabled: bool,
+    pub avoid_reuse: bool,
+    pub scanning: ScanProgress,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
