@@ -32,12 +32,11 @@ mod tests {
     #[ignore]
     #[tokio::test]
     async fn wallet_info_command() -> anyhow::Result<()> {
-        let runtime = tokio::runtime::Runtime::new().unwrap();
         let client = testcontainers::clients::Cli::default();
         let seed = Seed::random().unwrap();
 
         let bitcoin_blockchain = test_harness::bitcoin::Blockchain::new(&client)?;
-        bitcoin_blockchain.init(runtime.handle().clone()).await?;
+        bitcoin_blockchain.init().await?;
 
         let bitcoin_wallet = bitcoin::Wallet::new(
             seed,

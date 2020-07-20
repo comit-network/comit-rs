@@ -48,7 +48,7 @@ pub async fn trade(
     .await
     .context("Could not initialise Maker")?;
 
-    let mut swarm = Swarm::new(&seed, &settings, runtime_handle.clone())?;
+    let mut swarm = Swarm::new(&seed, &settings, runtime_handle)?;
 
     swarm.announce_btc_dai_trading_pair()?;
 
@@ -74,9 +74,9 @@ pub async fn trade(
     let (dai_balance_future, mut dai_balance_update_receiver) =
         init_dai_balance_updates(update_interval, Arc::clone(&ethereum_wallet));
 
-    runtime_handle.clone().spawn(rate_future);
-    runtime_handle.clone().spawn(btc_balance_future);
-    runtime_handle.spawn(dai_balance_future);
+    tokio::spawn(rate_future);
+    tokio::spawn(btc_balance_future);
+    tokio::spawn(dai_balance_future);
 
     let (swap_execution_finished_sender, mut swap_execution_finished_receiver) =
         futures::channel::mpsc::channel::<FinishedSwap>(ENSURED_CONSUME_ZERO_BUFFER);
@@ -104,7 +104,6 @@ pub async fn trade(
         Arc::clone(&bitcoin_connector),
         Arc::clone(&ethereum_connector),
         swap_execution_finished_sender.clone(),
-        runtime_handle.clone(),
     )
     .context("Could not respawn swaps")?;
 
@@ -126,7 +125,6 @@ pub async fn trade(
                     Arc::clone(&bitcoin_connector),
         Arc::clone(&ethereum_connector),
                     swap_execution_finished_sender.clone(),
-                    runtime_handle.clone(),
                 );
             },
             rate_update = rate_update_receiver.next().fuse() => {
@@ -332,7 +330,6 @@ fn respawn_swaps(
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
     finished_swap_sender: Sender<FinishedSwap>,
-    runtime_handle: tokio::runtime::Handle,
 ) -> anyhow::Result<()> {
     for swap in db.load_all()?.into_iter() {
         // Reserve funds
@@ -355,7 +352,7 @@ fn respawn_swaps(
             }
         };
 
-        runtime_handle.spawn(execute_swap(
+        tokio::spawn(execute_swap(
             Arc::clone(&db),
             Arc::clone(&bitcoin_wallet),
             Arc::clone(&ethereum_wallet),
@@ -380,7 +377,6 @@ fn handle_network_event(
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
     finished_swap_sender: Sender<FinishedSwap>,
-    runtime_handle: tokio::runtime::Handle
 ) {
     match network_event {
         network::Event::TakeOrderRequest(order) => {
@@ -424,7 +420,7 @@ fn handle_network_event(
             swarm.set_swap_identities(swap_metadata, bitcoin_identity, ethereum_identity)
         }
         network::Event::SpawnSwap(swap) => {
-            runtime_handle.spawn(execute_swap(
+            tokio::spawn(execute_swap(
                 Arc::clone(&db),
                 Arc::clone(&bitcoin_wallet),
                 Arc::clone(&ethereum_wallet),
@@ -631,7 +627,7 @@ mod tests {
         let seed = Seed::random().unwrap();
 
         let bitcoin_blockchain = test_harness::bitcoin::Blockchain::new(&client).unwrap();
-        bitcoin_blockchain.init(runtime.handle().clone()).await.unwrap();
+        bitcoin_blockchain.init().await.unwrap();
 
         let bitcoin_wallet = bitcoin::Wallet::new(
             seed,
@@ -664,6 +660,6 @@ mod tests {
             ethereum: Default::default()
         };
 
-        let _ = trade(runtime.handle().clone(), &seed, settings, bitcoin_wallet, ethereum_wallet);
+        let _ = trade(runtime.handle().clone(), &seed, settings, bitcoin_wallet, ethereum_wallet).await.unwrap();
     }
 }

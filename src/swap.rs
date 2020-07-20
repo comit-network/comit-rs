@@ -358,7 +358,6 @@ mod tests {
 
     #[tokio::test]
     async fn execute_alice_hbit_herc20_swap() -> anyhow::Result<()> {
-        let runtime = tokio::runtime::Runtime::new().unwrap();
         let client = clients::Cli::default();
 
         let alice_db = Arc::new(db::Database::new_test().unwrap());
@@ -367,7 +366,7 @@ mod tests {
         let bitcoin_network = ::bitcoin::Network::Regtest;
         let (bitcoin_connector, bitcoind_url, bitcoin_blockchain) = {
             let blockchain = test_harness::bitcoin::Blockchain::new(&client)?;
-            blockchain.init(runtime.handle().clone()).await?;
+            blockchain.init().await?;
 
             let node_url = blockchain.node_url.clone();
 
