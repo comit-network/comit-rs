@@ -34,7 +34,6 @@ import { defaultLedgerDescriptionForLedger } from "./defaults";
 import pTimeout from "p-timeout";
 import { Entity, Link } from "comit-sdk/dist/src/cnd/siren";
 import OrderFactory from "./order_factory";
-import SwapFactory from "./swap_factory";
 
 export type ActorName = "alice" | "bob" | "carol";
 
@@ -255,7 +254,10 @@ export class Actor {
         );
     }
 
-    public async initOrderbookTest(swapUrl: string, create: Herc20HbitPayload) {
+    private async initOrderbookTest(
+        swapUrl: string,
+        create: Herc20HbitPayload
+    ) {
         this.alphaLedger = {
             name: LedgerKind.Ethereum,
             chain_id: create.alpha.chain_id,
@@ -290,19 +292,9 @@ export class Actor {
     /**
      * Makes a BtcDai sell order (herc20-hbit Swap)
      */
-    public async makeOrder(): Promise<string> {
+    public async makeOrder(swap: Herc20HbitPayload): Promise<string> {
         if (this.name === "bob") {
-            // @ts-ignore
-            const { alice, bob } = (
-                await SwapFactory.newSwap(this.actors.alice, this.actors.bob, {
-                    ledgers: {
-                        alpha: "ethereum",
-                        beta: "bitcoin",
-                    },
-                })
-            ).herc20Hbit;
-            // this payload could be wrong
-            const bobMakeOrderBody = OrderFactory.newHerc20HbitSellOrder(bob);
+            const bobMakeOrderBody = OrderFactory.newHerc20HbitSellOrder(swap);
             // make response contain url in the header to the created order
             // poll this order to see when when it has been converted to a swap
             // "POST /orders"
@@ -323,18 +315,8 @@ export class Actor {
     /**
      * Takes a BtcDai sell order (herc20-hbit Swap)
      */
-    public async takeOrderAndAssertSwapCreated() {
+    public async takeOrderAndAssertSwapCreated(alice: Herc20HbitPayload) {
         if (this.name === "alice") {
-            // @ts-ignore
-            const { alice, bob } = (
-                await SwapFactory.newSwap(this.actors.alice, this.actors.bob, {
-                    ledgers: {
-                        alpha: "ethereum",
-                        beta: "bitcoin",
-                    },
-                })
-            ).herc20Hbit;
-
             // Poll until Alice receives an order. The order must be the one that Bob created above.
             // @ts-ignore
             const aliceOrdersResponse = await this.pollCndUntil<Entity>(
@@ -391,17 +373,11 @@ export class Actor {
     /**
      * Wait until a swap is created on bobs end
      */
-    public async assertSwapCreatedFromOrder(orderUrl: string) {
+    public async assertSwapCreatedFromOrder(
+        orderUrl: string,
+        bob: Herc20HbitPayload
+    ) {
         if (this.name === "bob") {
-            // @ts-ignore
-            const { alice, bob } = (
-                await SwapFactory.newSwap(this.actors.alice, this.actors.bob, {
-                    ledgers: {
-                        alpha: "ethereum",
-                        beta: "bitcoin",
-                    },
-                })
-            ).herc20Hbit;
             // Since Alice has taken the swap, the order created by Bob should have an associated swap in the navigational link
             const bobGetOrderResponse = await this.cnd.fetch<Entity>(orderUrl);
 
