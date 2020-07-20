@@ -6,6 +6,7 @@ mod deposit;
 mod trade;
 mod wallet_info;
 
+use crate::config::{File, Settings};
 pub use balance::*;
 pub use deposit::*;
 pub use trade::*;
@@ -16,7 +17,7 @@ pub struct Options {
     /// Path to configuration file
     #[structopt(short = "c", long = "config", parse(from_os_str))]
     pub config_file: Option<PathBuf>,
-    /// Start trading
+    /// Commands available
     #[structopt(subcommand)]
     pub cmd: Command,
 }
@@ -33,4 +34,12 @@ pub enum Command {
     WalletInfo,
     Balance,
     Deposit,
+    DumpConfig,
+}
+
+pub fn dump_config(settings: Settings) -> anyhow::Result<()> {
+    let file = File::from(settings);
+    let serialized = toml::to_string(&file)?;
+    println!("{}", serialized);
+    Ok(())
 }

@@ -8,7 +8,7 @@ use crate::{
 use comit::{
     actions::ethereum::{CallContract, DeployContract},
     asset::Erc20,
-    ethereum::{Address, Hash, TransactionReceipt},
+    ethereum::{Address, ChainId, Hash, TransactionReceipt},
 };
 use num::BigUint;
 use url::Url;
@@ -296,7 +296,7 @@ mod tests {
 
     async fn random_wallet(node_url: Url, dai_contract_address: Address) -> anyhow::Result<Wallet> {
         let seed = Seed::random().unwrap();
-        let wallet = Wallet::new(seed, node_url, dai_contract_address)?;
+        let wallet = Wallet::new(seed, node_url, dai_contract_address, ChainId::regtest()).await?;
 
         Ok(wallet)
     }
@@ -311,7 +311,6 @@ mod tests {
         let wallet = random_wallet(
             blockchain.node_url.clone(),
             blockchain.token_contract().unwrap(),
-            ChainId::regtest(),
         )
         .await
         .unwrap();
