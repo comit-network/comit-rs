@@ -4,36 +4,30 @@
  */
 
 import { twoActorTest } from "../src/actor_test";
+import OrderbookUtils from "../src/actors/order_factory";
 import { sleep } from "../src/utils";
-import SwapFactory from "../src/actors/swap_factory";
 
 describe("orderbook", () => {
     it(
         "btc_dai_sell_order",
         twoActorTest(async ({ alice, bob }) => {
-            // Get alice's listen address
-            const aliceAddr = await alice.cnd.getPeerListenAddresses();
+            await OrderbookUtils.connect(alice, bob);
+            await OrderbookUtils.initialiseWalletsForBtcDaiOrder(alice, bob);
 
-            // Bob dials alices
-            // @ts-ignore
-            await bob.cnd.client.post("dial", { addresses: aliceAddr });
+            const order = await OrderbookUtils.newBtcDaiSellOrder(bob);
+            await alice.initLedgerAndBalancesForOrder(order);
+            await bob.initLedgerAndBalancesForOrder(order);
 
-            /// Wait for alice to accept an incoming connection from Bob
-            await sleep(1000);
+            const aliceIdentities = await OrderbookUtils.getIdentities(alice);
 
-            const bodies = (
-                await SwapFactory.newSwap(alice, bob, {
-                    ledgers: {
-                        alpha: "ethereum",
-                        beta: "bitcoin",
-                    },
-                })
-            ).herc20Hbit;
+            const orderUrl = await bob.makeOrder(order);
 
-            const orderUrl = await bob.makeOrder(bodies.bob);
-            await alice.takeOrderAndAssertSwapCreated(bodies.alice);
+            await alice.takeOrderAndAssertSwapCreated(
+                aliceIdentities.ethereum,
+                aliceIdentities.bitcoin
+            );
 
-            await bob.assertSwapCreatedFromOrder(orderUrl, bodies.bob);
+            await bob.checkSwapCreatedFromOrder(orderUrl);
 
             await alice.assertAndExecuteNextAction("deploy");
             await alice.assertAndExecuteNextAction("fund");
