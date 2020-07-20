@@ -42,21 +42,21 @@ impl Client {
             .json(&request)
             .send()
             .map_err(ConnectionFailed)
-            .await?
-            .json::<Response<Res>>()
-            .await
-            .with_context(|| {
-                format!(
-                "failed to deserialize JSON response as JSON-RPC response to request {:?} to {}",
-                request, path
-            )
-            })?;
+            .await?;
 
-        // This is how to print the response to debug
-        // let response = response.bytes().await?;
-        // dbg!(String::from_utf8((&response[..]).to_vec()));
-        // let response: Response<Res> = serde_json::from_slice(&response)
-        //     .context("failed to deserialize JSON response as JSON-RPC response")?;
+        let response = response.bytes().await?;
+
+        let response: Response<Res> = match serde_json::from_slice(&response) {
+            Ok(response) => response,
+            Err(error) => {
+                let response = String::from_utf8_lossy(&response[..]);
+                tracing::debug!("Response received: {}", response);
+                anyhow::bail!(
+                    "failed to deserialize JSON response as JSON-RPC response: {:?}",
+                    error
+                );
+            }
+        };
 
         match response {
             Response::Success { result } => Ok(result),
