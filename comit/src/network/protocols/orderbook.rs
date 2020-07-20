@@ -242,12 +242,6 @@ impl Makers {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Hash, Eq)]
-pub enum SwapType {
-    Herc20,
-    Hbit,
-}
-
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub enum Message {
     CreateOrder(Order),
