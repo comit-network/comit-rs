@@ -29,6 +29,7 @@ pub mod rate;
 pub mod seed;
 pub mod swap;
 pub mod swap_id;
+pub mod wallet_info;
 
 use anyhow::Context;
 use conquer_once::Lazy;

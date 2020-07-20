@@ -19,7 +19,7 @@ use nectar::{
     network::{self, Swarm, Taker},
     options::{self, Command, Options},
     swap::{self, Database, SwapKind},
-    Maker, MidMarketRate, Seed, Spread,
+    wallet_info, Maker, MidMarketRate, Seed, Spread,
 };
 use num::BigUint;
 use std::str::FromStr;
@@ -480,11 +480,9 @@ async fn main() {
     )
     .await
     .expect("can initialise bitcoin wallet");
-    let bitcoin_wallet = Arc::new(bitcoin_wallet);
     let ethereum_wallet =
         ethereum::Wallet::new(seed, settings.ethereum.node_url.clone(), dai_contract_addr)
             .expect("can initialise ethereum wallet");
-    let ethereum_wallet = Arc::new(ethereum_wallet);
 
     match options.cmd {
         Command::Trade => trade(
@@ -496,6 +494,12 @@ async fn main() {
         )
         .await
         .expect("Start trading"),
+        Command::WalletInfo => {
+            let wallet_info = wallet_info::wallet_info(ethereum_wallet, bitcoin_wallet)
+                .await
+                .unwrap();
+            println!("{}", wallet_info);
+        }
     }
 }
 
@@ -503,9 +507,12 @@ async fn trade(
     runtime_handle: tokio::runtime::Handle,
     seed: &Seed,
     settings: Settings,
-    bitcoin_wallet: Arc<bitcoin::Wallet>,
-    ethereum_wallet: Arc<ethereum::Wallet>,
+    bitcoin_wallet: bitcoin::Wallet,
+    ethereum_wallet: ethereum::Wallet,
 ) -> anyhow::Result<()> {
+    let bitcoin_wallet = Arc::new(bitcoin_wallet);
+    let ethereum_wallet = Arc::new(ethereum_wallet);
+
     let maker = init_maker(
         Arc::clone(&bitcoin_wallet),
         Arc::clone(&ethereum_wallet),
