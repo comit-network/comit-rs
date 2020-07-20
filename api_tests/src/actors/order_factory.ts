@@ -18,8 +18,8 @@ export interface BtcDaiOrder {
     ethereum_ledger: Ethereum;
     bitcoin_absolute_expiry: number;
     ethereum_absolute_expiry: number;
-    refund_identity: string;
-    redeem_identity: string;
+    bitcoin_identity: string;
+    ethereum_identity: string;
 }
 
 interface Ethereum {
@@ -64,7 +64,10 @@ export default class OrderbookUtils {
         await sleep(1000);
     }
 
-    public static async newBtcDaiSellOrder(bob: Actor): Promise<BtcDaiOrder> {
+    public static async newBtcDaiOrder(
+        bob: Actor,
+        position: string
+    ): Promise<BtcDaiOrder> {
         const bobIdentities = await getIdentities(bob);
 
         // todo: do make this the actual DAI contract? It doesnt actually matter
@@ -72,8 +75,27 @@ export default class OrderbookUtils {
             ? global.tokenContract
             : "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280";
 
+        // todo: add a enum for buy/sell
+        const expiries = function () {
+            if (position === "buy") {
+                return {
+                    ethereum_absolute_expiry: defaultExpiries()
+                        .betaAbsoluteExpiry,
+                    bitcoin_absolute_expiry: defaultExpiries()
+                        .alphaAbsoluteExpiry,
+                };
+            } else {
+                return {
+                    ethereum_absolute_expiry: defaultExpiries()
+                        .alphaAbsoluteExpiry,
+                    bitcoin_absolute_expiry: defaultExpiries()
+                        .betaAbsoluteExpiry,
+                };
+            }
+        };
+
         return {
-            position: "sell",
+            position,
             bitcoin_amount: "1000000",
             bitcoin_ledger: "regtest",
             token_contract: daiTokenContract,
@@ -81,10 +103,10 @@ export default class OrderbookUtils {
             ethereum_ledger: {
                 chain_id: 1337,
             },
-            ethereum_absolute_expiry: defaultExpiries().alphaAbsoluteExpiry,
-            bitcoin_absolute_expiry: defaultExpiries().betaAbsoluteExpiry,
-            refund_identity: bobIdentities.bitcoin,
-            redeem_identity: bobIdentities.ethereum,
+            ethereum_absolute_expiry: expiries().ethereum_absolute_expiry,
+            bitcoin_absolute_expiry: expiries().bitcoin_absolute_expiry,
+            bitcoin_identity: bobIdentities.bitcoin,
+            ethereum_identity: bobIdentities.ethereum,
         };
     }
 }

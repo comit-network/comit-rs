@@ -255,27 +255,7 @@ export class Actor {
     }
 
     public async initLedgerAndBalancesForOrder(order: BtcDaiOrder) {
-        if (order.position === "sell") {
-            this.alphaLedger = {
-                name: LedgerKind.Ethereum,
-                chain_id: order.ethereum_ledger.chain_id,
-            };
-            this.betaLedger = {
-                name: LedgerKind.Bitcoin,
-                network: order.bitcoin_ledger,
-            };
-            this.alphaAsset = {
-                name: AssetKind.Erc20,
-                quantity: order.ethereum_amount,
-                ledger: LedgerKind.Ethereum,
-                tokenContract: order.token_contract,
-            };
-            this.betaAsset = {
-                name: AssetKind.Bitcoin,
-                quantity: order.bitcoin_amount,
-                ledger: LedgerKind.Bitcoin,
-            };
-        } else if (order.position === "buy") {
+        if (order.position === "buy") {
             this.alphaLedger = {
                 name: LedgerKind.Bitcoin,
                 network: order.bitcoin_ledger,
@@ -294,6 +274,26 @@ export class Actor {
                 quantity: order.ethereum_amount,
                 ledger: LedgerKind.Ethereum,
                 tokenContract: order.token_contract,
+            };
+        } else if (order.position === "sell") {
+            this.alphaLedger = {
+                name: LedgerKind.Ethereum,
+                chain_id: order.ethereum_ledger.chain_id,
+            };
+            this.betaLedger = {
+                name: LedgerKind.Bitcoin,
+                network: order.bitcoin_ledger,
+            };
+            this.alphaAsset = {
+                name: AssetKind.Erc20,
+                quantity: order.ethereum_amount,
+                ledger: LedgerKind.Ethereum,
+                tokenContract: order.token_contract,
+            };
+            this.betaAsset = {
+                name: AssetKind.Bitcoin,
+                quantity: order.bitcoin_amount,
+                ledger: LedgerKind.Bitcoin,
             };
         } else {
             throw new Error(
@@ -329,8 +329,8 @@ export class Actor {
      * Takes a BtcDai sell order (herc20-hbit Swap)
      */
     public async takeOrderAndAssertSwapCreated(
-        refundIdentity: string,
-        redeemIdentity: string
+        bitcoinIdentity: string,
+        ethereumIdentity: string
     ) {
         if (this.name === "alice") {
             // Poll until Alice receives an order. The order must be the one that Bob created above.
@@ -354,14 +354,13 @@ export class Actor {
                 aliceOrderTakeAction,
                 async (field) => {
                     // this could be wrong
-                    if (field.name === "refund_identity") {
+                    if (field.name === "bitcoin_identity") {
                         // @ts-ignore
-                        return Promise.resolve(refundIdentity);
+                        return Promise.resolve(bitcoinIdentity);
                     }
-
-                    if (field.name === "redeem_identity") {
+                    if (field.name === "ethereum_identity") {
                         // @ts-ignore
-                        return Promise.resolve(redeemIdentity);
+                        return Promise.resolve(ethereumIdentity);
                     }
                 }
             );
