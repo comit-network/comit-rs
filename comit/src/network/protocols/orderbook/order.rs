@@ -7,6 +7,30 @@ use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
 
+/// An order, created by a maker (Bob) and shared with the network via
+/// gossipsub.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Order {
+    pub id: OrderId,
+    pub maker: MakerId,
+    pub position: Position,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    pub bitcoin_amount: asset::Bitcoin,
+    pub bitcoin_ledger: ledger::Bitcoin,
+    pub bitcoin_absolute_expiry: u32,
+    pub ethereum_amount: asset::Erc20Quantity,
+    pub token_contract: identity::Ethereum,
+    pub ethereum_ledger: ledger::Ethereum,
+    pub ethereum_absolute_expiry: u32,
+}
+
+// We explicitly only support BTC/DAI.
+impl Order {
+    pub fn tp(&self) -> TradingPair {
+        TradingPair::BtcDai
+    }
+}
+
 #[derive(Debug, Clone, Copy, Hash, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OrderId(Uuid);
 
@@ -34,30 +58,6 @@ impl FromStr for OrderId {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let uuid = Uuid::from_str(s)?;
         Ok(OrderId(uuid))
-    }
-}
-
-/// An order, created by a maker (Bob) and shared with the network via
-/// gossipsub.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Order {
-    pub id: OrderId,
-    pub maker: MakerId,
-    pub position: Position,
-    #[serde(with = "asset::bitcoin::sats_as_string")]
-    pub bitcoin_amount: asset::Bitcoin,
-    pub bitcoin_ledger: ledger::Bitcoin,
-    pub bitcoin_absolute_expiry: u32,
-    pub ethereum_amount: asset::Erc20Quantity,
-    pub token_contract: identity::Ethereum,
-    pub ethereum_ledger: ledger::Ethereum,
-    pub ethereum_absolute_expiry: u32,
-}
-
-// We explicitly only support BTC/DAI.
-impl Order {
-    pub fn tp(&self) -> TradingPair {
-        TradingPair::BtcDai
     }
 }
 
