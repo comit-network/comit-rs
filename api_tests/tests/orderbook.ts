@@ -33,9 +33,6 @@ describe("orderbook", () => {
             const orderUrl = await bob.makeOrder(bodies.bob);
             await alice.takeOrderAndAssertSwapCreated(bodies.alice);
 
-            // Wait for bob to acknowledge that Alice has taken the order he created
-            await sleep(1000);
-
             await bob.assertSwapCreatedFromOrder(orderUrl, bodies.bob);
 
             await alice.assertAndExecuteNextAction("deploy");
