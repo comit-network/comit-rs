@@ -64,7 +64,8 @@ mod kraken {
         type Error = anyhow::Error;
 
         fn try_from(AskAndBid { ask, bid }: AskAndBid) -> anyhow::Result<Self> {
-            let value = (bid + ask) / 2f64;
+            // TODO: Fix the ceil to precision of 9
+            let value = ((bid + ask) / 2f64).ceil();
             let value = Rate::try_from(value).unwrap();
 
             Ok(Self { 0: value })

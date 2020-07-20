@@ -26,7 +26,7 @@ pub const GETH_DEV_ACCOUNT_PRIVATE_KEY: &str =
 #[derive(Debug)]
 pub struct Blockchain<'c> {
     _container: Container<'c, clients::Cli, GenericImage>,
-    token_contract: Option<Address>,
+    pub token_contract: Option<Address>,
     dev_account_wallet: ethereum::Wallet,
     pub node_url: Url,
 }

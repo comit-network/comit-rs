@@ -59,9 +59,10 @@ pub async fn trade(
         .new_buy_order()
         .context("Could not generate buy order")?;
 
-    swarm
-        .publish(initial_sell_order.into())
-        .context("Could not publish initial sell order")?;
+    // TODO
+    // swarm
+    //     .publish(initial_sell_order.into())
+    //     .context("Could not publish initial sell order")?;
     swarm
         .publish(initial_buy_order.into())
         .context("Could not publish initial buy order")?;
@@ -275,7 +276,7 @@ async fn execute_swap(
 ) -> anyhow::Result<()> {
     match swap {
         SwapKind::Herc20Hbit(params) => {
-            unimplemented!("comit::orderbook does not yet handle sell orders");
+            todo!("comit::orderbook does not yet handle sell orders");
 
             let _ = finished_swap_sender
                 .send(FinishedSwap::new(
@@ -424,8 +425,8 @@ fn handle_network_event(
                 Arc::clone(&db),
                 Arc::clone(&bitcoin_wallet),
                 Arc::clone(&ethereum_wallet),
-                todo!("bitcoin_connector"),
-                todo!("ethereum_connector"),
+                Arc::clone(&bitcoin_connector),
+                Arc::clone(&ethereum_connector),
                 finished_swap_sender,
                 swap,
             ));
@@ -446,9 +447,10 @@ fn handle_rate_update(
                     new_sell_order,
                     new_buy_order,
                 })) => {
-                    let _ = swarm
-                        .publish(new_sell_order.into())
-                        .map_err(|e| tracing::error!("Failed to publish new sell order: {}", e));
+                    // TODO: sell order!
+                    // let _ = swarm
+                    //     .publish(new_sell_order.into())
+                    //     .map_err(|e| tracing::error!("Failed to publish new sell order: {}", e));
                     let _ = swarm
                         .publish(new_buy_order.into())
                         .map_err(|e| tracing::error!("Failed to publish new buy order: {}", e));
@@ -613,8 +615,12 @@ impl FinishedSwap {
 #[cfg(all(test, feature = "test-docker"))]
 mod tests {
     use super::*;
+    use crate::config::{settings, Data, Logging, MaxSell, Network};
+    use crate::swap::herc20::asset::ethereum::FromWei;
     use crate::{test_harness, Seed};
-    use crate::config::{Logging, Data, Network, settings, MaxSell};
+    use comit::asset;
+    use comit::asset::Erc20Quantity;
+    use comit::ethereum::ChainId;
     use log::LevelFilter;
 
     // Run cargo test with `--ignored --nocapture` to see the `println output`
@@ -631,11 +637,11 @@ mod tests {
 
         let bitcoin_wallet = bitcoin::Wallet::new(
             seed,
-            bitcoin_blockchain.node_url,
+            bitcoin_blockchain.node_url.clone(),
             ::bitcoin::Network::Regtest,
         )
-            .await
-            .unwrap();
+        .await
+        .unwrap();
 
         let mut ethereum_blockchain = test_harness::ethereum::Blockchain::new(&client).unwrap();
         ethereum_blockchain.init().await.unwrap();
@@ -645,21 +651,72 @@ mod tests {
             ethereum_blockchain.node_url.clone(),
             ethereum_blockchain.token_contract().unwrap(),
         )
-            .unwrap();
+        .unwrap();
 
         let settings = Settings {
-            maker:  settings::Maker {
-                max_sell: MaxSell { bitcoin: None, dai: None },
+            maker: settings::Maker {
+                max_sell: MaxSell {
+                    bitcoin: None,
+                    dai: None,
+                },
                 spread: Default::default(),
-                maximum_possible_fee: Default::default()
+                maximum_possible_fee: Default::default(),
             },
-            network: Network { listen: vec!["/ip4/98.97.96.95/tcp/20500".parse().expect("invalid multiaddr")] },
-            data: Data { dir: Default::default() },
-            logging: Logging { level: LevelFilter::Trace },
+            network: Network {
+                listen: vec!["/ip4/98.97.96.95/tcp/20500"
+                    .parse()
+                    .expect("invalid multiaddr")],
+            },
+            data: Data {
+                dir: Default::default(),
+            },
+            logging: Logging {
+                level: LevelFilter::Trace,
+            },
             bitcoin: Default::default(),
-            ethereum: Default::default()
+            ethereum: settings::Ethereum {
+                dai_contract_address: ethereum_blockchain.token_contract.unwrap(),
+                chain_id: ChainId::regtest(),
+                node_url: ethereum_blockchain.node_url.clone(),
+            },
         };
 
-        let _ = trade(runtime.handle().clone(), &seed, settings, bitcoin_wallet, ethereum_wallet).await.unwrap();
+        bitcoin_blockchain
+            .mint(
+                bitcoin_wallet.new_address().await.unwrap(),
+                asset::Bitcoin::from_sat(1_000_000_000).into(),
+            )
+            .await
+            .unwrap();
+
+        ethereum_blockchain
+            .mint_ether(
+                ethereum_wallet.account(),
+                1_000_000_000_000_000_000u64,
+                settings.ethereum.chain_id,
+            )
+            .await
+            .unwrap();
+        ethereum_blockchain
+            .mint_erc20_token(
+                ethereum_wallet.account(),
+                asset::Erc20::new(
+                    settings.ethereum.dai_contract_address,
+                    Erc20Quantity::from_wei(5_000_000_000u64),
+                ),
+                settings.ethereum.chain_id,
+            )
+            .await
+            .unwrap();
+
+        let _ = trade(
+            runtime.handle().clone(),
+            &seed,
+            settings,
+            bitcoin_wallet,
+            ethereum_wallet,
+        )
+        .await
+        .unwrap();
     }
 }

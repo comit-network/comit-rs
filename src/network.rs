@@ -563,7 +563,7 @@ impl From<PublishOrder> for comit::network::orderbook::NewOrder {
                 buy: base.into(),
                 sell: asset::Erc20::new(
                     // TODO: Handle other networks
-                    DaiContractAddress::from_public_chain_id(ChainId::regtest())
+                    DaiContractAddress::from_public_chain_id(ChainId::mainnet())
                         .unwrap()
                         .into(),
                     quote.into(),
