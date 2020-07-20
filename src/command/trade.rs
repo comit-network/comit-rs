@@ -24,6 +24,8 @@ use std::str::FromStr;
 use std::sync::Mutex;
 use std::{sync::Arc, time::Duration};
 
+const ENSURED_CONSUME_ZERO_BUFFER: usize = 0;
+
 pub async fn trade(
     runtime_handle: tokio::runtime::Handle,
     seed: &Seed,
@@ -128,8 +130,6 @@ pub async fn trade(
 
     Ok(())
 }
-
-const ENSURED_CONSUME_ZERO_BUFFER: usize = 0;
 
 async fn init_maker(
     bitcoin_wallet: Arc<bitcoin::Wallet>,
