@@ -33,7 +33,7 @@ impl<'c> Blockchain<'c> {
         })
     }
 
-    pub async fn init(&self) -> anyhow::Result<()> {
+    pub async fn init(&self, runtime_handle: tokio::runtime::Handle) -> anyhow::Result<()> {
         let bitcoind_client = bitcoin::Client::new(self.node_url.clone());
 
         bitcoind_client
@@ -47,7 +47,7 @@ impl<'c> Blockchain<'c> {
         bitcoind_client
             .generate_to_address(105, reward_address.clone(), None)
             .await?;
-        let _ = tokio::spawn(mine(bitcoind_client, reward_address));
+        let _ = runtime_handle.spawn(mine(bitcoind_client, reward_address));
 
         Ok(())
     }

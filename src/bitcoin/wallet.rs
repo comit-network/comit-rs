@@ -294,10 +294,11 @@ mod docker_tests {
 
     #[tokio::test]
     async fn create_bitcoin_wallet_from_seed_and_get_address() {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
         let tc_client = clients::Cli::default();
         let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
 
-        blockchain.init().await.unwrap();
+        blockchain.init(runtime.handle().clone()).await.unwrap();
 
         let seed = Seed::random().unwrap();
         let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
@@ -309,10 +310,11 @@ mod docker_tests {
 
     #[tokio::test]
     async fn root_key_calculated_from_seed_is_the_same_than_bitcoind_s() {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
         let tc_client = clients::Cli::default();
         let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
 
-        blockchain.init().await.unwrap();
+        blockchain.init(runtime.handle().clone()).await.unwrap();
 
         let seed = Seed::random().unwrap();
         let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
@@ -362,10 +364,11 @@ mod docker_tests {
 
     #[tokio::test]
     async fn create_bitcoin_wallet_from_seed_and_get_balance() {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
         let tc_client = clients::Cli::default();
         let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
 
-        blockchain.init().await.unwrap();
+        blockchain.init(runtime.handle().clone()).await.unwrap();
 
         let seed = Seed::random().unwrap();
         let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
@@ -377,10 +380,11 @@ mod docker_tests {
 
     #[tokio::test]
     async fn create_bitcoin_wallet_when_already_existing_and_get_address() {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
         let tc_client = clients::Cli::default();
         let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
 
-        blockchain.init().await.unwrap();
+        blockchain.init(runtime.handle().clone()).await.unwrap();
 
         let seed = Seed::random().unwrap();
         {
@@ -444,12 +448,13 @@ mod docker_tests {
 
     #[tokio::test]
     async fn descriptor_generates_same_addresses_than_bitcoin_wallet() {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
         let seed = Seed::random().unwrap();
 
         let addresses = {
             let tc_client = clients::Cli::default();
             let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
-            blockchain.init().await.unwrap();
+            blockchain.init(runtime.handle().clone()).await.unwrap();
 
             let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
                 .await
@@ -469,7 +474,7 @@ mod docker_tests {
         // Start a new node just to be sure there is no mix up
         let tc_client = clients::Cli::default();
         let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
-        blockchain.init().await.unwrap();
+        blockchain.init(runtime.handle().clone()).await.unwrap();
         let bitcoind_client = Client::new(blockchain.node_url.clone());
         let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
             .await
