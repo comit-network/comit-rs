@@ -1,5 +1,8 @@
 use crate::{
-    ethereum::{dai, ether, geth::Client},
+    ethereum::{
+        dai, ether,
+        geth::{Client, EstimateGasRequest},
+    },
     Seed,
 };
 use comit::{
@@ -109,20 +112,34 @@ impl Wallet {
         &self,
         to: Address,
         value: u64,
-        gas_limit: u64,
+        gas_limit: Option<u64>,
         data: Option<Vec<u8>>,
         chain_id: comit::ethereum::ChainId,
     ) -> anyhow::Result<Hash> {
-        let to = clarity::Address::from_slice(to.as_bytes())
-            .map_err(|_| anyhow::anyhow!("Failed to deserialize slice into clarity::Address"))?;
-
         let nonce = self.get_transaction_count().await?;
         let gas_price = self.gas_price().await?;
+
+        let gas_limit = match gas_limit {
+            Some(gas_limit) => gas_limit.into(),
+            None => {
+                self.gas_limit(EstimateGasRequest {
+                    from: None,
+                    to: Some(to),
+                    gas_price: Some(gas_price.clone()),
+                    value: Some(ethereum_types::U256::from(value)),
+                    data: data.clone(),
+                })
+                .await?
+            }
+        };
+
+        let to = clarity::Address::from_slice(to.as_bytes())
+            .map_err(|_| anyhow::anyhow!("Failed to deserialize slice into clarity::Address"))?;
 
         let transaction = clarity::Transaction {
             nonce: nonce.into(),
             gas_price,
-            gas_limit: gas_limit.into(),
+            gas_limit,
             to,
             value: value.into(),
             data: data.unwrap_or_default(),
@@ -240,6 +257,10 @@ impl Wallet {
     async fn gas_price(&self) -> anyhow::Result<num256::Uint256> {
         self.geth_client.gas_price().await
     }
+
+    async fn gas_limit(&self, request: EstimateGasRequest) -> anyhow::Result<num256::Uint256> {
+        self.geth_client.gas_limit(request).await
+    }
 }
 
 #[cfg(all(test, feature = "test-docker"))]
@@ -290,5 +311,32 @@ mod tests {
         let gas_price = wallet.gas_price().await.unwrap();
 
         println!("Gas price: {}", gas_price)
+    }
+
+    #[tokio::test]
+    async fn gas_limit() {
+        let client = testcontainers::clients::Cli::default();
+
+        let mut blockchain = Blockchain::new(&client).unwrap();
+        blockchain.init().await.unwrap();
+
+        let wallet = random_wallet(
+            blockchain.node_url.clone(),
+            blockchain.token_contract().unwrap(),
+        )
+        .await
+        .unwrap();
+
+        let request = EstimateGasRequest {
+            from: Some(Address::random()),
+            to: Some(Address::random()),
+            gas_price: Some(55_000_000_000u64.into()),
+            value: None,
+            data: None,
+        };
+
+        let gas_limit = wallet.gas_limit(request).await.unwrap();
+
+        println!("Gas limit: {}", gas_limit)
     }
 }

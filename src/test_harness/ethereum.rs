@@ -96,7 +96,7 @@ impl<'c> Blockchain<'c> {
     pub async fn mint_ether(&self, to: Address, wei: u64, chain_id: ChainId) -> anyhow::Result<()> {
         let _ = self
             .dev_account_wallet
-            .send_transaction(to, wei, 100_000, None, chain_id)
+            .send_transaction(to, wei, Some(100_000), None, chain_id)
             .await?;
 
         Ok(())
@@ -112,7 +112,13 @@ impl<'c> Blockchain<'c> {
 
         let _ = self
             .dev_account_wallet
-            .send_transaction(asset.token_contract, 0, 100_000, Some(transfer), chain_id)
+            .send_transaction(
+                asset.token_contract,
+                0,
+                Some(100_000),
+                Some(transfer),
+                chain_id,
+            )
             .await?;
 
         Ok(())
