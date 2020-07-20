@@ -11,7 +11,7 @@ use futures_timer::Delay;
 use libp2p::PeerId;
 use nectar::{
     bitcoin,
-    command::wallet_info,
+    command::{wallet_info, Command, Options},
     config,
     config::Settings,
     ethereum::{self, dai},
@@ -19,7 +19,6 @@ use nectar::{
     maker::{PublishOrders, TakeRequestDecision},
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, Swarm, Taker},
-    options::{self, Command, Options},
     swap::{self, Database, SwapKind},
     Maker, MidMarketRate, Seed, Spread,
 };
@@ -460,7 +459,7 @@ impl FinishedSwap {
 async fn main() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
 
-    let options = options::Options::from_args();
+    let options = Options::from_args();
 
     let settings = read_config(&options)
         .and_then(Settings::from_config_file_and_defaults)
