@@ -234,7 +234,6 @@ pub enum TakeRequestDecision {
     GoForSwap,
     RateNotProfitable,
     InsufficientFunds,
-    CannotTradeWithTaker,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

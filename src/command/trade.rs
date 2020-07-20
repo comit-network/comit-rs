@@ -392,17 +392,10 @@ fn handle_network_event(
                     }
                 }
                 Ok(TakeRequestDecision::RateNotProfitable)
-                | Ok(TakeRequestDecision::InsufficientFunds)
-                | Ok(TakeRequestDecision::CannotTradeWithTaker) => {
-                    let _ = swarm
-                        .deny(order)
-                        .map_err(|e| tracing::error!("Failed to deny order: {}", e));
-                }
+                | Ok(TakeRequestDecision::InsufficientFunds) => swarm.deny(order),
                 Err(e) => {
-                    let _ = swarm
-                        .deny(order)
-                        .map_err(|e| tracing::error!("Failed to deny order: {}", e));
-                    tracing::error!("Processing taken order yielded error: {}", e)
+                    tracing::error!("Processing taken order yielded error: {}", e);
+                    swarm.deny(order)
                 }
             }
         }

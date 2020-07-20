@@ -113,7 +113,7 @@ impl Swarm {
         self.inner.confirm(order)
     }
 
-    pub fn deny(&mut self, order: TakenOrder) -> anyhow::Result<()> {
+    pub fn deny(&mut self, order: TakenOrder) {
         self.inner.deny(order)
     }
 
@@ -204,13 +204,9 @@ impl Nectar {
         Ok(())
     }
 
-    fn deny(&mut self, order: TakenOrder) -> anyhow::Result<()> {
-        self.active_takers.remove(&order.taker)?;
-
+    fn deny(&mut self, order: TakenOrder) {
         self.orderbook
-            .deny(order.taker.peer_id(), order.id, order.confirmation_channel);
-
-        Ok(())
+            .deny(order.taker.peer_id(), order.id, order.confirmation_channel)
     }
 
     /// Save the swap identities and send them to the taker
