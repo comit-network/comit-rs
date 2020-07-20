@@ -32,6 +32,7 @@ pub struct Maker {
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Fees {
+    #[serde(default)]
     #[serde(with = "crate::config::serde::bitcoin_amount")]
     pub bitcoin: Option<bitcoin::Amount>,
 }
@@ -47,6 +48,8 @@ pub struct Bitcoin {
 pub struct Ethereum {
     pub chain_id: ChainId,
     pub node_url: Option<Url>,
+    #[serde(default)]
+    #[serde(with = "crate::config::serde::ethereum_address")]
     pub local_dai_contract_address: Option<comit::ethereum::Address>,
 }
 
@@ -139,7 +142,9 @@ mod tests {
     use crate::config::{Bitcoind, Settings};
     use crate::{bitcoin, ethereum::dai};
     use spectral::prelude::*;
+    use std::io::Write;
     use std::path::PathBuf;
+    use tempdir::TempDir;
 
     #[derive(serde::Deserialize, PartialEq, Debug)]
     struct LoggingOnlyConfig {
@@ -176,9 +181,9 @@ node_url = "http://localhost:18443/"
 [ethereum]
 chain_id = 1337
 node_url = "http://localhost:8545/"
-local_dai_contract_address = "0x31F42841c2db5173425b5223809CF3A38FEde360"
+local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
 "#;
-        let file = File {
+        let expected = File {
             maker: Some(Maker {
                 max_sell: Some(MaxSell {
                     bitcoin: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
@@ -208,15 +213,22 @@ local_dai_contract_address = "0x31F42841c2db5173425b5223809CF3A38FEde360"
                 chain_id: ChainId::regtest(),
                 node_url: Some("http://localhost:8545".parse().unwrap()),
                 local_dai_contract_address: Some(
-                    "0x31F42841c2db5173425b5223809CF3A38FEde360"
+                    "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                         .parse()
                         .unwrap(),
                 ),
             }),
         };
 
-        let config = toml::from_str::<File>(contents);
-        assert_that(&config).is_ok().is_equal_to(file);
+        let tmp_dir = TempDir::new("nectar_test").unwrap();
+        let file_path = tmp_dir.path().join("config.toml");
+
+        let mut file = std::fs::File::create(&file_path).unwrap();
+        file.write_all(contents.as_bytes()).unwrap();
+
+        let file = File::read(&file_path);
+
+        assert_that(&file).is_ok().is_equal_to(expected);
     }
 
     #[test]
