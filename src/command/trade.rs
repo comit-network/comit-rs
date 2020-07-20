@@ -13,6 +13,8 @@ use crate::{
 };
 use anyhow::Context;
 use chrono::{DateTime, Local};
+use comit::btsieve::bitcoin::BitcoindConnector;
+use comit::btsieve::ethereum::Web3Connector;
 use futures::{
     channel::mpsc::{Receiver, Sender},
     Future, FutureExt, SinkExt, StreamExt,
@@ -66,17 +68,17 @@ pub async fn trade(
 
     let update_interval = Duration::from_secs(15u64);
 
-    let (rate_future, rate_update_receiver) = init_rate_updates(update_interval);
-    let (btc_balance_future, btc_balance_update_receiver) =
+    let (rate_future, mut rate_update_receiver) = init_rate_updates(update_interval);
+    let (btc_balance_future, mut btc_balance_update_receiver) =
         init_bitcoin_balance_updates(update_interval, Arc::clone(&bitcoin_wallet));
-    let (dai_balance_future, dai_balance_update_receiver) =
+    let (dai_balance_future, mut dai_balance_update_receiver) =
         init_dai_balance_updates(update_interval, Arc::clone(&ethereum_wallet));
 
     tokio::spawn(rate_future);
     tokio::spawn(btc_balance_future);
     tokio::spawn(dai_balance_future);
 
-    let (swap_execution_finished_sender, swap_execution_finished_receiver) =
+    let (swap_execution_finished_sender, mut swap_execution_finished_receiver) =
         futures::channel::mpsc::channel::<FinishedSwap>(ENSURED_CONSUME_ZERO_BUFFER);
 
     #[cfg(not(test))]
@@ -88,13 +90,19 @@ pub async fn trade(
         settings.data.dir.join("history.csv").as_path(),
     )?));
 
+    let bitcoin_connector = Arc::new(BitcoindConnector::new(
+        settings.bitcoin.bitcoind.node_url,
+        settings.bitcoin.network,
+    )?);
+    let ethereum_connector = Arc::new(Web3Connector::new(settings.ethereum.node_url));
+
     respawn_swaps(
         Arc::clone(&db),
         &mut maker,
         Arc::clone(&bitcoin_wallet),
         Arc::clone(&ethereum_wallet),
-        todo!("bitcoin_connector"),
-        todo!("ethereum_connector"),
+        Arc::clone(&bitcoin_connector),
+        Arc::clone(&ethereum_connector),
         swap_execution_finished_sender.clone(),
     )
     .context("Could not respawn swaps")?;
@@ -103,7 +111,7 @@ pub async fn trade(
         futures::select! {
             finished_swap = swap_execution_finished_receiver.next().fuse() => {
                 if let Some(finished_swap) = finished_swap {
-                    handle_finished_swap(finished_swap, &mut maker, &db, history, &mut swarm);
+                    handle_finished_swap(finished_swap, &mut maker, &db, Arc::clone(&history), &mut swarm);
                 }
             },
             network_event = swarm.as_inner().next().fuse() => {
@@ -114,8 +122,8 @@ pub async fn trade(
                     Arc::clone(&db),
                     Arc::clone(&bitcoin_wallet),
                     Arc::clone(&ethereum_wallet),
-                    todo!("bitcoin_connector"),
-                    todo!("ethereum_connector"),
+                    Arc::clone(&bitcoin_connector),
+        Arc::clone(&ethereum_connector),
                     swap_execution_finished_sender.clone()
                 );
             },

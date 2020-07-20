@@ -84,8 +84,8 @@ impl Swarm {
         })
     }
 
-    pub fn as_inner(&self) -> &libp2p::Swarm<Nectar> {
-        &self.inner
+    pub fn as_inner(&mut self) -> &mut libp2p::Swarm<Nectar> {
+        &mut self.inner
     }
 
     pub fn announce_btc_dai_trading_pair(&mut self) -> anyhow::Result<()> {
