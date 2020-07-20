@@ -3,8 +3,6 @@ use libp2p::Multiaddr;
 use serde::Deserialize;
 use warp::{Rejection, Reply};
 
-// TODO: Do we even want this module?
-
 #[derive(Deserialize, Debug)]
 pub struct DialPeerBody {
     addresses: Vec<Multiaddr>,
@@ -18,7 +16,7 @@ pub async fn post_dial_addr(
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
-    // TODO: find out if the dial was successful?
+
     for addr in body.addresses {
         facade.dial_addr(addr).await;
     }
