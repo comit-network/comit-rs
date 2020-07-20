@@ -1,10 +1,11 @@
-use crate::ethereum::geth::Client;
-use crate::ethereum::{dai, ether};
-use crate::Seed;
+use crate::{
+    ethereum::{dai, ether, geth::Client},
+    Seed,
+};
 use comit::{
     actions::ethereum::{CallContract, DeployContract},
     asset::Erc20,
-    ethereum::{Address, ChainId, Hash, TransactionReceipt},
+    ethereum::{Address, Hash, TransactionReceipt},
 };
 use num::BigUint;
 use url::Url;
@@ -70,10 +71,11 @@ impl Wallet {
         }: DeployContract,
     ) -> anyhow::Result<Hash> {
         let nonce = self.get_transaction_count().await?;
+        let gas_price = self.gas_price().await?;
 
         let transaction = clarity::Transaction {
             nonce: nonce.into(),
-            gas_price: 0u32.into(),
+            gas_price,
             gas_limit: gas_limit.into(),
             to: clarity::Address::default(),
             value: 0u64.into(),
@@ -102,23 +104,26 @@ impl Wallet {
         Ok(hash)
     }
 
+    #[cfg(test)]
     pub async fn send_transaction(
         &self,
         to: Address,
         value: u64,
         gas_limit: u64,
         data: Option<Vec<u8>>,
-        chain_id: ChainId,
+        chain_id: comit::ethereum::ChainId,
     ) -> anyhow::Result<Hash> {
+        let to = clarity::Address::from_slice(to.as_bytes())
+            .map_err(|_| anyhow::anyhow!("Failed to deserialize slice into clarity::Address"))?;
+
         let nonce = self.get_transaction_count().await?;
+        let gas_price = self.gas_price().await?;
 
         let transaction = clarity::Transaction {
             nonce: nonce.into(),
-            gas_price: 0u32.into(),
+            gas_price,
             gas_limit: gas_limit.into(),
-            to: clarity::Address::from_slice(to.as_bytes()).map_err(|_| {
-                anyhow::anyhow!("Failed to deserialize slice into clarity::Address")
-            })?,
+            to,
             value: value.into(),
             data: data.unwrap_or_default(),
             signature: None,
@@ -157,10 +162,11 @@ impl Wallet {
         }: CallContract,
     ) -> anyhow::Result<Hash> {
         let nonce = self.get_transaction_count().await?;
+        let gas_price = self.gas_price().await?;
 
         let transaction = clarity::Transaction {
             nonce: nonce.into(),
-            gas_price: 0u32.into(),
+            gas_price,
             gas_limit: gas_limit.into(),
             to: clarity::Address::from_slice(to.as_bytes()).map_err(|_| {
                 anyhow::anyhow!("Failed to deserialize slice into clarity::Address")
@@ -230,13 +236,23 @@ impl Wallet {
     pub async fn ether_balance(&self) -> anyhow::Result<ether::Amount> {
         self.geth_client.get_balance(self.account()).await
     }
+
+    async fn gas_price(&self) -> anyhow::Result<num256::Uint256> {
+        self.geth_client.gas_price().await
+    }
 }
 
 #[cfg(all(test, feature = "test-docker"))]
 mod tests {
     use super::*;
-    use crate::ethereum::ether;
-    use crate::test_harness::ethereum::Blockchain;
+    use crate::{ethereum::ether, test_harness::ethereum::Blockchain};
+
+    async fn random_wallet(node_url: Url, dai_contract_address: Address) -> anyhow::Result<Wallet> {
+        let seed = Seed::random().unwrap();
+        let wallet = Wallet::new(seed, node_url, dai_contract_address)?;
+
+        Ok(wallet)
+    }
 
     #[tokio::test]
     async fn ether_balance() {
@@ -245,16 +261,34 @@ mod tests {
         let mut blockchain = Blockchain::new(&client).unwrap();
         blockchain.init().await.unwrap();
 
-        let seed = Seed::random().unwrap();
-        let wallet = Wallet::new(
-            seed,
+        let wallet = random_wallet(
             blockchain.node_url.clone(),
             blockchain.token_contract().unwrap(),
         )
+        .await
         .unwrap();
 
         let balance = wallet.ether_balance().await.unwrap();
 
         assert_eq!(balance, ether::Amount::zero())
+    }
+
+    #[tokio::test]
+    async fn gas_price() {
+        let client = testcontainers::clients::Cli::default();
+
+        let mut blockchain = Blockchain::new(&client).unwrap();
+        blockchain.init().await.unwrap();
+
+        let wallet = random_wallet(
+            blockchain.node_url.clone(),
+            blockchain.token_contract().unwrap(),
+        )
+        .await
+        .unwrap();
+
+        let gas_price = wallet.gas_price().await.unwrap();
+
+        println!("Gas price: {}", gas_price)
     }
 }

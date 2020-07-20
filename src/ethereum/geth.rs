@@ -169,6 +169,21 @@ impl Client {
 
         Ok(amount)
     }
+
+    pub async fn gas_price(&self) -> anyhow::Result<num256::Uint256> {
+        let amount = self
+            .rpc_client
+            .send::<Vec<()>, String>(jsonrpc::Request::new(
+                "eth_gasPrice",
+                vec![],
+                JSONRPC_VERSION.into(),
+            ))
+            .await
+            .context("failed to get gas price")?;
+        let amount = num256::Uint256::from_str_radix(&amount[2..], 16)?;
+
+        Ok(amount)
+    }
 }
 
 fn balance_of_fn(account: Address) -> anyhow::Result<Vec<u8>> {

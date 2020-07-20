@@ -1,5 +1,4 @@
-use crate::ethereum;
-use crate::ethereum::Client;
+use crate::ethereum::{self, Client};
 use anyhow::Context;
 use clarity::PrivateKey;
 use comit::{
@@ -94,7 +93,21 @@ impl<'c> Blockchain<'c> {
         })
     }
 
-    pub async fn mint(&self, to: Address, asset: Erc20, chain_id: ChainId) -> anyhow::Result<()> {
+    pub async fn mint_ether(&self, to: Address, wei: u64, chain_id: ChainId) -> anyhow::Result<()> {
+        let _ = self
+            .dev_account_wallet
+            .send_transaction(to, wei, 100_000, None, chain_id)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn mint_erc20_token(
+        &self,
+        to: Address,
+        asset: Erc20,
+        chain_id: ChainId,
+    ) -> anyhow::Result<()> {
         let transfer = self.transfer_fn(to, asset.quantity)?;
 
         let _ = self
