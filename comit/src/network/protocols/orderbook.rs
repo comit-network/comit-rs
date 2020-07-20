@@ -29,8 +29,6 @@ use std::{
 
 pub use self::order::*;
 
-// TODO: Rethink topic logic
-
 /// String representing the BTC/DAI trading pair.
 const BTC_DAI: &str = "BTC/DAI";
 
@@ -81,8 +79,6 @@ impl Orderbook {
             orders: HashMap::new(),
             events: VecDeque::new(),
         };
-
-        orderbook.gossipsub.subscribe(Makers::topic());
 
         // Since we only support a single trading pair topic just subscribe to it now.
         orderbook
@@ -229,16 +225,6 @@ impl<'de> Deserialize<'de> for MakerId {
         let peer_id = PeerId::from_str(&string).map_err(D::Error::custom)?;
 
         Ok(MakerId(peer_id))
-    }
-}
-
-/// Used to publish/subscribe available makers.
-#[derive(Debug, Clone, Copy)]
-pub struct Makers;
-
-impl Makers {
-    pub fn topic() -> Topic {
-        Topic::new("makers".to_string())
     }
 }
 
@@ -396,7 +382,7 @@ mod tests {
 
         // act
 
-        // Trigger subscription.
+        // Trigger subscription to BCT/DAI topic.
         poll_no_event(&mut alice.swarm).await;
         poll_no_event(&mut bob.swarm).await;
 
