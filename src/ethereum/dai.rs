@@ -1,3 +1,4 @@
+use crate::float_maths::string_int_to_float;
 use crate::{
     bitcoin::{self, SATS_IN_BITCOIN_EXP},
     float_maths::{divide_pow_ten_trunc, multiply_pow_ten, truncate},
@@ -180,7 +181,10 @@ impl std::fmt::Debug for Amount {
 
 impl std::fmt::Display for Amount {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        let str = self.as_atto().to_string();
+        let dai = string_int_to_float(str, ATTOS_IN_DAI_EXP as usize);
+
+        write!(f, "{} DAI", dai)
     }
 }
 
@@ -319,6 +323,34 @@ mod tests {
         let dai = dai.as_dai_rounded();
 
         assert!(dai - 0.01 < 1e-10)
+    }
+
+    #[test]
+    fn given_amount_is_one_atto_dai_as_dai_returns_one_atto_dai() {
+        let dai = Amount::from_atto(1u64.into());
+
+        assert_eq!(dai.to_string(), "0.000000000000000001 DAI".to_string())
+    }
+
+    #[test]
+    fn given_amount_is_one_tenth_of_a_dai_as_dai_returns_one_tenth_of_a_dai() {
+        let dai = Amount::from_dai_trunc(0.1).unwrap();
+
+        assert_eq!(dai.to_string(), "0.1 DAI".to_string())
+    }
+
+    #[test]
+    fn given_amount_is_one_dai_as_dai_returns_one_dai() {
+        let dai = Amount::from_dai_trunc(1.0).unwrap();
+
+        assert_eq!(dai.to_string(), "1 DAI".to_string())
+    }
+
+    #[test]
+    fn given_amount_is_ten_dai_as_dai_returns_ten_dai() {
+        let dai = Amount::from_dai_trunc(10.0).unwrap();
+
+        assert_eq!(dai.to_string(), "10 DAI".to_string())
     }
 
     proptest! {

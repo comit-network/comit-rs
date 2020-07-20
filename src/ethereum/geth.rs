@@ -1,3 +1,4 @@
+use crate::ethereum::ether;
 use crate::jsonrpc;
 use anyhow::Context;
 use asset::Erc20Quantity;
@@ -152,6 +153,21 @@ impl Client {
             token_contract,
             quantity,
         })
+    }
+
+    pub async fn get_balance(&self, address: Address) -> anyhow::Result<ether::Amount> {
+        let amount: String = self
+            .rpc_client
+            .send(jsonrpc::Request::new(
+                "eth_getBalance",
+                vec![jsonrpc::serialize(address)?, jsonrpc::serialize("latest")?],
+                JSONRPC_VERSION.into(),
+            ))
+            .await
+            .context("failed to get balance")?;
+        let amount = ether::Amount::try_from_hex(amount)?;
+
+        Ok(amount)
     }
 }
 
