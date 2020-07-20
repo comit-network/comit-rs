@@ -26,7 +26,6 @@ use num::BigUint;
 use std::str::FromStr;
 use std::sync::Mutex;
 use std::{sync::Arc, time::Duration};
-use structopt::StructOpt;
 
 const ENSURED_CONSUME_ZERO_BUFFER: usize = 0;
 

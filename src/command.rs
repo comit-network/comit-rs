@@ -19,6 +19,12 @@ pub struct Options {
     pub cmd: Command,
 }
 
+impl Options {
+    pub fn from_args() -> Self {
+        StructOpt::from_args()
+    }
+}
+
 #[derive(StructOpt, Debug, Copy, Clone)]
 pub enum Command {
     Trade,
