@@ -137,9 +137,6 @@ pub async fn get_order(order_id: OrderId, facade: Facade) -> Result<impl Reply, 
         .get_swap_associated_with_order(&order_id)
         .await;
 
-    // TODO: This only returns the order data if a swap has not been created. Surely
-    // that's not what we want?
-
     // let entity = siren::Entity::default().with_class_member("order");
     let entity = match swap_id {
         Some(swap_id) => siren::Entity::default()
