@@ -12,6 +12,7 @@
 )]
 #![allow(dead_code)] // To be removed further down the line
 #![forbid(unsafe_code)]
+#![recursion_limit = "256"]
 // TODO: Add no unwrap policy
 
 pub mod bitcoin;

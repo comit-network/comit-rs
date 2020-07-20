@@ -3,10 +3,12 @@ use structopt::StructOpt;
 
 mod balance;
 mod deposit;
+mod trade;
 mod wallet_info;
 
 pub use balance::*;
 pub use deposit::*;
+pub use trade::*;
 pub use wallet_info::*;
 
 #[derive(StructOpt, Debug)]

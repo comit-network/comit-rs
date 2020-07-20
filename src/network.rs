@@ -48,7 +48,6 @@ pub struct Swarm {
 }
 
 impl Swarm {
-    #[cfg(not(test))]
     pub fn new(
         seed: &Seed,
         settings: &crate::config::Settings,
@@ -61,7 +60,10 @@ impl Swarm {
 
         let transport = transport::build_transport(local_key_pair)?;
 
+        #[cfg(not(test))]
         let active_takers = ActiveTakers::new(&settings.data.dir.join("active_takers"))?;
+        #[cfg(test)]
+        let active_takers = ActiveTakers::new_test()?;
 
         let behaviour = Nectar::new(local_peer_id.clone(), active_takers);
 
