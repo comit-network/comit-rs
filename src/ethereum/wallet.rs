@@ -233,7 +233,6 @@ impl Wallet {
             .await
     }
 
-    // TODO: handle decimals
     pub async fn erc20_balance(&self, token_contract: Address) -> anyhow::Result<Erc20> {
         self.geth_client
             .erc20_balance(self.account(), token_contract)
