@@ -9,7 +9,7 @@ pub mod ethereum;
 pub mod hbit;
 pub mod herc20;
 
-use crate::SwapId;
+use crate::{network::Taker, SwapId};
 use comit::Secret;
 use futures::future::{self, Either};
 use std::sync::Arc;
@@ -34,6 +34,7 @@ pub struct SwapParams {
     // TODO: Why naive and not DateTime<Local>?
     pub start_of_swap: chrono::NaiveDateTime,
     pub swap_id: SwapId,
+    pub taker: Taker,
 }
 
 #[cfg(test)]
@@ -83,6 +84,7 @@ impl Default for SwapParams {
             secret_hash: SecretHash::new(Secret::from(*b"hello world, you are beautiful!!")),
             start_of_swap: chrono::Local::now().naive_local(),
             swap_id: Default::default(),
+            taker: Taker::default(),
         }
     }
 }
@@ -99,6 +101,7 @@ pub async fn nectar_hbit_herc20(
         secret_hash,
         start_of_swap,
         swap_id,
+        ..
     }: SwapParams,
 ) -> anyhow::Result<()> {
     let alice = WatchOnlyAlice {
@@ -480,6 +483,7 @@ mod tests {
                 secret_hash,
                 start_of_swap,
                 swap_id,
+                taker: Taker::default(),
             });
 
             alice_db.insert(swap).unwrap();
@@ -520,6 +524,7 @@ mod tests {
                 secret_hash,
                 start_of_swap,
                 swap_id,
+                taker: Taker::default(),
             });
 
             bob_db.insert(swap).unwrap();

@@ -2,7 +2,7 @@ use self::{
     hbit::{HbitFunded, HbitRedeemed, HbitRefunded},
     herc20::{Herc20Deployed, Herc20Funded, Herc20Redeemed, Herc20Refunded},
 };
-use crate::{swap, swap::SwapKind, SwapId};
+use crate::{network, swap, swap::SwapKind, SwapId};
 use anyhow::{anyhow, Context};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
@@ -135,6 +135,7 @@ struct Swap {
     pub herc20_params: herc20::Params,
     pub secret_hash: comit::SecretHash,
     pub start_of_swap: NaiveDateTime,
+    pub taker: network::Taker,
     pub hbit_funded: Option<HbitFunded>,
     pub hbit_redeemed: Option<HbitRedeemed>,
     pub hbit_refunded: Option<HbitRefunded>,
@@ -165,6 +166,7 @@ impl Default for Swap {
                 )
                 .unwrap(),
             ),
+            taker: network::Taker::default(),
             start_of_swap: chrono::Local::now().naive_local(),
             hbit_funded: None,
             hbit_redeemed: None,
@@ -188,6 +190,7 @@ impl From<(Swap, SwapId)> for SwapKind {
             herc20_params,
             secret_hash,
             start_of_swap,
+            taker,
             ..
         } = swap;
 
@@ -197,6 +200,7 @@ impl From<(Swap, SwapId)> for SwapKind {
             secret_hash,
             start_of_swap,
             swap_id,
+            taker,
         };
 
         match kind {
@@ -219,6 +223,7 @@ impl From<SwapKind> for Swap {
             herc20_params: swap.herc20_params.into(),
             secret_hash: swap.secret_hash,
             start_of_swap: swap.start_of_swap,
+            taker: swap.taker,
             hbit_funded: None,
             hbit_redeemed: None,
             hbit_refunded: None,

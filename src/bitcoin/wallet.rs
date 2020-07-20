@@ -271,9 +271,6 @@ mod docker_tests {
 
         let _ = wallet.dump(wif_path_docker).await.unwrap();
 
-        // Wait for bitcoind to write the wif file
-        std::thread::sleep(std::time::Duration::from_secs(3600));
-
         let tmp_dir = TempDir::new("nectar_test").unwrap();
         let path = tmp_dir.path().join("wallet.wif");
 

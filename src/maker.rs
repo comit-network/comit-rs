@@ -6,7 +6,7 @@ use crate::{
     network::{self, Taker},
     order::{BtcDaiOrder, Position},
     rate::Spread,
-    MidMarketRate, PeersWithOngoingTrades, Symbol,
+    MidMarketRate, Symbol,
 };
 
 // TODO: Figure out why this is an enum
@@ -33,7 +33,6 @@ pub struct Maker {
     dai_max_sell_amount: Option<dai::Amount>,
     mid_market_rate: Option<MidMarketRate>,
     spread: Spread,
-    ongoing_takers: PeersWithOngoingTrades,
 }
 
 impl Maker {
@@ -57,7 +56,6 @@ impl Maker {
             dai_max_sell_amount,
             mid_market_rate: Some(mid_market_rate),
             spread,
-            ongoing_takers: Default::default(),
         }
     }
 
@@ -167,10 +165,6 @@ impl Maker {
         &mut self,
         order: TakenOrder,
     ) -> anyhow::Result<TakeRequestDecision> {
-        if self.ongoing_takers.has_an_ongoing_trade(&order.taker) {
-            return Ok(TakeRequestDecision::CannotTradeWithTaker);
-        }
-
         match self.mid_market_rate {
             Some(current_mid_market_rate) => {
                 let current_profitable_rate = self
@@ -181,7 +175,7 @@ impl Maker {
                     return Ok(TakeRequestDecision::RateNotProfitable);
                 }
 
-                match order.clone().inner {
+                match order.inner {
                     order
                     @
                     BtcDaiOrder {
@@ -218,22 +212,13 @@ impl Maker {
                     },
                 };
 
-                self.ongoing_takers
-                    .insert(order.taker)
-                    .expect("already checked that we can trade");
-
                 Ok(TakeRequestDecision::GoForSwap)
             }
             None => anyhow::bail!(RateNotAvailable(order.inner.position)),
         }
     }
 
-    pub fn process_finished_swap(
-        &mut self,
-        dai: Option<dai::Amount>,
-        bitcoin: Option<bitcoin::Amount>,
-        taker: Taker,
-    ) {
+    pub fn free_funds(&mut self, dai: Option<dai::Amount>, bitcoin: Option<bitcoin::Amount>) {
         if let Some(amount) = dai {
             self.dai_reserved_funds = self.dai_reserved_funds.clone() - amount;
         }
@@ -241,8 +226,6 @@ impl Maker {
         if let Some(amount) = bitcoin {
             self.btc_reserved_funds = self.btc_reserved_funds - (amount + self.btc_fee);
         }
-
-        self.ongoing_takers.remove(&taker);
     }
 }
 
@@ -299,7 +282,6 @@ mod tests {
                 dai_max_sell_amount: None,
                 mid_market_rate: Some(MidMarketRate::default()),
                 spread: Spread::default(),
-                ongoing_takers: PeersWithOngoingTrades::default(),
             }
         }
     }
@@ -495,30 +477,6 @@ mod tests {
     }
 
     #[test]
-    fn cannot_trade_with_taker_if_ongoing_swap_already_exists() {
-        let mut maker = Maker {
-            btc_balance: some_btc(1.0),
-            ..Default::default()
-        };
-
-        let taken_order = TakenOrder {
-            inner: BtcDaiOrder {
-                position: Position::Sell,
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-
-        let result = maker.process_taken_order(taken_order.clone()).unwrap();
-
-        assert_eq!(result, TakeRequestDecision::GoForSwap);
-
-        let result = maker.process_taken_order(taken_order).unwrap();
-
-        assert_eq!(result, TakeRequestDecision::CannotTradeWithTaker);
-    }
-
-    #[test]
     fn yield_error_if_rate_is_not_available() {
         let mut maker = Maker {
             mid_market_rate: None,
@@ -613,7 +571,7 @@ mod tests {
     }
 
     #[test]
-    fn free_funds_and_remove_ongoing_taker_when_processing_finished_swap() {
+    fn free_funds_when_processing_finished_swap() {
         let mut maker = Maker {
             btc_reserved_funds: btc(1.1),
             dai_reserved_funds: dai(1.0),
@@ -621,18 +579,13 @@ mod tests {
             ..Default::default()
         };
 
-        let taker = Taker::default();
-
-        maker.ongoing_takers.insert(taker.clone()).unwrap();
-
         let free_btc = Some(btc(0.5));
-        maker.process_finished_swap(None, free_btc, taker.clone());
+        maker.free_funds(None, free_btc);
         assert_eq!(maker.btc_reserved_funds, btc(0.5));
 
         let free_dai = Some(dai(0.5));
-        maker.process_finished_swap(free_dai, None, taker.clone());
+        maker.free_funds(free_dai, None);
         assert_eq!(maker.dai_reserved_funds, dai(0.5));
-        assert!(!maker.ongoing_takers.has_an_ongoing_trade(&taker));
     }
 
     #[test]

@@ -1,12 +1,12 @@
+mod active_takers;
+
 use crate::{
     bitcoin,
-    config::Settings,
     ethereum::dai::DaiContractAddress,
     order::{BtcDaiOrder, Position},
     swap::{hbit, herc20, SwapKind, SwapParams},
     Seed, SwapId,
 };
-use anyhow::Context as _;
 use bimap::BiMap;
 use chrono::Utc;
 use comit::{
@@ -24,16 +24,20 @@ use futures::Future;
 use libp2p::{
     identity::ed25519,
     request_response::ResponseChannel,
-    swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters, SwarmBuilder},
+    swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
     NetworkBehaviour, PeerId,
 };
 use network::{SwapType, TradingPair};
+use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use sha2::{Digest, Sha256};
 use std::{
     collections::{HashMap, VecDeque},
     pin::Pin,
+    str::FromStr,
     task::{Context, Poll},
 };
+
+pub use active_takers::ActiveTakers;
 
 #[derive(derivative::Derivative)]
 #[derivative(Debug)]
@@ -44,23 +48,29 @@ pub struct Swarm {
 }
 
 impl Swarm {
+    #[cfg(not(test))]
     pub fn new(
         seed: &Seed,
-        settings: &Settings,
+        settings: &crate::config::Settings,
         task_executor: tokio::runtime::Handle,
     ) -> anyhow::Result<Self> {
+        use anyhow::Context as _;
+
         let local_key_pair = derive_key_pair(seed);
         let local_peer_id = PeerId::from(local_key_pair.public());
 
         let transport = transport::build_transport(local_key_pair)?;
 
-        let behaviour = Nectar::new(local_peer_id.clone());
+        let active_takers = ActiveTakers::new(&settings.data.dir.join("active_takers"))?;
 
-        let mut swarm = SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
-            .executor(Box::new(TokioExecutor {
-                handle: task_executor,
-            }))
-            .build();
+        let behaviour = Nectar::new(local_peer_id.clone(), active_takers);
+
+        let mut swarm =
+            libp2p::swarm::SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
+                .executor(Box::new(TokioExecutor {
+                    handle: task_executor,
+                }))
+                .build();
         for addr in settings.network.listen.clone() {
             libp2p::Swarm::listen_on(&mut swarm, addr.clone())
                 .with_context(|| format!("Address is not supported: {:?}", addr))?;
@@ -97,11 +107,11 @@ impl Swarm {
         self.inner.make(order)
     }
 
-    pub fn confirm(&mut self, order: TakenOrder) {
+    pub fn confirm(&mut self, order: TakenOrder) -> anyhow::Result<()> {
         self.inner.confirm(order)
     }
 
-    pub fn deny(&mut self, order: TakenOrder) {
+    pub fn deny(&mut self, order: TakenOrder) -> anyhow::Result<()> {
         self.inner.deny(order)
     }
 
@@ -115,6 +125,10 @@ impl Swarm {
         self.inner
             .set_swap_identities(swap_metadata, bitcoin_transient_sk, ethereum_identity)
     }
+
+    pub fn remove_from_active_takers(&mut self, taker: &Taker) -> anyhow::Result<()> {
+        self.inner.remove_from_active_takers(&taker)
+    }
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -122,7 +136,7 @@ impl Swarm {
 pub enum Event {
     TakeOrderRequest(TakenOrder),
     SetSwapIdentities(SwapMetadata),
-    SpawnSwap(SwapKind, Taker),
+    SpawnSwap(SwapKind),
 }
 
 #[derive(Debug)]
@@ -145,6 +159,8 @@ pub struct Nectar {
     #[behaviour(ignore)]
     takers: HashMap<OrderId, PeerId>,
     #[behaviour(ignore)]
+    active_takers: ActiveTakers,
+    #[behaviour(ignore)]
     order_swap_ids: BiMap<OrderId, SharedSwapId>,
     #[behaviour(ignore)]
     bitcoin_transient_sks: HashMap<SharedSwapId, ::bitcoin::secp256k1::SecretKey>,
@@ -153,13 +169,14 @@ pub struct Nectar {
 }
 
 impl Nectar {
-    fn new(local_peer_id: PeerId) -> Self {
+    fn new(local_peer_id: PeerId, active_takers: ActiveTakers) -> Self {
         Self {
             comit: Comit::default(),
             orderbook: Orderbook::new(local_peer_id.clone()),
             events: VecDeque::new(),
             local_peer_id,
             takers: HashMap::new(),
+            active_takers,
             order_swap_ids: BiMap::new(),
             bitcoin_transient_sks: HashMap::new(),
             local_data: HashMap::new(),
@@ -177,13 +194,21 @@ impl Nectar {
         Ok(())
     }
 
-    fn confirm(&mut self, order: TakenOrder) {
+    fn confirm(&mut self, order: TakenOrder) -> anyhow::Result<()> {
+        self.active_takers.insert(order.taker)?;
+
         self.orderbook.confirm(order.id, order.confirmation_channel);
+
+        Ok(())
     }
 
-    fn deny(&mut self, order: TakenOrder) {
+    fn deny(&mut self, order: TakenOrder) -> anyhow::Result<()> {
+        self.active_takers.remove(&order.taker)?;
+
         self.orderbook
-            .deny(order.taker.peer_id(), order.id, order.confirmation_channel)
+            .deny(order.taker.peer_id(), order.id, order.confirmation_channel);
+
+        Ok(())
     }
 
     /// Save the swap identities and send them to the taker
@@ -218,6 +243,10 @@ impl Nectar {
             .communicate(taker_peer_id, shared_swap_id, local_data);
     }
 
+    pub fn remove_from_active_takers(&mut self, taker: &Taker) -> anyhow::Result<()> {
+        self.active_takers.remove(taker)
+    }
+
     fn poll<BIE>(
         &mut self,
         _cx: &mut Context<'_>,
@@ -240,21 +269,44 @@ impl NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> for Nectar {
                 response_channel,
                 order_id,
             } => {
-                let order = match self.orderbook.get_order(&order_id) {
-                    Some(order) => order,
-                    None => {
-                        tracing::warn!(
-                            "unexpected take order request, taker: {}, order: {}",
-                            taker_peer_id,
+                let taker = Taker::new(taker_peer_id);
+                let ongoing_trade_with_taker_exists = match self.active_takers.contains(&taker) {
+                    Ok(res) => res,
+                    Err(e) => {
+                        tracing::error!(
+                            "could not determine if taker has ongoing trade: {}; taker: {}, order: {}",
+                            e,
+                            taker.peer_id(),
                             order_id,
                         );
                         return;
                     }
                 };
 
-                self.takers.insert(order_id, taker_peer_id.clone());
+                if ongoing_trade_with_taker_exists {
+                    tracing::warn!(
+                        "ignoring take order request from taker with ongoing trade, taker: {:?}, order: {}",
+                        taker.peer_id(),
+                        order_id,
+                    );
+                    return;
+                }
 
-                let taken_order = TakenOrder::new(order, taker_peer_id, response_channel);
+                let order = match self.orderbook.get_order(&order_id) {
+                    Some(order) => order,
+                    None => {
+                        tracing::warn!(
+                            "unexpected take order request, taker: {}, order: {}",
+                            taker.peer_id(),
+                            order_id,
+                        );
+                        return;
+                    }
+                };
+
+                self.takers.insert(order_id, taker.peer_id.clone());
+
+                let taken_order = TakenOrder::new(order, taker, response_channel);
                 self.events.push_back(Event::TakeOrderRequest(taken_order))
             }
             orderbook::BehaviourOutEvent::TakeOrderConfirmation {
@@ -408,9 +460,10 @@ impl NetworkBehaviourEventProcess<network::comit::BehaviourOutEvent> for Nectar 
                     secret_hash,
                     start_of_swap: Utc::now().naive_local(),
                     swap_id: SwapId::default(),
+                    taker,
                 });
 
-                self.events.push_back(Event::SpawnSwap(swap, taker));
+                self.events.push_back(Event::SpawnSwap(swap));
             }
         }
     }
@@ -437,7 +490,7 @@ pub struct TakenOrder {
 impl TakenOrder {
     fn new(
         order: comit::network::orderbook::Order,
-        taker_id: PeerId,
+        taker: Taker,
         confirmation_channel: ResponseChannel<take_order::Response>,
     ) -> Self {
         // TODO: comit::network::orderbook does not yet support selling Bitcoin
@@ -446,8 +499,6 @@ impl TakenOrder {
             base: bitcoin::Amount::from_sat(order.buy),
             quote: order.sell.into(),
         };
-
-        let taker = Taker::new(taker_id);
 
         Self {
             id: order.id,
@@ -531,6 +582,28 @@ impl From<PublishOrder> for comit::network::orderbook::NewOrder {
                 ..
             } => todo!("comit::network::orderbook does not yet support selling Bitcoin"),
         }
+    }
+}
+
+impl Serialize for Taker {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let string = self.peer_id.to_string();
+        serializer.serialize_str(&string)
+    }
+}
+
+impl<'de> Deserialize<'de> for Taker {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let string = String::deserialize(deserializer)?;
+        let peer_id = PeerId::from_str(&string).map_err(D::Error::custom)?;
+
+        Ok(Taker { peer_id })
     }
 }
 
