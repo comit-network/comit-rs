@@ -1,4 +1,4 @@
-use crate::{ensure_directory_exists, seed};
+use crate::{fs::ensure_directory_exists, seed};
 use pem::{encode, Pem};
 use seed::SEED_LENGTH;
 use std::{

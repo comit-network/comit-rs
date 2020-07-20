@@ -1,8 +1,15 @@
-use crate::{bitcoin, Symbol};
+use crate::bitcoin;
 use crate::{ethereum::dai, MidMarketRate};
 use crate::{Rate, Spread};
 use std::cmp::min;
 use std::convert::TryFrom;
+
+#[derive(Debug, Copy, Clone, strum_macros::Display)]
+#[strum(serialize_all = "UPPERCASE")]
+pub enum Symbol {
+    Btc,
+    Dai,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, strum_macros::Display)]
 pub enum Position {
@@ -479,5 +486,14 @@ mod tests {
                 let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_sell(btc_balance, btc_fees, btc_reserved_funds, None, rate, spread);
             }
         }
+    }
+
+    #[test]
+    fn symbol_serializes_correctly() {
+        let btc = Symbol::Btc;
+        let dai = Symbol::Dai;
+
+        assert_eq!(String::from("BTC"), btc.to_string());
+        assert_eq!(String::from("DAI"), dai.to_string());
     }
 }

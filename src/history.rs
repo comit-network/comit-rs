@@ -1,3 +1,4 @@
+use crate::fs::ensure_directory_exists;
 use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, TimeZone};
 use csv::*;
@@ -9,7 +10,6 @@ use std::path::Path;
 #[cfg(not(test))]
 use chrono::Local;
 
-use crate::ensure_directory_exists;
 #[cfg(test)]
 use chrono::FixedOffset;
 

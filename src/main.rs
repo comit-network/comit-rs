@@ -641,7 +641,7 @@ fn read_config(options: &Options) -> anyhow::Result<config::File> {
     }
 
     // try to load default config
-    let default_path = nectar::default_config_path()?;
+    let default_path = nectar::fs::default_config_path()?;
 
     if !default_path.exists() {
         return Ok(config::File::default());
