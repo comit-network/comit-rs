@@ -14,14 +14,6 @@ pub struct Wallet {
     pub connector: Arc<comit::btsieve::ethereum::Web3Connector>,
 }
 
-impl Wallet {
-    pub async fn refund(&self, action: herc20::CallContract) -> anyhow::Result<()> {
-        let _ = self.inner.call_contract(action).await?;
-
-        Ok(())
-    }
-}
-
 #[async_trait::async_trait]
 impl herc20::ExecuteDeploy for Wallet {
     async fn execute_deploy(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {

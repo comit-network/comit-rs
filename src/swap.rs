@@ -414,6 +414,15 @@ mod tests {
             let ethereum_wallet =
                 crate::ethereum::Wallet::new(seed, ethereum_node_url.clone(), token_contract)?;
 
+            // mint ether to pay for gas
+            ethereum_blockchain
+                .mint_ether(
+                    ethereum_wallet.account(),
+                    1_000_000_000_000_000_000u64,
+                    ethereum_chain_id,
+                )
+                .await?;
+
             (
                 bitcoin::Wallet {
                     inner: Arc::new(bitcoin_wallet),
@@ -434,9 +443,18 @@ mod tests {
                 crate::ethereum::Wallet::new(seed, ethereum_node_url, token_contract)?;
 
             ethereum_blockchain
-                .mint(
+                .mint_erc20_token(
                     ethereum_wallet.account(),
                     asset::Erc20::new(token_contract, Erc20Quantity::from_wei(5_000_000_000u64)),
+                    ethereum_chain_id,
+                )
+                .await?;
+
+            // mint ether to pay for gas
+            ethereum_blockchain
+                .mint_ether(
+                    ethereum_wallet.account(),
+                    1_000_000_000_000_000_000u64,
                     ethereum_chain_id,
                 )
                 .await?;
