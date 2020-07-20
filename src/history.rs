@@ -130,7 +130,7 @@ impl Serialize for LocalDateTime {
 }
 
 /// All the information to write in the CVS file per trade
-// ⚠️ If you change this then you need to think about versioning
+// If you change this then you need to think about versioning
 #[derive(Debug, Clone, Serialize)]
 pub struct Trade {
     /// When the trade was taken and accepted
