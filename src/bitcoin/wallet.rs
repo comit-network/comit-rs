@@ -1,16 +1,15 @@
-use crate::bitcoin::{Address, Amount, Client, Network, WalletInfoResponse};
-use crate::seed::Seed;
+use crate::{
+    bitcoin::{Address, Amount, Client, Network, WalletInfoResponse},
+    seed::Seed,
+};
 use ::bitcoin::{
     hash_types::PubkeyHash,
-    hashes::Hash,
-    hashes::{sha512, HashEngine, Hmac, HmacEngine},
-    secp256k1,
-    secp256k1::SecretKey,
-    util::bip32::ExtendedPrivKey,
+    hashes::{sha512, Hash, HashEngine, Hmac, HmacEngine},
+    secp256k1::{self, SecretKey},
+    util::bip32::{ChainCode, ExtendedPrivKey},
     PrivateKey, Transaction, Txid,
 };
 use anyhow::Context;
-use bitcoin::util::bip32::ChainCode;
 use rand::RngCore;
 use sha2::{Digest, Sha256};
 use std::path::Path;
