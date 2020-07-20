@@ -25,7 +25,6 @@ pub mod jsonrpc;
 pub mod maker;
 pub mod mid_market_rate;
 pub mod network;
-pub mod options;
 pub mod order;
 pub mod rate;
 pub mod seed;

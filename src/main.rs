@@ -11,7 +11,7 @@ use futures_timer::Delay;
 use libp2p::PeerId;
 use nectar::{
     bitcoin,
-    command::wallet_info,
+    command::{balance, deposit, wallet_info, Command, Options},
     config,
     config::Settings,
     ethereum::{self, dai},
@@ -19,7 +19,6 @@ use nectar::{
     maker::{PublishOrders, TakeRequestDecision},
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, Swarm, Taker},
-    options::{self, Command, Options},
     swap::{self, Database, SwapKind},
     Maker, MidMarketRate, Seed, Spread,
 };
@@ -27,7 +26,6 @@ use num::BigUint;
 use std::str::FromStr;
 use std::sync::Mutex;
 use std::{sync::Arc, time::Duration};
-use structopt::StructOpt;
 
 const ENSURED_CONSUME_ZERO_BUFFER: usize = 0;
 
@@ -460,7 +458,7 @@ impl FinishedSwap {
 async fn main() {
     let runtime = tokio::runtime::Runtime::new().unwrap();
 
-    let options = options::Options::from_args();
+    let options = Options::from_args();
 
     let settings = read_config(&options)
         .and_then(Settings::from_config_file_and_defaults)
@@ -496,6 +494,14 @@ async fn main() {
         Command::WalletInfo => {
             let wallet_info = wallet_info(ethereum_wallet, bitcoin_wallet).await.unwrap();
             println!("{}", wallet_info);
+        }
+        Command::Balance => {
+            let balance = balance(ethereum_wallet, bitcoin_wallet).await.unwrap();
+            println!("{}", balance);
+        }
+        Command::Deposit => {
+            let deposit = deposit(ethereum_wallet, bitcoin_wallet).await.unwrap();
+            println!("{}", deposit);
         }
     }
 }
