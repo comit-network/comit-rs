@@ -273,7 +273,7 @@ impl NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> for Nectar {
                 let ongoing_trade_with_taker_exists = match self.active_takers.contains(&taker) {
                     Ok(res) => res,
                     Err(e) => {
-                        tracing::warn!(
+                        tracing::error!(
                             "could not determine if taker has ongoing trade: {}; taker: {}, order: {}",
                             e,
                             taker.peer_id(),
