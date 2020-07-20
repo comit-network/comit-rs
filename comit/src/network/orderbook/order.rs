@@ -26,8 +26,8 @@ pub struct Order {
 
 // We explicitly only support BTC/DAI.
 impl Order {
-    pub fn tp(&self) -> TradingPair {
-        TradingPair::BtcDai
+    pub fn to_topic(&self) -> Topic {
+        Topic::new(BTC_DAI.to_string())
     }
 }
 
@@ -58,22 +58,6 @@ impl FromStr for OrderId {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let uuid = Uuid::from_str(s)?;
         Ok(OrderId(uuid))
-    }
-}
-
-// Since we only support a single trading pair this struct is actually
-// not needed, the information is implicit in the Order struct. Keep
-// this and the calls to order.tp().topic() to make it explicit that
-// there is only a single trading pair and the trading pair is
-// defined by the order struct.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub enum TradingPair {
-    BtcDai,
-}
-
-impl TradingPair {
-    pub fn to_topic(&self) -> Topic {
-        Topic::new(BTC_DAI.to_string())
     }
 }
 
