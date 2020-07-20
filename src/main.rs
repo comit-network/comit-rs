@@ -11,7 +11,7 @@ use futures_timer::Delay;
 use libp2p::PeerId;
 use nectar::{
     bitcoin,
-    command::{wallet_info, Command, Options},
+    command::{balance, deposit, wallet_info, Command, Options},
     config,
     config::Settings,
     ethereum::{self, dai},
@@ -495,6 +495,14 @@ async fn main() {
         Command::WalletInfo => {
             let wallet_info = wallet_info(ethereum_wallet, bitcoin_wallet).await.unwrap();
             println!("{}", wallet_info);
+        }
+        Command::Balance => {
+            let balance = balance(ethereum_wallet, bitcoin_wallet).await.unwrap();
+            println!("{}", balance);
+        }
+        Command::Deposit => {
+            let deposit = deposit(ethereum_wallet, bitcoin_wallet).await.unwrap();
+            println!("{}", deposit);
         }
     }
 }

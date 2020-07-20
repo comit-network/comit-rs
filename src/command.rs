@@ -23,4 +23,6 @@ pub struct Options {
 pub enum Command {
     Trade,
     WalletInfo,
+    Balance,
+    Deposit,
 }
