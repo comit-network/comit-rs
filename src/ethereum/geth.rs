@@ -8,7 +8,8 @@ use comit::{
 };
 use ethereum_types::U256;
 use num::{BigUint, Num};
-use serde_hex::{CompactPfx, SerHex, SerHexSeq, StrictPfx};
+use num256::Uint256;
+use serde_hex::{SerHexSeq, StrictPfx};
 
 pub const JSONRPC_VERSION: &str = "2.0";
 
@@ -38,20 +39,6 @@ impl Client {
         let chain_id = ChainId::from(chain_id);
 
         Ok(chain_id)
-    }
-
-    pub async fn send_transaction(&self, request: SendTransactionRequest) -> anyhow::Result<Hash> {
-        let tx_hash = self
-            .rpc_client
-            .send(jsonrpc::Request::new(
-                "eth_sendTransaction",
-                vec![jsonrpc::serialize(request)?],
-                JSONRPC_VERSION.into(),
-            ))
-            .await
-            .context("failed to send transaction")?;
-
-        Ok(tx_hash)
     }
 
     pub async fn send_raw_transaction(&self, transaction_hex: String) -> anyhow::Result<Hash> {
@@ -184,6 +171,21 @@ impl Client {
 
         Ok(amount)
     }
+
+    pub async fn gas_limit(&self, request: EstimateGasRequest) -> anyhow::Result<num256::Uint256> {
+        let gas_limit: String = self
+            .rpc_client
+            .send(jsonrpc::Request::new(
+                "eth_estimateGas",
+                vec![jsonrpc::serialize(request)?],
+                JSONRPC_VERSION.into(),
+            ))
+            .await
+            .context("failed to get gas price")?;
+        let gas_limit = num256::Uint256::from_str_radix(&gas_limit[2..], 16)?;
+
+        Ok(gas_limit)
+    }
 }
 
 fn balance_of_fn(account: Address) -> anyhow::Result<Vec<u8>> {
@@ -199,12 +201,15 @@ fn balance_of_fn(account: Address) -> anyhow::Result<Vec<u8>> {
 }
 
 #[derive(Debug, serde::Serialize)]
-pub struct SendTransactionRequest {
+pub struct EstimateGasRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from: Option<Address>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub to: Option<Address>,
-    pub value: U256,
-    #[serde(with = "SerHex::<CompactPfx>")]
-    pub gas_limit: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gas_price: Option<Uint256>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<U256>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Vec<u8>>,
 }
