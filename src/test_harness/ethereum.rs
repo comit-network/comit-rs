@@ -67,6 +67,7 @@ impl<'c> Blockchain<'c> {
                 anyhow::anyhow!("Failed to parse geth dev account private key from string")
             })?,
             url.clone(),
+            ChainId::regtest(),
         );
 
         Ok(Self {

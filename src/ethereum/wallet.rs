@@ -13,34 +13,44 @@ use comit::{
 use num::BigUint;
 use url::Url;
 
-// TODO: Add network; assert network on all calls to geth
 #[derive(Debug, Clone)]
 pub struct Wallet {
     private_key: clarity::PrivateKey,
     geth_client: Client,
     dai_contract_addr: Address,
+    chain_id: ChainId,
 }
 
 impl Wallet {
-    pub fn new(
+    pub async fn new(
         seed: Seed,
         url: Url,
         dai_contract_addr: comit::ethereum::Address,
+        chain_id: ChainId,
     ) -> anyhow::Result<Self> {
         let private_key = clarity::PrivateKey::from_slice(&seed.bytes())
             .map_err(|_| anyhow::anyhow!("Failed to derive private key from slice"))?;
 
         let geth_client = Client::new(url);
 
-        Ok(Self {
+        let wallet = Self {
             private_key,
             geth_client,
             dai_contract_addr,
-        })
+            chain_id,
+        };
+
+        wallet.assert_chain(chain_id).await?;
+
+        Ok(wallet)
     }
 
     #[cfg(test)]
-    pub fn new_from_private_key(private_key: clarity::PrivateKey, url: Url) -> Self {
+    pub fn new_from_private_key(
+        private_key: clarity::PrivateKey,
+        url: Url,
+        chain_id: ChainId,
+    ) -> Self {
         let geth_client = Client::new(url);
         let dai_contract_adr = Address::random();
 
@@ -48,6 +58,7 @@ impl Wallet {
             private_key,
             geth_client,
             dai_contract_addr: dai_contract_adr,
+            chain_id,
         }
     }
 
@@ -73,6 +84,8 @@ impl Wallet {
             ..
         }: DeployContract,
     ) -> anyhow::Result<Hash> {
+        self.assert_chain(chain_id).await?;
+
         let nonce = self.get_transaction_count().await?;
         let gas_price = self.gas_price().await?;
 
@@ -116,6 +129,8 @@ impl Wallet {
         data: Option<Vec<u8>>,
         chain_id: comit::ethereum::ChainId,
     ) -> anyhow::Result<Hash> {
+        self.assert_chain(chain_id).await?;
+
         let nonce = self.get_transaction_count().await?;
         let gas_price = self.gas_price().await?;
 
@@ -178,6 +193,8 @@ impl Wallet {
             ..
         }: CallContract,
     ) -> anyhow::Result<Hash> {
+        self.assert_chain(chain_id).await?;
+
         let nonce = self.get_transaction_count().await?;
         let gas_price = self.gas_price().await?;
 
@@ -245,12 +262,22 @@ impl Wallet {
         Ok(dai::Amount::from_atto(int))
     }
 
-    pub async fn get_transaction_count(&self) -> anyhow::Result<u32> {
+    pub async fn ether_balance(&self) -> anyhow::Result<ether::Amount> {
+        self.geth_client.get_balance(self.account()).await
+    }
+
+    async fn get_transaction_count(&self) -> anyhow::Result<u32> {
         self.geth_client.get_transaction_count(self.account()).await
     }
 
-    pub async fn ether_balance(&self) -> anyhow::Result<ether::Amount> {
-        self.geth_client.get_balance(self.account()).await
+    async fn assert_chain(&self, expected: ChainId) -> anyhow::Result<()> {
+        let actual = self.geth_client.chain_id().await?;
+
+        if expected != actual {
+            anyhow::bail!("Wrong chain_id: expected {:?}, got {:?}", expected, actual);
+        }
+
+        Ok(())
     }
 
     async fn gas_price(&self) -> anyhow::Result<num256::Uint256> {
@@ -284,6 +311,7 @@ mod tests {
         let wallet = random_wallet(
             blockchain.node_url.clone(),
             blockchain.token_contract().unwrap(),
+            ChainId::regtest(),
         )
         .await
         .unwrap();

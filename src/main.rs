@@ -29,9 +29,14 @@ async fn main() {
     )
     .await
     .expect("can initialise bitcoin wallet");
-    let ethereum_wallet =
-        ethereum::Wallet::new(seed, settings.ethereum.node_url.clone(), dai_contract_addr)
-            .expect("can initialise ethereum wallet");
+    let ethereum_wallet = ethereum::Wallet::new(
+        seed,
+        settings.ethereum.node_url.clone(),
+        dai_contract_addr,
+        settings.ethereum.chain_id,
+    )
+    .await
+    .expect("can initialise ethereum wallet");
 
     match options.cmd {
         Command::Trade => trade(

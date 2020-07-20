@@ -294,6 +294,7 @@ mod tests {
     };
     use ::bitcoin::secp256k1;
     use chrono::Utc;
+    use comit::ethereum::ChainId;
     use comit::{
         asset::{
             self,
@@ -411,8 +412,13 @@ mod tests {
 
                 wallet
             };
-            let ethereum_wallet =
-                crate::ethereum::Wallet::new(seed, ethereum_node_url.clone(), token_contract)?;
+            let ethereum_wallet = crate::ethereum::Wallet::new(
+                seed,
+                ethereum_node_url.clone(),
+                token_contract,
+                ChainId::regtest(),
+            )
+            .await?;
 
             // mint ether to pay for gas
             ethereum_blockchain
@@ -439,8 +445,13 @@ mod tests {
             let seed = Seed::random().unwrap();
             let bitcoin_wallet =
                 crate::bitcoin::Wallet::new(seed, bitcoind_url.clone(), bitcoin_network).await?;
-            let ethereum_wallet =
-                crate::ethereum::Wallet::new(seed, ethereum_node_url, token_contract)?;
+            let ethereum_wallet = crate::ethereum::Wallet::new(
+                seed,
+                ethereum_node_url,
+                token_contract,
+                ChainId::regtest(),
+            )
+            .await?;
 
             ethereum_blockchain
                 .mint_erc20_token(

@@ -26,6 +26,7 @@ fn ethereum_info(ethereum_wallet: ethereum::Wallet) -> String {
 mod tests {
     use super::*;
     use crate::{test_harness, Seed};
+    use comit::ethereum::ChainId;
 
     // Run cargo test with `--ignored --nocapture` to see the `println output`
     #[ignore]
@@ -51,7 +52,9 @@ mod tests {
             seed,
             ethereum_blockchain.node_url.clone(),
             ethereum_blockchain.token_contract()?,
-        )?;
+            ChainId::regtest(),
+        )
+        .await?;
 
         let stdout = wallet_info(ethereum_wallet, bitcoin_wallet).await?;
         println!("{}", stdout);
