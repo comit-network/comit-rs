@@ -418,7 +418,7 @@ mod tests {
             ethereum_blockchain
                 .mint_ether(
                     ethereum_wallet.account(),
-                    1_000_000_000_000_000_000u64,
+                    1_000_000_000_000_000_000u64.into(),
                     ethereum_chain_id,
                 )
                 .await?;
@@ -454,7 +454,7 @@ mod tests {
             ethereum_blockchain
                 .mint_ether(
                     ethereum_wallet.account(),
-                    1_000_000_000_000_000_000u64,
+                    1_000_000_000_000_000_000u64.into(),
                     ethereum_chain_id,
                 )
                 .await?;

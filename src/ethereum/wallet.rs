@@ -111,7 +111,7 @@ impl Wallet {
     pub async fn send_transaction(
         &self,
         to: Address,
-        value: u64,
+        value: ether::Amount,
         gas_limit: Option<u64>,
         data: Option<Vec<u8>>,
         chain_id: comit::ethereum::ChainId,
@@ -126,7 +126,7 @@ impl Wallet {
                     from: None,
                     to: Some(to),
                     gas_price: Some(gas_price.clone()),
-                    value: Some(ethereum_types::U256::from(value)),
+                    value: Some(value.clone().into()),
                     data: data.clone(),
                 })
                 .await?

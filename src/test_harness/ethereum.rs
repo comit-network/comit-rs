@@ -1,4 +1,4 @@
-use crate::ethereum::{self, Client};
+use crate::ethereum::{self, ether, Client};
 use anyhow::Context;
 use clarity::PrivateKey;
 use comit::{
@@ -93,10 +93,15 @@ impl<'c> Blockchain<'c> {
         })
     }
 
-    pub async fn mint_ether(&self, to: Address, wei: u64, chain_id: ChainId) -> anyhow::Result<()> {
+    pub async fn mint_ether(
+        &self,
+        to: Address,
+        ether: ether::Amount,
+        chain_id: ChainId,
+    ) -> anyhow::Result<()> {
         let _ = self
             .dev_account_wallet
-            .send_transaction(to, wei, Some(100_000), None, chain_id)
+            .send_transaction(to, ether, Some(100_000), None, chain_id)
             .await?;
 
         Ok(())
@@ -114,7 +119,7 @@ impl<'c> Blockchain<'c> {
             .dev_account_wallet
             .send_transaction(
                 asset.token_contract,
-                0,
+                ether::Amount::zero(),
                 Some(100_000),
                 Some(transfer),
                 chain_id,
