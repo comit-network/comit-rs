@@ -66,8 +66,6 @@ impl Facade {
         redeem_identity: crate::bitcoin::Address,
         refund_identity: identity::Ethereum,
     ) -> anyhow::Result<()> {
-        // TODO: What is this mapping used for, it shouldn't be called here because this
-        // method should be a pure delegation method.
         self.storage
             .associate_swap_with_order(order_id, swap_id)
             .await;

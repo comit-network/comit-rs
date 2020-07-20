@@ -31,10 +31,6 @@ pub async fn post_take_order(
     let refund_identity = body.refund_identity;
     let redeem_identity = body.redeem_identity;
 
-    // TODO: We can just pass the identities down to the network layer
-    // in the `take_order` method. Then swap creation and save would
-    // be done down there as it is for make order.
-
     let swap_id = LocalSwapId::default();
 
     let order_id = order_id;
@@ -42,8 +38,6 @@ pub async fn post_take_order(
         Some(order) => order,
         None => panic!("order not found"),
     };
-
-    // TODO: Consider putting the save in the network layer to be uniform with make?
 
     let start_of_swap = Utc::now().naive_local();
 
@@ -133,7 +127,6 @@ pub async fn post_make_order(
 pub async fn get_order(order_id: OrderId, facade: Facade) -> Result<impl Reply, Rejection> {
     let swap_id = facade
         .storage
-        // TODO: Rename this, its a simple mapping - why the unusually long name?
         .get_swap_associated_with_order(&order_id)
         .await;
 
@@ -150,8 +143,6 @@ pub async fn get_order(order_id: OrderId, facade: Facade) -> Result<impl Reply, 
     Ok(warp::reply::json(&entity))
 }
 
-// TODO: This code smells, these identities are specific to the
-// role but this function can be called by a user in either role.
 pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
     let orders = facade.get_orders().await;
 
@@ -228,16 +219,12 @@ impl From<MakeOrderBody> for NewOrder {
     }
 }
 
-// TODO: Add deser stability test.
 #[derive(Clone, Debug, Deserialize)]
 struct TakeOrderBody {
     refund_identity: identity::Ethereum,
     redeem_identity: bitcoin::Address,
 }
 
-// TODO: Add ser stability test.
-// TODO: This is just an order. Can we not just use Order directly, rely on the
-// serialization in comit crate and add a stability test?
 #[derive(Clone, Debug, Serialize)]
 struct OrderResponse {
     id: OrderId,
