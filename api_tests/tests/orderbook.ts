@@ -11,6 +11,42 @@ import SwapFactory from "../src/actors/swap_factory";
 
 describe("orderbook", () => {
     it(
+        "btc_dai_sell_order_2",
+        twoActorTest(async ({ alice, bob }) => {
+            // Get alice's listen address
+            const aliceAddr = await alice.cnd.getPeerListenAddresses();
+
+            // Bob dials alices
+            // @ts-ignore
+            await bob.cnd.client.post("dial", { addresses: aliceAddr });
+
+            /// Wait for alice to accept an incoming connection from Bob
+            await sleep(1000);
+
+            const orderUrl = await bob.makeOrder();
+            await alice.takeOrderAndAssertSwapCreated();
+
+            // Wait for bob to acknowledge that Alice has taken the order he created
+            await sleep(1000);
+
+            await bob.assertSwapCreatedFromOrder(orderUrl);
+
+            await alice.assertAndExecuteNextAction("deploy");
+            await alice.assertAndExecuteNextAction("fund");
+
+            await bob.assertAndExecuteNextAction("fund");
+
+            await alice.assertAndExecuteNextAction("redeem");
+            await bob.assertAndExecuteNextAction("redeem");
+
+            // Wait until the wallet sees the new balance.
+            await sleep(2000);
+
+            await alice.assertBalancesAfterSwap();
+            await bob.assertBalancesAfterSwap();
+        })
+    );
+    it(
         "btc_dai_sell_order",
         twoActorTest(async ({ alice, bob }) => {
             // Bob and Alice both have a swap created from the order that Bob made and alice took.
@@ -93,6 +129,11 @@ describe("orderbook", () => {
             );
             expect(aliceSwapResponse.status).toEqual(200);
 
+            await alice.initOrderbookTest(
+                aliceTakeOrderResponse.headers.location,
+                bodies.alice
+            );
+
             // Since Alice has taken the swap, the order created by Bob should have an associated swap in the navigational link
             const bobGetOrderResponse = await bob.cnd.fetch<Entity>(
                 bobMakeOrderResponse.headers.location
@@ -113,11 +154,6 @@ describe("orderbook", () => {
             expect(bobSwapResponse.status).toEqual(200);
 
             await bob.initOrderbookTest(linkToBobSwap.href, bodies.bob);
-
-            await alice.initOrderbookTest(
-                aliceTakeOrderResponse.headers.location,
-                bodies.alice
-            );
 
             await alice.assertAndExecuteNextAction("deploy");
             await alice.assertAndExecuteNextAction("fund");

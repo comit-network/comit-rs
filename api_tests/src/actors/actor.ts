@@ -32,6 +32,9 @@ import { Actors } from "./index";
 import { Wallets } from "../wallets";
 import { defaultLedgerDescriptionForLedger } from "./defaults";
 import pTimeout from "p-timeout";
+import { Entity, Link } from "comit-sdk/dist/src/cnd/siren";
+import OrderFactory from "./order_factory";
+import SwapFactory from "./swap_factory";
 
 export type ActorName = "alice" | "bob" | "carol";
 
@@ -95,10 +98,6 @@ export class Actor {
         this.startingBalances = new Map();
         this.expectedBalanceChanges = new Map();
     }
-
-    /**
-     * Interactions with cnd REST API
-     */
 
     /**
      * Create a herc20<->halbit Swap
@@ -291,15 +290,141 @@ export class Actor {
     /**
      * Makes a BtcDai sell order (herc20-hbit Swap)
      */
-    public async makeOrder(_payload: Herc20HbitPayload) {
-        // TODO: Implement makeOrder()
+    public async makeOrder(): Promise<string> {
+        if (this.name === "bob") {
+            // @ts-ignore
+            const { alice, bob } = (
+                await SwapFactory.newSwap(this.actors.alice, this.actors.bob, {
+                    ledgers: {
+                        alpha: "ethereum",
+                        beta: "bitcoin",
+                    },
+                })
+            ).herc20Hbit;
+            // this payload could be wrong
+            const bobMakeOrderBody = OrderFactory.newHerc20HbitSellOrder(bob);
+            // make response contain url in the header to the created order
+            // poll this order to see when when it has been converted to a swap
+            // "POST /orders"
+            // @ts-ignore
+            const bobMakeOrderResponse = await this.cnd.client.post(
+                "orders",
+                bobMakeOrderBody
+            );
+
+            return bobMakeOrderResponse.headers.location;
+        } else {
+            throw new Error(
+                `makeOrder does not support the actor ${this.name} yet`
+            );
+        }
     }
 
     /**
      * Takes a BtcDai sell order (herc20-hbit Swap)
      */
-    public async takeOrder(_payload: Herc20HbitPayload) {
-        // TODO: Implement takeOrder()
+    public async takeOrderAndAssertSwapCreated() {
+        if (this.name === "alice") {
+            // @ts-ignore
+            const { alice, bob } = (
+                await SwapFactory.newSwap(this.actors.alice, this.actors.bob, {
+                    ledgers: {
+                        alpha: "ethereum",
+                        beta: "bitcoin",
+                    },
+                })
+            ).herc20Hbit;
+
+            // Poll until Alice receives an order. The order must be the one that Bob created above.
+            // @ts-ignore
+            const aliceOrdersResponse = await this.pollCndUntil<Entity>(
+                "orders",
+                (entity) => entity.entities.length > 0
+            );
+            const aliceOrderResponse: Entity = aliceOrdersResponse.entities[0];
+
+            // Alice extracts the siren action to take the order
+            const aliceOrderTakeAction = aliceOrderResponse.actions.find(
+                (action: any) => action.name === "take"
+            );
+            // Alice executes the siren take action extracted in the previous line
+            // The resolver function fills the refund and redeem address fields required
+            // "POST /orders/63c0f8bd-beb2-4a9c-8591-a46f65913b0a/take"
+            // Alice receives a url to the swap that was created as a result of taking the order
+            // @ts-ignore
+            const aliceTakeOrderResponse = await this.cnd.executeSirenAction(
+                aliceOrderTakeAction,
+                async (field) => {
+                    // this could be wrong
+                    if (field.name === "refund_identity") {
+                        // @ts-ignore
+                        return Promise.resolve(alice.alpha.identity);
+                    }
+
+                    if (field.name === "redeem_identity") {
+                        // @ts-ignore
+                        return Promise.resolve(alice.beta.final_identity);
+                    }
+                }
+            );
+
+            // Wait for bob to acknowledge that Alice has taken the order he created
+            await sleep(1000);
+
+            // @ts-ignore
+            const aliceSwapResponse = await this.cnd.client.get(
+                aliceTakeOrderResponse.headers.location
+            );
+            expect(aliceSwapResponse.status).toEqual(200);
+
+            await this.initOrderbookTest(
+                aliceTakeOrderResponse.headers.location,
+                alice
+            );
+        } else {
+            throw new Error(
+                `takeOrder does not support the actor ${this.name} yet`
+            );
+        }
+    }
+
+    /**
+     * Wait until a swap is created on bobs end
+     */
+    public async assertSwapCreatedFromOrder(orderUrl: string) {
+        if (this.name === "bob") {
+            // @ts-ignore
+            const { alice, bob } = (
+                await SwapFactory.newSwap(this.actors.alice, this.actors.bob, {
+                    ledgers: {
+                        alpha: "ethereum",
+                        beta: "bitcoin",
+                    },
+                })
+            ).herc20Hbit;
+            // Since Alice has taken the swap, the order created by Bob should have an associated swap in the navigational link
+            const bobGetOrderResponse = await this.cnd.fetch<Entity>(orderUrl);
+
+            expect(bobGetOrderResponse.status).toEqual(200);
+            const linkToBobSwap = bobGetOrderResponse.data.links.find(
+                (link: Link) => link.rel.includes("swap")
+            );
+            expect(linkToBobSwap).toBeDefined();
+
+            // The link the Bobs swap should return 200
+            // "GET /swaps/934dd090-f8eb-4244-9aba-78e23d3f79eb HTTP/1.1"
+            const bobSwapResponse = await this.cnd.fetch<Entity>(
+                linkToBobSwap.href
+            );
+
+            expect(bobSwapResponse.status).toEqual(200);
+
+            await this.initOrderbookTest(linkToBobSwap.href, bob);
+        } else {
+            throw new Error(
+                `assertSwapCreated does not support the actor ${this.name} yet`
+            );
+        }
     }
 
     private async setStartingBalances() {
