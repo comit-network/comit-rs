@@ -1,3 +1,5 @@
+mod trace;
+
 use anyhow::Context;
 use nectar::{
     bitcoin,
@@ -18,6 +20,8 @@ async fn main() {
         dump_config(settings).unwrap();
         std::process::exit(0);
     }
+
+    trace::init_tracing(settings.logging.level).unwrap();
 
     let seed = config::Seed::from_file_or_generate(&settings.data.dir)
         .expect("Could not retrieve/initialize seed")
