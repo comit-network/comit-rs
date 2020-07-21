@@ -28,10 +28,19 @@ interface Ethereum {
 }
 
 export default class OrderbookFactory {
-    public static async initialiseWalletsForBtcDaiOrder(
-        alice: Actor,
-        bob: Actor
-    ) {
+    public static async connect(alice: Actor, bob: Actor) {
+        // Get alice's listen address
+        const aliceAddr = await alice.cnd.getPeerListenAddresses();
+
+        // Bob dials alices
+        // @ts-ignore
+        await bob.cnd.client.post("dial", { addresses: aliceAddr });
+
+        /// Wait for alice to accept an incoming connection from Bob
+        await sleep(1000);
+    }
+
+    public static async initWalletsForBtcDaiOrder(alice: Actor, bob: Actor) {
         await alice.wallets.initializeForLedger(
             "bitcoin",
             alice.logger,
@@ -45,18 +54,6 @@ export default class OrderbookFactory {
 
         await bob.wallets.initializeForLedger("bitcoin", bob.logger, "bob");
         await bob.wallets.initializeForLedger("ethereum", bob.logger, "bob");
-    }
-
-    public static async connect(alice: Actor, bob: Actor) {
-        // Get alice's listen address
-        const aliceAddr = await alice.cnd.getPeerListenAddresses();
-
-        // Bob dials alices
-        // @ts-ignore
-        await bob.cnd.client.post("dial", { addresses: aliceAddr });
-
-        /// Wait for alice to accept an incoming connection from Bob
-        await sleep(1000);
     }
 
     public static async newBtcDaiOrder(

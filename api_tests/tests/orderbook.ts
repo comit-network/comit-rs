@@ -14,7 +14,7 @@ describe("orderbook", () => {
         "btc_dai_buy_order",
         twoActorTest(async ({ alice, bob }) => {
             await OrderFactory.connect(alice, bob);
-            await OrderFactory.initialiseWalletsForBtcDaiOrder(alice, bob);
+            await OrderFactory.initWalletsForBtcDaiOrder(alice, bob);
 
             const order = await OrderFactory.newBtcDaiOrder(bob, "buy");
             await alice.initLedgerAndBalancesForOrder(order);
@@ -50,7 +50,7 @@ describe("orderbook", () => {
         "btc_dai_sell_order",
         twoActorTest(async ({ alice, bob }) => {
             await OrderFactory.connect(alice, bob);
-            await OrderFactory.initialiseWalletsForBtcDaiOrder(alice, bob);
+            await OrderFactory.initWalletsForBtcDaiOrder(alice, bob);
 
             const order = await OrderFactory.newBtcDaiOrder(bob, "sell");
             await alice.initLedgerAndBalancesForOrder(order);

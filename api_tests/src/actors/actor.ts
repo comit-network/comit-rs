@@ -353,7 +353,6 @@ export class Actor {
             const aliceTakeOrderResponse = await this.cnd.executeSirenAction(
                 aliceOrderTakeAction,
                 async (field) => {
-                    // this could be wrong
                     if (field.name === "bitcoin_identity") {
                         // @ts-ignore
                         return Promise.resolve(bitcoinIdentity);
