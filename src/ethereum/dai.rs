@@ -108,7 +108,8 @@ impl Amount {
 
         let dai = truncate(dai, ATTOS_IN_DAI_EXP);
 
-        let u_int_value = multiply_pow_ten(dai, ATTOS_IN_DAI_EXP).expect("It is truncated");
+        let u_int_value =
+            multiply_pow_ten(&dai.to_string(), ATTOS_IN_DAI_EXP).expect("It is truncated");
 
         Ok(Amount(u_int_value))
     }

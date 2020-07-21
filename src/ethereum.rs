@@ -6,15 +6,18 @@ pub use geth::Client;
 pub use wallet::Wallet;
 
 pub mod ether {
+    use crate::float_maths::multiply_pow_ten;
+    use anyhow::Context;
     use comit::asset::ethereum::{FromWei, TryFromWei};
     use comit::asset::Ether;
     use comit::ethereum::U256;
     use num::{BigUint, Num};
     use num256::Uint256;
+    use std::convert::{TryFrom, TryInto};
     use std::fmt;
     use std::str::FromStr;
 
-    const WEI_IN_ETHER_EXP: usize = 18;
+    const WEI_IN_ETHER_EXP: u16 = 18;
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Amount(comit::asset::ethereum::Ether);
@@ -35,6 +38,22 @@ pub mod ether {
             let amount = comit::asset::ethereum::Ether::try_from_wei(int)?;
 
             Ok(Self(amount))
+        }
+
+        /// Smallest accepted unit is wei.
+        pub fn from_ether_str(ether: &str) -> anyhow::Result<Self> {
+            let u_int_value = multiply_pow_ten(ether, WEI_IN_ETHER_EXP as u16)
+                .context("The value passed is not valid for ether")?;
+
+            u_int_value.try_into()
+        }
+    }
+
+    impl TryFrom<BigUint> for Amount {
+        type Error = anyhow::Error;
+
+        fn try_from(int: BigUint) -> Result<Self, Self::Error> {
+            Ok(Amount(comit::asset::Ether::try_from_wei(int)?))
         }
     }
 
