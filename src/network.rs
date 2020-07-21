@@ -2,7 +2,7 @@ mod active_takers;
 
 use crate::{
     bitcoin,
-    ethereum::dai::DaiContractAddress,
+    ethereum::dai::{self, DaiContractAddress},
     order::{BtcDaiOrder, Position},
     swap::{hbit, herc20, SwapKind, SwapParams},
     Seed, SwapId,
@@ -492,10 +492,17 @@ impl TakenOrder {
         confirmation_channel: ResponseChannel<take_order::Response>,
     ) -> Self {
         // TODO: comit::network::orderbook does not yet support selling Bitcoin
+
+        let contract_address = DaiContractAddress::local(order.sell.token_contract);
+        let quote = dai::Asset {
+            amount: order.sell.into(),
+            contract_address,
+        };
+
         let inner = BtcDaiOrder {
             position: Position::Buy,
             base: bitcoin::Amount::from_sat(order.buy),
-            quote: order.sell.into(),
+            quote,
         };
 
         Self {
@@ -546,11 +553,7 @@ impl From<BtcDaiOrder> for PublishOrder {
     }
 }
 
-// TODO: The comit::network::orderbook expects a token contract but we
-// assume DAI. Maybe we should use a type that combines dai::Amount
-// and DaiContractAddress.
-
-// The unwrap both cannot fail and should go away when we fix the TODO above
+// We can remove this allow statement once the todo below is fixed
 #[allow(clippy::fallible_impl_from)]
 impl From<PublishOrder> for comit::network::orderbook::NewOrder {
     fn from(from: PublishOrder) -> Self {
@@ -561,14 +564,7 @@ impl From<PublishOrder> for comit::network::orderbook::NewOrder {
                 quote,
             } => Self {
                 buy: base.into(),
-                sell: asset::Erc20::new(
-                    // FIXME: The dai amount does neither know about the contract address not the network atm
-                    //  Fix this by creating a type that knows the Dai amount AND the contract address (similar to comit::asset::Erc20)
-                    DaiContractAddress::from_public_chain_id(ChainId::mainnet())
-                        .unwrap()
-                        .into(),
-                    quote.into(),
-                ),
+                sell: asset::Erc20::new(quote.contract_address.into(), quote.amount.into()),
                 // TODO: comit::network::orderbook currently only
                 // supports defining one expiry. In cnd, this is used
                 // for both Alpha and Beta. Eventually we will need to

@@ -79,7 +79,10 @@ impl TryFrom<BtcDaiOrder> for Rate {
     type Error = anyhow::Error;
     fn try_from(BtcDaiOrder { base, quote, .. }: BtcDaiOrder) -> anyhow::Result<Self> {
         // Divide atto by satoshi
-        let (quotient, _) = quote.as_atto().div_rem(&BigUint::from(base.as_sat()));
+        let (quotient, _) = quote
+            .amount
+            .as_atto()
+            .div_rem(&BigUint::from(base.as_sat()));
 
         let rate = divide_pow_ten_trunc(quotient, Self::FROM_ORDER_INV_EXP);
         let rate = rate

@@ -49,7 +49,7 @@ impl From<Bitcoin> for file::Bitcoin {
 pub struct Ethereum {
     pub chain_id: ChainId,
     pub node_url: Url,
-    pub dai_contract_address: comit::ethereum::Address,
+    pub dai_contract_address: DaiContractAddress,
 }
 
 impl From<Ethereum> for file::Ethereum {
@@ -59,7 +59,7 @@ impl From<Ethereum> for file::Ethereum {
             None => file::Ethereum {
                 chain_id: ethereum.chain_id,
                 node_url: Some(ethereum.node_url),
-                local_dai_contract_address: Some(ethereum.dai_contract_address),
+                local_dai_contract_address: Some(ethereum.dai_contract_address.into()),
             },
             Some(_) => file::Ethereum {
                 chain_id: ethereum.chain_id,
@@ -103,7 +103,7 @@ impl TryFrom<Option<file::Ethereum>> for Ethereum {
                 Ok(Ethereum {
                     chain_id,
                     node_url,
-                    dai_contract_address: dai_contract_address.into(),
+                    dai_contract_address,
                 })
             }
         }
@@ -115,7 +115,7 @@ impl Default for Ethereum {
         Self {
             chain_id: ChainId::mainnet(),
             node_url: Url::parse("http://localhost:8545").expect("static string to be a valid url"),
-            dai_contract_address: DaiContractAddress::Mainnet.into(),
+            dai_contract_address: DaiContractAddress::Mainnet,
         }
     }
 }
@@ -404,9 +404,7 @@ mod tests {
             .is_equal_to(Ethereum {
                 chain_id: ChainId::mainnet(),
                 node_url: "http://localhost:8545".parse().unwrap(),
-                dai_contract_address: "0x6B175474E89094C44Da98b954EedeAC495271d0F"
-                    .parse()
-                    .unwrap(),
+                dai_contract_address: DaiContractAddress::Mainnet,
             })
     }
 }

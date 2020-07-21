@@ -176,6 +176,7 @@ async fn init_maker(
         dai_max_sell,
         initial_rate,
         spread,
+        settings.ethereum.dai_contract_address,
     ))
 }
 
@@ -621,6 +622,7 @@ mod tests {
     use comit::asset;
     use comit::asset::Erc20Quantity;
     use comit::ethereum::ChainId;
+    use dai::DaiContractAddress;
     use ethereum::ether;
     use log::LevelFilter;
 
@@ -661,7 +663,9 @@ mod tests {
             },
             bitcoin: Default::default(),
             ethereum: settings::Ethereum {
-                dai_contract_address: ethereum_blockchain.token_contract.unwrap(),
+                dai_contract_address: DaiContractAddress::local(
+                    ethereum_blockchain.token_contract.unwrap(),
+                ),
                 chain_id: ChainId::regtest(),
                 node_url: ethereum_blockchain.node_url.clone(),
             },
@@ -704,7 +708,7 @@ mod tests {
             .mint_erc20_token(
                 ethereum_wallet.account(),
                 asset::Erc20::new(
-                    settings.ethereum.dai_contract_address,
+                    settings.ethereum.dai_contract_address.into(),
                     Erc20Quantity::from_wei(5_000_000_000u64),
                 ),
                 settings.ethereum.chain_id,
