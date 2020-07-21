@@ -13,6 +13,8 @@ use crate::{
 };
 use anyhow::Context;
 use chrono::{DateTime, Local};
+use comit::btsieve::bitcoin::BitcoindConnector;
+use comit::btsieve::ethereum::Web3Connector;
 use futures::{
     channel::mpsc::{Receiver, Sender},
     Future, FutureExt, SinkExt, StreamExt,
@@ -57,26 +59,27 @@ pub async fn trade(
         .new_buy_order()
         .context("Could not generate buy order")?;
 
-    swarm
-        .publish(initial_sell_order.into())
-        .context("Could not publish initial sell order")?;
+    // TODO: Sell order not supported by Orderbook yet, uncomment once supported
+    // swarm
+    //     .publish(initial_sell_order.into())
+    //     .context("Could not publish initial sell order")?;
     swarm
         .publish(initial_buy_order.into())
         .context("Could not publish initial buy order")?;
 
     let update_interval = Duration::from_secs(15u64);
 
-    let (rate_future, rate_update_receiver) = init_rate_updates(update_interval);
-    let (btc_balance_future, btc_balance_update_receiver) =
+    let (rate_future, mut rate_update_receiver) = init_rate_updates(update_interval);
+    let (btc_balance_future, mut btc_balance_update_receiver) =
         init_bitcoin_balance_updates(update_interval, Arc::clone(&bitcoin_wallet));
-    let (dai_balance_future, dai_balance_update_receiver) =
+    let (dai_balance_future, mut dai_balance_update_receiver) =
         init_dai_balance_updates(update_interval, Arc::clone(&ethereum_wallet));
 
     tokio::spawn(rate_future);
     tokio::spawn(btc_balance_future);
     tokio::spawn(dai_balance_future);
 
-    let (swap_execution_finished_sender, swap_execution_finished_receiver) =
+    let (swap_execution_finished_sender, mut swap_execution_finished_receiver) =
         futures::channel::mpsc::channel::<FinishedSwap>(ENSURED_CONSUME_ZERO_BUFFER);
 
     #[cfg(not(test))]
@@ -88,13 +91,19 @@ pub async fn trade(
         settings.data.dir.join("history.csv").as_path(),
     )?));
 
+    let bitcoin_connector = Arc::new(BitcoindConnector::new(
+        settings.bitcoin.bitcoind.node_url,
+        settings.bitcoin.network,
+    )?);
+    let ethereum_connector = Arc::new(Web3Connector::new(settings.ethereum.node_url));
+
     respawn_swaps(
         Arc::clone(&db),
         &mut maker,
         Arc::clone(&bitcoin_wallet),
         Arc::clone(&ethereum_wallet),
-        todo!("bitcoin_connector"),
-        todo!("ethereum_connector"),
+        Arc::clone(&bitcoin_connector),
+        Arc::clone(&ethereum_connector),
         swap_execution_finished_sender.clone(),
     )
     .context("Could not respawn swaps")?;
@@ -103,7 +112,7 @@ pub async fn trade(
         futures::select! {
             finished_swap = swap_execution_finished_receiver.next().fuse() => {
                 if let Some(finished_swap) = finished_swap {
-                    handle_finished_swap(finished_swap, &mut maker, &db, history, &mut swarm);
+                    handle_finished_swap(finished_swap, &mut maker, &db, Arc::clone(&history), &mut swarm);
                 }
             },
             network_event = swarm.as_inner().next().fuse() => {
@@ -114,9 +123,9 @@ pub async fn trade(
                     Arc::clone(&db),
                     Arc::clone(&bitcoin_wallet),
                     Arc::clone(&ethereum_wallet),
-                    todo!("bitcoin_connector"),
-                    todo!("ethereum_connector"),
-                    swap_execution_finished_sender.clone()
+                    Arc::clone(&bitcoin_connector),
+        Arc::clone(&ethereum_connector),
+                    swap_execution_finished_sender.clone(),
                 );
             },
             rate_update = rate_update_receiver.next().fuse() => {
@@ -167,6 +176,7 @@ async fn init_maker(
         dai_max_sell,
         initial_rate,
         spread,
+        settings.ethereum.dai_contract_address,
     ))
 }
 
@@ -267,7 +277,7 @@ async fn execute_swap(
 ) -> anyhow::Result<()> {
     match swap {
         SwapKind::Herc20Hbit(params) => {
-            unimplemented!("comit::orderbook does not yet handle sell orders");
+            todo!("comit::orderbook does not yet handle sell orders");
 
             let _ = finished_swap_sender
                 .send(FinishedSwap::new(
@@ -416,8 +426,8 @@ fn handle_network_event(
                 Arc::clone(&db),
                 Arc::clone(&bitcoin_wallet),
                 Arc::clone(&ethereum_wallet),
-                todo!("bitcoin_connector"),
-                todo!("ethereum_connector"),
+                Arc::clone(&bitcoin_connector),
+                Arc::clone(&ethereum_connector),
                 finished_swap_sender,
                 swap,
             ));
@@ -438,9 +448,10 @@ fn handle_rate_update(
                     new_sell_order,
                     new_buy_order,
                 })) => {
-                    let _ = swarm
-                        .publish(new_sell_order.into())
-                        .map_err(|e| tracing::error!("Failed to publish new sell order: {}", e));
+                    // TODO: Sell order not supported by Orderbook yet, uncomment once supported
+                    // let _ = swarm
+                    //     .publish(new_sell_order.into())
+                    //     .map_err(|e| tracing::error!("Failed to publish new sell order: {}", e));
                     let _ = swarm
                         .publish(new_buy_order.into())
                         .map_err(|e| tracing::error!("Failed to publish new buy order: {}", e));
@@ -599,5 +610,120 @@ impl FinishedSwap {
             taker,
             final_timestamp,
         }
+    }
+}
+
+#[cfg(all(test, feature = "test-docker"))]
+mod tests {
+    use super::*;
+    use crate::config::{settings, Data, Logging, MaxSell, Network};
+    use crate::swap::herc20::asset::ethereum::FromWei;
+    use crate::{test_harness, Seed};
+    use comit::asset;
+    use comit::asset::Erc20Quantity;
+    use comit::ethereum::ChainId;
+    use dai::DaiContractAddress;
+    use ethereum::ether;
+    use log::LevelFilter;
+
+    // Run cargo test with `--ignored --nocapture` to see the `println output`
+    #[ignore]
+    #[tokio::test]
+    async fn trade_command() {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+
+        let client = testcontainers::clients::Cli::default();
+        let seed = Seed::random().unwrap();
+
+        let bitcoin_blockchain = test_harness::bitcoin::Blockchain::new(&client).unwrap();
+        bitcoin_blockchain.init().await.unwrap();
+
+        let mut ethereum_blockchain = test_harness::ethereum::Blockchain::new(&client).unwrap();
+        ethereum_blockchain.init().await.unwrap();
+
+        let settings = Settings {
+            maker: settings::Maker {
+                max_sell: MaxSell {
+                    bitcoin: None,
+                    dai: None,
+                },
+                spread: Default::default(),
+                maximum_possible_fee: Default::default(),
+            },
+            network: Network {
+                listen: vec!["/ip4/98.97.96.95/tcp/20500"
+                    .parse()
+                    .expect("invalid multiaddr")],
+            },
+            data: Data {
+                dir: Default::default(),
+            },
+            logging: Logging {
+                level: LevelFilter::Trace,
+            },
+            bitcoin: Default::default(),
+            ethereum: settings::Ethereum {
+                dai_contract_address: DaiContractAddress::local(
+                    ethereum_blockchain.token_contract.unwrap(),
+                ),
+                chain_id: ChainId::regtest(),
+                node_url: ethereum_blockchain.node_url.clone(),
+            },
+        };
+
+        let bitcoin_wallet = bitcoin::Wallet::new(
+            seed,
+            bitcoin_blockchain.node_url.clone(),
+            ::bitcoin::Network::Regtest,
+        )
+        .await
+        .unwrap();
+
+        let ethereum_wallet = crate::ethereum::Wallet::new(
+            seed,
+            ethereum_blockchain.node_url.clone(),
+            ethereum_blockchain.token_contract().unwrap(),
+            settings.ethereum.chain_id,
+        )
+        .await
+        .unwrap();
+
+        bitcoin_blockchain
+            .mint(
+                bitcoin_wallet.new_address().await.unwrap(),
+                asset::Bitcoin::from_sat(1_000_000_000).into(),
+            )
+            .await
+            .unwrap();
+
+        ethereum_blockchain
+            .mint_ether(
+                ethereum_wallet.account(),
+                ether::Amount::from(1_000_000_000_000_000_000u64),
+                settings.ethereum.chain_id,
+            )
+            .await
+            .unwrap();
+        ethereum_blockchain
+            .mint_erc20_token(
+                ethereum_wallet.account(),
+                asset::Erc20::new(
+                    settings.ethereum.dai_contract_address.into(),
+                    Erc20Quantity::from_wei(5_000_000_000u64),
+                ),
+                settings.ethereum.chain_id,
+            )
+            .await
+            .unwrap();
+
+        let _ = trade(
+            runtime.handle().clone(),
+            &seed,
+            settings,
+            bitcoin_wallet,
+            ethereum_wallet,
+        )
+        .await
+        .unwrap();
     }
 }

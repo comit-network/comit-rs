@@ -42,7 +42,13 @@ static DAI_CONTRACT_ADDRESS_ROPSTEN: Lazy<Address> = Lazy::new(|| {
         .unwrap()
 });
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Asset {
+    pub amount: Amount,
+    pub contract_address: DaiContractAddress,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DaiContractAddress {
     Mainnet,
     Kovan,
@@ -64,6 +70,9 @@ impl From<DaiContractAddress> for Address {
 }
 
 impl DaiContractAddress {
+    // TODO: What if we pass the token contract address of, for
+    // example, the Mainnet token contract. I think this should be
+    // renamed, together with the Local variant of DaiContractAddress
     pub fn local(dai_contract_address: Address) -> Self {
         Self::Local(dai_contract_address)
     }

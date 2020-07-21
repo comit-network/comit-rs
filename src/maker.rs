@@ -2,7 +2,7 @@
 
 use crate::{
     bitcoin,
-    ethereum::dai,
+    ethereum::dai::{self, DaiContractAddress},
     network::{self, Taker},
     order::{BtcDaiOrder, Position, Symbol},
     rate::Spread,
@@ -33,6 +33,7 @@ pub struct Maker {
     dai_max_sell_amount: Option<dai::Amount>,
     mid_market_rate: Option<MidMarketRate>,
     spread: Spread,
+    dai_contract_address: DaiContractAddress,
 }
 
 impl Maker {
@@ -45,6 +46,7 @@ impl Maker {
         dai_max_sell_amount: Option<dai::Amount>,
         mid_market_rate: MidMarketRate,
         spread: Spread,
+        dai_contract_address: DaiContractAddress,
     ) -> Self {
         Maker {
             btc_balance: Some(btc_balance),
@@ -56,6 +58,7 @@ impl Maker {
             dai_max_sell_amount,
             mid_market_rate: Some(mid_market_rate),
             spread,
+            dai_contract_address,
         }
     }
 
@@ -131,6 +134,7 @@ impl Maker {
                 self.btc_max_sell_amount,
                 mid_market_rate.into(),
                 self.spread,
+                self.dai_contract_address,
             ),
             (None, _) => anyhow::bail!(RateNotAvailable(Position::Sell)),
             (_, None) => anyhow::bail!(BalanceNotAvailable(Symbol::Btc)),
@@ -145,6 +149,7 @@ impl Maker {
                 self.dai_max_sell_amount.clone(),
                 mid_market_rate.into(),
                 self.spread,
+                self.dai_contract_address,
             ),
             (None, _) => anyhow::bail!(RateNotAvailable(Position::Buy)),
             (_, None) => anyhow::bail!(BalanceNotAvailable(Symbol::Dai)),
@@ -184,7 +189,7 @@ impl Maker {
                     } => match self.dai_balance {
                         Some(ref dai_balance) => {
                             let updated_dai_reserved_funds =
-                                self.dai_reserved_funds.clone() + order.quote;
+                                self.dai_reserved_funds.clone() + order.quote.amount;
                             if updated_dai_reserved_funds > *dai_balance {
                                 return Ok(TakeRequestDecision::InsufficientFunds);
                             }
@@ -281,6 +286,7 @@ mod tests {
                 dai_max_sell_amount: None,
                 mid_market_rate: Some(MidMarketRate::default()),
                 spread: Spread::default(),
+                dai_contract_address: DaiContractAddress::Mainnet,
             }
         }
     }
@@ -298,7 +304,7 @@ mod tests {
         bitcoin::Amount::from_btc(btc).unwrap()
     }
 
-    fn dai(dai: f64) -> dai::Amount {
+    fn dai_amount(dai: f64) -> dai::Amount {
         dai::Amount::from_dai_trunc(dai).unwrap()
     }
 
@@ -318,6 +324,13 @@ mod tests {
         Spread::new(spread).unwrap()
     }
 
+    fn dai_asset(amount: dai::Amount) -> dai::Asset {
+        dai::Asset {
+            amount,
+            contract_address: DaiContractAddress::Mainnet,
+        }
+    }
+
     #[test]
     fn btc_funds_reserved_upon_taking_sell_order() {
         let mut maker = Maker {
@@ -330,7 +343,7 @@ mod tests {
             inner: BtcDaiOrder {
                 position: Position::Sell,
                 base: btc(1.5),
-                quote: dai::Amount::zero(),
+                quote: dai_asset(dai::Amount::zero()),
             },
             ..Default::default()
         };
@@ -353,7 +366,7 @@ mod tests {
             inner: BtcDaiOrder {
                 position: Position::Sell,
                 base: btc(1.5),
-                quote: dai::Amount::zero(),
+                quote: dai_asset(dai::Amount::zero()),
             },
             ..Default::default()
         };
@@ -376,7 +389,7 @@ mod tests {
             inner: BtcDaiOrder {
                 position: Position::Buy,
                 base: btc(1.0),
-                quote: dai(1.5),
+                quote: dai_asset(dai_amount(1.5)),
             },
             ..Default::default()
         };
@@ -384,7 +397,7 @@ mod tests {
         let result = maker.process_taken_order(taken_order).unwrap();
 
         assert_eq!(result, TakeRequestDecision::GoForSwap);
-        assert_eq!(maker.dai_reserved_funds, dai(1.5))
+        assert_eq!(maker.dai_reserved_funds, dai_amount(1.5))
     }
 
     #[test]
@@ -399,7 +412,7 @@ mod tests {
             inner: BtcDaiOrder {
                 position: Position::Buy,
                 base: btc(1.0),
-                quote: dai(1.5),
+                quote: dai_asset(dai_amount(1.5)),
             },
             ..Default::default()
         };
@@ -407,7 +420,7 @@ mod tests {
         let result = maker.process_taken_order(taken_order).unwrap();
 
         assert_eq!(result, TakeRequestDecision::GoForSwap);
-        assert_eq!(maker.dai_reserved_funds, dai(1.5))
+        assert_eq!(maker.dai_reserved_funds, dai_amount(1.5))
     }
 
     #[test]
@@ -421,7 +434,7 @@ mod tests {
             inner: BtcDaiOrder {
                 position: Position::Sell,
                 base: btc(1.5),
-                quote: dai::Amount::zero(),
+                quote: dai_asset(dai::Amount::zero()),
             },
             ..Default::default()
         };
@@ -443,7 +456,7 @@ mod tests {
             inner: BtcDaiOrder {
                 position: Position::Buy,
                 base: btc(1.0),
-                quote: dai(1.5),
+                quote: dai_asset(dai_amount(1.5)),
             },
             ..Default::default()
         };
@@ -465,7 +478,7 @@ mod tests {
             inner: BtcDaiOrder {
                 position: Position::Sell,
                 base: btc(1.0),
-                quote: dai::Amount::zero(),
+                quote: dai_asset(dai::Amount::zero()),
             },
             ..Default::default()
         };
@@ -507,7 +520,7 @@ mod tests {
             inner: BtcDaiOrder {
                 position: Position::Sell,
                 base: btc(1.0),
-                quote: dai(9000.0),
+                quote: dai_asset(dai_amount(9000.0)),
             },
             ..Default::default()
         };
@@ -528,7 +541,7 @@ mod tests {
             inner: BtcDaiOrder {
                 position: Position::Buy,
                 base: btc(1.0),
-                quote: dai(11000.0),
+                quote: dai_asset(dai_amount(11000.0)),
             },
             ..Default::default()
         };
@@ -573,7 +586,7 @@ mod tests {
     fn free_funds_when_processing_finished_swap() {
         let mut maker = Maker {
             btc_reserved_funds: btc(1.1),
-            dai_reserved_funds: dai(1.0),
+            dai_reserved_funds: dai_amount(1.0),
             btc_fee: btc(0.1),
             ..Default::default()
         };
@@ -582,9 +595,9 @@ mod tests {
         maker.free_funds(None, free_btc);
         assert_eq!(maker.btc_reserved_funds, btc(0.5));
 
-        let free_dai = Some(dai(0.5));
+        let free_dai = Some(dai_amount(0.5));
         maker.free_funds(free_dai, None);
-        assert_eq!(maker.dai_reserved_funds, dai(0.5));
+        assert_eq!(maker.dai_reserved_funds, dai_amount(0.5));
     }
 
     #[test]
@@ -605,7 +618,7 @@ mod tests {
             ..Default::default()
         };
 
-        let result = maker.update_dai_balance(dai(1.0)).unwrap();
+        let result = maker.update_dai_balance(dai_amount(1.0)).unwrap();
         assert!(result.is_none());
     }
 
@@ -635,7 +648,7 @@ mod tests {
             spread: spread(0),
             ..Default::default()
         };
-        let new_balance = dai(0.5);
+        let new_balance = dai_amount(0.5);
 
         let new_buy_order = maker
             .update_dai_balance(new_balance.clone())
@@ -680,7 +693,7 @@ mod tests {
         };
 
         let new_buy_order = maker.new_buy_order().unwrap();
-        assert_eq!(new_buy_order.quote, dai(1.0));
+        assert_eq!(new_buy_order.quote, dai_asset(dai_amount(1.0)));
 
         let taker = Taker::default();
         let result = maker
@@ -691,6 +704,6 @@ mod tests {
             .unwrap();
 
         assert_eq!(result, TakeRequestDecision::GoForSwap);
-        assert_eq!(maker.dai_reserved_funds, dai(1.0))
+        assert_eq!(maker.dai_reserved_funds, dai_amount(1.0))
     }
 }
