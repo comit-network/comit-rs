@@ -1,7 +1,7 @@
 use anyhow::Context;
 use nectar::{
     bitcoin,
-    command::{balance, deposit, trade, wallet_info, Command, Options},
+    command::{balance, deposit, dump_config, trade, wallet_info, Command, Options},
     config::{self, Settings},
     ethereum,
 };
@@ -16,6 +16,11 @@ async fn main() {
         .and_then(Settings::from_config_file_and_defaults)
         .expect("Could not initialize configuration");
 
+    if let Command::DumpConfig = options.cmd {
+        dump_config(settings).unwrap();
+        std::process::exit(0);
+    }
+
     let seed = config::Seed::from_file_or_generate(&settings.data.dir)
         .expect("Could not retrieve/initialize seed")
         .into();
@@ -29,9 +34,14 @@ async fn main() {
     )
     .await
     .expect("can initialise bitcoin wallet");
-    let ethereum_wallet =
-        ethereum::Wallet::new(seed, settings.ethereum.node_url.clone(), dai_contract_addr)
-            .expect("can initialise ethereum wallet");
+    let ethereum_wallet = ethereum::Wallet::new(
+        seed,
+        settings.ethereum.node_url.clone(),
+        dai_contract_addr,
+        settings.ethereum.chain_id,
+    )
+    .await
+    .expect("can initialise ethereum wallet");
 
     match options.cmd {
         Command::Trade => trade(
@@ -55,6 +65,7 @@ async fn main() {
             let deposit = deposit(ethereum_wallet, bitcoin_wallet).await.unwrap();
             println!("{}", deposit);
         }
+        Command::DumpConfig => unreachable!(),
     }
 }
 

@@ -58,20 +58,31 @@ impl Wallet {
 
         // We assume the wallet present with the same name has the
         // same seed, which is fair but could be safer.
-        if info.is_err() {
-            // TODO: Probably need to protect the wallet with a passphrase
-            self.bitcoind_client
-                .create_wallet(&self.name, None, Some(true), None, None)
-                .await?;
+        match info {
+            Err(_) => {
+                // TODO: Probably need to protect the wallet with a passphrase
+                self.bitcoind_client
+                    .create_wallet(&self.name, None, Some(true), None, None)
+                    .await?;
 
-            let wif = self.seed_as_wif();
+                let wif = self.seed_as_wif();
 
-            self.bitcoind_client
-                .set_hd_seed(&self.name, Some(true), Some(wif))
-                .await?;
+                self.bitcoind_client
+                    .set_hd_seed(&self.name, Some(true), Some(wif))
+                    .await
+            }
+            Ok(WalletInfoResponse {
+                hd_seed_id: None, ..
+            }) => {
+                // The wallet may have been previously created, but the `sethdseed` call may have failed
+                let wif = self.seed_as_wif();
+
+                self.bitcoind_client
+                    .set_hd_seed(&self.name, Some(true), Some(wif))
+                    .await
+            }
+            _ => Ok(()),
         }
-
-        Ok(())
     }
 
     pub fn random_transient_sk(&self) -> anyhow::Result<SecretKey> {
@@ -387,6 +398,48 @@ mod docker_tests {
 
             let _address = wallet.new_address().await.unwrap();
         }
+    }
+
+    // The test does not behave the same way than I encountered when running a solo container
+    // Let's not invest more time on it right now and review later.
+    #[ignore]
+    #[tokio::test]
+    async fn create_bitcoin_wallet_when_already_existing_but_no_seed_set_and_get_address() {
+        let tc_client = clients::Cli::default();
+        let seed = Seed::random().unwrap();
+
+        // Get the wallet name for the seed
+        let wallet_name = {
+            let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
+            blockchain.init().await.unwrap();
+            let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+                .await
+                .unwrap();
+            wallet.name
+        };
+
+        // The trick is to not generate 100 blocks, bitcoind will accept bitcoin_wallet creation
+        // but fail setting the seed (but for some reason I am not able to reproduce this behaviour)
+        let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
+        {
+            let res = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).await;
+            // If this did not fail then the test is moot
+            assert!(res.is_err());
+
+            let list_wallets = Client::new(blockchain.node_url.clone())
+                .list_wallets()
+                .await
+                .unwrap();
+            // If the wallet is not created the test is moot
+            assert!(list_wallets.contains(&wallet_name));
+        }
+        // Generate 100+ blocks, now it should work
+        blockchain.init().await.unwrap();
+        let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+            .await
+            .unwrap();
+        let _address = wallet.new_address().await.unwrap();
+        // If we did not panic, we succeeded.
     }
 
     #[tokio::test]

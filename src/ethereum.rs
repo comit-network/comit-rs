@@ -6,9 +6,11 @@ pub use geth::Client;
 pub use wallet::Wallet;
 
 pub mod ether {
-    use comit::asset::ethereum::TryFromWei;
+    use comit::asset::ethereum::{FromWei, TryFromWei};
     use comit::asset::Ether;
+    use comit::ethereum::U256;
     use num::{BigUint, Num};
+    use num256::Uint256;
     use std::fmt;
     use std::str::FromStr;
 
@@ -39,6 +41,25 @@ pub mod ether {
     impl From<comit::asset::ethereum::Ether> for Amount {
         fn from(ether: Ether) -> Self {
             Amount(ether)
+        }
+    }
+
+    impl From<Amount> for Uint256 {
+        fn from(amount: Amount) -> Self {
+            Uint256::from_bytes_le(&amount.0.to_bytes())
+        }
+    }
+
+    impl From<Amount> for U256 {
+        fn from(amount: Amount) -> Self {
+            amount.0.to_u256()
+        }
+    }
+
+    /// Integer is wei
+    impl From<u64> for Amount {
+        fn from(int: u64) -> Self {
+            Amount(comit::asset::ethereum::Ether::from_wei(int))
         }
     }
 
