@@ -219,8 +219,14 @@ impl std::ops::Sub for Amount {
 
 impl From<Erc20> for Amount {
     fn from(erc20: Erc20) -> Self {
-        let quantity = BigUint::from_bytes_le(erc20.quantity.to_bytes().as_slice());
-        Amount { 0: quantity }
+        erc20.quantity.into()
+    }
+}
+
+impl From<Erc20Quantity> for Amount {
+    fn from(erc20_quantity: Erc20Quantity) -> Self {
+        let quantity = BigUint::from_bytes_le(erc20_quantity.to_bytes().as_slice());
+        Amount(quantity)
     }
 }
 

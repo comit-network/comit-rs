@@ -11,7 +11,7 @@ bimap = "0.4"
 bitcoin = { version = "0.23.0", features = ["rand", "use-serde"] }
 chrono = "0.4"
 clarity = "0.1"
-comit = { git = "https://github.com/comit-network/comit-rs", package = "comit", branch = "nectar" }
+comit = { git = "https://github.com/comit-network/comit-rs", package = "comit", branch = "nectar-new-orderbook" }
 config = "0.10"
 conquer-once = "0.2"
 csv = "1.1"

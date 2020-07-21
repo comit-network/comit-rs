@@ -8,7 +8,7 @@ use crate::{
     maker::{PublishOrders, TakeRequestDecision},
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, Swarm, Taker},
-    swap::{self, Database, SwapKind, SwapParams},
+    swap::{Database, SwapKind, SwapParams},
     Maker, MidMarketRate, Seed, Spread,
 };
 use anyhow::Context;
@@ -50,8 +50,6 @@ pub async fn trade(
 
     let mut swarm = Swarm::new(&seed, &settings, runtime_handle)?;
 
-    swarm.announce_btc_dai_trading_pair()?;
-
     let initial_sell_order = maker
         .new_sell_order()
         .context("Could not generate sell order")?;
@@ -59,10 +57,9 @@ pub async fn trade(
         .new_buy_order()
         .context("Could not generate buy order")?;
 
-    // TODO: Sell order not supported by Orderbook yet, uncomment once supported
-    // swarm
-    //     .publish(initial_sell_order.into())
-    //     .context("Could not publish initial sell order")?;
+    swarm
+        .publish(initial_sell_order.into())
+        .context("Could not publish initial sell order")?;
     swarm
         .publish(initial_buy_order.into())
         .context("Could not publish initial buy order")?;
@@ -275,51 +272,27 @@ async fn execute_swap(
     mut finished_swap_sender: Sender<FinishedSwap>,
     swap: SwapKind,
 ) -> anyhow::Result<()> {
-    match swap {
-        SwapKind::Herc20Hbit(params) => {
-            todo!("comit::orderbook does not yet handle sell orders");
+    db.insert(swap.clone())?;
 
-            let _ = finished_swap_sender
-                .send(FinishedSwap::new(
-                    swap.clone(),
-                    params.taker.clone(),
-                    Local::now(),
-                ))
-                .await
-                .map_err(|e| {
-                    tracing::trace!(
-                        "Error when sending execution finished from sender to receiver: {}",
-                        e
-                    )
-                });
-        }
-        SwapKind::HbitHerc20(ref params) => {
-            db.insert(swap.clone())?;
+    swap.execute(
+        Arc::clone(&db),
+        Arc::clone(&bitcoin_wallet),
+        Arc::clone(&ethereum_wallet),
+        Arc::clone(&bitcoin_connector),
+        Arc::clone(&ethereum_connector),
+    )
+    .await?;
 
-            swap::nectar_hbit_herc20(
-                Arc::clone(&db),
-                Arc::clone(&bitcoin_wallet),
-                Arc::clone(&ethereum_wallet),
-                Arc::clone(&bitcoin_connector),
-                Arc::clone(&ethereum_connector),
-                params.clone(),
-            )
-            .await?;
-
-            let _ = finished_swap_sender
-                .send(FinishedSwap::new(
-                    swap.clone(),
-                    params.taker.clone(),
-                    Local::now(),
-                ))
-                .await
-                .map_err(|e| {
-                    tracing::trace!(
-                        "Error when sending execution finished from sender to receiver."
-                    )
-                });
-        }
-    }
+    let _ = finished_swap_sender
+        .send(FinishedSwap::new(
+            swap.clone(),
+            swap.params().taker,
+            Local::now(),
+        ))
+        .await
+        .map_err(|e| {
+            tracing::trace!("Error when sending execution finished from sender to receiver.")
+        });
 
     Ok(())
 }
@@ -448,10 +421,9 @@ fn handle_rate_update(
                     new_sell_order,
                     new_buy_order,
                 })) => {
-                    // TODO: Sell order not supported by Orderbook yet, uncomment once supported
-                    // let _ = swarm
-                    //     .publish(new_sell_order.into())
-                    //     .map_err(|e| tracing::error!("Failed to publish new sell order: {}", e));
+                    let _ = swarm
+                        .publish(new_sell_order.into())
+                        .map_err(|e| tracing::error!("Failed to publish new sell order: {}", e));
                     let _ = swarm
                         .publish(new_buy_order.into())
                         .map_err(|e| tracing::error!("Failed to publish new buy order: {}", e));

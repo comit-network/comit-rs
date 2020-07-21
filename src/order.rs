@@ -152,6 +152,24 @@ pub trait Fees {
     fn fees(&self) -> Self::Amount;
 }
 
+impl From<Position> for comit::network::Position {
+    fn from(from: Position) -> Self {
+        match from {
+            Position::Buy => comit::network::Position::Buy,
+            Position::Sell => comit::network::Position::Sell,
+        }
+    }
+}
+
+impl From<comit::network::Position> for Position {
+    fn from(from: comit::network::Position) -> Self {
+        match from {
+            comit::network::Position::Buy => Position::Buy,
+            comit::network::Position::Sell => Position::Sell,
+        }
+    }
+}
+
 #[cfg(test)]
 impl Default for BtcDaiOrder {
     fn default() -> Self {
