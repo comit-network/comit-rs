@@ -11,6 +11,8 @@ use std::{fmt, str::FromStr};
 // 1 Ether = 1,000,000,000,000,000,000 Wei (10 exp 18)
 const WEI_EXP: u16 = 18;
 
+pub type Dai = Erc20Quantity;
+
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Erc20Quantity(BigUint);
 

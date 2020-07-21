@@ -1,4 +1,6 @@
 mod order;
+mod orders;
+mod quote;
 mod take_order;
 
 use crate::{
@@ -6,6 +8,7 @@ use crate::{
     SharedSwapId,
 };
 
+use anyhow::bail;
 use libp2p::{
     core::either::EitherOutput,
     gossipsub,
@@ -19,7 +22,7 @@ use libp2p::{
 };
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
-    collections::{hash_map::DefaultHasher, HashMap, VecDeque},
+    collections::{hash_map::DefaultHasher, VecDeque},
     fmt,
     fmt::Display,
     hash::{Hash, Hasher},
@@ -28,7 +31,7 @@ use std::{
     time::Duration,
 };
 
-pub use self::order::*;
+pub use self::{order::*, orders::*, quote::*};
 
 /// String representing the BTC/DAI trading pair.
 const BTC_DAI: &str = "BTC/DAI";
@@ -45,7 +48,7 @@ pub struct Orderbook {
     #[behaviour(ignore)]
     events: VecDeque<BehaviourOutEvent>,
     #[behaviour(ignore)]
-    orders: HashMap<OrderId, Order>,
+    orders: Orders,
     #[behaviour(ignore)]
     pub peer_id: PeerId,
 }
@@ -77,7 +80,7 @@ impl Orderbook {
             peer_id,
             gossipsub,
             take_order: behaviour,
-            orders: HashMap::new(),
+            orders: Orders::default(),
             events: VecDeque::new(),
         };
 
@@ -90,32 +93,32 @@ impl Orderbook {
     }
 
     /// Create and publish a new 'make' order. Called by Bob i.e. the maker.
-    pub fn make(&mut self, order: Order) -> anyhow::Result<OrderId> {
-        let ser = bincode::serialize(&Message::CreateOrder(order.clone()))?;
+    pub fn make(&mut self, maker: PeerId, order: BtcDaiOrder) -> anyhow::Result<OrderId> {
+        let ser = bincode::serialize(&Message::CreateOrder(order))?;
         let topic = order.to_topic();
         self.gossipsub.publish(&topic, ser);
 
-        let id = order.id;
-        self.orders.insert(id, order);
+        self.orders.insert(maker, order)?;
 
-        Ok(id)
+        Ok(order.id)
     }
 
     /// Take an order, called by Alice i.e., the taker.
-    /// Does _not_ remove the order from the order book.
-    pub fn take(&mut self, order_id: OrderId) -> anyhow::Result<()> {
-        let maker_id = self
-            .maker_id(order_id)
-            .ok_or_else(|| OrderNotFound(order_id))?;
+    pub fn take(&mut self, id: OrderId) -> anyhow::Result<()> {
+        let maker = self.orders.maker(&id).ok_or_else(|| OrderNotFound(id))?;
 
-        self.take_order.send_request(&maker_id.into(), order_id);
+        if !self.orders.is_live(&id) {
+            bail!("order is dead: {}", id);
+        }
+
+        self.take_order.send_request(&maker, id);
 
         Ok(())
     }
 
     /// Get the ID of the node that published this order.
-    fn maker_id(&self, order_id: OrderId) -> Option<MakerId> {
-        self.orders.get(&order_id).map(|order| order.maker.clone())
+    pub fn maker(&self, order_id: OrderId) -> Option<PeerId> {
+        self.orders.maker(&order_id)
     }
 
     /// Confirm a take order request, called by Bob i.e., the maker.
@@ -123,8 +126,8 @@ impl Orderbook {
     pub fn confirm(
         &mut self,
         order_id: OrderId,
+        taker: PeerId,
         channel: ResponseChannel<Response>,
-        peer_id: PeerId,
     ) {
         let shared_swap_id = SharedSwapId::default();
         tracing::debug!(
@@ -140,28 +143,29 @@ impl Orderbook {
 
         self.events
             .push_back(BehaviourOutEvent::TakeOrderConfirmation {
-                peer_id,
+                peer_id: taker,
                 order_id,
                 shared_swap_id,
             });
     }
 
     /// Deny a take order request, called by Bob i.e., the maker.
-    pub fn deny(&mut self, peer_id: PeerId, order_id: OrderId, channel: ResponseChannel<Response>) {
-        self.events
-            .push_back(BehaviourOutEvent::Failed { peer_id, order_id });
+    pub fn deny(&mut self, order_id: OrderId, taker: PeerId, channel: ResponseChannel<Response>) {
+        self.events.push_back(BehaviourOutEvent::Failed {
+            peer_id: taker,
+            order_id,
+        });
         self.take_order.send_response(channel, Response::Error);
     }
 
-    /// Get a list of all orders known to this node.
-    pub fn get_orders(&self) -> Vec<Order> {
-        self.orders.values().cloned().collect()
+    /// Get a list of all the orders known to this node.
+    pub fn get_orders(&self) -> Vec<BtcDaiOrder> {
+        self.orders.get_orders()
     }
 
     /// Get the order matching `id` if known to this node.
-    /// todo: check error handling in usages of this function
-    pub fn get_order(&self, id: &OrderId) -> Option<Order> {
-        self.orders.get(id).cloned()
+    pub fn get_order(&self, id: &OrderId) -> Option<BtcDaiOrder> {
+        self.orders.get_order(id)
     }
 
     fn poll(
@@ -188,7 +192,7 @@ pub struct OrderNotFound(OrderId);
 
 /// MakerId is a PeerId wrapper so we control serialization/deserialization.
 #[derive(Debug, Clone, PartialEq)]
-pub struct MakerId(PeerId);
+struct MakerId(PeerId);
 
 impl From<PeerId> for MakerId {
     fn from(id: PeerId) -> Self {
@@ -230,15 +234,15 @@ impl<'de> Deserialize<'de> for MakerId {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Debug)]
 pub enum Message {
-    CreateOrder(Order),
+    CreateOrder(BtcDaiOrder),
     DeleteOrder(OrderId),
 }
 
 impl fmt::Debug for Orderbook {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BasicOrderbook")
+        f.debug_struct("Orderbook")
             .field("peer_id", &self.peer_id)
             .field("orders", &self.orders)
             .finish()
@@ -279,7 +283,7 @@ pub enum BehaviourOutEvent {
 
 impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
     fn inject_event(&mut self, event: GossipsubEvent) {
-        if let GossipsubEvent::Message(_peer_id, _message_id, message) = event {
+        if let GossipsubEvent::Message(peer_id, _message_id, message) = event {
             let decoded: Message = match bincode::deserialize(&message.data[..]) {
                 Ok(msg) => msg,
                 Err(e) => {
@@ -290,17 +294,14 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
 
             match decoded {
                 Message::CreateOrder(order) => {
-                    // This implies new orders remove old orders from
-                    // the orderbook. This means nodes can spoof the
-                    // network using previously seen order ids in
-                    // order to override orders.
-                    self.orders.insert(order.id, order);
+                    let id = order.id;
+                    if self.orders.insert(peer_id, order).is_err() {
+                        tracing::warn!("insert failed, order exists: {}", id);
+                    }
                 }
+                // TODO: Add cancel/taken instead of just kill.
                 Message::DeleteOrder(order_id) => {
-                    // Same consideration here, nodes can cause orders
-                    // they did not create to be removed by spoofing
-                    // the network with a previously seen order id.
-                    self.orders.remove(&order_id);
+                    let _ = self.orders.kill_order(peer_id, &order_id);
                 }
             }
         }
@@ -380,7 +381,7 @@ mod tests {
         // arrange
 
         let (mut alice, mut bob) = new_connected_swarm_pair(Orderbook::new).await;
-        let bob_order = order::meaningless_test_order(MakerId::from(bob.peer_id.clone()));
+        let bob_order = BtcDaiOrder::meaningless_test_value();
 
         // act
 
@@ -390,7 +391,7 @@ mod tests {
 
         let _ = bob
             .swarm
-            .make(bob_order.clone())
+            .make(bob.peer_id.clone(), bob_order)
             .expect("order id should exist");
 
         // Trigger publish and receipt of order.
@@ -423,7 +424,7 @@ mod tests {
             } => (peer_id, response_channel, order_id),
             _ => panic!("unexepected bob event"),
         };
-        bob.swarm.confirm(order_id, channel, alice_peer_id);
+        bob.swarm.confirm(order_id, alice_peer_id, channel);
 
         let (alice_event, bob_event) =
             await_events_or_timeout(alice.swarm.next(), bob.swarm.next()).await;

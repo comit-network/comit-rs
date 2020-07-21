@@ -4,7 +4,7 @@ mod erc20;
 mod ether;
 
 pub use self::{
-    erc20::{Erc20, Erc20Quantity},
+    erc20::{Dai, Erc20, Erc20Quantity},
     ether::Ether,
 };
 

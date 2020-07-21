@@ -1,33 +1,59 @@
 use crate::{
-    asset, identity, ledger,
-    network::protocols::orderbook::{MakerId, BTC_DAI},
+    asset,
+    network::protocols::orderbook::{Quote, BTC_DAI},
 };
+
 use libp2p::gossipsub::Topic;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
 
-/// An order, created by a maker (Bob) and shared with the network via
-/// gossipsub.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Order {
+/// An limit order, created in order to supply liquidity to the network and
+/// shared with the network via gossipsub.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct BtcDaiOrder {
     pub id: OrderId,
-    pub maker: MakerId,
-    pub position: Position,
+    pub position: Position, // Position of the order from the creators perspective.
+    pub quote: Quote,       // Indirect quote i.e., one unit of BTC = quote units of DAI.
     #[serde(with = "asset::bitcoin::sats_as_string")]
-    pub bitcoin_amount: asset::Bitcoin,
-    pub bitcoin_ledger: ledger::Bitcoin,
-    pub bitcoin_absolute_expiry: u32,
-    pub ethereum_amount: asset::Erc20Quantity,
-    pub token_contract: identity::Ethereum,
-    pub ethereum_ledger: ledger::Ethereum,
-    pub ethereum_absolute_expiry: u32,
+    pub amount: asset::Bitcoin, // Orders are quoted in the base currency.
 }
 
-// We explicitly only support BTC/DAI.
-impl Order {
+impl BtcDaiOrder {
+    pub fn new_buy(quote: Quote, amount: asset::Bitcoin) -> Self {
+        BtcDaiOrder::new(quote, amount, Position::Buy)
+    }
+
+    pub fn new_sell(quote: Quote, amount: asset::Bitcoin) -> Self {
+        BtcDaiOrder::new(quote, amount, Position::Sell)
+    }
+
+    fn new(quote: Quote, amount: asset::Bitcoin, position: Position) -> Self {
+        BtcDaiOrder {
+            id: OrderId::random(),
+            position,
+            quote,
+            amount,
+        }
+    }
+
     pub fn to_topic(&self) -> Topic {
         Topic::new(BTC_DAI.to_string())
+    }
+
+    /// Converts forex terminology (rate/amount) to COMIT terminology.
+    pub fn value(&self) -> (asset::Bitcoin, asset::Erc20Quantity) {
+        unimplemented!()
+    }
+
+    #[cfg(test)]
+    pub fn meaningless_test_value() -> Self {
+        BtcDaiOrder {
+            id: OrderId::random(),
+            position: Position::Sell,
+            quote: Quote::from_float(9123.45).expect("failed to construct quote"),
+            amount: asset::Bitcoin::from_sat(1000),
+        }
     }
 }
 
@@ -38,12 +64,12 @@ impl OrderId {
     pub fn random() -> OrderId {
         OrderId(Uuid::new_v4())
     }
-}
 
-#[cfg(test)]
-fn meaningless_test_order_id() -> OrderId {
-    let uuid = Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap();
-    OrderId(uuid)
+    #[cfg(test)]
+    pub fn meaningless_test_value() -> OrderId {
+        let uuid = Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap();
+        OrderId(uuid)
+    }
 }
 
 impl Display for OrderId {
@@ -59,27 +85,6 @@ impl FromStr for OrderId {
         let uuid = Uuid::from_str(s)?;
         Ok(OrderId(uuid))
     }
-}
-
-#[cfg(test)]
-pub fn meaningless_test_order(maker: MakerId) -> Order {
-    Order {
-        id: meaningless_test_order_id(),
-        maker,
-        position: Position::Sell,
-        bitcoin_amount: asset::Bitcoin::meaningless_test_value(),
-        bitcoin_ledger: ledger::Bitcoin::Regtest,
-        bitcoin_absolute_expiry: meaningless_expiry_value(),
-        ethereum_amount: asset::Erc20Quantity::meaningless_test_value(),
-        token_contract: Default::default(),
-        ethereum_ledger: ledger::Ethereum::default(),
-        ethereum_absolute_expiry: meaningless_expiry_value(),
-    }
-}
-
-#[cfg(test)]
-fn meaningless_expiry_value() -> u32 {
-    100
 }
 
 /// The position of the maker for this order. A BTC/DAI buy order,
@@ -102,12 +107,11 @@ pub enum Position {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use libp2p::PeerId;
     use spectral::prelude::*;
 
     #[test]
     fn order_id_serialization_roundtrip() {
-        let order_id = meaningless_test_order_id();
+        let order_id = OrderId::meaningless_test_value();
         let json = serde_json::to_string(&order_id).expect("failed to serialize order id");
         let rinsed: OrderId = serde_json::from_str(&json).expect("failed to deserialize order id");
         assert_that(&rinsed).is_equal_to(&order_id);
@@ -125,49 +129,30 @@ mod tests {
     }
 
     #[test]
-    fn btc_dai_order_serialization_stability() {
-        let given = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY".to_string();
-        let peer_id = PeerId::from_str(&given).expect("failed to parse peer id");
-        let maker_id = MakerId(peer_id);
+    fn position_serialization_roundtrip() {
+        let pos = Position::Buy;
+        let json = serde_json::to_string(&pos).expect("failed to serialize position");
+        let rinsed: Position = serde_json::from_str(&json).expect("failed to deserialize position");
 
-        let order = Order {
-            id: meaningless_test_order_id(),
-            maker: maker_id,
-            position: Position::Sell,
-            bitcoin_amount: asset::Bitcoin::meaningless_test_value(),
-            bitcoin_ledger: ledger::Bitcoin::Regtest,
-            bitcoin_absolute_expiry: meaningless_expiry_value(),
-            ethereum_amount: asset::Erc20Quantity::meaningless_test_value(),
-            token_contract: Default::default(),
-            ethereum_ledger: ledger::Ethereum::default(),
-            ethereum_absolute_expiry: meaningless_expiry_value(),
-        };
-
-        let got = serde_json::to_string(&order).expect("failed to serialize order");
-        let want = r#"{"id":"936da01f-9abd-4d9d-80c7-02af85c822a8","maker":"QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY","position":"sell","bitcoin_amount":"1000","bitcoin_ledger":"regtest","bitcoin_absolute_expiry":100,"ethereum_amount":"1000","token_contract":"0x0000000000000000000000000000000000000000","ethereum_ledger":{"chain_id":1337},"ethereum_absolute_expiry":100}"#.to_string();
-        assert_that(&got).is_equal_to(want);
+        assert_that(&rinsed).is_equal_to(&pos);
     }
 
     #[test]
-    fn trade_serialization_roundtrip() {
-        let trade = Position::Buy;
-        let json = serde_json::to_string(&trade).expect("failed to serialize trade");
-        let rinsed: Position = serde_json::from_str(&json).expect("failed to deserialize trade");
-
-        assert_that(&rinsed).is_equal_to(&trade);
-    }
-
-    #[test]
-    fn trade_buy_serialization_stability() {
-        let trade = Position::Buy;
-        let s = serde_json::to_string(&trade).expect("failed to serialize trade");
+    fn position_buy_serialization_stability() {
+        let pos = Position::Buy;
+        let s = serde_json::to_string(&pos).expect("failed to serialize position");
         assert_that(&s).is_equal_to(r#""buy""#.to_string());
     }
 
     #[test]
-    fn trade_sell_serialization_stability() {
-        let trade = Position::Sell;
-        let s = serde_json::to_string(&trade).expect("failed to serialize trade");
+    fn position_sell_serialization_stability() {
+        let pos = Position::Sell;
+        let s = serde_json::to_string(&pos).expect("failed to serialize position");
         assert_that(&s).is_equal_to(r#""sell""#.to_string());
+    }
+
+    #[test]
+    fn btc_dai_order_serialization_stability() {
+        // TODO: implement btc_dai_order_serialization_stability()
     }
 }
