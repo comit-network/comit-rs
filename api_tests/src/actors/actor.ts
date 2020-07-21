@@ -32,6 +32,8 @@ import { Actors } from "./index";
 import { Wallets } from "../wallets";
 import { defaultLedgerDescriptionForLedger } from "./defaults";
 import pTimeout from "p-timeout";
+import { Entity, Link } from "comit-sdk/dist/src/cnd/siren";
+import { BtcDaiOrder } from "./order_factory";
 
 export type ActorName = "alice" | "bob" | "carol";
 
@@ -95,10 +97,6 @@ export class Actor {
         this.startingBalances = new Map();
         this.expectedBalanceChanges = new Map();
     }
-
-    /**
-     * Interactions with cnd REST API
-     */
 
     /**
      * Create a herc20<->halbit Swap
@@ -256,50 +254,175 @@ export class Actor {
         );
     }
 
-    public async initOrderbookTest(swapUrl: string, create: Herc20HbitPayload) {
-        this.alphaLedger = {
-            name: LedgerKind.Ethereum,
-            chain_id: create.alpha.chain_id,
-        };
-        this.betaLedger = {
-            name: LedgerKind.Bitcoin,
-            network: create.beta.network,
-        };
-        this.alphaAsset = {
-            name: AssetKind.Erc20,
-            quantity: create.alpha.amount,
-            ledger: LedgerKind.Ethereum,
-            tokenContract: create.alpha.token_contract,
-        };
-        this.betaAsset = {
-            name: AssetKind.Bitcoin,
-            quantity: create.beta.amount,
-            ledger: LedgerKind.Bitcoin,
-        };
-        await this.setStartingBalances();
+    public async initLedgerAndBalancesForOrder(order: BtcDaiOrder) {
+        if (order.position === "buy") {
+            this.alphaLedger = {
+                name: LedgerKind.Bitcoin,
+                network: order.bitcoin_ledger,
+            };
+            this.betaLedger = {
+                name: LedgerKind.Ethereum,
+                chain_id: order.ethereum_ledger.chain_id,
+            };
+            this.alphaAsset = {
+                name: AssetKind.Bitcoin,
+                quantity: order.bitcoin_amount,
+                ledger: LedgerKind.Bitcoin,
+            };
+            this.betaAsset = {
+                name: AssetKind.Erc20,
+                quantity: order.ethereum_amount,
+                ledger: LedgerKind.Ethereum,
+                tokenContract: order.token_contract,
+            };
+        } else if (order.position === "sell") {
+            this.alphaLedger = {
+                name: LedgerKind.Ethereum,
+                chain_id: order.ethereum_ledger.chain_id,
+            };
+            this.betaLedger = {
+                name: LedgerKind.Bitcoin,
+                network: order.bitcoin_ledger,
+            };
+            this.alphaAsset = {
+                name: AssetKind.Erc20,
+                quantity: order.ethereum_amount,
+                ledger: LedgerKind.Ethereum,
+                tokenContract: order.token_contract,
+            };
+            this.betaAsset = {
+                name: AssetKind.Bitcoin,
+                quantity: order.bitcoin_amount,
+                ledger: LedgerKind.Bitcoin,
+            };
+        } else {
+            throw new Error(
+                `cannot init ledger and balances for unsupported ${order.position} yet`
+            );
+        }
 
-        this.swap = new Swap(
-            this.cnd,
-            swapUrl,
-            new SdkWallets({
-                ethereum: this.wallets.ethereum.inner,
-                bitcoin: this.wallets.bitcoin.inner,
-            })
-        );
+        await this.setStartingBalances();
     }
 
     /**
      * Makes a BtcDai sell order (herc20-hbit Swap)
      */
-    public async makeOrder(_payload: Herc20HbitPayload) {
-        // TODO: Implement makeOrder()
+    public async makeOrder(order: BtcDaiOrder): Promise<string> {
+        if (this.name === "bob") {
+            // make response contain url in the header to the created order
+            // poll this order to see when when it has been converted to a swap
+            // "POST /orders"
+            // @ts-ignore
+            const bobMakeOrderResponse = await this.cnd.client.post(
+                "orders",
+                order
+            );
+            return bobMakeOrderResponse.headers.location;
+        } else {
+            throw new Error(
+                `makeOrder does not support the actor ${this.name} yet`
+            );
+        }
     }
 
     /**
      * Takes a BtcDai sell order (herc20-hbit Swap)
      */
-    public async takeOrder(_payload: Herc20HbitPayload) {
-        // TODO: Implement takeOrder()
+    public async takeOrderAndAssertSwapCreated(
+        bitcoinIdentity: string,
+        ethereumIdentity: string
+    ) {
+        if (this.name === "alice") {
+            // Poll until Alice receives an order. The order must be the one that Bob created above.
+            // @ts-ignore
+            const aliceOrdersResponse = await this.pollCndUntil<Entity>(
+                "orders",
+                (entity) => entity.entities.length > 0
+            );
+            const aliceOrderResponse: Entity = aliceOrdersResponse.entities[0];
+
+            // Alice extracts the siren action to take the order
+            const aliceOrderTakeAction = aliceOrderResponse.actions.find(
+                (action: any) => action.name === "take"
+            );
+            // Alice executes the siren take action extracted in the previous line
+            // The resolver function fills the refund and redeem address fields required
+            // "POST /orders/63c0f8bd-beb2-4a9c-8591-a46f65913b0a/take"
+            // Alice receives a url to the swap that was created as a result of taking the order
+            // @ts-ignore
+            const aliceTakeOrderResponse = await this.cnd.executeSirenAction(
+                aliceOrderTakeAction,
+                async (field) => {
+                    if (field.name === "bitcoin_identity") {
+                        // @ts-ignore
+                        return Promise.resolve(bitcoinIdentity);
+                    }
+                    if (field.name === "ethereum_identity") {
+                        // @ts-ignore
+                        return Promise.resolve(ethereumIdentity);
+                    }
+                }
+            );
+
+            // Wait for bob to acknowledge that Alice has taken the order he created
+            await sleep(1000);
+
+            // @ts-ignore
+            const aliceSwapResponse = await this.cnd.client.get(
+                aliceTakeOrderResponse.headers.location
+            );
+            expect(aliceSwapResponse.status).toEqual(200);
+
+            this.swap = new Swap(
+                this.cnd,
+                aliceTakeOrderResponse.headers.location,
+                new SdkWallets({
+                    ethereum: this.wallets.ethereum.inner,
+                    bitcoin: this.wallets.bitcoin.inner,
+                })
+            );
+        } else {
+            throw new Error(
+                `takeOrder does not support the actor ${this.name} yet`
+            );
+        }
+    }
+
+    /**
+     * Wait until a swap is created on bobs end
+     */
+    public async checkSwapCreatedFromOrder(orderUrl: string) {
+        if (this.name === "bob") {
+            // Since Alice has taken the swap, the order created by Bob should have an associated swap in the navigational link
+            const bobGetOrderResponse = await this.cnd.fetch<Entity>(orderUrl);
+
+            expect(bobGetOrderResponse.status).toEqual(200);
+            const linkToBobSwap = bobGetOrderResponse.data.links.find(
+                (link: Link) => link.rel.includes("swap")
+            );
+            expect(linkToBobSwap).toBeDefined();
+
+            // The link the Bobs swap should return 200
+            // "GET /swaps/934dd090-f8eb-4244-9aba-78e23d3f79eb HTTP/1.1"
+            const bobSwapResponse = await this.cnd.fetch<Entity>(
+                linkToBobSwap.href
+            );
+
+            expect(bobSwapResponse.status).toEqual(200);
+
+            this.swap = new Swap(
+                this.cnd,
+                linkToBobSwap.href,
+                new SdkWallets({
+                    ethereum: this.wallets.ethereum.inner,
+                    bitcoin: this.wallets.bitcoin.inner,
+                })
+            );
+        } else {
+            throw new Error(
+                `assertSwapCreated does not support the actor ${this.name} yet`
+            );
+        }
     }
 
     private async setStartingBalances() {

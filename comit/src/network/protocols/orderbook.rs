@@ -158,6 +158,7 @@ impl Orderbook {
     }
 
     /// Get the order matching `id` if known to this node.
+    /// todo: check error handling in usages of this function
     pub fn get_order(&self, id: &OrderId) -> Option<Order> {
         self.orders.get(id).cloned()
     }

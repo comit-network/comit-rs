@@ -1,6 +1,16 @@
-import { Herc20HbitPayload } from "../payload";
+import { Actor } from "./actor";
+import { sleep } from "../utils";
+import { HarnessGlobal } from "../utils";
+import { defaultExpiries, getIdentities } from "./defaults";
 
-export interface Herc20HbitOrder {
+declare var global: HarnessGlobal;
+
+export interface Identities {
+    refund_identity: string;
+    redeem_identity: string;
+}
+
+export interface BtcDaiOrder {
     position: string;
     bitcoin_amount: string;
     bitcoin_ledger: string;
@@ -9,31 +19,86 @@ export interface Herc20HbitOrder {
     ethereum_ledger: Ethereum;
     bitcoin_absolute_expiry: number;
     ethereum_absolute_expiry: number;
-    refund_identity: string;
-    redeem_identity: string;
+    bitcoin_identity: string;
+    ethereum_identity: string;
 }
 
 interface Ethereum {
     chain_id: number;
 }
 
-export default class OrderFactory {
-    public static newHerc20HbitSellOrder(
-        swap: Herc20HbitPayload
-    ): Herc20HbitOrder {
+export default class OrderbookFactory {
+    public static async connect(alice: Actor, bob: Actor) {
+        // Get alice's listen address
+        const aliceAddr = await alice.cnd.getPeerListenAddresses();
+
+        // Bob dials alices
+        // @ts-ignore
+        await bob.cnd.client.post("dial", { addresses: aliceAddr });
+
+        /// Wait for alice to accept an incoming connection from Bob
+        await sleep(1000);
+    }
+
+    public static async initWalletsForBtcDaiOrder(alice: Actor, bob: Actor) {
+        await alice.wallets.initializeForLedger(
+            "bitcoin",
+            alice.logger,
+            "alice"
+        );
+        await alice.wallets.initializeForLedger(
+            "ethereum",
+            alice.logger,
+            "alice"
+        );
+
+        await bob.wallets.initializeForLedger("bitcoin", bob.logger, "bob");
+        await bob.wallets.initializeForLedger("ethereum", bob.logger, "bob");
+    }
+
+    public static async newBtcDaiOrder(
+        bob: Actor,
+        position: string
+    ): Promise<BtcDaiOrder> {
+        const bobIdentities = await getIdentities(bob);
+
+        // todo: do make this the actual DAI contract? It doesnt actually matter
+        const daiTokenContract = global.tokenContract
+            ? global.tokenContract
+            : "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280";
+
+        // todo: add a enum for buy/sell
+        const expiries = function () {
+            if (position === "buy") {
+                return {
+                    ethereum_absolute_expiry: defaultExpiries()
+                        .betaAbsoluteExpiry,
+                    bitcoin_absolute_expiry: defaultExpiries()
+                        .alphaAbsoluteExpiry,
+                };
+            } else {
+                return {
+                    ethereum_absolute_expiry: defaultExpiries()
+                        .alphaAbsoluteExpiry,
+                    bitcoin_absolute_expiry: defaultExpiries()
+                        .betaAbsoluteExpiry,
+                };
+            }
+        };
+
         return {
-            position: "sell",
-            bitcoin_amount: swap.beta.amount,
-            bitcoin_ledger: swap.beta.network,
-            token_contract: swap.alpha.token_contract,
-            ethereum_amount: swap.alpha.amount,
+            position,
+            bitcoin_amount: "1000000",
+            bitcoin_ledger: "regtest",
+            token_contract: daiTokenContract,
+            ethereum_amount: "9000000000000000000",
             ethereum_ledger: {
-                chain_id: swap.alpha.chain_id,
+                chain_id: 1337,
             },
-            ethereum_absolute_expiry: swap.alpha.absolute_expiry,
-            bitcoin_absolute_expiry: swap.beta.absolute_expiry,
-            refund_identity: swap.beta.final_identity,
-            redeem_identity: swap.alpha.identity,
+            ethereum_absolute_expiry: expiries().ethereum_absolute_expiry,
+            bitcoin_absolute_expiry: expiries().bitcoin_absolute_expiry,
+            bitcoin_identity: bobIdentities.bitcoin,
+            ethereum_identity: bobIdentities.ethereum,
         };
     }
 }

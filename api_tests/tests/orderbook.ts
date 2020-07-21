@@ -3,121 +3,69 @@
  * @ledger bitcoin
  */
 
-import OrderFactory from "../src/actors/order_factory";
 import { twoActorTest } from "../src/actor_test";
-import { Entity, Link } from "comit-sdk/dist/src/cnd/siren";
+import OrderFactory from "../src/actors/order_factory";
 import { sleep } from "../src/utils";
-import SwapFactory from "../src/actors/swap_factory";
+import { getIdentities } from "../src/actors/defaults";
 
+// todo: move test initialisation into single mega function to reduce noise
 describe("orderbook", () => {
+    it(
+        "btc_dai_buy_order",
+        twoActorTest(async ({ alice, bob }) => {
+            await OrderFactory.connect(alice, bob);
+            await OrderFactory.initWalletsForBtcDaiOrder(alice, bob);
+
+            const order = await OrderFactory.newBtcDaiOrder(bob, "buy");
+            await alice.initLedgerAndBalancesForOrder(order);
+            await bob.initLedgerAndBalancesForOrder(order);
+
+            const aliceIdentities = await getIdentities(alice);
+
+            const orderUrl = await bob.makeOrder(order);
+
+            await alice.takeOrderAndAssertSwapCreated(
+                aliceIdentities.bitcoin,
+                aliceIdentities.ethereum
+            );
+
+            await bob.checkSwapCreatedFromOrder(orderUrl);
+
+            await alice.assertAndExecuteNextAction("fund");
+
+            await bob.assertAndExecuteNextAction("deploy");
+            await bob.assertAndExecuteNextAction("fund");
+
+            await alice.assertAndExecuteNextAction("redeem");
+            await bob.assertAndExecuteNextAction("redeem");
+
+            // Wait until the wallet sees the new balance.
+            await sleep(2000);
+
+            await alice.assertBalancesAfterSwap();
+            await bob.assertBalancesAfterSwap();
+        })
+    );
     it(
         "btc_dai_sell_order",
         twoActorTest(async ({ alice, bob }) => {
-            // Bob and Alice both have a swap created from the order that Bob made and alice took.
-            const bodies = (
-                await SwapFactory.newSwap(alice, bob, {
-                    ledgers: {
-                        alpha: "ethereum",
-                        beta: "bitcoin",
-                    },
-                })
-            ).herc20Hbit;
+            await OrderFactory.connect(alice, bob);
+            await OrderFactory.initWalletsForBtcDaiOrder(alice, bob);
 
-            // Get alice's listen address
-            const aliceAddr = await alice.cnd.getPeerListenAddresses();
+            const order = await OrderFactory.newBtcDaiOrder(bob, "sell");
+            await alice.initLedgerAndBalancesForOrder(order);
+            await bob.initLedgerAndBalancesForOrder(order);
 
-            // is this required still?
-            // Bob dials alices
-            // @ts-ignore
-            await bob.cnd.client.post("dial", { addresses: aliceAddr });
+            const aliceIdentities = await getIdentities(alice);
 
-            /// Wait for alice to accept an incoming connection from Bob
-            await sleep(1000);
+            const orderUrl = await bob.makeOrder(order);
 
-            // assuming the nodes are connected from now on
-
-            // this payload could be wrong
-            const bobMakeOrderBody = OrderFactory.newHerc20HbitSellOrder(
-                bodies.bob
-            );
-            // @ts-ignore
-            // make response contain url in the header to the created order
-            // poll this order to see when when it has been converted to a swap
-            // "POST /orders"
-            const bobMakeOrderResponse = await bob.cnd.client.post(
-                "orders",
-                bobMakeOrderBody
+            await alice.takeOrderAndAssertSwapCreated(
+                aliceIdentities.bitcoin,
+                aliceIdentities.ethereum
             );
 
-            // Poll until Alice receives an order. The order must be the one that Bob created above.
-            // @ts-ignore
-            const aliceOrdersResponse = await alice.pollCndUntil<Entity>(
-                "orders",
-                (entity) => entity.entities.length > 0
-            );
-            const aliceOrderResponse: Entity = aliceOrdersResponse.entities[0];
-
-            // Alice extracts the siren action to take the order
-            const aliceOrderTakeAction = aliceOrderResponse.actions.find(
-                (action: any) => action.name === "take"
-            );
-            // Alice executes the siren take action extracted in the previous line
-            // The resolver function fills the refund and redeem address fields required
-            // "POST /orders/63c0f8bd-beb2-4a9c-8591-a46f65913b0a/take"
-            // Alice receives a url to the swap that was created as a result of taking the order
-            // @ts-ignore
-            const aliceTakeOrderResponse = await alice.cnd.executeSirenAction(
-                aliceOrderTakeAction,
-                async (field) => {
-                    // this could be wrong
-                    if (field.name === "refund_identity") {
-                        // @ts-ignore
-                        return Promise.resolve(bodies.alice.alpha.identity);
-                    }
-
-                    if (field.name === "redeem_identity") {
-                        // @ts-ignore
-                        return Promise.resolve(
-                            bodies.alice.beta.final_identity
-                        );
-                    }
-                }
-            );
-
-            // Wait for bob to acknowledge that Alice has taken the order he created
-            await sleep(1000);
-
-            // @ts-ignore
-            const aliceSwapResponse = await alice.cnd.client.get(
-                aliceTakeOrderResponse.headers.location
-            );
-            expect(aliceSwapResponse.status).toEqual(200);
-
-            // Since Alice has taken the swap, the order created by Bob should have an associated swap in the navigational link
-            const bobGetOrderResponse = await bob.cnd.fetch<Entity>(
-                bobMakeOrderResponse.headers.location
-            );
-
-            expect(bobGetOrderResponse.status).toEqual(200);
-            const linkToBobSwap = bobGetOrderResponse.data.links.find(
-                (link: Link) => link.rel.includes("swap")
-            );
-            expect(linkToBobSwap).toBeDefined();
-
-            // The link the Bobs swap should return 200
-            // "GET /swaps/934dd090-f8eb-4244-9aba-78e23d3f79eb HTTP/1.1"
-            const bobSwapResponse = await bob.cnd.fetch<Entity>(
-                linkToBobSwap.href
-            );
-
-            expect(bobSwapResponse.status).toEqual(200);
-
-            await bob.initOrderbookTest(linkToBobSwap.href, bodies.bob);
-
-            await alice.initOrderbookTest(
-                aliceTakeOrderResponse.headers.location,
-                bodies.alice
-            );
+            await bob.checkSwapCreatedFromOrder(orderUrl);
 
             await alice.assertAndExecuteNextAction("deploy");
             await alice.assertAndExecuteNextAction("fund");

@@ -63,15 +63,15 @@ impl Facade {
         &mut self,
         order_id: OrderId,
         swap_id: LocalSwapId,
-        redeem_identity: crate::bitcoin::Address,
-        refund_identity: identity::Ethereum,
+        bitcoin_identity: crate::bitcoin::Address,
+        ethereum_identity: identity::Ethereum,
     ) -> anyhow::Result<()> {
         self.storage
             .associate_swap_with_order(order_id, swap_id)
             .await;
 
         self.swarm
-            .take_order(order_id, swap_id, redeem_identity, refund_identity)
+            .take_order(order_id, swap_id, bitcoin_identity, ethereum_identity)
             .await
     }
 
@@ -79,11 +79,11 @@ impl Facade {
         &self,
         order: NewOrder,
         swap_id: LocalSwapId,
-        redeem_identity: identity::Ethereum,
-        refund_identity: crate::bitcoin::Address,
+        ethereum_identity: identity::Ethereum,
+        bitcoin_identity: crate::bitcoin::Address,
     ) -> anyhow::Result<OrderId> {
         self.swarm
-            .make_order(order, swap_id, redeem_identity, refund_identity)
+            .make_order(order, swap_id, ethereum_identity, bitcoin_identity)
             .await
     }
 
