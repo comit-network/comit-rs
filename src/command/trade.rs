@@ -621,6 +621,7 @@ mod tests {
     use comit::asset;
     use comit::asset::Erc20Quantity;
     use comit::ethereum::ChainId;
+    use ethereum::ether;
     use log::LevelFilter;
 
     // Run cargo test with `--ignored --nocapture` to see the `println output`
@@ -635,23 +636,8 @@ mod tests {
         let bitcoin_blockchain = test_harness::bitcoin::Blockchain::new(&client).unwrap();
         bitcoin_blockchain.init().await.unwrap();
 
-        let bitcoin_wallet = bitcoin::Wallet::new(
-            seed,
-            bitcoin_blockchain.node_url.clone(),
-            ::bitcoin::Network::Regtest,
-        )
-        .await
-        .unwrap();
-
         let mut ethereum_blockchain = test_harness::ethereum::Blockchain::new(&client).unwrap();
         ethereum_blockchain.init().await.unwrap();
-
-        let ethereum_wallet = crate::ethereum::Wallet::new(
-            seed,
-            ethereum_blockchain.node_url.clone(),
-            ethereum_blockchain.token_contract().unwrap(),
-        )
-        .unwrap();
 
         let settings = Settings {
             maker: settings::Maker {
@@ -681,6 +667,23 @@ mod tests {
             },
         };
 
+        let bitcoin_wallet = bitcoin::Wallet::new(
+            seed,
+            bitcoin_blockchain.node_url.clone(),
+            ::bitcoin::Network::Regtest,
+        )
+        .await
+        .unwrap();
+
+        let ethereum_wallet = crate::ethereum::Wallet::new(
+            seed,
+            ethereum_blockchain.node_url.clone(),
+            ethereum_blockchain.token_contract().unwrap(),
+            settings.ethereum.chain_id,
+        )
+        .await
+        .unwrap();
+
         bitcoin_blockchain
             .mint(
                 bitcoin_wallet.new_address().await.unwrap(),
@@ -692,7 +695,7 @@ mod tests {
         ethereum_blockchain
             .mint_ether(
                 ethereum_wallet.account(),
-                1_000_000_000_000_000_000u64,
+                ether::Amount::from(1_000_000_000_000_000_000u64),
                 settings.ethereum.chain_id,
             )
             .await
