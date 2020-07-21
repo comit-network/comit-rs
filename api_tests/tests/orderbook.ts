@@ -4,22 +4,23 @@
  */
 
 import { twoActorTest } from "../src/actor_test";
-import OrderbookUtils from "../src/actors/order_factory";
+import OrderFactory from "../src/actors/order_factory";
 import { sleep } from "../src/utils";
+import { getIdentities } from "../src/actors/defaults";
 
 // todo: move test initialisation into single mega function to reduce noise
 describe("orderbook", () => {
     it(
         "btc_dai_buy_order",
         twoActorTest(async ({ alice, bob }) => {
-            await OrderbookUtils.connect(alice, bob);
-            await OrderbookUtils.initialiseWalletsForBtcDaiOrder(alice, bob);
+            await OrderFactory.connect(alice, bob);
+            await OrderFactory.initialiseWalletsForBtcDaiOrder(alice, bob);
 
-            const order = await OrderbookUtils.newBtcDaiOrder(bob, "buy");
+            const order = await OrderFactory.newBtcDaiOrder(bob, "buy");
             await alice.initLedgerAndBalancesForOrder(order);
             await bob.initLedgerAndBalancesForOrder(order);
 
-            const aliceIdentities = await OrderbookUtils.getIdentities(alice);
+            const aliceIdentities = await getIdentities(alice);
 
             const orderUrl = await bob.makeOrder(order);
 
@@ -48,14 +49,14 @@ describe("orderbook", () => {
     it(
         "btc_dai_sell_order",
         twoActorTest(async ({ alice, bob }) => {
-            await OrderbookUtils.connect(alice, bob);
-            await OrderbookUtils.initialiseWalletsForBtcDaiOrder(alice, bob);
+            await OrderFactory.connect(alice, bob);
+            await OrderFactory.initialiseWalletsForBtcDaiOrder(alice, bob);
 
-            const order = await OrderbookUtils.newBtcDaiOrder(bob, "sell");
+            const order = await OrderFactory.newBtcDaiOrder(bob, "sell");
             await alice.initLedgerAndBalancesForOrder(order);
             await bob.initLedgerAndBalancesForOrder(order);
 
-            const aliceIdentities = await OrderbookUtils.getIdentities(alice);
+            const aliceIdentities = await getIdentities(alice);
 
             const orderUrl = await bob.makeOrder(order);
 
