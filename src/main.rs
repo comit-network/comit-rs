@@ -8,8 +8,6 @@ use nectar::{
 
 #[tokio::main]
 async fn main() {
-    let runtime = tokio::runtime::Runtime::new().unwrap();
-
     let options = Options::from_args();
 
     let settings = read_config(&options)
@@ -44,15 +42,19 @@ async fn main() {
     .expect("can initialise ethereum wallet");
 
     match options.cmd {
-        Command::Trade => trade(
-            runtime.handle().clone(),
-            &seed,
-            settings,
-            bitcoin_wallet,
-            ethereum_wallet,
-        )
-        .await
-        .expect("Start trading"),
+        Command::Trade => {
+            let runtime = tokio::runtime::Runtime::new().unwrap();
+
+            trade(
+                runtime.handle().clone(),
+                &seed,
+                settings,
+                bitcoin_wallet,
+                ethereum_wallet,
+            )
+            .await
+            .expect("Start trading")
+        }
         Command::WalletInfo => {
             let wallet_info = wallet_info(ethereum_wallet, bitcoin_wallet).await.unwrap();
             println!("{}", wallet_info);
