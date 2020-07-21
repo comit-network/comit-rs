@@ -17,7 +17,15 @@ pub async fn withdraw(
                 amount, to_address, tx_id
             ))
         }
-        Withdraw::Dai { .. } => todo!(),
+        Withdraw::Dai { amount, to_address } => {
+            let tx_id = ethereum_wallet
+                .transfer_dai(to_address, amount.clone(), ethereum_wallet.chain_id)
+                .await?;
+            Ok(format!(
+                "{} transferred to {}\nTransaction id: {}",
+                amount, to_address, tx_id
+            ))
+        }
         Withdraw::Eth { amount, to_address } => {
             let tx_id = ethereum_wallet
                 .send_transaction(
@@ -39,8 +47,10 @@ pub async fn withdraw(
 #[cfg(all(test, feature = "test-docker"))]
 mod tests {
     use super::*;
-    use crate::ethereum::{ether, ChainId};
+    use crate::ethereum::{dai, ether, ChainId};
     use crate::{test_harness, Seed};
+    use comit::asset::ethereum::FromWei;
+    use comit::asset::{Erc20, Erc20Quantity};
     use std::str::FromStr;
 
     // Run cargo test with `--ignored --nocapture` to see the `println output`
@@ -88,6 +98,17 @@ mod tests {
             )
             .await
             .unwrap();
+        ethereum_blockchain
+            .mint_erc20_token(
+                ethereum_address,
+                Erc20 {
+                    quantity: Erc20Quantity::from_wei(10_000_000_000_000_000_000u64),
+                    token_contract: ethereum_blockchain.token_contract().unwrap(),
+                },
+                ChainId::regtest(),
+            )
+            .await
+            .unwrap();
 
         let bitcoin_withdraw = Withdraw::Btc {
             amount: bitcoin::Amount::from_btc(0.3).unwrap(),
@@ -107,7 +128,20 @@ mod tests {
             amount: ether::Amount::from_ether_str("2.4").unwrap(),
             to_address: ethereum::Address::random(),
         };
-        let stdout = withdraw(ethereum_wallet, bitcoin_wallet, ether_withdraw)
+        let stdout = withdraw(
+            ethereum_wallet.clone(),
+            bitcoin_wallet.clone(),
+            ether_withdraw,
+        )
+        .await
+        .unwrap();
+        println!("{}", stdout);
+
+        let dai_withdraw = Withdraw::Dai {
+            amount: dai::Amount::from_dai_trunc(3.2).unwrap(),
+            to_address: ethereum::Address::random(),
+        };
+        let stdout = withdraw(ethereum_wallet, bitcoin_wallet, dai_withdraw)
             .await
             .unwrap();
         println!("{}", stdout);
