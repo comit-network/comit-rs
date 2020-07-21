@@ -1,10 +1,9 @@
-use crate::ethereum::{self, ether, Client};
+use crate::ethereum::{self, ether, Address, ChainId, Client};
 use anyhow::Context;
 use clarity::PrivateKey;
 use comit::{
     actions::ethereum::DeployContract,
     asset::{Erc20, Erc20Quantity, Ether},
-    ethereum::{Address, ChainId},
 };
 use num256::Uint256;
 use std::str::FromStr;

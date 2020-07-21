@@ -2,13 +2,14 @@ use crate::{
     ethereum::{
         dai, ether,
         geth::{Client, EstimateGasRequest},
+        Address, ChainId,
     },
     Seed,
 };
 use comit::{
     actions::ethereum::{CallContract, DeployContract},
     asset::Erc20,
-    ethereum::{Address, ChainId, Hash, TransactionReceipt},
+    ethereum::{Hash, TransactionReceipt},
 };
 use num::BigUint;
 use url::Url;
@@ -25,7 +26,7 @@ impl Wallet {
     pub async fn new(
         seed: Seed,
         url: Url,
-        dai_contract_addr: comit::ethereum::Address,
+        dai_contract_addr: Address,
         chain_id: ChainId,
     ) -> anyhow::Result<Self> {
         let private_key = clarity::PrivateKey::from_slice(&seed.bytes())
@@ -127,7 +128,7 @@ impl Wallet {
         value: ether::Amount,
         gas_limit: Option<u64>,
         data: Option<Vec<u8>>,
-        chain_id: comit::ethereum::ChainId,
+        chain_id: ChainId,
     ) -> anyhow::Result<Hash> {
         self.assert_chain(chain_id).await?;
 
