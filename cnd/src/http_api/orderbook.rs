@@ -307,8 +307,8 @@ mod tests {
             "token_contract": "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280",
             "ethereum_ledger": {"chain_id":2},
             "ethereum_absolute_expiry": 600,
-            "refund_identity": "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX",
-            "redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72"
+            "bitcoin_identity": "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX",
+            "ethereum_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72"
         }"#;
 
         let _body: MakeOrderBody = serde_json::from_str(json).expect("failed to deserialize order");
