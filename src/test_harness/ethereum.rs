@@ -137,7 +137,7 @@ impl<'c> Blockchain<'c> {
             "transfer(address,uint256)",
             &[
                 clarity::abi::Token::Address(to),
-                clarity::abi::Token::Uint(Uint256::from(value.to_bytes().as_slice())),
+                clarity::abi::Token::Uint(Uint256::from_bytes_le(value.to_bytes().as_slice())),
             ],
         );
 

@@ -172,6 +172,10 @@ impl Amount {
     pub fn checked_add(self, rhs: Amount) -> Option<Amount> {
         self.0.checked_add(&rhs.0).map(Amount)
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.to_bytes_le()
+    }
 }
 
 impl std::fmt::Debug for Amount {

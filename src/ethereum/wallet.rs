@@ -1,3 +1,4 @@
+use crate::ethereum::DAI_TRANSFER_GAS_LIMIT;
 use crate::{
     ethereum::{
         dai, ether,
@@ -12,6 +13,7 @@ use comit::{
     ethereum::TransactionReceipt,
 };
 use num::BigUint;
+use num256::Uint256;
 use url::Url;
 
 #[derive(Debug, Clone)]
@@ -183,6 +185,63 @@ impl Wallet {
         Ok(hash)
     }
 
+    pub async fn transfer_dai(
+        &self,
+        to: Address,
+        value: dai::Amount,
+        chain_id: ChainId,
+    ) -> anyhow::Result<Hash> {
+        self.assert_chain(chain_id).await?;
+
+        let nonce = self.get_transaction_count().await?;
+        let gas_price = self.gas_price().await?;
+
+        let to = clarity::Address::from_slice(to.as_bytes())
+            .map_err(|_| anyhow::anyhow!("Failed to deserialize slice into clarity::Address"))?;
+
+        let dai_contract_addr = clarity::Address::from_slice(self.dai_contract_addr.as_bytes())
+            .map_err(|_| anyhow::anyhow!("Failed to deserialize slice into clarity::Address"))?;
+
+        let data = clarity::abi::encode_call(
+            "transfer(address,uint256)",
+            &[
+                clarity::abi::Token::Address(to),
+                clarity::abi::Token::Uint(Uint256::from_bytes_le(value.to_bytes().as_slice())),
+            ],
+        );
+
+        let transaction = clarity::Transaction {
+            nonce: nonce.into(),
+            gas_price,
+            gas_limit: DAI_TRANSFER_GAS_LIMIT.into(),
+            to: dai_contract_addr,
+            value: 0u16.into(),
+            data,
+            signature: None,
+        };
+
+        #[allow(clippy::cast_possible_truncation)]
+        let signed_transaction =
+            transaction.sign(&self.private_key, Some(u32::from(chain_id) as u64));
+        let transaction_hex =
+            format!(
+                "0x{}",
+                hex::encode(signed_transaction.to_bytes().map_err(|_| anyhow::anyhow!(
+                    "Failed to serialize signed transaction to bytes"
+                ))?)
+            );
+
+        let hash = self
+            .geth_client
+            .send_raw_transaction(transaction_hex)
+            .await?;
+
+        // TODO: Return TransactionReceipt instead
+        std::thread::sleep(std::time::Duration::from_millis(2000));
+
+        Ok(hash)
+    }
+
     pub async fn call_contract(
         &self,
         CallContract {
@@ -293,6 +352,8 @@ impl Wallet {
 mod tests {
     use super::*;
     use crate::{ethereum::ether, test_harness::ethereum::Blockchain};
+    use comit::asset::ethereum::FromWei;
+    use comit::asset::Erc20Quantity;
 
     async fn random_wallet(node_url: Url, dai_contract_address: Address) -> anyhow::Result<Wallet> {
         let seed = Seed::random().unwrap();
@@ -364,5 +425,61 @@ mod tests {
         let gas_limit = wallet.gas_limit(request).await.unwrap();
 
         println!("Gas limit: {}", gas_limit)
+    }
+
+    #[tokio::test]
+    async fn transfer_dai() {
+        let client = testcontainers::clients::Cli::default();
+
+        let mut blockchain = Blockchain::new(&client).unwrap();
+        blockchain.init().await.unwrap();
+
+        let wallet = random_wallet(
+            blockchain.node_url.clone(),
+            blockchain.token_contract().unwrap(),
+        )
+        .await
+        .unwrap();
+
+        let address = wallet.account();
+        let initial_deposit = 5_000_000_000_000_000_000u64;
+        blockchain
+            .mint_ether(
+                address,
+                ether::Amount::from_ether_str("2").unwrap(),
+                ChainId::regtest(),
+            )
+            .await
+            .unwrap();
+
+        blockchain
+            .mint_erc20_token(
+                address,
+                Erc20 {
+                    quantity: Erc20Quantity::from_wei(initial_deposit),
+                    token_contract: wallet.dai_contract_addr,
+                },
+                ChainId::regtest(),
+            )
+            .await
+            .unwrap();
+
+        let balance = wallet.dai_balance().await.unwrap();
+        assert_eq!(balance, dai::Amount::from_atto(initial_deposit.into()));
+
+        wallet
+            .transfer_dai(
+                Address::random(),
+                dai::Amount::from_dai_trunc(1.0).unwrap(),
+                ChainId::regtest(),
+            )
+            .await
+            .unwrap();
+
+        let balance = wallet.dai_balance().await.unwrap();
+        assert_eq!(
+            balance,
+            dai::Amount::from_atto(4_000_000_000_000_000_000u64.into())
+        );
     }
 }

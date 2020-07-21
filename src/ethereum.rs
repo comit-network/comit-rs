@@ -7,6 +7,7 @@ pub use geth::Client;
 pub use wallet::Wallet;
 
 pub const STANDARD_ETH_TRANSFER_GAS_LIMIT: u64 = 21_000;
+pub const DAI_TRANSFER_GAS_LIMIT: u64 = 100_000;
 
 pub mod ether {
     use crate::float_maths::multiply_pow_ten;
