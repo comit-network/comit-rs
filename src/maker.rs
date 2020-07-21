@@ -2,7 +2,10 @@
 
 use crate::{
     bitcoin,
-    ethereum::dai::{self, DaiContractAddress},
+    ethereum::{
+        self,
+        dai::{self, DaiContractAddress},
+    },
     network::{self, Taker},
     order::{BtcDaiOrder, Position, Symbol},
     rate::Spread,
@@ -34,6 +37,8 @@ pub struct Maker {
     mid_market_rate: Option<MidMarketRate>,
     spread: Spread,
     dai_contract_address: DaiContractAddress,
+    bitcoin_network: bitcoin::Network,
+    ethereum_network: ethereum::ChainId,
 }
 
 impl Maker {
@@ -47,6 +52,8 @@ impl Maker {
         mid_market_rate: MidMarketRate,
         spread: Spread,
         dai_contract_address: DaiContractAddress,
+        bitcoin_network: bitcoin::Network,
+        ethereum_network: ethereum::ChainId,
     ) -> Self {
         Maker {
             btc_balance: Some(btc_balance),
@@ -59,6 +66,8 @@ impl Maker {
             mid_market_rate: Some(mid_market_rate),
             spread,
             dai_contract_address,
+            bitcoin_network,
+            ethereum_network,
         }
     }
 
@@ -135,6 +144,7 @@ impl Maker {
                 mid_market_rate.into(),
                 self.spread,
                 self.dai_contract_address,
+                self.ethereum_network,
             ),
             (None, _) => anyhow::bail!(RateNotAvailable(Position::Sell)),
             (_, None) => anyhow::bail!(BalanceNotAvailable(Symbol::Btc)),
@@ -150,6 +160,7 @@ impl Maker {
                 mid_market_rate.into(),
                 self.spread,
                 self.dai_contract_address,
+                self.ethereum_network,
             ),
             (None, _) => anyhow::bail!(RateNotAvailable(Position::Buy)),
             (_, None) => anyhow::bail!(BalanceNotAvailable(Symbol::Dai)),
@@ -272,6 +283,7 @@ mod tests {
         order::{BtcDaiOrder, Position},
         MidMarketRate, Rate,
     };
+    use comit::ethereum::ChainId;
     use std::convert::TryFrom;
 
     impl Default for Maker {
@@ -287,6 +299,8 @@ mod tests {
                 mid_market_rate: Some(MidMarketRate::default()),
                 spread: Spread::default(),
                 dai_contract_address: DaiContractAddress::Mainnet,
+                bitcoin_network: bitcoin::Network::Bitcoin,
+                ethereum_network: ethereum::ChainId::mainnet(),
             }
         }
     }
@@ -328,6 +342,7 @@ mod tests {
         dai::Asset {
             amount,
             contract_address: DaiContractAddress::Mainnet,
+            chain_id: ChainId::mainnet(),
         }
     }
 

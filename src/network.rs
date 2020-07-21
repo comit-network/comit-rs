@@ -10,9 +10,7 @@ use crate::{
 use bimap::BiMap;
 use chrono::Utc;
 use comit::{
-    asset,
-    ethereum::ChainId,
-    identity,
+    asset, identity,
     network::{
         self,
         orderbook::{self, take_order, OrderId},
@@ -451,6 +449,7 @@ impl TakenOrder {
         let quote = dai::Asset {
             amount: order.ethereum_amount.into(),
             contract_address,
+            chain_id: order.ethereum_ledger.chain_id,
         };
 
         let inner = BtcDaiOrder {
@@ -524,7 +523,7 @@ impl PublishOrder {
             bitcoin_absolute_expiry: bitcoin_absolute_expiry.into(),
             ethereum_amount: self.0.quote.amount.into(),
             token_contract: self.0.quote.contract_address.into(),
-            ethereum_ledger: comit::ledger::Ethereum::new(ChainId::regtest()), // TODO: Get it from the dai Asset
+            ethereum_ledger: comit::ledger::Ethereum::new(self.0.quote.chain_id),
             ethereum_absolute_expiry: ethereum_absolute_expiry.into(),
         }
     }

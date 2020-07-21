@@ -174,6 +174,8 @@ async fn init_maker(
         initial_rate,
         spread,
         settings.ethereum.dai_contract_address,
+        settings.bitcoin.network,
+        settings.ethereum.chain_id,
     ))
 }
 

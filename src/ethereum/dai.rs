@@ -42,10 +42,13 @@ static DAI_CONTRACT_ADDRESS_ROPSTEN: Lazy<Address> = Lazy::new(|| {
         .unwrap()
 });
 
+// TODO: There is duplicated information between `contract_address`
+// and `chain_id` that can be avoided.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Asset {
     pub amount: Amount,
     pub contract_address: DaiContractAddress,
+    pub chain_id: ChainId,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
