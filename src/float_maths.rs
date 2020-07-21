@@ -1,3 +1,4 @@
+use anyhow::Context;
 use bitcoin::hashes::core::cmp::Ordering;
 use num::{BigUint, Zero};
 use std::str::FromStr;
@@ -20,16 +21,14 @@ pub fn truncate(float: f64, precision: u16) -> f64 {
 /// Multiply float by 10e`pow`, Returns as a BigUint. No data loss.
 /// Errors if the float is negative.
 /// Errors if the result is a fraction.
-pub fn multiply_pow_ten(float: f64, pow: u16) -> anyhow::Result<BigUint> {
-    if float.is_sign_negative() {
-        anyhow::bail!("Float is negative");
+pub fn multiply_pow_ten(float: &str, pow: u16) -> anyhow::Result<BigUint> {
+    {
+        // Verify that the input is actually a number
+        let str = float.replace('.', &"");
+        let _ = BigUint::from_str(&str).context("Expecting a float")?;
     }
 
-    if !float.is_finite() {
-        anyhow::bail!("Float is not finite");
-    }
-
-    let mut float = float.to_string();
+    let mut float = float.replace('_', &"");
     let decimal_index = float.find('.');
 
     match decimal_index {
@@ -125,7 +124,7 @@ mod tests {
 
     #[test]
     fn given_integer_then_it_multiplies() {
-        let float = 123_456_789.0f64;
+        let float = "123_456_789.0";
         let pow = 6;
 
         assert_eq!(
@@ -136,7 +135,7 @@ mod tests {
 
     #[test]
     fn given_mantissa_of_pow_length_then_it_multiplies() {
-        let float = 123.123_456_789f64;
+        let float = "123.123_456_789";
         let pow = 9;
 
         assert_eq!(
@@ -147,7 +146,7 @@ mod tests {
 
     #[test]
     fn given_mantissa_length_lesser_than_pow_then_it_multiplies() {
-        let float = 123.123_456_789f64;
+        let float = "123.123_456_789";
         let pow = 12;
 
         assert_eq!(
@@ -158,7 +157,7 @@ mod tests {
 
     #[test]
     fn given_mantissa_length_greater_than_pow_then_it_errors() {
-        let float = 123.123_456_789f64;
+        let float = "123.123_456_789";
         let pow = 6;
 
         assert!(multiply_pow_ten(float, pow).is_err(),)
@@ -166,7 +165,7 @@ mod tests {
 
     #[test]
     fn given_negative_float_then_it_errors() {
-        let float = -123_456_789.0f64;
+        let float = "-123_456_789.0";
         let pow = 6;
 
         assert!(multiply_pow_ten(float, pow).is_err(),)
@@ -174,8 +173,8 @@ mod tests {
 
     proptest! {
         #[test]
-        fn multiple_pow_ten_doesnt_panic(f in any::<f64>(), p in any::<u16>()) {
-            let _ = multiply_pow_ten(f, p);
+        fn multiple_pow_ten_doesnt_panic(s in any::<String>(), p in any::<u16>()) {
+            let _ = multiply_pow_ten(&s, p);
         }
     }
 

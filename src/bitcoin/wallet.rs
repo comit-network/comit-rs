@@ -24,7 +24,7 @@ pub struct Wallet {
     name: String,
     bitcoind_client: Client,
     seed: Seed,
-    network: Network,
+    pub network: Network,
 }
 
 impl Wallet {

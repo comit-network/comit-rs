@@ -1,10 +1,9 @@
-use crate::ethereum::{self, ether, Client};
+use crate::ethereum::{self, ether, Address, ChainId, Client};
 use anyhow::Context;
 use clarity::PrivateKey;
 use comit::{
     actions::ethereum::DeployContract,
     asset::{Erc20, Erc20Quantity, Ether},
-    ethereum::{Address, ChainId},
 };
 use num256::Uint256;
 use std::str::FromStr;
@@ -138,7 +137,7 @@ impl<'c> Blockchain<'c> {
             "transfer(address,uint256)",
             &[
                 clarity::abi::Token::Address(to),
-                clarity::abi::Token::Uint(Uint256::from(value.to_bytes().as_slice())),
+                clarity::abi::Token::Uint(Uint256::from_bytes_le(value.to_bytes().as_slice())),
             ],
         );
 

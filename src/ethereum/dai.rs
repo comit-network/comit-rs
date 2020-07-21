@@ -108,7 +108,8 @@ impl Amount {
 
         let dai = truncate(dai, ATTOS_IN_DAI_EXP);
 
-        let u_int_value = multiply_pow_ten(dai, ATTOS_IN_DAI_EXP).expect("It is truncated");
+        let u_int_value =
+            multiply_pow_ten(&dai.to_string(), ATTOS_IN_DAI_EXP).expect("It is truncated");
 
         Ok(Amount(u_int_value))
     }
@@ -170,6 +171,10 @@ impl Amount {
 
     pub fn checked_add(self, rhs: Amount) -> Option<Amount> {
         self.0.checked_add(&rhs.0).map(Amount)
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.to_bytes_le()
     }
 }
 

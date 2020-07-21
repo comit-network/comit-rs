@@ -1,7 +1,7 @@
 use anyhow::Context;
 use nectar::{
     bitcoin,
-    command::{balance, deposit, dump_config, trade, wallet_info, Command, Options},
+    command::{balance, deposit, dump_config, trade, wallet_info, withdraw, Command, Options},
     config::{self, Settings},
     ethereum,
 };
@@ -64,6 +64,12 @@ async fn main() {
         Command::Deposit => {
             let deposit = deposit(ethereum_wallet, bitcoin_wallet).await.unwrap();
             println!("{}", deposit);
+        }
+        Command::Withdraw(arguments) => {
+            let tx_id = withdraw(ethereum_wallet, bitcoin_wallet, arguments)
+                .await
+                .unwrap();
+            println!("Withdraw successful. Transaction Id: {}", tx_id);
         }
         Command::DumpConfig => unreachable!(),
     }
