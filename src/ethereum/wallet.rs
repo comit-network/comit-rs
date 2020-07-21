@@ -31,8 +31,7 @@ impl Wallet {
         dai_contract_addr: Address,
         chain_id: ChainId,
     ) -> anyhow::Result<Self> {
-        let private_key = clarity::PrivateKey::from_slice(&seed.bytes())
-            .map_err(|_| anyhow::anyhow!("Failed to derive private key from slice"))?;
+        let private_key = Wallet::private_key_from_seed(&seed)?;
 
         let geth_client = Client::new(url);
 
@@ -46,6 +45,12 @@ impl Wallet {
         wallet.assert_chain(chain_id).await?;
 
         Ok(wallet)
+    }
+
+    pub fn private_key_from_seed(seed: &Seed) -> anyhow::Result<clarity::PrivateKey> {
+        let private_key = clarity::PrivateKey::from_slice(&seed.bytes())
+            .map_err(|_| anyhow::anyhow!("Failed to derive private key from slice"))?;
+        Ok(private_key)
     }
 
     #[cfg(test)]

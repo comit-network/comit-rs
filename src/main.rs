@@ -34,16 +34,14 @@ async fn main() {
         settings.bitcoin.bitcoind.node_url.clone(),
         settings.bitcoin.network,
     )
-    .await
-    .expect("can initialise bitcoin wallet");
+    .await;
     let ethereum_wallet = ethereum::Wallet::new(
         seed,
         settings.ethereum.node_url.clone(),
         dai_contract_addr.into(),
         settings.ethereum.chain_id,
     )
-    .await
-    .expect("can initialise ethereum wallet");
+    .await;
 
     match options.cmd {
         Command::Trade => {
@@ -53,28 +51,49 @@ async fn main() {
                 runtime.handle().clone(),
                 &seed,
                 settings,
-                bitcoin_wallet,
-                ethereum_wallet,
+                bitcoin_wallet.expect("could not initialise bitcoin wallet"),
+                ethereum_wallet.expect("could not initialise ethereum wallet"),
             )
             .await
             .expect("Start trading")
         }
         Command::WalletInfo => {
-            let wallet_info = wallet_info(ethereum_wallet, bitcoin_wallet).await.unwrap();
+            let wallet_info = wallet_info(
+                ethereum_wallet.ok(),
+                bitcoin_wallet.ok(),
+                &seed,
+                settings.bitcoin.network,
+            )
+            .await
+            .unwrap();
             println!("{}", wallet_info);
         }
         Command::Balance => {
-            let balance = balance(ethereum_wallet, bitcoin_wallet).await.unwrap();
+            let balance = balance(
+                ethereum_wallet.expect("could not initialise ethereum wallet"),
+                bitcoin_wallet.expect("could not initialise bitcoin wallet"),
+            )
+            .await
+            .unwrap();
             println!("{}", balance);
         }
         Command::Deposit => {
-            let deposit = deposit(ethereum_wallet, bitcoin_wallet).await.unwrap();
+            let deposit = deposit(
+                ethereum_wallet.expect("could not initialise ethereum wallet"),
+                bitcoin_wallet.expect("could not initialise bitcoin wallet"),
+            )
+            .await
+            .unwrap();
             println!("{}", deposit);
         }
         Command::Withdraw(arguments) => {
-            let tx_id = withdraw(ethereum_wallet, bitcoin_wallet, arguments)
-                .await
-                .unwrap();
+            let tx_id = withdraw(
+                ethereum_wallet.expect("could not initialise ethereum wallet"),
+                bitcoin_wallet.expect("could not initialise bitcoin wallet"),
+                arguments,
+            )
+            .await
+            .unwrap();
             println!("Withdraw successful. Transaction Id: {}", tx_id);
         }
         Command::DumpConfig => unreachable!(),
