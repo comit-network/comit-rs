@@ -26,7 +26,7 @@ pub struct TakenOrder {
 pub struct Maker {
     btc_balance: Option<bitcoin::Amount>,
     dai_balance: Option<dai::Amount>,
-    btc_fee: bitcoin::Amount,
+    pub btc_fee: bitcoin::Amount,
     pub btc_reserved_funds: bitcoin::Amount,
     pub dai_reserved_funds: dai::Amount,
     btc_max_sell_amount: Option<bitcoin::Amount>,
@@ -234,7 +234,6 @@ pub enum TakeRequestDecision {
     GoForSwap,
     RateNotProfitable,
     InsufficientFunds,
-    CannotTradeWithTaker,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
