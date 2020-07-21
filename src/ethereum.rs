@@ -2,9 +2,11 @@ pub mod dai;
 mod geth;
 mod wallet;
 
-pub use comit::ethereum::{Address, ChainId};
+pub use comit::ethereum::{Address, ChainId, Hash};
 pub use geth::Client;
 pub use wallet::Wallet;
+
+pub const STANDARD_ETH_TRANSFER_GAS_LIMIT: u64 = 21_000;
 
 pub mod ether {
     use crate::float_maths::multiply_pow_ten;
@@ -83,7 +85,7 @@ pub mod ether {
         }
     }
 
-    /// Accepts decimal string
+    /// Accepts decimal string of wei
     impl FromStr for Amount {
         type Err = comit::asset::ethereum::Error;
 

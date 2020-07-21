@@ -2,14 +2,14 @@ use crate::{
     ethereum::{
         dai, ether,
         geth::{Client, EstimateGasRequest},
-        Address, ChainId,
+        Address, ChainId, Hash,
     },
     Seed,
 };
 use comit::{
     actions::ethereum::{CallContract, DeployContract},
     asset::Erc20,
-    ethereum::{Hash, TransactionReceipt},
+    ethereum::TransactionReceipt,
 };
 use num::BigUint;
 use url::Url;
@@ -19,7 +19,7 @@ pub struct Wallet {
     private_key: clarity::PrivateKey,
     geth_client: Client,
     dai_contract_addr: Address,
-    chain_id: ChainId,
+    pub chain_id: ChainId,
 }
 
 impl Wallet {
@@ -121,7 +121,6 @@ impl Wallet {
         Ok(hash)
     }
 
-    #[cfg(test)]
     pub async fn send_transaction(
         &self,
         to: Address,

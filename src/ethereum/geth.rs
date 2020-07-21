@@ -1,10 +1,10 @@
-use crate::ethereum::ether;
+use crate::ethereum::{ether, Address};
 use crate::jsonrpc;
 use anyhow::Context;
 use asset::Erc20Quantity;
 use comit::{
     asset::{self, ethereum::TryFromWei},
-    ethereum::{Address, ChainId, Hash, Transaction, TransactionReceipt},
+    ethereum::{ChainId, Hash, Transaction, TransactionReceipt},
 };
 use ethereum_types::U256;
 use num::{BigUint, Num};

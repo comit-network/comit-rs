@@ -5,7 +5,7 @@ mod bitcoind;
 mod wallet;
 
 use crate::float_maths::string_int_to_float;
-pub use ::bitcoin::{Address, Network};
+pub use ::bitcoin::{Address, Network, Txid};
 pub use bitcoind::*;
 use std::fmt;
 pub use wallet::Wallet;
