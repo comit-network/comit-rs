@@ -562,7 +562,8 @@ impl From<PublishOrder> for comit::network::orderbook::NewOrder {
             } => Self {
                 buy: base.into(),
                 sell: asset::Erc20::new(
-                    // TODO: Handle other networks
+                    // FIXME: The dai amount does neither know about the contract address not the network atm
+                    //  Fix this by creating a type that knows the Dai amount AND the contract address (similar to comit::asset::Erc20)
                     DaiContractAddress::from_public_chain_id(ChainId::mainnet())
                         .unwrap()
                         .into(),

@@ -59,7 +59,7 @@ pub async fn trade(
         .new_buy_order()
         .context("Could not generate buy order")?;
 
-    // TODO
+    // TODO: Sell order not supported by Orderbook yet, uncomment once supported
     // swarm
     //     .publish(initial_sell_order.into())
     //     .context("Could not publish initial sell order")?;
@@ -447,7 +447,7 @@ fn handle_rate_update(
                     new_sell_order,
                     new_buy_order,
                 })) => {
-                    // TODO: sell order!
+                    // TODO: Sell order not supported by Orderbook yet, uncomment once supported
                     // let _ = swarm
                     //     .publish(new_sell_order.into())
                     //     .map_err(|e| tracing::error!("Failed to publish new sell order: {}", e));
