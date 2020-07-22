@@ -3,7 +3,6 @@ pub mod bitcoin_identity;
 pub mod ethereum_identity;
 pub mod finalize;
 pub mod lightning_identity;
-pub mod orderbook;
 pub mod secret_hash;
 
 use super::swap_digest::SwapDigest;

@@ -2,7 +2,7 @@ mod order;
 pub mod take_order;
 
 use crate::{
-    network::protocols::orderbook::take_order::{Response, TakeOrderCodec, TakeOrderProtocol},
+    network::orderbook::take_order::{Response, TakeOrderCodec, TakeOrderProtocol},
     SharedSwapId,
 };
 use libp2p::{
