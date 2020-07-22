@@ -1,6 +1,9 @@
 use crate::swap::{herc20, BetaLedgerTime};
 use chrono::NaiveDateTime;
-use comit::{btsieve::LatestBlock, Timestamp};
+use comit::{
+    btsieve::{ethereum::Web3Connector, LatestBlock},
+    Timestamp,
+};
 use std::{sync::Arc, time::Duration};
 
 pub use comit::{
@@ -100,12 +103,16 @@ impl herc20::ExecuteRefund for Wallet {
 }
 
 #[async_trait::async_trait]
-impl<C> BetaLedgerTime for C
-where
-    C: LatestBlock<Block = Block>,
-{
+impl BetaLedgerTime for Web3Connector {
     async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
         ethereum_latest_time(self).await
+    }
+}
+
+#[async_trait::async_trait]
+impl BetaLedgerTime for Wallet {
+    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
+        self.connector.as_ref().beta_ledger_time().await
     }
 }
 

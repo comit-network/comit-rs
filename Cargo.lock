@@ -493,7 +493,7 @@ dependencies = [
 [[package]]
 name = "comit"
 version = "0.1.0"
-source = "git+https://github.com/comit-network/comit-rs?branch=nectar#57c9556ae859b14735dfcac23e0138004df48e6b"
+source = "git+https://github.com/comit-network/comit-rs?branch=nectar-new-orderbook#4c3d6c9b289cc5db5ba4df6641ab17c2253cd185"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -510,7 +510,7 @@ dependencies = [
  "hex 0.4.2",
  "lazy_static",
  "levenshtein",
- "libp2p",
+ "libp2p 0.22.0",
  "lru 0.5.3",
  "num 0.3.0",
  "primitive-types",
@@ -736,7 +736,7 @@ dependencies = [
 [[package]]
 name = "digest"
 version = "0.1.0"
-source = "git+https://github.com/comit-network/comit-rs?branch=nectar#57c9556ae859b14735dfcac23e0138004df48e6b"
+source = "git+https://github.com/comit-network/comit-rs?branch=nectar-new-orderbook#4c3d6c9b289cc5db5ba4df6641ab17c2253cd185"
 dependencies = [
  "digest-macro-derive",
  "hex 0.4.2",
@@ -763,7 +763,7 @@ dependencies = [
 [[package]]
 name = "digest-macro-derive"
 version = "0.1.0"
-source = "git+https://github.com/comit-network/comit-rs?branch=nectar#57c9556ae859b14735dfcac23e0138004df48e6b"
+source = "git+https://github.com/comit-network/comit-rs?branch=nectar-new-orderbook#4c3d6c9b289cc5db5ba4df6641ab17c2253cd185"
 dependencies = [
  "hex 0.4.2",
  "proc-macro2 1.0.18",
@@ -1528,6 +1528,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "libp2p"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0306a49ee6a89468f96089906f36b0eef82c988dcfc8acf3e2dcd6ad1c859f85"
+dependencies = [
+ "bytes",
+ "futures",
+ "lazy_static",
+ "libp2p-core",
+ "libp2p-core-derive",
+ "libp2p-gossipsub",
+ "libp2p-request-response",
+ "libp2p-swarm",
+ "multihash",
+ "parity-multiaddr",
+ "parking_lot 0.10.2",
+ "pin-project",
+ "smallvec 1.4.1",
+ "wasm-timer",
+]
+
+[[package]]
 name = "libp2p-core"
 version = "0.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1955,7 +1977,7 @@ dependencies = [
  "futures",
  "futures-timer",
  "hex 0.4.2",
- "libp2p",
+ "libp2p 0.21.1",
  "log",
  "num 0.3.0",
  "num256",

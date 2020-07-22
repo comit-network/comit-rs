@@ -191,6 +191,13 @@ impl<AC, BC, DB, AP> BetaExpiry for WatchOnlyAlice<AC, BC, DB, AP, herc20::Param
 }
 
 #[async_trait::async_trait]
+impl<AC, BC, DB, AP> BetaExpiry for WatchOnlyAlice<AC, BC, DB, AP, hbit::SharedParams> {
+    fn beta_expiry(&self) -> Timestamp {
+        self.beta_params.expiry
+    }
+}
+
+#[async_trait::async_trait]
 impl<AC, BC, DB, AP, BP> BetaLedgerTime for WatchOnlyAlice<AC, BC, DB, AP, BP>
 where
     AC: Send + Sync,

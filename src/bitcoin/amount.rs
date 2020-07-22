@@ -3,8 +3,15 @@ use crate::{
     float_maths::string_int_to_float,
     Rate,
 };
+use bitcoin::Network;
 
 pub const SATS_IN_BITCOIN_EXP: u16 = 8;
+
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq)]
+pub struct Asset {
+    pub amount: Amount,
+    pub network: Network,
+}
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Default)]
 pub struct Amount(::bitcoin::Amount);
@@ -97,6 +104,16 @@ impl std::fmt::Display for Amount {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let bitcoin = string_int_to_float(self.as_sat().to_string(), SATS_IN_BITCOIN_EXP as usize);
         write!(f, "{} BTC", bitcoin)
+    }
+}
+
+#[cfg(test)]
+impl Default for Asset {
+    fn default() -> Self {
+        Self {
+            amount: Amount::default(),
+            network: Network::Bitcoin,
+        }
     }
 }
 

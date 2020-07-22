@@ -42,10 +42,13 @@ static DAI_CONTRACT_ADDRESS_ROPSTEN: Lazy<Address> = Lazy::new(|| {
         .unwrap()
 });
 
+// TODO: There is duplicated information between `contract_address`
+// and `chain_id` that can be avoided.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Asset {
     pub amount: Amount,
     pub contract_address: DaiContractAddress,
+    pub chain_id: ChainId,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -219,8 +222,14 @@ impl std::ops::Sub for Amount {
 
 impl From<Erc20> for Amount {
     fn from(erc20: Erc20) -> Self {
-        let quantity = BigUint::from_bytes_le(erc20.quantity.to_bytes().as_slice());
-        Amount { 0: quantity }
+        erc20.quantity.into()
+    }
+}
+
+impl From<Erc20Quantity> for Amount {
+    fn from(erc20_quantity: Erc20Quantity) -> Self {
+        let quantity = BigUint::from_bytes_le(erc20_quantity.to_bytes().as_slice());
+        Amount(quantity)
     }
 }
 

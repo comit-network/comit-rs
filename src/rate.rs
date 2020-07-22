@@ -82,7 +82,7 @@ impl TryFrom<BtcDaiOrder> for Rate {
         let (quotient, _) = quote
             .amount
             .as_atto()
-            .div_rem(&BigUint::from(base.as_sat()));
+            .div_rem(&BigUint::from(base.amount.as_sat()));
 
         let rate = divide_pow_ten_trunc(quotient, Self::FROM_ORDER_INV_EXP);
         let rate = rate

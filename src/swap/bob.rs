@@ -161,6 +161,12 @@ impl<AW, BW, DB, AP> BetaExpiry for WalletBob<AW, BW, DB, AP, herc20::Params> {
     }
 }
 
+impl<AW, BW, DB, AP> BetaExpiry for WalletBob<AW, BW, DB, AP, hbit::Params> {
+    fn beta_expiry(&self) -> Timestamp {
+        self.beta_params.shared.expiry
+    }
+}
+
 #[async_trait::async_trait]
 impl<AW, BW, DB, AP, BP> BetaLedgerTime for WalletBob<AW, BW, DB, AP, BP>
 where

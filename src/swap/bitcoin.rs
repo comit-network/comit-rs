@@ -1,5 +1,7 @@
-use crate::swap::hbit;
-use comit::{asset, Secret};
+use crate::swap::{hbit, BetaLedgerTime};
+use comit::{
+    asset, bitcoin::median_time_past, btsieve::bitcoin::BitcoindConnector, Secret, Timestamp,
+};
 use std::sync::Arc;
 
 pub use crate::bitcoin::Amount;
@@ -76,6 +78,28 @@ impl hbit::ExecuteRedeem for Wallet {
     }
 }
 
+#[async_trait::async_trait]
+impl hbit::ExecuteRefund for Wallet {
+    async fn execute_refund(
+        &self,
+        params: hbit::Params,
+        fund_event: hbit::Funded,
+    ) -> anyhow::Result<hbit::Refunded> {
+        let refund_address = self.inner.new_address().await?;
+
+        let action = params.shared.build_refund_action(
+            &crate::SECP,
+            fund_event.asset,
+            fund_event.location,
+            params.transient_sk,
+            refund_address,
+        )?;
+        let transaction = self.spend(action).await?;
+
+        Ok(hbit::Refunded { transaction })
+    }
+}
+
 impl Wallet {
     pub async fn redeem(
         &self,
@@ -101,5 +125,19 @@ impl Wallet {
             .await?;
 
         Ok(action.transaction)
+    }
+}
+
+#[async_trait::async_trait]
+impl BetaLedgerTime for BitcoindConnector {
+    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
+        median_time_past(self).await
+    }
+}
+
+#[async_trait::async_trait]
+impl BetaLedgerTime for Wallet {
+    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
+        self.connector.as_ref().beta_ledger_time().await
     }
 }

@@ -10,9 +10,7 @@ use crate::{
 use bimap::BiMap;
 use chrono::Utc;
 use comit::{
-    asset,
-    ethereum::ChainId,
-    identity,
+    asset, identity,
     network::{
         self,
         orderbook::{self, take_order, OrderId},
@@ -27,7 +25,6 @@ use libp2p::{
     swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
     NetworkBehaviour, PeerId,
 };
-use network::{SwapType, TradingPair};
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use sha2::{Digest, Sha256};
 use std::{
@@ -86,23 +83,6 @@ impl Swarm {
 
     pub fn as_inner(&mut self) -> &mut libp2p::Swarm<Nectar> {
         &mut self.inner
-    }
-
-    pub fn announce_btc_dai_trading_pair(&mut self) -> anyhow::Result<()> {
-        // The comit::network::Orderbook requires announcing the
-        // trading pair in both directions
-
-        self.inner.announce_trading_pair(TradingPair {
-            buy: SwapType::Hbit,
-            sell: SwapType::Herc20,
-        })?;
-
-        self.inner.announce_trading_pair(TradingPair {
-            buy: SwapType::Herc20,
-            sell: SwapType::Hbit,
-        })?;
-
-        Ok(())
     }
 
     pub fn publish(&mut self, order: PublishOrder) -> anyhow::Result<()> {
@@ -185,21 +165,19 @@ impl Nectar {
         }
     }
 
-    fn announce_trading_pair(&mut self, trading_pair: TradingPair) -> anyhow::Result<()> {
-        self.orderbook.announce_trading_pair(trading_pair)
-    }
-
     fn make(&mut self, order: PublishOrder) -> anyhow::Result<()> {
-        let order = orderbook::Order::new(self.local_peer_id.clone(), order.into());
-        let _order_id = self.orderbook.make(order)?;
+        let order_id = OrderId::random();
+        let order = order.into_orderbook_order(order_id, self.local_peer_id.clone());
+        let _ = self.orderbook.make(order)?;
 
         Ok(())
     }
 
     fn confirm(&mut self, order: TakenOrder) -> anyhow::Result<()> {
-        self.active_takers.insert(order.taker)?;
+        self.active_takers.insert(order.taker.clone())?;
 
-        self.orderbook.confirm(order.id, order.confirmation_channel);
+        self.orderbook
+            .confirm(order.id, order.confirmation_channel, order.taker.peer_id());
 
         Ok(())
     }
@@ -310,21 +288,14 @@ impl NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> for Nectar {
             orderbook::BehaviourOutEvent::TakeOrderConfirmation {
                 order_id,
                 shared_swap_id,
+                peer_id: taker_peer_id,
             } => {
-                let taker_peer_id = match self.takers.get(&order_id) {
-                    Some(taker) => taker,
-                    None => {
-                        tracing::warn!("unknown taker for order: {}", order_id,);
-                        return;
-                    }
-                };
-
                 self.order_swap_ids.insert(order_id, shared_swap_id);
 
                 self.events
                     .push_back(Event::SetSwapIdentities(SwapMetadata {
                         shared_swap_id,
-                        taker_peer_id: taker_peer_id.clone(),
+                        taker_peer_id,
                     }))
             }
             orderbook::BehaviourOutEvent::Failed { peer_id, order_id } => tracing::warn!(
@@ -389,35 +360,14 @@ impl NetworkBehaviourEventProcess<network::comit::BehaviourOutEvent> for Nectar 
                     }
                 };
 
-                // TODO: Handle sell orders when orderbook supports them
-                let (
-                    network::Order {
-                        buy: satoshi_amount,
-                        sell: erc20_asset,
-                        absolute_expiry,
-                        ..
+                let order = match self.order_swap_ids.get_by_right(&shared_swap_id) {
+                    Some(order_id) => match self.orderbook.get_order(order_id) {
+                        Some(order) => order,
+                        None => {
+                            tracing::warn!("could not find order with id, id: {}", order_id);
+                            return;
+                        }
                     },
-                    taker,
-                ) = match self.order_swap_ids.get_by_right(&shared_swap_id) {
-                    Some(order_id) => {
-                        let order = match self.orderbook.get_order(order_id) {
-                            Some(order) => order,
-                            None => {
-                                tracing::warn!("could not find order with id, id: {}", order_id);
-                                return;
-                            }
-                        };
-
-                        let taker = match self.takers.get(order_id) {
-                            Some(taker_peer_id) => Taker::new(taker_peer_id.clone()),
-                            None => {
-                                tracing::warn!("unknown taker for order: {}", order_id,);
-                                return;
-                            }
-                        };
-
-                        (order, taker)
-                    }
                     None => {
                         tracing::warn!(
                             "could order_id corresponding to shared_swap_id: {}",
@@ -427,29 +377,33 @@ impl NetworkBehaviourEventProcess<network::comit::BehaviourOutEvent> for Nectar 
                     }
                 };
 
-                // TODO: Handle expiries properly when orderbook does so
+                let taker = match self.takers.get(&order.id) {
+                    Some(taker_peer_id) => Taker::new(taker_peer_id.clone()),
+                    None => {
+                        tracing::warn!("unknown taker for order: {}", order.id,);
+                        return;
+                    }
+                };
 
                 let hbit_params = hbit::Params::new(
                     hbit::SharedParams {
-                        asset: asset::Bitcoin::from_sat(satoshi_amount),
+                        asset: order.bitcoin_amount,
                         redeem_identity: maker_bitcoin_identity,
                         refund_identity: taker_bitcoin_identity,
-                        expiry: Timestamp::from(absolute_expiry),
+                        expiry: order.bitcoin_absolute_expiry.into(),
                         secret_hash,
-                        // TODO: Make it dynamic when orderbook handles networks
-                        network: ::bitcoin::Network::Regtest,
+                        network: order.bitcoin_ledger.into(),
                     },
                     bitcoin_transient_sk,
                 );
 
                 let herc20_params = herc20::Params {
-                    asset: erc20_asset,
+                    asset: asset::Erc20::new(order.token_contract, order.ethereum_amount),
                     redeem_identity: taker_ethereum_identity,
                     refund_identity: maker_ethereum_identity,
-                    expiry: Timestamp::from(absolute_expiry),
+                    expiry: order.ethereum_absolute_expiry.into(),
                     secret_hash,
-                    // TODO: Make it dynamic once orderbook handles networks
-                    chain_id: ChainId::regtest(),
+                    chain_id: order.ethereum_ledger.chain_id,
                 };
 
                 let swap = SwapKind::HbitHerc20(SwapParams {
@@ -491,17 +445,19 @@ impl TakenOrder {
         taker: Taker,
         confirmation_channel: ResponseChannel<take_order::Response>,
     ) -> Self {
-        // TODO: comit::network::orderbook does not yet support selling Bitcoin
-
-        let contract_address = DaiContractAddress::local(order.sell.token_contract);
-        let quote = dai::Asset {
-            amount: order.sell.into(),
-            contract_address,
+        let base = bitcoin::Asset {
+            amount: order.bitcoin_amount.into(),
+            network: order.bitcoin_ledger.into(),
         };
-
+        let contract_address = DaiContractAddress::local(order.token_contract);
+        let quote = dai::Asset {
+            amount: order.ethereum_amount.into(),
+            contract_address,
+            chain_id: order.ethereum_ledger.chain_id,
+        };
         let inner = BtcDaiOrder {
-            position: Position::Buy,
-            base: bitcoin::Amount::from_sat(order.buy),
+            position: order.position.into(),
+            base,
             quote,
         };
 
@@ -547,36 +503,38 @@ impl Default for Taker {
 #[derive(Debug, Clone)]
 pub struct PublishOrder(BtcDaiOrder);
 
-impl From<BtcDaiOrder> for PublishOrder {
-    fn from(order: BtcDaiOrder) -> Self {
-        Self(order)
+impl PublishOrder {
+    fn into_orderbook_order(self, id: OrderId, maker: PeerId) -> comit::network::orderbook::Order {
+        // No special logic for expiry generation, other than setting
+        // the asset that will be alpha to be longer than the asset
+        // that will be beta
+        let twelve_hours = 12 * 60 * 60;
+        let beta_expiry = Timestamp::now().plus(twelve_hours);
+        let alpha_expiry = beta_expiry.plus(twelve_hours);
+
+        let (bitcoin_absolute_expiry, ethereum_absolute_expiry) = match self.0.position {
+            Position::Buy => (alpha_expiry, beta_expiry),
+            Position::Sell => (beta_expiry, alpha_expiry),
+        };
+
+        comit::network::orderbook::Order {
+            id,
+            maker: maker.into(),
+            position: self.0.position.into(),
+            bitcoin_amount: self.0.base.amount.into(),
+            bitcoin_ledger: self.0.base.network.into(),
+            bitcoin_absolute_expiry: bitcoin_absolute_expiry.into(),
+            ethereum_amount: self.0.quote.amount.into(),
+            token_contract: self.0.quote.contract_address.into(),
+            ethereum_ledger: comit::ledger::Ethereum::new(self.0.quote.chain_id),
+            ethereum_absolute_expiry: ethereum_absolute_expiry.into(),
+        }
     }
 }
 
-// We can remove this allow statement once the todo below is fixed
-#[allow(clippy::fallible_impl_from)]
-impl From<PublishOrder> for comit::network::orderbook::NewOrder {
-    fn from(from: PublishOrder) -> Self {
-        match from.0 {
-            BtcDaiOrder {
-                position: Position::Buy,
-                base,
-                quote,
-            } => Self {
-                buy: base.into(),
-                sell: asset::Erc20::new(quote.contract_address.into(), quote.amount.into()),
-                // TODO: comit::network::orderbook currently only
-                // supports defining one expiry. In cnd, this is used
-                // for both Alpha and Beta. Eventually we will need to
-                // handle this properly, but for now, let's set it to
-                // 24 hours in the future
-                absolute_expiry: Timestamp::now().plus(60 * 60 * 24).into(),
-            },
-            BtcDaiOrder {
-                position: Position::Sell,
-                ..
-            } => todo!("comit::network::orderbook does not yet support selling Bitcoin"),
-        }
+impl From<BtcDaiOrder> for PublishOrder {
+    fn from(order: BtcDaiOrder) -> Self {
+        Self(order)
     }
 }
 
