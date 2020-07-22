@@ -1,10 +1,15 @@
 use crate::{
     asset::ethereum::{Error, FromWei, TryFromWei},
     ethereum::{Address, U256},
+    float_math,
 };
 use num::{pow::Pow, BigUint, Num, Zero};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
+
+// ERC20 tokens use the term wei to describe the minimum divisible unit
+// 1 Ether = 1,000,000,000,000,000,000 Wei (10 exp 18)
+const WEI_EXP: u16 = 18;
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Erc20Quantity(BigUint);
@@ -25,6 +30,13 @@ impl Erc20Quantity {
     pub fn try_from_wei_dec_str(str: &str) -> Result<Self, Error> {
         let int = BigUint::from_str_radix(str, 10)?;
         Ok(Self::try_from_wei(int)?)
+    }
+
+    /// Create a erc20 quantity from a float string. E.g., this can be used to
+    /// create a DAI quantity from the ergonomic string "1234.56".
+    pub fn try_from_float(eth: &str) -> anyhow::Result<Self> {
+        let wei = float_math::multiply_pow_ten_str(eth, WEI_EXP)?;
+        Ok(Self(wei))
     }
 
     pub fn to_u256(&self) -> U256 {
