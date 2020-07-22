@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
 
-/// An limit order, created in order to supply liquidity to the network and
+/// An limit order, created to supply liquidity to the network and
 /// shared with the network via gossipsub.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub struct BtcDaiOrder {
@@ -20,10 +20,12 @@ pub struct BtcDaiOrder {
 }
 
 impl BtcDaiOrder {
+    /// Create a new buy limit order.
     pub fn new_buy(quote: Quote, amount: asset::Bitcoin) -> Self {
         BtcDaiOrder::new(quote, amount, Position::Buy)
     }
 
+    /// Create a new sell limit order.
     pub fn new_sell(quote: Quote, amount: asset::Bitcoin) -> Self {
         BtcDaiOrder::new(quote, amount, Position::Sell)
     }
@@ -37,11 +39,12 @@ impl BtcDaiOrder {
         }
     }
 
+    /// Convert this order to the Topic used to publish it.
     pub fn to_topic(&self) -> Topic {
         Topic::new(BTC_DAI.to_string())
     }
 
-    /// Converts forex terminology (rate/amount) to COMIT terminology.
+    /// Converts forex terminology (quote/amount) to COMIT terminology.
     pub fn value(&self) -> (asset::Bitcoin, asset::Erc20Quantity) {
         unimplemented!()
     }
@@ -57,10 +60,12 @@ impl BtcDaiOrder {
     }
 }
 
+/// The identifier used for orders.
 #[derive(Debug, Clone, Copy, Hash, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OrderId(Uuid);
 
 impl OrderId {
+    /// Create a random identifier, this should be globally unique.
     pub fn random() -> OrderId {
         OrderId(Uuid::new_v4())
     }
