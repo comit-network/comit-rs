@@ -445,16 +445,19 @@ impl TakenOrder {
         taker: Taker,
         confirmation_channel: ResponseChannel<take_order::Response>,
     ) -> Self {
+        let base = bitcoin::Asset {
+            amount: order.bitcoin_amount.into(),
+            network: order.bitcoin_ledger.into(),
+        };
         let contract_address = DaiContractAddress::local(order.token_contract);
         let quote = dai::Asset {
             amount: order.ethereum_amount.into(),
             contract_address,
             chain_id: order.ethereum_ledger.chain_id,
         };
-
         let inner = BtcDaiOrder {
             position: order.position.into(),
-            base: order.bitcoin_amount.into(),
+            base,
             quote,
         };
 
@@ -518,8 +521,8 @@ impl PublishOrder {
             id,
             maker: maker.into(),
             position: self.0.position.into(),
-            bitcoin_amount: self.0.base.into(),
-            bitcoin_ledger: bitcoin::Network::Regtest.into(), // TODO: Get it from the bitcoin Asset
+            bitcoin_amount: self.0.base.amount.into(),
+            bitcoin_ledger: self.0.base.network.into(),
             bitcoin_absolute_expiry: bitcoin_absolute_expiry.into(),
             ethereum_amount: self.0.quote.amount.into(),
             token_contract: self.0.quote.contract_address.into(),
