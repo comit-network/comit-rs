@@ -35,7 +35,7 @@ sha2 = "0.9"
 strum = "0.18.0"
 strum_macros = "0.18.0"
 thiserror = "1"
-tokio = { version = "0.2.21", features = ["sync"] }
+tokio = { version = "0.2.22", features = ["sync"] }
 tracing = "0.1.16"
 tracing-futures = { version = "0.2", features = ["std-future", "futures-03"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
@@ -48,7 +48,7 @@ log = { version = "0.4", features = ["serde"] }
 proptest = "0.10.0"
 spectral = { version = "0.6", default-features = false }
 testcontainers = "0.9"
-tokio = { version = "0.2.21", features = ["macros"] }
+tokio = { version = "0.2.22", features = ["macros"] }
 tracing = { version = "0.1", features = ["attributes"] }
 tracing-core = "0.1"
 tracing-futures = { version = "0.2", features = ["std-future", "futures-03"] }
