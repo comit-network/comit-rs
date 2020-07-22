@@ -35,11 +35,13 @@ impl Orders {
         self.inner.get(id).map(|r| r.maker.clone())
     }
 
+    /// Returns true if an order with `id` is known.
     pub fn contains(&self, id: &OrderId) -> bool {
         self.inner.contains_key(id)
     }
 
-    /// true if order exists and is live.
+    /// Returns true if the order is live i.e., has been seen by the network and
+    /// a delete message has not been seen. See [Status] for more details.
     pub fn is_live(&self, id: &OrderId) -> bool {
         match self.inner.get(id) {
             None => false,
@@ -47,10 +49,12 @@ impl Orders {
         }
     }
 
+    /// Gets all orders, live and dead.
     pub fn get_orders(&self) -> Vec<BtcDaiOrder> {
         self.inner.values().map(|r| r.order).collect()
     }
 
+    /// Gets a specific order if it is known.
     pub fn get_order(&self, id: &OrderId) -> Option<BtcDaiOrder> {
         self.inner.get(id).map(|r| r.order)
     }
@@ -92,6 +96,10 @@ struct Order {
     status: Status,
 }
 
+/// We purposely do not use the terms filled/cancelled because the network
+/// has no way of guaranteeing these things, from the networks perspective
+/// an order is 'live' if it has been received and 'dead' if a the order was
+/// deleted by the node that created it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Status {
     Live,
