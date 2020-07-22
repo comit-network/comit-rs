@@ -1,6 +1,9 @@
 use bitcoin::{util::amount::Denomination, Amount};
 use std::fmt;
 
+/// Convenience alias to allow uniform usage with DAI.
+pub type Btc = Bitcoin;
+
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Bitcoin(Amount);
 

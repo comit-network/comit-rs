@@ -16,21 +16,21 @@ pub struct BtcDaiOrder {
     pub position: Position, // Position of the order from the creators perspective.
     pub quote: Quote,       // Indirect quote i.e., one unit of BTC = quote units of DAI.
     #[serde(with = "asset::bitcoin::sats_as_string")]
-    pub amount: asset::Bitcoin, // Orders are quoted in the base currency.
+    pub amount: asset::Btc, // Orders are quoted in the base currency.
 }
 
 impl BtcDaiOrder {
     /// Create a new buy limit order.
-    pub fn new_buy(quote: Quote, amount: asset::Bitcoin) -> Self {
+    pub fn new_buy(quote: Quote, amount: asset::Btc) -> Self {
         BtcDaiOrder::new(quote, amount, Position::Buy)
     }
 
     /// Create a new sell limit order.
-    pub fn new_sell(quote: Quote, amount: asset::Bitcoin) -> Self {
+    pub fn new_sell(quote: Quote, amount: asset::Btc) -> Self {
         BtcDaiOrder::new(quote, amount, Position::Sell)
     }
 
-    fn new(quote: Quote, amount: asset::Bitcoin, position: Position) -> Self {
+    fn new(quote: Quote, amount: asset::Btc, position: Position) -> Self {
         BtcDaiOrder {
             id: OrderId::random(),
             position,
@@ -45,7 +45,7 @@ impl BtcDaiOrder {
     }
 
     /// Converts forex terminology (quote/amount) to COMIT terminology.
-    pub fn value(&self) -> (asset::Bitcoin, asset::Erc20Quantity) {
+    pub fn value(&self) -> (asset::Btc, asset::Erc20Quantity) {
         unimplemented!()
     }
 
@@ -55,7 +55,7 @@ impl BtcDaiOrder {
             id: OrderId::random(),
             position: Position::Sell,
             quote: Quote::from_float(9123.45).expect("failed to construct quote"),
-            amount: asset::Bitcoin::from_sat(1000),
+            amount: asset::Btc::from_sat(1000),
         }
     }
 }
