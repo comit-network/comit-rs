@@ -730,4 +730,19 @@ mod tests {
         assert_eq!(result, TakeRequestDecision::GoForSwap);
         assert_eq!(maker.dai_reserved_funds, dai_amount(1.0))
     }
+
+    #[test]
+    fn new_buy_order_is_correct() {
+        let maker = Maker {
+            dai_balance: some_dai(20.0),
+            dai_max_sell_amount: some_dai(18.0),
+            mid_market_rate: some_rate(9000.0),
+            btc_balance: some_btc(1.0),
+            ..Default::default()
+        };
+
+        let new_buy_order = maker.new_buy_order().unwrap();
+        assert_eq!(new_buy_order.base.amount, btc(0.002));
+        assert_eq!(new_buy_order.quote.amount, dai_amount(18.0));
+    }
 }

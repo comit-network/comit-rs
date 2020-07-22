@@ -10,7 +10,7 @@ use comit::{
 };
 use conquer_once::Lazy;
 use ethereum_types::U256;
-use num::{pow::Pow, BigUint, CheckedAdd, ToPrimitive, Zero};
+use num::{pow::Pow, BigUint, CheckedAdd, Integer, ToPrimitive, Zero};
 use std::str::FromStr;
 
 pub const ATTOS_IN_DAI_EXP: u16 = 18;
@@ -102,11 +102,11 @@ impl Amount {
 
     // The rate input is for dai to bitcoin but we applied it to attodai so we need to:
     // - divide to get dai (18)
-    // - divide to adjust for rate (9)
+    // - multiply to adjust for rate (9)
     // - multiply to get satoshis (8)
-    // = - 19
+    // = - 1
     const ADJUSTEMENT_EXP: i32 =
-        SATS_IN_BITCOIN_EXP as i32 - ATTOS_IN_DAI_EXP as i32 - Rate::PRECISION as i32;
+        SATS_IN_BITCOIN_EXP as i32 - ATTOS_IN_DAI_EXP as i32 + Rate::PRECISION as i32;
 
     /// Rounds the value received to a 9 digits mantissa.
     pub fn from_dai_trunc(dai: f64) -> anyhow::Result<Self> {
@@ -166,12 +166,16 @@ impl Amount {
 
     /// Allow to know the worth of self in bitcoin asset using the given conversion rate.
     /// Truncation may be done during the conversion to allow a result in satoshi
-    pub fn worth_in(&self, dai_to_btc_rate: Rate) -> anyhow::Result<bitcoin::Amount> {
+    pub fn worth_in(&self, btc_to_dai: Rate) -> anyhow::Result<bitcoin::Amount> {
+        if btc_to_dai.integer().is_zero() {
+            anyhow::bail!("Cannot use a nil rate.")
+        }
+
         // Get the integer part of the rate
-        let uint_rate = dai_to_btc_rate.integer();
+        let uint_rate = btc_to_dai.integer();
 
         // Apply the rate
-        let worth = uint_rate * self.as_atto();
+        let (worth, _remainder) = self.as_atto().div_rem(&uint_rate);
 
         let inv_exp = Self::ADJUSTEMENT_EXP.abs() as usize;
         let sats = divide_pow_ten_trunc(worth, inv_exp)
@@ -267,36 +271,36 @@ mod tests {
 
     #[test]
     fn using_rate_returns_correct_result() {
-        let dai = Amount::from_dai_trunc(1.0).unwrap();
-        let rate = Rate::try_from(0.001_234).unwrap();
+        let dai = Amount::from_dai_trunc(10_001.234).unwrap();
+        let rate = Rate::try_from(10_001.234).unwrap();
 
         let res: bitcoin::Amount = dai.worth_in(rate).unwrap();
 
-        let btc = bitcoin::Amount::from_btc(0.001_234).unwrap();
+        let btc = bitcoin::Amount::from_btc(1.0).unwrap();
         assert_eq!(res, btc);
     }
 
     #[test]
     fn worth_in_result_truncated_1() {
-        let dai = Amount::from_dai_trunc(101.0).unwrap();
-        let rate = Rate::try_from(0.000_123_456).unwrap();
+        let dai = Amount::from_dai_trunc(112.648125).unwrap();
+        let rate = Rate::try_from(9125.0).unwrap();
 
         let res: bitcoin::Amount = dai.worth_in(rate).unwrap();
 
         // Result is 0.012469056 btc or 1246905.6 satoshis
-        let btc = bitcoin::Amount::from_btc(0.012_469_05).unwrap();
+        let btc = bitcoin::Amount::from_btc(0.012_345).unwrap();
         assert_eq!(res, btc);
     }
 
     #[test]
     fn worth_in_result_truncated_2() {
-        let dai = Amount::from_dai_trunc(100_001.0).unwrap();
-        let rate = Rate::try_from(0.000_001_234).unwrap();
+        let dai = Amount::from_dai_trunc(0.01107).unwrap();
+        let rate = Rate::try_from(9000.0).unwrap();
 
         let res: bitcoin::Amount = dai.worth_in(rate).unwrap();
 
         // Result is 12,340,123.4 satoshis
-        let btc = bitcoin::Amount::from_sat(12_340_123);
+        let btc = bitcoin::Amount::from_sat(123);
         assert_eq!(res, btc);
     }
 
