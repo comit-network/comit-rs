@@ -59,13 +59,13 @@ jobs:
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ matrix.os }}-rust-${{ env.RUST_TOOLCHAIN }}-target-directory-${{ hashFiles('Cargo.lock') }}-v2
+          key: ${{ matrix.os }}-rust-${{ env.RUST_TOOLCHAIN }}-target-directory-${{ hashFiles('Cargo.lock') }}-v3
 
       - name: Cache ~/.cargo/registry directory
         uses: actions/cache@v1
         with:
           path: ~/.cargo/registry
-          key: ${{ matrix.os }}-rust-${{ env.RUST_TOOLCHAIN }}-cargo-registry-directory-${{ hashFiles('Cargo.lock') }}-v2
+          key: ${{ matrix.os }}-rust-${{ env.RUST_TOOLCHAIN }}-cargo-registry-directory-${{ hashFiles('Cargo.lock') }}-v3
 
       - name: Cargo check ${{ matrix.os }}
         run: cargo check
