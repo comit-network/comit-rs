@@ -4,11 +4,18 @@ use std::str::FromStr;
 
 /// Truncate the float's mantissa to length `precision`.
 pub fn truncate(float: f64, precision: u16) -> f64 {
+    let s = float.to_string();
+    truncate_str(&s, precision)
+}
+
+/// Truncate the float's mantissa to length `precision`.
+pub fn truncate_str(float: &str, precision: u16) -> f64 {
     let mut string = float.to_string();
+
     let index = string.find('.');
 
     match index {
-        None => float,
+        None => f64::from_str(float).expect("This has no decimal, should convert"),
         Some(index) => {
             let trunc = index + 1 + precision as usize;
             string.truncate(trunc);
@@ -29,6 +36,18 @@ pub fn multiply_pow_ten(float: f64, pow: u16) -> anyhow::Result<BigUint> {
         anyhow::bail!("Float is not finite");
     }
 
+    let s = float.to_string();
+    multiply_pow_ten_str(&s, pow)
+}
+
+/// Multiply float by 10e`pow`, Returns as a BigUint. No data loss.
+/// Input is expected to represent a positive float with decimal places no
+/// bigger than pow i.e., the following are invalid calls
+/// - multiply_pow_ten_str("0.12345, 3")
+/// - multiply_pow_ten_str("-1.23, 3")
+/// Call truncate(float) before using this function if you need to.
+// TODO: Enforce the above in code.
+pub fn multiply_pow_ten_str(float: &str, pow: u16) -> anyhow::Result<BigUint> {
     let mut float = float.to_string();
     let decimal_index = float.find('.');
 
