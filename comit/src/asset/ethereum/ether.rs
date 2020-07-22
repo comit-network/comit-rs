@@ -1,5 +1,5 @@
 use crate::{
-    asset::ethereum::{Error, FromWei, TryFromWei},
+    asset::ethereum::{FromWei, TryFromWei, ValueOverflow},
     ethereum::U256,
 };
 use lazy_static::lazy_static;
@@ -31,7 +31,7 @@ impl Ether {
         self.0.to_str_radix(10)
     }
 
-    pub fn try_from_wei_dec_str(str: &str) -> Result<Self, Error> {
+    pub fn try_from_wei_dec_str(str: &str) -> anyhow::Result<Self> {
         let int = BigUint::from_str_radix(str, 10)?;
         Ok(Self::try_from_wei(int)?)
     }
@@ -92,9 +92,9 @@ impl FromWei<U256> for Ether {
 }
 
 impl TryFromWei<BigUint> for Ether {
-    fn try_from_wei(wei: BigUint) -> Result<Self, Error> {
+    fn try_from_wei(wei: BigUint) -> anyhow::Result<Self> {
         if wei > Self::max_value().0 {
-            Err(Error::Overflow)
+            Err(anyhow::Error::new(ValueOverflow))
         } else {
             Ok(Self(wei))
         }
@@ -102,7 +102,7 @@ impl TryFromWei<BigUint> for Ether {
 }
 
 impl TryFromWei<&str> for Ether {
-    fn try_from_wei(string: &str) -> Result<Ether, Error> {
+    fn try_from_wei(string: &str) -> anyhow::Result<Ether> {
         let uint = BigUint::from_str(string)?;
         Ok(Self(uint))
     }
@@ -225,8 +225,10 @@ mod tests {
             std::u32::MAX,
             std::u32::MAX, // 9th u32, should make it over u256
         ]);
-        let quantity = Ether::try_from_wei(wei);
-        assert_eq!(quantity, Err(Error::Overflow))
+        match Ether::try_from_wei(wei) {
+            Ok(_) => panic!("should overflow"),
+            Err(e) => assert!(e.is::<ValueOverflow>()),
+        }
     }
 
     #[test]
@@ -254,6 +256,9 @@ mod tests {
         let res = Ether::try_from_wei_dec_str(
             "115792089237316195423570985008687907853269984665640564039457584007913129639936",
         ); // This is Ether::max_value() + 1
-        assert_eq!(res, Err(Error::Overflow))
+        match res {
+            Ok(_) => panic!("should overflow"),
+            Err(e) => assert!(e.is::<ValueOverflow>()),
+        }
     }
 }

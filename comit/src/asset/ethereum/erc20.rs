@@ -1,5 +1,5 @@
 use crate::{
-    asset::ethereum::{Error, FromWei, TryFromWei},
+    asset::ethereum::{FromWei, TryFromWei, ValueOverflow},
     ethereum::{Address, U256},
     float_math,
 };
@@ -27,7 +27,7 @@ impl Erc20Quantity {
         self.0.to_str_radix(10)
     }
 
-    pub fn try_from_wei_dec_str(str: &str) -> Result<Self, Error> {
+    pub fn try_from_wei_dec_str(str: &str) -> anyhow::Result<Self> {
         let int = BigUint::from_str_radix(str, 10)?;
         Ok(Self::try_from_wei(int)?)
     }
@@ -114,9 +114,9 @@ impl_from_wei_primitive!(u64);
 impl_from_wei_primitive!(u128);
 
 impl TryFromWei<BigUint> for Erc20Quantity {
-    fn try_from_wei(wei: BigUint) -> Result<Self, Error> {
+    fn try_from_wei(wei: BigUint) -> anyhow::Result<Self> {
         if wei > Self::max_value().0 {
-            Err(Error::Overflow)
+            Err(anyhow::Error::new(ValueOverflow))
         } else {
             Ok(Self(wei))
         }
@@ -235,8 +235,10 @@ mod tests {
             std::u32::MAX,
             1, // 9th u32, should make it over u256
         ]);
-        let quantity = Erc20Quantity::try_from_wei(wei);
-        assert_eq!(quantity, Err(Error::Overflow))
+        match Erc20Quantity::try_from_wei(wei) {
+            Ok(_) => panic!("should overflow"),
+            Err(e) => assert!(e.is::<ValueOverflow>()),
+        }
     }
 
     #[test]
@@ -280,7 +282,11 @@ mod tests {
         let res = Erc20Quantity::try_from_wei_dec_str(
             "115792089237316195423570985008687907853269984665640564039457584007913129639936",
         ); // This is Erc20Quantity::max_value() + 1
-        assert_eq!(res, Err(Error::Overflow))
+
+        match res {
+            Ok(_) => panic!("should overflow"),
+            Err(e) => assert!(e.is::<ValueOverflow>()),
+        }
     }
 
     mod blockchain_contracts_test {

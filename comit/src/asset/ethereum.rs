@@ -16,13 +16,13 @@ pub trait TryFromWei<W>
 where
     Self: std::marker::Sized,
 {
-    fn try_from_wei(wei: W) -> Result<Self, Error>;
+    fn try_from_wei(wei: W) -> anyhow::Result<Self>;
 }
 
+#[derive(Clone, Copy, Debug, thiserror::Error, PartialEq)]
+#[error("value provided overflows")]
+pub struct ValueOverflow;
+
 #[derive(Clone, Debug, thiserror::Error, PartialEq)]
-pub enum Error {
-    #[error("value provided overflows")]
-    Overflow,
-    #[error("parsing error encountered")]
-    Parse(#[from] ParseBigIntError),
-}
+#[error("parsing error encountered")]
+pub struct ParseError(#[from] ParseBigIntError);
