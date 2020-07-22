@@ -410,9 +410,7 @@ mod tests {
         )
         .unwrap();
 
-        // 1 Sell => 0.1 Buy
-        // 1000 Sell => 100 Buy
-        assert_eq!(order.base, btc_asset(100.0));
+        assert_eq!(order.base, btc_asset(10_000.0));
         assert_eq!(order.quote, dai_asset(1000.0));
 
         let rate = Rate::try_from(10.0).unwrap();
@@ -428,19 +426,19 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(order.base, btc_asset(10_000.0));
+        assert_eq!(order.base, btc_asset(100.0));
         assert_eq!(order.quote, dai_asset(1000.0));
     }
 
     #[test]
     fn given_a_rate_and_spread_return_order_with_both_amounts() {
-        let rate = Rate::try_from(0.1).unwrap();
+        let rate = Rate::try_from(10_000.0).unwrap();
         let spread = Spread::new(300).unwrap();
 
         let order = BtcDaiOrder::new_sell(
-            btc(1051.0),
-            btc(1.0),
-            btc(50.0),
+            btc(1.51),
+            btc(0.01),
+            btc(0.5),
             None,
             rate,
             spread,
@@ -450,11 +448,11 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(order.base, btc_asset(1000.0));
-        assert_eq!(order.quote, dai_asset(103.0));
+        assert_eq!(order.base, btc_asset(1.0));
+        assert_eq!(order.quote, dai_asset(10_300.0));
 
         let order = BtcDaiOrder::new_buy(
-            dai_amount(1051.0),
+            dai_amount(10_051.0),
             dai_amount(51.0),
             None,
             rate,
@@ -465,8 +463,8 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(order.base, btc_asset(97.0));
-        assert_eq!(order.quote, dai_asset(1000.0));
+        assert_eq!(order.base, btc_asset(1.03092783));
+        assert_eq!(order.quote, dai_asset(10_000.0));
     }
 
     #[test]
