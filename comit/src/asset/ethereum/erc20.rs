@@ -22,7 +22,7 @@ impl Erc20Quantity {
         self.0.to_str_radix(10)
     }
 
-    pub fn from_wei_dec_str(str: &str) -> Result<Self, Error> {
+    pub fn try_from_wei_dec_str(str: &str) -> Result<Self, Error> {
         let int = BigUint::from_str_radix(str, 10)?;
         Ok(Self::try_from_wei(int)?)
     }
@@ -259,13 +259,13 @@ mod tests {
 
     #[test]
     fn given_str_of_wei_in_dec_format_instantiate_ether() {
-        let quantity = Erc20Quantity::from_wei_dec_str("12345").unwrap();
+        let quantity = Erc20Quantity::try_from_wei_dec_str("12345").unwrap();
         assert_eq!(quantity, Erc20Quantity::from_wei(12_345u32))
     }
 
     #[test]
     fn given_str_above_u256_max_in_dec_format_return_overflow() {
-        let res = Erc20Quantity::from_wei_dec_str(
+        let res = Erc20Quantity::try_from_wei_dec_str(
             "115792089237316195423570985008687907853269984665640564039457584007913129639936",
         ); // This is Erc20Quantity::max_value() + 1
         assert_eq!(res, Err(Error::Overflow))

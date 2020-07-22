@@ -57,7 +57,7 @@ impl FromStr for Ether {
     type Err = crate::asset::ethereum::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        asset::Ether::from_wei_dec_str(s).map(Ether)
+        asset::Ether::try_from_wei_dec_str(s).map(Ether)
     }
 }
 
@@ -86,7 +86,7 @@ impl FromStr for Erc20Amount {
     type Err = crate::asset::ethereum::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        asset::Erc20Quantity::from_wei_dec_str(s).map(Erc20Amount)
+        asset::Erc20Quantity::try_from_wei_dec_str(s).map(Erc20Amount)
     }
 }
 
