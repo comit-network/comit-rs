@@ -7,6 +7,7 @@ use crate::{
     },
     Seed,
 };
+use anyhow::anyhow;
 use comit::{
     actions::ethereum::{CallContract, DeployContract},
     asset::Erc20,
@@ -16,6 +17,15 @@ use num::BigUint;
 use num256::Uint256;
 use std::time::Duration;
 use url::Url;
+use wagyu_ethereum::{EthereumDerivationPath, EthereumFormat, EthereumNetwork};
+use wagyu_model::derivation_path::ChildIndex;
+use wagyu_model::ExtendedPrivateKey;
+
+pub use wagyu_ethereum::EthereumExtendedPrivateKey;
+
+/// Ethereum Standard - m/44'/60'/0'/0/0
+const DERIVATION_PATH: EthereumDerivationPath<wagyu_ethereum::network::Mainnet> =
+    EthereumDerivationPath::Ethereum(ChildIndex::Normal(0));
 
 #[derive(Debug, Clone)]
 pub struct Wallet {
@@ -32,28 +42,20 @@ impl Wallet {
         dai_contract_addr: Address,
         chain_id: ChainId,
     ) -> anyhow::Result<Self> {
-        let private_key = Wallet::private_key_from_seed(&seed)?;
-
         let geth_client = Client::new(url);
 
+        let private_key = Self::private_key_from_seed(&seed)?;
         let wallet = Self {
-            private_key,
             geth_client,
             dai_contract_addr,
             chain_id,
+            private_key,
         };
 
         wallet.assert_chain(chain_id).await?;
 
         Ok(wallet)
     }
-
-    pub fn private_key_from_seed(seed: &Seed) -> anyhow::Result<clarity::PrivateKey> {
-        let private_key = clarity::PrivateKey::from_slice(&seed.bytes())
-            .map_err(|_| anyhow::anyhow!("Failed to derive private key from slice"))?;
-        Ok(private_key)
-    }
-
     #[cfg(test)]
     pub fn new_from_private_key(
         private_key: clarity::PrivateKey,
@@ -69,6 +71,32 @@ impl Wallet {
             dai_contract_addr: dai_contract_adr,
             chain_id,
         }
+    }
+
+    pub fn private_key_from_seed(seed: &Seed) -> anyhow::Result<clarity::PrivateKey> {
+        let private_key = Self::root_extended_private_key_from_seed(seed)?
+            .derive(&DERIVATION_PATH)
+            .map_err(|err| anyhow!("Could not derive private key: {:?}", err))?
+            .to_private_key();
+        let private_key =
+            clarity::PrivateKey::from_slice(&private_key.to_secp256k1_secret_key()[..])
+                .map_err(|_| anyhow::anyhow!("Failed to derive private key from slice"))?;
+        Ok(private_key)
+    }
+
+    fn root_extended_private_key_from_seed<N>(
+        seed: &Seed,
+    ) -> anyhow::Result<EthereumExtendedPrivateKey<N>>
+    where
+        N: EthereumNetwork,
+    {
+        Ok(
+            EthereumExtendedPrivateKey::new_master(
+                seed.bytes().as_ref(),
+                &EthereumFormat::Standard,
+            )
+            .map_err(|err| anyhow!("Could not generate extended private key: {:?}", err))?,
+        )
     }
 
     pub fn account(&self) -> Address {
