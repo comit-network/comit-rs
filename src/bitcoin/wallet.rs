@@ -4,7 +4,7 @@ use crate::{
 };
 use ::bitcoin::{
     hash_types::PubkeyHash,
-    hashes::{sha512, Hash, HashEngine, Hmac, HmacEngine},
+    hashes::Hash,
     secp256k1::{self, SecretKey},
     util::bip32::{ChainCode, ExtendedPrivKey},
     PrivateKey, Transaction, Txid,
@@ -141,31 +141,31 @@ impl Wallet {
         private_key.to_wif()
     }
 
-    /// This seems to be the standard way to get a root extended private key from a seed
-    /// This is the way bitcoind does it when being passed a seed with `sethdseed`
-    // TODO: check the network against bitcoind in a non-failing manner (just log)
-    pub fn root_extended_private_key(&self) -> ExtendedPrivKey {
-        let bytes = self.seed.bytes();
-        let hash_key = b"Bitcoin seed";
+    /// This is the same way bitcoind generate the master extended private key for the hd wallet
+    ///when the seed is being passed with `sethdseed`. See the test
+    /// `root_key_calculated_from_seed_is_the_same_than_bitcoind_s`
+    pub async fn root_extended_private_key(
+        &self,
+        network: Network,
+    ) -> anyhow::Result<ExtendedPrivKey> {
+        self.assert_network(network).await?;
+        Ok(Wallet::root_extended_private_key_from_seed(
+            &self.seed, network,
+        ))
+    }
 
-        let mut engine = HmacEngine::<sha512::Hash>::new(hash_key);
-        engine.input(&bytes);
-        let hash = Hmac::<sha512::Hash>::from_engine(engine);
-        let output = &hash.into_inner()[..];
-        let key = &output[..32];
-        let chain_code = &output[32..];
+    pub fn root_extended_private_key_from_seed(seed: &Seed, network: Network) -> ExtendedPrivKey {
+        let (key, chain_code) = seed.root_secret_key_chain_code();
+        let chain_code = ChainCode::from(chain_code.as_slice());
 
-        let key = SecretKey::from_slice(key).expect("32 bytes array should be fine");
         let private_key = PrivateKey {
             compressed: true,
-            network: self.network,
+            network,
             key,
         };
 
-        let chain_code = ChainCode::from(chain_code);
-
         ExtendedPrivKey {
-            network: self.network,
+            network,
             depth: 0,
             parent_fingerprint: Default::default(),
             child_number: 0.into(),
@@ -176,8 +176,12 @@ impl Wallet {
 
     /// Wallet descriptors as specified in https://github.com/bitcoin/bitcoin/blob/master/doc/descriptors.md
     pub fn descriptors(&self) -> Vec<String> {
-        let ext_priv_key = self.root_extended_private_key();
-        self.hd_paths()
+        Self::descriptors_from_seed(&self.seed, self.network)
+    }
+
+    pub fn descriptors_from_seed(seed: &Seed, network: Network) -> Vec<String> {
+        let ext_priv_key = Self::root_extended_private_key_from_seed(seed, network);
+        Self::hd_paths()
             .iter()
             .map(|path| format!("wpkh({}{})", ext_priv_key, path))
             .collect()
@@ -206,7 +210,7 @@ impl Wallet {
     /// HDW derived from master m." ie, the addresses to give to someone else to receive bitcoin.
     /// "m/iH/1/k corresponds to the k'th keypair of the internal chain of account number i of the
     /// HDW derived from master m." ie, the addresses to send change.
-    fn hd_paths(&self) -> Vec<&str> {
+    fn hd_paths() -> Vec<&'static str> {
         vec![
             BITCOIND_DEFAULT_EXTERNAL_DERIVATION_PATH,
             BITCOIND_DEFAULT_INTERNAL_DERIVATION_PATH,
@@ -357,7 +361,14 @@ mod docker_tests {
             .unwrap();
 
         let key = line.split_ascii_whitespace().last().unwrap();
-        assert_eq!(key, &wallet.root_extended_private_key().to_string());
+        assert_eq!(
+            key,
+            &wallet
+                .root_extended_private_key(Network::Regtest)
+                .await
+                .unwrap()
+                .to_string()
+        );
     }
 
     #[tokio::test]
