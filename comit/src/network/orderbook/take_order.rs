@@ -1,4 +1,4 @@
-use crate::{network::OrderId, SharedSwapId};
+use crate::{asset, network::OrderId, SharedSwapId};
 use futures::{prelude::*, AsyncWriteExt};
 use libp2p::{
     core::upgrade,
@@ -20,6 +20,13 @@ impl ProtocolName for TakeOrderProtocol {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct TakeOrderCodec;
 
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+pub struct Request {
+    pub(crate) order_id: OrderId,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    pub(crate) amount: asset::Bitcoin,
+}
+
 /// The different responses we can send back as part of an announcement.
 ///
 /// For now, this only includes a generic error variant in addition to the
@@ -36,7 +43,7 @@ pub enum Response {
 #[async_trait::async_trait]
 impl RequestResponseCodec for TakeOrderCodec {
     type Protocol = TakeOrderProtocol;
-    type Request = OrderId;
+    type Request = Request;
     type Response = Response;
 
     /// Reads a take order request from the given I/O stream.
@@ -48,10 +55,10 @@ impl RequestResponseCodec for TakeOrderCodec {
             .await
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         let mut de = serde_json::Deserializer::from_slice(&message);
-        let order_id = OrderId::deserialize(&mut de)?;
-        debug!("read request order id: {}", order_id);
+        let req = Request::deserialize(&mut de)?;
+        debug!("read request order id: {}", req.order_id);
 
-        Ok(order_id)
+        Ok(req)
     }
 
     /// Reads a response (to a take order request) from the given I/O stream.
@@ -82,7 +89,7 @@ impl RequestResponseCodec for TakeOrderCodec {
     where
         T: AsyncWrite + Unpin + Send,
     {
-        debug!("writing request order id: {}", req);
+        debug!("writing request order id: {}", req.order_id);
         let bytes = serde_json::to_vec(&req)?;
         upgrade::write_one(io, &bytes).await?;
 

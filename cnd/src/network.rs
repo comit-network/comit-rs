@@ -2,7 +2,7 @@ mod peer_tracker;
 mod transport;
 
 // Export comit network types while maintaining the module abstraction.
-pub use ::comit::{asset, ledger, network::*};
+pub use ::comit::{asset, bitcoin, ledger, network::*};
 pub use transport::ComitTransport;
 
 use crate::{
@@ -19,9 +19,10 @@ use async_trait::async_trait;
 use chrono::Utc;
 use futures::{stream::StreamExt, Future, TryFutureExt};
 use libp2p::{
+    core::Multiaddr,
     identity::{ed25519, Keypair},
     swarm::SwarmBuilder,
-    Multiaddr, NetworkBehaviour, PeerId,
+    NetworkBehaviour, PeerId,
 };
 use std::{
     collections::HashMap,
@@ -118,11 +119,18 @@ impl Swarm {
         &self,
         order_id: OrderId,
         swap_id: LocalSwapId,
-        bitcoin_identity: crate::bitcoin::Address,
+        bitcoin_identity: bitcoin::Address,
         ethereum_identity: identity::Ethereum,
+        amount: asset::Bitcoin,
     ) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
-        guard.take_order(order_id, swap_id, bitcoin_identity, ethereum_identity)
+        guard.take_order(
+            order_id,
+            swap_id,
+            bitcoin_identity,
+            ethereum_identity,
+            amount,
+        )
     }
 
     /// The maker plays the role of Bob.
@@ -131,7 +139,7 @@ impl Swarm {
         order: NewOrder,
         swap_id: LocalSwapId,
         ethereum_identity: identity::Ethereum,
-        bitcoin_identity: crate::bitcoin::Address,
+        bitcoin_identity: bitcoin::Address,
     ) -> anyhow::Result<OrderId> {
         let mut guard = self.inner.lock().await;
         guard.make_order(order, swap_id, ethereum_identity, bitcoin_identity)
@@ -226,7 +234,7 @@ pub struct ComitNode {
     #[behaviour(ignore)]
     pub protocol_spawner: ProtocolSpawner,
     #[behaviour(ignore)]
-    bitcoin_addresses: HashMap<identity::Bitcoin, crate::bitcoin::Address>,
+    bitcoin_addresses: HashMap<identity::Bitcoin, bitcoin::Address>,
     #[behaviour(ignore)]
     order_swap_ids: HashMap<OrderId, LocalSwapId>,
 }
@@ -309,8 +317,9 @@ impl ComitNode {
         &mut self,
         order_id: OrderId,
         swap_id: LocalSwapId,
-        bitcoin_identity: crate::bitcoin::Address,
+        bitcoin_identity: bitcoin::Address,
         ethereum_identity: identity::Ethereum,
+        amount: asset::Bitcoin,
     ) -> anyhow::Result<()> {
         let order = self
             .orderbook
@@ -340,7 +349,7 @@ impl ComitNode {
         self.local_data.insert(swap_id, data);
 
         self.order_swap_ids.insert(order_id, swap_id);
-        self.orderbook.take(order_id)?;
+        self.orderbook.take(order_id, amount)?;
 
         Ok(())
     }
@@ -351,7 +360,7 @@ impl ComitNode {
         new_order: NewOrder,
         swap_id: LocalSwapId,
         ethereum_identity: identity::Ethereum,
-        bitcoin_identity: crate::bitcoin::Address,
+        bitcoin_identity: bitcoin::Address,
     ) -> anyhow::Result<OrderId> {
         let transient = match new_order.position {
             Position::Buy => {
@@ -378,10 +387,10 @@ impl ComitNode {
             id: OrderId::random(),
             maker: MakerId::from(self.peer_id.clone()),
             position: new_order.position,
-            bitcoin_amount: new_order.bitcoin_amount,
+            rate: new_order.rate,
             bitcoin_ledger: new_order.bitcoin_ledger,
             bitcoin_absolute_expiry: new_order.bitcoin_absolute_expiry,
-            ethereum_amount: new_order.ethereum_amount,
+            bitcoin_amount: new_order.bitcoin_amount,
             token_contract: new_order.token_contract,
             ethereum_ledger: new_order.ethereum_ledger,
             ethereum_absolute_expiry: new_order.ethereum_absolute_expiry,
@@ -460,10 +469,10 @@ impl ListenAddresses for Swarm {
 #[derive(Debug)]
 pub struct NewOrder {
     pub position: Position,
-    pub bitcoin_amount: asset::Bitcoin,
+    pub rate: Rate,
     pub bitcoin_ledger: ledger::Bitcoin,
     pub bitcoin_absolute_expiry: u32,
-    pub ethereum_amount: asset::Erc20Quantity,
+    pub bitcoin_amount: asset::Bitcoin,
     pub token_contract: identity::Ethereum,
     pub ethereum_ledger: ledger::Ethereum,
     pub ethereum_absolute_expiry: u32,
@@ -566,6 +575,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
         match event {
             orderbook::BehaviourOutEvent::TakeOrderRequest {
                 peer_id,
+                amount,
                 response_channel,
                 order_id,
             } => {
@@ -619,26 +629,30 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                 let storage = self.storage.clone();
                 let order_id = order.id;
 
+                let hbit = hbit::CreatedSwap {
+                    amount,
+                    final_identity: final_identity.into(),
+                    network: order.bitcoin_ledger,
+                    absolute_expiry: order.bitcoin_absolute_expiry,
+                };
+                let herc20 = herc20::CreatedSwap {
+                    asset: asset::Erc20 {
+                        token_contract: order.token_contract,
+                        quantity: order.ethereum_amount(amount),
+                    },
+                    identity: ethereum_identity,
+                    chain_id: order.ethereum_ledger.chain_id,
+                    absolute_expiry: order.ethereum_absolute_expiry,
+                };
+
+                tracing::info!("ethereum amount {}", order.ethereum_amount(amount));
+
                 match order.position {
                     Position::Buy => {
                         let swap = CreatedSwap {
                             swap_id: local_swap_id,
-
-                            alpha: hbit::CreatedSwap {
-                                amount: order.bitcoin_amount,
-                                final_identity: final_identity.into(),
-                                network: order.bitcoin_ledger,
-                                absolute_expiry: order.bitcoin_absolute_expiry,
-                            },
-                            beta: herc20::CreatedSwap {
-                                asset: asset::Erc20 {
-                                    token_contract: order.token_contract,
-                                    quantity: order.ethereum_amount,
-                                },
-                                identity: ethereum_identity,
-                                chain_id: order.ethereum_ledger.chain_id,
-                                absolute_expiry: order.ethereum_absolute_expiry,
-                            },
+                            alpha: hbit,
+                            beta: herc20,
                             peer: peer_id.clone(),
                             address_hint: None,
                             role: Role::Bob,
@@ -658,21 +672,8 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                     Position::Sell => {
                         let swap = CreatedSwap {
                             swap_id: local_swap_id,
-                            alpha: herc20::CreatedSwap {
-                                asset: asset::Erc20 {
-                                    token_contract: order.token_contract,
-                                    quantity: order.ethereum_amount,
-                                },
-                                identity: ethereum_identity,
-                                chain_id: order.ethereum_ledger.chain_id,
-                                absolute_expiry: order.ethereum_absolute_expiry,
-                            },
-                            beta: hbit::CreatedSwap {
-                                amount: order.bitcoin_amount,
-                                final_identity: final_identity.into(),
-                                network: order.bitcoin_ledger,
-                                absolute_expiry: order.bitcoin_absolute_expiry,
-                            },
+                            alpha: herc20,
+                            beta: hbit,
                             peer: peer_id.clone(),
                             address_hint: None,
                             role: Role::Bob,

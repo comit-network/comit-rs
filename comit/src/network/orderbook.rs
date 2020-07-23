@@ -2,7 +2,8 @@ mod order;
 pub mod take_order;
 
 use crate::{
-    network::orderbook::take_order::{Response, TakeOrderCodec, TakeOrderProtocol},
+    asset,
+    network::orderbook::take_order::{Request, Response, TakeOrderCodec, TakeOrderProtocol},
     SharedSwapId,
 };
 
@@ -102,12 +103,13 @@ impl Orderbook {
 
     /// Take an order, called by Alice i.e., the taker.
     /// Does _not_ remove the order from the order book.
-    pub fn take(&mut self, order_id: OrderId) -> anyhow::Result<()> {
+    pub fn take(&mut self, order_id: OrderId, amount: asset::Bitcoin) -> anyhow::Result<()> {
         let maker_id = self
             .maker_id(order_id)
             .ok_or_else(|| OrderNotFound(order_id))?;
 
-        self.take_order.send_request(&maker_id.into(), order_id);
+        self.take_order
+            .send_request(&maker_id.into(), Request { order_id, amount });
 
         Ok(())
     }
@@ -251,6 +253,8 @@ pub enum BehaviourOutEvent {
     TakeOrderRequest {
         /// The peer from whom request originated.
         peer_id: PeerId,
+        /// The amount of the order the taker wishes to fill
+        amount: crate::asset::Bitcoin,
         /// Channel to send a confirm/deny response on.
         response_channel: ResponseChannel<Response>,
         /// The ID of the order peer wants to take.
@@ -308,23 +312,24 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
     }
 }
 
-impl NetworkBehaviourEventProcess<RequestResponseEvent<OrderId, Response>> for Orderbook {
-    fn inject_event(&mut self, event: RequestResponseEvent<OrderId, Response>) {
+impl NetworkBehaviourEventProcess<RequestResponseEvent<Request, Response>> for Orderbook {
+    fn inject_event(&mut self, event: RequestResponseEvent<Request, Response>) {
         match event {
             RequestResponseEvent::Message {
                 peer: peer_id,
                 message:
                     RequestResponseMessage::Request {
-                        request: order_id,
+                        request,
                         channel: response_channel,
                     },
-            } => match self.get_order(&order_id) {
+            } => match self.get_order(&request.order_id) {
                 Some(_) => {
                     tracing::info!("received take order request");
                     self.events.push_back(BehaviourOutEvent::TakeOrderRequest {
                         peer_id,
                         response_channel,
-                        order_id,
+                        order_id: request.order_id,
+                        amount: request.amount,
                     });
                 }
                 None => tracing::info!("received take order request for non-existent order"),
@@ -407,7 +412,7 @@ mod tests {
 
         alice
             .swarm
-            .take(alice_order.id)
+            .take(alice_order.id, asset::Bitcoin::from_sat(900))
             .expect("failed to take order");
 
         // Trigger request/response messages.
@@ -421,6 +426,7 @@ mod tests {
                 peer_id,
                 response_channel,
                 order_id,
+                ..
             } => (peer_id, response_channel, order_id),
             _ => panic!("unexepected bob event"),
         };

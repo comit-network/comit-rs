@@ -50,6 +50,12 @@ impl FromWei<U256> for Erc20Quantity {
     }
 }
 
+impl From<BigUint> for Erc20Quantity {
+    fn from(quantity: BigUint) -> Self {
+        Erc20Quantity(quantity)
+    }
+}
+
 impl From<Erc20Quantity> for blockchain_contracts::ethereum::TokenQuantity {
     fn from(quantity: Erc20Quantity) -> Self {
         if quantity > Erc20Quantity::max_value() {

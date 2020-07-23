@@ -6,7 +6,7 @@ use crate::{
     LocalSwapId, Role, Timestamp,
 };
 use comit::{
-    bitcoin, identity,
+    asset, bitcoin, identity,
     network::{Order, OrderId},
 };
 use libp2p::{Multiaddr, PeerId};
@@ -63,15 +63,22 @@ impl Facade {
         &mut self,
         order_id: OrderId,
         swap_id: LocalSwapId,
-        bitcoin_identity: crate::bitcoin::Address,
+        bitcoin_identity: bitcoin::Address,
         ethereum_identity: identity::Ethereum,
+        amount: asset::Bitcoin,
     ) -> anyhow::Result<()> {
         self.storage
             .associate_swap_with_order(order_id, swap_id)
             .await;
 
         self.swarm
-            .take_order(order_id, swap_id, bitcoin_identity, ethereum_identity)
+            .take_order(
+                order_id,
+                swap_id,
+                bitcoin_identity,
+                ethereum_identity,
+                amount,
+            )
             .await
     }
 
@@ -80,7 +87,7 @@ impl Facade {
         order: NewOrder,
         swap_id: LocalSwapId,
         ethereum_identity: identity::Ethereum,
-        bitcoin_identity: crate::bitcoin::Address,
+        bitcoin_identity: bitcoin::Address,
     ) -> anyhow::Result<OrderId> {
         self.swarm
             .make_order(order, swap_id, ethereum_identity, bitcoin_identity)

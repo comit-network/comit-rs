@@ -10,7 +10,7 @@ use crate::{
 use chrono::Utc;
 use comit::{
     ethereum,
-    network::{MakerId, Order, OrderId, Position},
+    network::{MakerId, Order, OrderId, Position, Rate},
 };
 use serde::{Deserialize, Serialize};
 use warp::{http, http::StatusCode, Rejection, Reply};
@@ -39,25 +39,29 @@ pub async fn post_take_order(
     // TODO: Consider putting the save in the network layer to be uniform with make?
     let start_of_swap = Utc::now().naive_local();
 
+    let hbit = hbit::CreatedSwap {
+        amount: body.bitcoin_amount,
+        final_identity: body.bitcoin_identity.clone(),
+        network: order.bitcoin_ledger,
+        absolute_expiry: order.bitcoin_absolute_expiry,
+    };
+
+    let herc20 = herc20::CreatedSwap {
+        asset: Erc20 {
+            token_contract: order.token_contract,
+            quantity: order.ethereum_amount(body.bitcoin_amount),
+        },
+        identity: body.ethereum_identity,
+        chain_id: order.ethereum_ledger.chain_id,
+        absolute_expiry: order.ethereum_absolute_expiry,
+    };
+
     match order.position {
         Position::Buy => {
             let swap = CreatedSwap {
                 swap_id,
-                alpha: hbit::CreatedSwap {
-                    amount: order.bitcoin_amount,
-                    final_identity: body.bitcoin_identity.clone(),
-                    network: order.bitcoin_ledger,
-                    absolute_expiry: order.bitcoin_absolute_expiry,
-                },
-                beta: herc20::CreatedSwap {
-                    asset: Erc20 {
-                        token_contract: order.token_contract,
-                        quantity: order.ethereum_amount,
-                    },
-                    identity: body.ethereum_identity,
-                    chain_id: order.ethereum_ledger.chain_id,
-                    absolute_expiry: order.ethereum_absolute_expiry,
-                },
+                alpha: hbit,
+                beta: herc20,
                 peer: order.maker.clone().into(),
                 address_hint: None,
                 role: Role::Alice,
@@ -72,21 +76,8 @@ pub async fn post_take_order(
         Position::Sell => {
             let swap = CreatedSwap {
                 swap_id,
-                alpha: herc20::CreatedSwap {
-                    asset: Erc20 {
-                        token_contract: order.token_contract,
-                        quantity: order.ethereum_amount,
-                    },
-                    identity: body.ethereum_identity,
-                    chain_id: order.ethereum_ledger.chain_id,
-                    absolute_expiry: order.ethereum_absolute_expiry,
-                },
-                beta: hbit::CreatedSwap {
-                    amount: order.bitcoin_amount,
-                    final_identity: body.bitcoin_identity.clone(),
-                    network: order.bitcoin_ledger,
-                    absolute_expiry: order.bitcoin_absolute_expiry,
-                },
+                alpha: herc20,
+                beta: hbit,
                 peer: order.maker.clone().into(),
                 address_hint: None,
                 role: Role::Alice,
@@ -108,6 +99,7 @@ pub async fn post_take_order(
             swap_id,
             body.bitcoin_identity.into(),
             body.ethereum_identity,
+            body.bitcoin_amount,
         )
         .await
         .map(|_| {
@@ -199,6 +191,14 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
             title: None,
         };
 
+        let ethereum_amount = siren::Field {
+            name: "bitcoin_amount".to_string(),
+            class: vec!["ethereum".to_string(), "address".to_string()],
+            _type: None,
+            value: None,
+            title: None,
+        };
+
         let action = siren::Action {
             name: "take".to_string(),
             class: vec![],
@@ -206,7 +206,7 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
             href: format!("/orders/{}/take", order.id),
             title: None,
             _type: Some("application/json".to_string()),
-            fields: vec![bitcoin_field, ethereum_field],
+            fields: vec![bitcoin_field, ethereum_field, ethereum_amount],
         };
 
         match siren::Entity::default()
@@ -226,11 +226,11 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
 #[derive(Clone, Debug, Deserialize)]
 struct MakeOrderBody {
     position: Position,
+    rate: Rate,
     #[serde(with = "asset::bitcoin::sats_as_string")]
     bitcoin_amount: asset::Bitcoin,
     bitcoin_ledger: ledger::Bitcoin,
     bitcoin_absolute_expiry: u32,
-    ethereum_amount: asset::Erc20Quantity,
     token_contract: identity::Ethereum,
     ethereum_ledger: ledger::Ethereum,
     ethereum_absolute_expiry: u32,
@@ -242,10 +242,10 @@ impl From<MakeOrderBody> for NewOrder {
     fn from(body: MakeOrderBody) -> Self {
         NewOrder {
             position: body.position,
-            bitcoin_amount: body.bitcoin_amount,
+            rate: body.rate,
             bitcoin_ledger: body.bitcoin_ledger,
             bitcoin_absolute_expiry: body.bitcoin_absolute_expiry,
-            ethereum_amount: body.ethereum_amount,
+            bitcoin_amount: body.bitcoin_amount,
             token_contract: body.token_contract,
             ethereum_ledger: body.ethereum_ledger,
             ethereum_absolute_expiry: body.ethereum_absolute_expiry,
@@ -257,6 +257,8 @@ impl From<MakeOrderBody> for NewOrder {
 struct TakeOrderBody {
     ethereum_identity: identity::Ethereum,
     bitcoin_identity: bitcoin::Address,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    bitcoin_amount: asset::Bitcoin,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -264,11 +266,11 @@ struct OrderResponse {
     id: OrderId,
     maker: MakerId,
     position: Position,
-    #[serde(with = "asset::bitcoin::sats_as_string")]
-    bitcoin_amount: asset::Bitcoin,
+    rate: u64,
     bitcoin_ledger: ledger::Bitcoin,
     bitcoin_absolute_expiry: u32,
-    ethereum_amount: asset::Erc20Quantity,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    bitcoin_amount: asset::Bitcoin,
     token_contract: ethereum::Address,
     ethereum_ledger: ledger::Ethereum,
     ethereum_absolute_expiry: u32,
@@ -280,10 +282,10 @@ impl From<Order> for OrderResponse {
             id: order.id,
             maker: order.maker,
             position: order.position,
-            bitcoin_amount: order.bitcoin_amount,
+            rate: order.rate,
             bitcoin_ledger: order.bitcoin_ledger,
             bitcoin_absolute_expiry: order.bitcoin_absolute_expiry,
-            ethereum_amount: order.ethereum_amount,
+            bitcoin_amount: order.bitcoin_amount,
             token_contract: order.token_contract,
             ethereum_ledger: order.ethereum_ledger,
             ethereum_absolute_expiry: order.ethereum_absolute_expiry,
@@ -300,10 +302,10 @@ mod tests {
         let json = r#"
         {
             "position": "sell",
-            "bitcoin_amount": "300",
+            "bitcoin_amount": "200",
             "bitcoin_ledger": "regtest",
             "bitcoin_absolute_expiry": 600,
-            "ethereum_amount": "200",
+            "rate": 9000,
             "token_contract": "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280",
             "ethereum_ledger": {"chain_id":2},
             "ethereum_absolute_expiry": 600,
@@ -312,5 +314,17 @@ mod tests {
         }"#;
 
         let _body: MakeOrderBody = serde_json::from_str(json).expect("failed to deserialize order");
+    }
+
+    #[test]
+    fn test_take_order_deserialization() {
+        let json = r#"
+        {
+            "bitcoin_amount": "300",
+            "bitcoin_identity": "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX",
+            "ethereum_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72"
+        }"#;
+
+        let _body: TakeOrderBody = serde_json::from_str(json).expect("failed to deserialize order");
     }
 }

@@ -1,24 +1,8 @@
-use crate::{asset, identity, ledger, network::orderbook::MakerId};
+use crate::{asset, asset::Erc20Quantity, identity, ledger, network::orderbook::MakerId};
+use num::BigUint;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
-
-/// An order, created by a maker (Bob) and shared with the network via
-/// gossipsub.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Order {
-    pub id: OrderId,
-    pub maker: MakerId,
-    pub position: Position,
-    #[serde(with = "asset::bitcoin::sats_as_string")]
-    pub bitcoin_amount: asset::Bitcoin,
-    pub bitcoin_ledger: ledger::Bitcoin,
-    pub bitcoin_absolute_expiry: u32,
-    pub ethereum_amount: asset::Erc20Quantity,
-    pub token_contract: identity::Ethereum,
-    pub ethereum_ledger: ledger::Ethereum,
-    pub ethereum_absolute_expiry: u32,
-}
 
 #[derive(Debug, Clone, Copy, Hash, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OrderId(Uuid);
@@ -50,25 +34,47 @@ impl FromStr for OrderId {
     }
 }
 
-#[cfg(test)]
-pub fn meaningless_test_order(maker: MakerId) -> Order {
-    Order {
-        id: meaningless_test_order_id(),
-        maker,
-        position: Position::Sell,
-        bitcoin_amount: asset::Bitcoin::meaningless_test_value(),
-        bitcoin_ledger: ledger::Bitcoin::Regtest,
-        bitcoin_absolute_expiry: meaningless_expiry_value(),
-        ethereum_amount: asset::Erc20Quantity::meaningless_test_value(),
-        token_contract: Default::default(),
-        ethereum_ledger: ledger::Ethereum::default(),
-        ethereum_absolute_expiry: meaningless_expiry_value(),
+/// An order, created by a maker (Bob) and shared with the network via
+/// gossipsub.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Order {
+    pub id: OrderId,
+    pub maker: MakerId,
+    pub position: Position,
+    pub rate: u64,
+    pub bitcoin_ledger: ledger::Bitcoin,
+    pub bitcoin_absolute_expiry: u32,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    pub bitcoin_amount: asset::Bitcoin,
+    pub token_contract: identity::Ethereum,
+    pub ethereum_ledger: ledger::Ethereum,
+    pub ethereum_absolute_expiry: u32,
+}
+
+// We explicitly only support BTC/DAI.
+impl Order {
+    pub fn tp(&self) -> TradingPair {
+        TradingPair::BtcDai
+    }
+    pub fn ethereum_amount(&self, amount: asset::Bitcoin) -> Erc20Quantity {
+        Erc20Quantity::from(BigUint::from(amount.as_sat()) * (BigUint::from(self.rate)))
     }
 }
 
-#[cfg(test)]
-fn meaningless_expiry_value() -> u32 {
-    100
+// Since we only support a single trading pair this struct is actually
+// not needed, the information is implicit in the Order struct. Keep
+// this and the calls to order.tp().topic() to make it explicit that
+// there is only a single trading pair and the trading pair is
+// defined by the order struct.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum TradingPair {
+    BtcDai,
+}
+
+impl TradingPair {
+    pub fn to_topic(&self) -> Topic {
+        Topic::new(BTC_DAI.to_string())
+    }
 }
 
 /// The position of the maker for this order. A BTC/DAI buy order,
@@ -86,6 +92,30 @@ fn meaningless_expiry_value() -> u32 {
 pub enum Position {
     Buy,
     Sell,
+}
+/// The amount of DAI in wei for one satoshi of BTC
+// todo: deserialise from decimal strings
+pub type Rate = u64;
+
+#[cfg(test)]
+pub fn meaningless_test_order(maker: MakerId) -> Order {
+    Order {
+        id: meaningless_test_order_id(),
+        maker,
+        position: Position::Sell,
+        rate: 9000,
+        bitcoin_ledger: ledger::Bitcoin::Regtest,
+        bitcoin_absolute_expiry: meaningless_expiry_value(),
+        bitcoin_amount: asset::Bitcoin::from_sat(1000),
+        token_contract: Default::default(),
+        ethereum_ledger: ledger::Ethereum::default(),
+        ethereum_absolute_expiry: meaningless_expiry_value(),
+    }
+}
+
+#[cfg(test)]
+fn meaningless_expiry_value() -> u32 {
+    100
 }
 
 #[cfg(test)]
@@ -119,21 +149,10 @@ mod tests {
         let peer_id = PeerId::from_str(&given).expect("failed to parse peer id");
         let maker_id = MakerId(peer_id);
 
-        let order = Order {
-            id: meaningless_test_order_id(),
-            maker: maker_id,
-            position: Position::Sell,
-            bitcoin_amount: asset::Bitcoin::meaningless_test_value(),
-            bitcoin_ledger: ledger::Bitcoin::Regtest,
-            bitcoin_absolute_expiry: meaningless_expiry_value(),
-            ethereum_amount: asset::Erc20Quantity::meaningless_test_value(),
-            token_contract: Default::default(),
-            ethereum_ledger: ledger::Ethereum::default(),
-            ethereum_absolute_expiry: meaningless_expiry_value(),
-        };
+        let order = meaningless_test_order(maker_id);
 
         let got = serde_json::to_string(&order).expect("failed to serialize order");
-        let want = r#"{"id":"936da01f-9abd-4d9d-80c7-02af85c822a8","maker":"QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY","position":"sell","bitcoin_amount":"1000","bitcoin_ledger":"regtest","bitcoin_absolute_expiry":100,"ethereum_amount":"1000","token_contract":"0x0000000000000000000000000000000000000000","ethereum_ledger":{"chain_id":1337},"ethereum_absolute_expiry":100}"#.to_string();
+        let want = r#"{"id":"936da01f-9abd-4d9d-80c7-02af85c822a8","maker":"QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY","position":"sell","rate":9000,"bitcoin_ledger":"regtest","bitcoin_absolute_expiry":100,"bitcoin_amount":"1000","token_contract":"0x0000000000000000000000000000000000000000","ethereum_ledger":{"chain_id":1337},"ethereum_absolute_expiry":100}"#.to_string();
         assert_that(&got).is_equal_to(want);
     }
 

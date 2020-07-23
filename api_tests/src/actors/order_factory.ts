@@ -13,7 +13,7 @@ export interface BtcDaiOrder {
     position: string;
     bitcoin_amount: string;
     bitcoin_ledger: string;
-    ethereum_amount: string;
+    rate: number;
     token_contract: string;
     ethereum_ledger: Ethereum;
     bitcoin_absolute_expiry: number;
@@ -26,11 +26,17 @@ interface Ethereum {
     chain_id: number;
 }
 
+export function ethereumAmount(order: BtcDaiOrder): string {
+    return String(Number(order.bitcoin_amount) * order.rate);
+}
+
 export default class OrderbookFactory {
     public static async newBtcDaiOrder(
         alice: Actor,
         bob: Actor,
-        position: string
+        position: string,
+        rate: number,
+        amount: string
     ): Promise<BtcDaiOrder> {
         await alice.wallets.initializeForLedger(
             "bitcoin",
@@ -74,10 +80,10 @@ export default class OrderbookFactory {
 
         const order = {
             position,
-            bitcoin_amount: "1000000",
+            bitcoin_amount: amount,
             bitcoin_ledger: "regtest",
             token_contract: daiTokenContract,
-            ethereum_amount: "9000000000000000000",
+            rate,
             ethereum_ledger: {
                 chain_id: 1337,
             },
@@ -87,8 +93,8 @@ export default class OrderbookFactory {
             ethereum_identity: bobIdentities.ethereum,
         };
 
-        await alice.initLedgerAndBalancesForOrder(order);
-        await bob.initLedgerAndBalancesForOrder(order);
+        await alice.initLedgersForOrder(order);
+        await bob.initLedgersForOrder(order);
 
         return order;
     }

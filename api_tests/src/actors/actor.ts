@@ -33,7 +33,7 @@ import { Wallets } from "../wallets";
 import { defaultLedgerDescriptionForLedger, getIdentities } from "./defaults";
 import pTimeout from "p-timeout";
 import { Entity, Link } from "comit-sdk/dist/src/cnd/siren";
-import { BtcDaiOrder } from "./order_factory";
+import { BtcDaiOrder, ethereumAmount } from "./order_factory";
 
 export type ActorName = "alice" | "bob" | "carol";
 
@@ -81,6 +81,8 @@ export class Actor {
 
     public betaLedger: Ledger;
     public betaAsset: Asset;
+
+    public order: BtcDaiOrder;
 
     public readonly startingBalances: Map<assetAsKey, bigint>;
     public readonly expectedBalanceChanges: Map<assetAsKey, bigint>;
@@ -132,7 +134,7 @@ export class Actor {
             ledger: LedgerKind.Lightning,
         };
 
-        await this.setStartingBalances();
+        await this.setDefaultStartingBalances();
 
         const location = await this.createHerc20Halbit(create);
 
@@ -171,7 +173,7 @@ export class Actor {
             tokenContract: create.beta.token_contract,
         };
 
-        await this.setStartingBalances();
+        await this.setDefaultStartingBalances();
 
         const location = await this.createHalbitHerc20(create);
 
@@ -210,7 +212,7 @@ export class Actor {
             ledger: LedgerKind.Bitcoin,
         };
 
-        await this.setStartingBalances();
+        await this.setDefaultStartingBalances();
 
         const location = await this.createHerc20Hbit(create);
 
@@ -249,7 +251,7 @@ export class Actor {
             tokenContract: create.beta.token_contract,
         };
 
-        await this.setStartingBalances();
+        await this.setDefaultStartingBalances();
 
         const location = await this.createHbitHerc20(create);
 
@@ -263,7 +265,8 @@ export class Actor {
         );
     }
 
-    public async initLedgerAndBalancesForOrder(order: BtcDaiOrder) {
+    public async initLedgersForOrder(order: BtcDaiOrder) {
+        this.order = order;
         if (order.position === "buy") {
             this.alphaLedger = {
                 name: LedgerKind.Bitcoin,
@@ -280,7 +283,7 @@ export class Actor {
             };
             this.betaAsset = {
                 name: AssetKind.Erc20,
-                quantity: order.ethereum_amount,
+                quantity: ethereumAmount(order),
                 ledger: LedgerKind.Ethereum,
                 tokenContract: order.token_contract,
             };
@@ -295,7 +298,7 @@ export class Actor {
             };
             this.alphaAsset = {
                 name: AssetKind.Erc20,
-                quantity: order.ethereum_amount,
+                quantity: ethereumAmount(order),
                 ledger: LedgerKind.Ethereum,
                 tokenContract: order.token_contract,
             };
@@ -306,11 +309,9 @@ export class Actor {
             };
         } else {
             throw new Error(
-                `cannot init ledger and balances for unsupported ${order.position} yet`
+                `cannot init ledgers for unsupported ${order.position} yet`
             );
         }
-
-        await this.setStartingBalances();
     }
 
     /**
@@ -337,7 +338,7 @@ export class Actor {
     /**
      * Takes a BtcDai sell order (herc20-hbit Swap)
      */
-    public async takeOrder() {
+    public async takeOrder(partialTakeAmount: string) {
         if (this.name === "alice") {
             const {
                 ethereum: ethereumIdentity,
@@ -362,6 +363,10 @@ export class Actor {
             const aliceTakeOrderResponse = await this.cnd.executeSirenAction(
                 aliceOrderTakeAction,
                 async (field) => {
+                    if (field.name === "bitcoin_amount") {
+                        // @ts-ignore
+                        return Promise.resolve(partialTakeAmount);
+                    }
                     if (field.name === "bitcoin_identity") {
                         return Promise.resolve(bitcoinIdentity);
                     }
@@ -388,6 +393,8 @@ export class Actor {
                     bitcoin: this.wallets.bitcoin.inner,
                 })
             );
+            await this.actors.alice.setStartingBalances(partialTakeAmount);
+            await this.actors.bob.setStartingBalances(partialTakeAmount);
         } else {
             throw new Error(
                 `takeOrder does not support the actor ${this.name} yet`
@@ -432,7 +439,7 @@ export class Actor {
         }
     }
 
-    private async setStartingBalances() {
+    private async setDefaultStartingBalances() {
         switch (this.name) {
             case "alice": {
                 // Alice purchases beta asset with alpha asset
@@ -461,6 +468,57 @@ export class Actor {
                 this.expectedBalanceChanges.set(
                     toKey(this.alphaAsset),
                     BigInt(this.alphaAsset.quantity)
+                );
+                break;
+            }
+            default: {
+                throw new Error(
+                    `createSwap does not support the actor ${this.name} yet`
+                );
+            }
+        }
+
+        this.logger.debug(
+            "%s asset set to %s",
+            this.alphaAsset,
+            this.betaAsset.quantity
+        );
+        this.logger.debug(
+            "%s asset set to %s",
+            this.betaAsset,
+            this.betaAsset.quantity
+        );
+    }
+
+    public async setStartingBalances(partialTakeAmount: string) {
+        switch (this.name) {
+            case "alice": {
+                // Alice purchases beta asset with alpha asset
+                await this.setStartingBalance([
+                    this.alphaAsset,
+                    {
+                        ...this.betaAsset,
+                        quantity: "0",
+                    },
+                ]);
+                this.expectedBalanceChanges.set(
+                    toKey(this.betaAsset),
+                    BigInt(Number(this.order.rate) * Number(partialTakeAmount))
+                );
+                break;
+            }
+            case "bob": {
+                // Bob purchases alpha asset with beta asset
+                await this.setStartingBalance([
+                    this.betaAsset,
+                    {
+                        ...this.alphaAsset,
+                        quantity: "0",
+                    },
+                ]);
+                this.expectedBalanceChanges.set(
+                    toKey(this.alphaAsset),
+                    BigInt(partialTakeAmount)
                 );
                 break;
             }
