@@ -33,8 +33,10 @@ use std::{
 
 pub use self::{order::*, orders::*, quote::*};
 
-/// String representing the BTC/DAI trading pair.
-const BTC_DAI: &str = "BTC/DAI";
+lazy_static::lazy_static! {
+    /// The Topic used to publish BTC/DAI orders.
+    static ref BTC_DAI_TOPIC: Topic = Topic::new("BTC/DAI".to_string());
+}
 
 /// The time we wait for a take order request to be confirmed or denied.
 const REQUEST_TIMEOUT_SECS: u64 = 10;
@@ -85,22 +87,21 @@ impl Orderbook {
         };
 
         // Since we only support a single trading pair topic just subscribe to it now.
-        orderbook
-            .gossipsub
-            .subscribe(Topic::new(BTC_DAI.to_string()));
+        orderbook.gossipsub.subscribe(BTC_DAI_TOPIC.clone());
 
         orderbook
     }
 
     /// Create and publish a new 'make' order. Called by Bob i.e. the maker.
     pub fn make(&mut self, maker: PeerId, order: BtcDaiOrder) -> anyhow::Result<OrderId> {
-        let ser = bincode::serialize(&Message::CreateOrder(order))?;
-        let topic = order.to_topic();
-        self.gossipsub.publish(&topic, ser);
+        let id = order.id;
+
+        let ser = bincode::serialize(&Message::CreateOrder(order.clone()))?;
+        self.gossipsub.publish(&BTC_DAI_TOPIC, ser);
 
         self.orders.insert(maker, order)?;
 
-        Ok(order.id)
+        Ok(id)
     }
 
     /// Take an order, called by Alice i.e., the taker.
@@ -234,7 +235,7 @@ impl<'de> Deserialize<'de> for MakerId {
     }
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
 pub enum Message {
     CreateOrder(BtcDaiOrder),
     DeleteOrder(OrderId),

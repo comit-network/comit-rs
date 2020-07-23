@@ -1,52 +1,56 @@
 use crate::{
-    asset,
-    network::protocols::orderbook::{Quote, BTC_DAI},
+    asset::{self, ethereum::FromWei},
+    float_math,
 };
 
-use libp2p::gossipsub::Topic;
+use num::BigUint;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
 
 /// An limit order, created to supply liquidity to the network and
 /// shared with the network via gossipsub.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BtcDaiOrder {
     pub id: OrderId,
-    pub position: Position, // Position of the order from the creators perspective.
-    pub quote: Quote,       // Indirect quote i.e., one unit of BTC = quote units of DAI.
+    pub position: Position,
+    pub rate: asset::Dai, // Indirect quote i.e., one unit of BTC = rate units of DAI.
     #[serde(with = "asset::bitcoin::sats_as_string")]
     pub amount: asset::Btc, // Orders are quoted in the base currency.
 }
 
 impl BtcDaiOrder {
     /// Create a new buy limit order.
-    pub fn new_buy(quote: Quote, amount: asset::Btc) -> Self {
-        BtcDaiOrder::new(quote, amount, Position::Buy)
+    pub fn new_buy(rate: asset::Dai, amount: asset::Btc) -> Self {
+        BtcDaiOrder::new(rate, amount, Position::Buy)
     }
 
     /// Create a new sell limit order.
-    pub fn new_sell(quote: Quote, amount: asset::Btc) -> Self {
-        BtcDaiOrder::new(quote, amount, Position::Sell)
+    pub fn new_sell(rate: asset::Dai, amount: asset::Btc) -> Self {
+        BtcDaiOrder::new(rate, amount, Position::Sell)
     }
 
-    fn new(quote: Quote, amount: asset::Btc, position: Position) -> Self {
+    fn new(rate: asset::Dai, amount: asset::Btc, position: Position) -> Self {
         BtcDaiOrder {
             id: OrderId::random(),
             position,
-            quote,
+            rate,
             amount,
         }
     }
 
-    /// Convert this order to the Topic used to publish it.
-    pub fn to_topic(&self) -> Topic {
-        Topic::new(BTC_DAI.to_string())
-    }
+    /// Converts forex terminology (rate/amount) to COMIT terminology (X BTC for
+    /// Y DAI).
+    pub fn value(&self) -> (asset::Btc, asset::Dai) {
+        let amount = BigUint::from(self.amount.as_sat());
+        let rate = self.rate.to_wei();
 
-    /// Converts forex terminology (quote/amount) to COMIT terminology.
-    pub fn value(&self) -> (asset::Btc, asset::Erc20Quantity) {
-        unimplemented!()
+        let raw = rate * amount;
+
+        let wei = float_math::divide_pow_ten_trunc(raw, 8); // Undoes as_sat()
+        let dai = asset::Dai::from_wei(wei);
+
+        (self.amount, dai)
     }
 
     #[cfg(test)]
@@ -54,8 +58,8 @@ impl BtcDaiOrder {
         BtcDaiOrder {
             id: OrderId::random(),
             position: Position::Sell,
-            quote: Quote::from_float(9123.45).expect("failed to construct quote"),
-            amount: asset::Btc::from_sat(1000),
+            rate: asset::Dai::try_from_float("9123.45").expect("failed to construct rate"),
+            amount: asset::Btc::from_sat(800_000),
         }
     }
 }
@@ -159,5 +163,27 @@ mod tests {
     #[test]
     fn btc_dai_order_serialization_stability() {
         // TODO: implement btc_dai_order_serialization_stability()
+    }
+
+    #[test]
+    fn buy_constructor_typical_usage() {
+        let rate = asset::Dai::try_from_float("9123.45").expect("failed to create quote");
+        let amount = asset::Btc::from_sat(800_000);
+        let _ = BtcDaiOrder::new_buy(rate, amount);
+    }
+
+    #[test]
+    fn order_rate_amount_value() {
+        let rate = asset::Dai::try_from_float("10_000.0").expect("failed to create quote");
+        let amount = asset::Btc::from_sat(150_000_000); // 1.5 BTC
+        let order = BtcDaiOrder::new_buy(rate, amount);
+
+        let want = (
+            amount,
+            asset::Dai::try_from_float("15_000.0").expect("failed to create want dai"),
+        );
+        let got = order.value();
+
+        assert_that(&got).is_equal_to(&want);
     }
 }

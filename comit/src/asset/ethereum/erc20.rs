@@ -35,6 +35,10 @@ impl Erc20Quantity {
         Ok(Self::try_from_wei(int)?)
     }
 
+    pub fn to_wei(&self) -> BigUint {
+        self.0.clone()
+    }
+
     /// Create a erc20 quantity from a float string. E.g., this can be used to
     /// create a DAI quantity from the ergonomic string "1234.56".
     pub fn try_from_float(eth: &str) -> anyhow::Result<Self> {
@@ -54,6 +58,12 @@ impl Erc20Quantity {
     #[cfg(test)]
     pub fn meaningless_test_value() -> Self {
         Erc20Quantity::from_wei(1_000u32)
+    }
+}
+
+impl FromWei<BigUint> for Erc20Quantity {
+    fn from_wei(wei: BigUint) -> Self {
+        Self(wei)
     }
 }
 

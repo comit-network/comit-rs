@@ -51,12 +51,12 @@ impl Orders {
 
     /// Gets all orders, live and dead.
     pub fn get_orders(&self) -> Vec<BtcDaiOrder> {
-        self.inner.values().map(|r| r.order).collect()
+        self.inner.values().map(|r| r.order.clone()).collect()
     }
 
     /// Gets a specific order if it is known.
     pub fn get_order(&self, id: &OrderId) -> Option<BtcDaiOrder> {
-        self.inner.get(id).map(|r| r.order)
+        self.inner.get(id).map(|r| r.order.clone())
     }
 
     /// Kill an order. Return true if order was killed, false if order is
