@@ -1,8 +1,4 @@
-use crate::{
-    asset, identity, ledger,
-    network::orderbook::{MakerId, BTC_DAI},
-};
-use libp2p::gossipsub::Topic;
+use crate::{asset, identity, ledger, network::orderbook::MakerId};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
@@ -22,13 +18,6 @@ pub struct Order {
     pub token_contract: identity::Ethereum,
     pub ethereum_ledger: ledger::Ethereum,
     pub ethereum_absolute_expiry: u32,
-}
-
-// We explicitly only support BTC/DAI.
-impl Order {
-    pub fn to_topic(&self) -> Topic {
-        Topic::new(BTC_DAI.to_string())
-    }
 }
 
 #[derive(Debug, Clone, Copy, Hash, Serialize, Deserialize, PartialEq, Eq)]
