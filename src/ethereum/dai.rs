@@ -287,7 +287,6 @@ mod tests {
 
         let res: bitcoin::Amount = dai.worth_in(rate).unwrap();
 
-        // Result is 0.012469056 btc or 1246905.6 satoshis
         let btc = bitcoin::Amount::from_btc(0.012_345).unwrap();
         assert_eq!(res, btc);
     }
@@ -299,7 +298,6 @@ mod tests {
 
         let res: bitcoin::Amount = dai.worth_in(rate).unwrap();
 
-        // Result is 12,340,123.4 satoshis
         let btc = bitcoin::Amount::from_sat(123);
         assert_eq!(res, btc);
     }
