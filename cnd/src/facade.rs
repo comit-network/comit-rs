@@ -98,6 +98,11 @@ impl Facade {
     pub async fn dial_addr(&mut self, addr: Multiaddr) {
         let _ = self.swarm.dial_addr(addr).await;
     }
+
+    /// Subscribe to the orderbook gossipsub network BTC/DAI topic.
+    pub async fn subscribe(&mut self) -> bool {
+        self.swarm.subscribe().await
+    }
 }
 
 #[async_trait::async_trait]

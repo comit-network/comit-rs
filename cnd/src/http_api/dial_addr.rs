@@ -20,5 +20,12 @@ pub async fn post_dial_addr(
     for addr in body.addresses {
         facade.dial_addr(addr).await;
     }
+
+    // Best effort, assume we got a connection.
+    let sub = facade.subscribe().await;
+    if !sub {
+        tracing::warn!("failed to subscribe to orderbook gossipsub for BTC/DAI");
+    }
+
     Ok(warp::reply::reply())
 }

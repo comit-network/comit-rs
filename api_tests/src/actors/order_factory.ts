@@ -29,15 +29,16 @@ interface Ethereum {
 
 export default class OrderbookFactory {
     public static async connect(alice: Actor, bob: Actor) {
-        // Get alice's listen address
-        const aliceAddr = await alice.cnd.getPeerListenAddresses();
-
-        // Bob dials alices
+        // Alice dials Bob, must be this way around in order to ensure
+        // Alice subscribes to the BTC/DAI topic _after_ she has a connection.
+        const addr = await bob.cnd.getPeerListenAddresses();
         // @ts-ignore
-        await bob.cnd.client.post("dial", { addresses: aliceAddr });
+        await alice.cnd.client.post("dial", { addresses: addr });
 
         /// Wait for alice to accept an incoming connection from Bob
         await sleep(1000);
+
+        // TODO: This could be wait until a peer id is returned on the /peers endpoint.
     }
 
     public static async initWalletsForBtcDaiOrder(alice: Actor, bob: Actor) {

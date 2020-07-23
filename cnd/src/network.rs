@@ -154,6 +154,11 @@ impl Swarm {
         let _ = libp2p::Swarm::dial_addr(&mut *guard, addr)?;
         Ok(())
     }
+
+    pub async fn subscribe(&mut self) -> bool {
+        let mut guard = self.inner.lock().await;
+        guard.subscribe()
+    }
 }
 
 struct TokioExecutor {
@@ -400,6 +405,11 @@ impl ComitNode {
 
     pub fn get_orders(&self) -> Vec<Order> {
         self.orderbook.get_orders()
+    }
+
+    /// Subscribe to the orderbook gossipsub network for the BTC/DAI topic.
+    pub fn subscribe(&mut self) -> bool {
+        self.orderbook.subscribe()
     }
 }
 

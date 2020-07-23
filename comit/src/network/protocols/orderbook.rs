@@ -72,7 +72,7 @@ impl Orderbook {
             config,
         );
 
-        let mut orderbook = Orderbook {
+        let orderbook = Orderbook {
             peer_id,
             gossipsub,
             take_order: behaviour,
@@ -80,12 +80,19 @@ impl Orderbook {
             events: VecDeque::new(),
         };
 
-        // Since we only support a single trading pair topic just subscribe to it now.
         orderbook
-            .gossipsub
-            .subscribe(Topic::new(BTC_DAI.to_string()));
+    }
 
-        orderbook
+    /// Subscribe to the BTC/DAI gossipsub topic. Caller is responsible for
+    /// ensuring that there is an open connection to another node in the network
+    /// before calling.
+    // Currently we call subscribe after dialing, this implies that in order to
+    // receive orders on the gossipsub network one must dial to another node. For a
+    // node acting as a maker only it probably does not matter if we do not receive
+    // gossipsub messages.
+    // ref: https://github.com/libp2p/rust-libp2p/issues/1671#issuecomment-662709729
+    pub fn subscribe(&mut self) -> bool {
+        self.gossipsub.subscribe(Topic::new(BTC_DAI.to_string()))
     }
 
     /// Create and publish a new 'make' order. Called by Bob i.e. the maker.
