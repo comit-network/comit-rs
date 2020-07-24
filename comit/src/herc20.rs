@@ -250,7 +250,7 @@ where
     Ok(Refunded { transaction })
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Params {
     pub asset: asset::Erc20,
     pub redeem_identity: identity::Ethereum,
