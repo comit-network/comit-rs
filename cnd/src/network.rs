@@ -1,9 +1,7 @@
 mod peer_tracker;
-mod tor;
 mod transport;
 
 // Export comit network types while maintaining the module abstraction.
-pub use self::tor::TorTokioTcpConfig;
 pub use ::comit::{asset, ledger, network::*};
 pub use transport::ComitTransport;
 

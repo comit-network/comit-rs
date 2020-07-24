@@ -1,4 +1,3 @@
-use crate::network::TorTokioTcpConfig;
 use libp2p::{
     core::{
         either::EitherError,
@@ -15,6 +14,7 @@ use libp2p::{
     tcp::TokioTcpConfig,
     yamux, Multiaddr, PeerId, Transport,
 };
+use libp2p_tokio_socks5::Socks5TokioTcpConfig;
 use std::{collections::HashMap, io, time::Duration};
 
 const PORT: u16 = 9939;
@@ -66,7 +66,7 @@ fn build_tor_transport(
     let mut map = HashMap::new();
     map.insert(addr, PORT);
 
-    let transport = TorTokioTcpConfig::new().nodelay(true).onion_map(map);
+    let transport = Socks5TokioTcpConfig::default().nodelay(true).onion_map(map);
     let transport = DnsConfig::new(transport)?;
 
     let transport = transport
