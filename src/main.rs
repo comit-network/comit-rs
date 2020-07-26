@@ -1,12 +1,55 @@
+#![warn(
+    unused_extern_crates,
+    missing_debug_implementations,
+    missing_copy_implementations,
+    rust_2018_idioms,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::fallible_impl_from,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_wrap,
+    clippy::dbg_macro
+)]
+#![allow(dead_code)] // To be removed further down the line
+#![forbid(unsafe_code)]
+#![recursion_limit = "256"]
+// TODO: Add no unwrap policy
+
+mod bitcoin;
+mod command;
+mod config;
+mod ethereum;
+mod float_maths;
+mod fs;
+mod history;
+mod jsonrpc;
+mod maker;
+mod mid_market_rate;
+mod network;
+mod order;
+mod rate;
+mod seed;
+mod swap;
+mod swap_id;
 mod trace;
 
-use anyhow::Context;
-use nectar::{
-    bitcoin,
+#[cfg(all(test, feature = "test-docker"))]
+mod test_harness;
+
+use crate::{
     command::{balance, deposit, dump_config, trade, wallet_info, withdraw, Command, Options},
-    config::{self, Settings},
-    ethereum,
+    config::Settings,
 };
+use anyhow::Context;
+use conquer_once::Lazy;
+pub use maker::Maker;
+pub use mid_market_rate::MidMarketRate;
+pub use rate::{Rate, Spread};
+pub use seed::Seed;
+pub use swap_id::SwapId;
+
+pub static SECP: Lazy<::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All>> =
+    Lazy::new(::bitcoin::secp256k1::Secp256k1::new);
 
 #[tokio::main]
 async fn main() {
@@ -110,7 +153,7 @@ fn read_config(options: &Options) -> anyhow::Result<config::File> {
     }
 
     // try to load default config
-    let default_path = nectar::fs::default_config_path()?;
+    let default_path = crate::fs::default_config_path()?;
 
     if !default_path.exists() {
         return Ok(config::File::default());
