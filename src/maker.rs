@@ -12,12 +12,6 @@ use crate::{
     MidMarketRate,
 };
 
-// TODO: Figure out why this is an enum
-#[derive(Debug, PartialEq)]
-pub enum NewOrder {
-    Created(BtcDaiOrder),
-}
-
 #[derive(Debug, Clone)]
 pub struct TakenOrder {
     pub inner: BtcDaiOrder,

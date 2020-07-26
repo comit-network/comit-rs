@@ -101,13 +101,7 @@ impl hbit::ExecuteRefund for Wallet {
 }
 
 impl Wallet {
-    pub async fn redeem(
-        &self,
-        action: hbit::BroadcastSignedTransaction,
-    ) -> anyhow::Result<bitcoin::Transaction> {
-        self.spend(action).await
-    }
-
+    #[cfg(test)]
     pub async fn refund(
         &self,
         action: hbit::BroadcastSignedTransaction,
