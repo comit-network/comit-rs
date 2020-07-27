@@ -312,7 +312,7 @@ export class Actor {
             // make response contain url in the header to the created order
             // poll this order to see when when it has been converted to a swap
             // "POST /orders"
-            // @ts-ignore
+            // @ts-ignore: client is private.
             const bobMakeOrderResponse = await this.cnd.client.post(
                 "orders",
                 order
@@ -367,7 +367,7 @@ export class Actor {
             // Wait for bob to acknowledge that Alice has taken the order he created
             await sleep(1000);
 
-            // @ts-ignore
+            // @ts-ignore: client is private.
             const aliceSwapResponse = await this.cnd.client.get(
                 aliceTakeOrderResponse.headers.location
             );
@@ -845,7 +845,7 @@ export class Actor {
     public async createHerc20Halbit(
         body: Herc20HalbitPayload
     ): Promise<string> {
-        // @ts-ignore
+        // @ts-ignore: client is private.
         const response = await this.cnd.client.post(
             "swaps/herc20/halbit",
             body
@@ -857,7 +857,7 @@ export class Actor {
     public async createHalbitHerc20(
         body: HalbitHerc20Payload
     ): Promise<string> {
-        // @ts-ignore
+        // @ts-ignore: client is private.
         const response = await this.cnd.client.post(
             "swaps/halbit/herc20",
             body
@@ -867,14 +867,14 @@ export class Actor {
     }
 
     public async createHerc20Hbit(body: Herc20HbitPayload): Promise<string> {
-        // @ts-ignore
+        // @ts-ignore: client is private.
         const response = await this.cnd.client.post("swaps/herc20/hbit", body);
 
         return response.headers.location;
     }
 
     public async createHbitHerc20(body: HbitHerc20Payload): Promise<string> {
-        // @ts-ignore
+        // @ts-ignore: client is private.
         const response = await this.cnd.client.post("swaps/hbit/herc20", body);
 
         return response.headers.location;
