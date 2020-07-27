@@ -334,7 +334,6 @@ export class Actor {
     ) {
         if (this.name === "alice") {
             // Poll until Alice receives an order. The order must be the one that Bob created above.
-            // @ts-ignore
             const aliceOrdersResponse = await this.pollCndUntil<Entity>(
                 "orders",
                 (entity) => entity.entities.length > 0
@@ -349,16 +348,13 @@ export class Actor {
             // The resolver function fills the refund and redeem address fields required
             // "POST /orders/63c0f8bd-beb2-4a9c-8591-a46f65913b0a/take"
             // Alice receives a url to the swap that was created as a result of taking the order
-            // @ts-ignore
             const aliceTakeOrderResponse = await this.cnd.executeSirenAction(
                 aliceOrderTakeAction,
                 async (field) => {
                     if (field.name === "bitcoin_identity") {
-                        // @ts-ignore
                         return Promise.resolve(bitcoinIdentity);
                     }
                     if (field.name === "ethereum_identity") {
-                        // @ts-ignore
                         return Promise.resolve(ethereumIdentity);
                     }
                 }
