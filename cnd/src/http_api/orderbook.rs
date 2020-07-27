@@ -1,5 +1,5 @@
 use crate::{
-    asset::{self, Erc20},
+    asset::{self, Dai, Erc20},
     hbit, herc20,
     http_api::problem,
     identity, ledger,
@@ -159,6 +159,32 @@ pub async fn post_make_order(
         .map_err(warp::reject::custom)
 }
 
+pub async fn post_limit_order(
+    body: serde_json::Value,
+    facade: Facade,
+) -> Result<impl Reply, Rejection> {
+    tracing::info!("entered make order controller");
+    let body = LimitOrderBody::deserialize(&body)
+        .map_err(anyhow::Error::new)
+        .map_err(problem::from_anyhow)
+        .map_err(warp::reject::custom)?;
+
+    let reply = warp::reply::reply();
+    let order = NewOrder::from(body.clone());
+
+    facade
+        .create_limit_order(order, body.ethereum_identity, body.bitcoin_identity.into())
+        .await
+        .map(|order_id| {
+            warp::reply::with_status(
+                warp::reply::with_header(reply, "Location", format!("/orders/{}", order_id)),
+                StatusCode::CREATED,
+            )
+        })
+        .map_err(problem::from_anyhow)
+        .map_err(warp::reject::custom)
+}
+
 pub async fn get_order(order_id: OrderId, facade: Facade) -> Result<impl Reply, Rejection> {
     let swap_id = facade
         .storage
@@ -221,6 +247,85 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
         }
     }
     Ok(warp::reply::json(&entity))
+}
+
+/// Create a BTC/DAI limit order.
+// I don't care what the expiries are, I want cnd to work out good
+// defaults for me. I don't want to give over identities here, I just
+// want to create the limit order.
+#[derive(Clone, Debug, Deserialize)]
+struct LimitOrderBody {
+    position: Position,
+    price: asset::Dai,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    quantity: asset::Bitcoin,
+}
+
+impl LimitOrderBody {
+    fn dai_vaule() -> asset::Dai {
+        // let raw = quantity as sats * price as wei
+        // shift it left 8 decimal places and convert back into DAI
+        let value = asset::Dai::from_wei_dec_str("9000.00");
+        tracing::warn!("careful, limit order is hard coded to be 1 BTC for 9000 DAI");
+
+        value
+    }
+}
+
+impl From<MakeOrderBody> for NewOrder {
+    fn from(body: MakeOrderBody) -> Self {
+        // TODO: These should come from cnd startup config.
+        let bitcoin_ledger = ledger::Bitcoin::Regtest;
+        let ethereum_ledger = ledger::Ethereum::from(1337);
+
+        let (bitcoin_absolute_expiry, ethereum_absolute_expiry) = calculate_expiries(body.position);
+
+        let token_contract = dai_token_contract();
+
+        let bitcoin_amount = body.quantity; // We use indirect quotes.
+        let ethereum_amount = body.dai_value();
+
+        NewOrder {
+            position: body.position,
+            bitcoin_amount,
+            bitcoin_ledger,
+            bitcoin_absolute_expiry,
+            ethereum_amount: body.ethereum_amount,
+            token_contract,
+            ethereum_ledger,
+            ethereum_absolute_expiry,
+        }
+    }
+}
+
+fn dai_token_contract(_ledger: ledger::Ethereum) -> identity::Ethereum {
+    let mainnet =
+        identity::Ethereum::from_str("0x6b175474e89094c44da98b954eedeac495271d0f").unwrap();
+
+    // TODO: This actually needs to return the token contract for the respective
+    // network.
+
+    mainnet
+}
+
+// Returns (bitcoin, ethereum) expiries.
+fn calculate_expiries(position: Position) -> (u32, u32) {
+    let seconds_in_an_hour: u32 = 60 * 60;
+
+    let alpha = 12 * seconds_in_an_hour;
+    let beta = 24 * seconds_in_an_hour;
+
+    // Assumes maker of a limit order wants to act in the role of Bob.
+    match position {
+        Position::Buy => {
+            // Alpha ledger must be Bitcoin, beta must be Ethereum.
+            (alpha, beta)
+        }
+        Position::Sell => {
+            // Alpha ledger must be Ethereum, beta ledger must be Bitcoin.
+            (beta, alpha)
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
