@@ -18,7 +18,10 @@ pub async fn post_dial_addr(
         .map_err(warp::reject::custom)?;
 
     for addr in body.addresses {
-        facade.dial_addr(addr).await;
+        match facade.dial_addr(addr.clone()).await {
+            Ok(()) => {}
+            Err(_) => tracing::warn!("connection limit hit when dialing address: {}", addr),
+        }
     }
     Ok(warp::reply::reply())
 }

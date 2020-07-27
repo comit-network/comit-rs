@@ -95,8 +95,8 @@ impl Facade {
         self.swarm.get_orders().await
     }
 
-    pub async fn dial_addr(&mut self, addr: Multiaddr) {
-        let _ = self.swarm.dial_addr(addr).await;
+    pub async fn dial_addr(&mut self, addr: Multiaddr) -> anyhow::Result<()> {
+        self.swarm.dial_addr(addr).await
     }
 }
 

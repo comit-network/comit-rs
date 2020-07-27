@@ -17,11 +17,16 @@ use std::{
 #[derive(Default, Debug)]
 pub struct PeerTracker {
     connected_peers: HashMap<PeerId, Vec<Multiaddr>>,
+    address_hints: HashMap<PeerId, Multiaddr>,
 }
 
 impl PeerTracker {
     pub fn connected_peers(&self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
         self.connected_peers.clone().into_iter()
+    }
+
+    pub fn add_address_hint(&mut self, id: PeerId, addr: Multiaddr) -> Option<Multiaddr> {
+        self.address_hints.insert(id, addr)
     }
 }
 
@@ -34,10 +39,19 @@ impl NetworkBehaviour for PeerTracker {
     }
 
     fn addresses_of_peer(&mut self, peer: &PeerId) -> Vec<Multiaddr> {
-        self.connected_peers
-            .get(peer)
-            .cloned()
-            .unwrap_or_else(Vec::new)
+        let mut addresses: Vec<Multiaddr> = vec![];
+
+        if let Some(addr) = self.address_hints.get(peer) {
+            addresses.push(addr.clone());
+        }
+
+        if let Some(connected) = self.connected_peers.get(peer) {
+            for addr in connected.iter() {
+                addresses.push(addr.clone())
+            }
+        }
+
+        addresses
     }
 
     fn inject_connected(&mut self, _: &PeerId) {}
