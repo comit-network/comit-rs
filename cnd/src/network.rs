@@ -21,7 +21,6 @@ use async_trait::async_trait;
 use chrono::Utc;
 use futures::{stream::StreamExt, Future, TryFutureExt};
 use libp2p::{
-    core::connection::ConnectionLimit,
     identity::{ed25519, Keypair},
     swarm::SwarmBuilder,
     Multiaddr, NetworkBehaviour, PeerId,
@@ -109,13 +108,7 @@ impl Swarm {
 
             if !existing_connection_to_peer {
                 tracing::debug!("dialing ...");
-                match libp2p::Swarm::dial_addr(&mut guard, address_hint) {
-                    Ok(()) => {}
-                    // How did we hit the connection limit if we are not connected?
-                    // Match on the error directly so our assumption of only hitting the connection
-                    // limit here is not violated by future API changes.
-                    Err(ConnectionLimit { .. }) => {}
-                }
+                let _ = libp2p::Swarm::dial(&mut guard, &peer)?;
             }
         }
 
