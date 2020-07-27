@@ -16,7 +16,7 @@ If you have any questions, feel free to [reach out to the team in our Gitter cha
 [![Safety Dance](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 [![Bors enabled](https://bors.tech/images/badge_small.svg)](https://app.bors.tech/repositories/20717)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/comit-network/community)
+[![Matrix chat](https://img.shields.io/badge/chat-on%20matrix-brightgreen?style=flat&logo=matrix)](https://app.element.io/#/room/#comit:matrix.org)
 
 # comit-rs
 
