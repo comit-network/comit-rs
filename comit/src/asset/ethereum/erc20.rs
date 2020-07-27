@@ -9,6 +9,8 @@ use std::{fmt, str::FromStr};
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Erc20Quantity(BigUint);
 
+pub type Dai = Erc20Quantity;
+
 impl Erc20Quantity {
     pub fn zero() -> Self {
         Self(BigUint::zero())
