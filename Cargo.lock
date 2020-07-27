@@ -495,7 +495,8 @@ dependencies = [
  "http-api-problem",
  "ipnet",
  "lazy_static",
- "libp2p",
+ "libp2p 0.22.0",
+ "libp2p-tokio-socks5",
  "libsqlite3-sys",
  "log 0.4.11",
  "num",
@@ -520,7 +521,7 @@ dependencies = [
  "testcontainers",
  "thiserror",
  "tokio",
- "tokio-socks",
+ "tokio-socks 0.3.0",
  "toml",
  "tracing",
  "tracing-core",
@@ -554,7 +555,7 @@ dependencies = [
  "hex 0.4.2",
  "lazy_static",
  "levenshtein",
- "libp2p",
+ "libp2p 0.22.0",
  "log 0.4.11",
  "lru 0.5.3",
  "num",
@@ -1517,6 +1518,26 @@ checksum = "9457b06509d27052635f90d6466700c65095fdf75409b3fbdd903e988b886f49"
 
 [[package]]
 name = "libp2p"
+version = "0.21.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d743d03fab397cde23925a17cb87b35b25994f44ab8c6a9e46a7e953ec739cd"
+dependencies = [
+ "bytes 0.5.5",
+ "futures",
+ "lazy_static",
+ "libp2p-core",
+ "libp2p-core-derive",
+ "libp2p-swarm",
+ "multihash",
+ "parity-multiaddr",
+ "parking_lot 0.10.2",
+ "pin-project",
+ "smallvec 1.4.0",
+ "wasm-timer",
+]
+
+[[package]]
+name = "libp2p"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0306a49ee6a89468f96089906f36b0eef82c988dcfc8acf3e2dcd6ad1c859f85"
@@ -1711,6 +1732,24 @@ dependencies = [
  "log 0.4.11",
  "socket2",
  "tokio",
+]
+
+[[package]]
+name = "libp2p-tokio-socks5"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0927436c4e418ba8c328dfc77379a9d3b5d31120869900c1213bd4e2db5aef85"
+dependencies = [
+ "data-encoding",
+ "futures",
+ "futures-timer",
+ "get_if_addrs",
+ "ipnet",
+ "libp2p 0.21.1",
+ "log 0.4.11",
+ "socket2",
+ "tokio",
+ "tokio-socks 0.2.2",
 ]
 
 [[package]]
@@ -3354,6 +3393,19 @@ dependencies = [
  "proc-macro2 1.0.19",
  "quote 1.0.7",
  "syn 1.0.35",
+]
+
+[[package]]
+name = "tokio-socks"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1997788a0e25e09300e44680ba1ef9d44d6f634a883641f80109e8b59c928daf"
+dependencies = [
+ "bytes 0.4.12",
+ "either",
+ "futures",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]
