@@ -10,6 +10,7 @@
     clippy::cast_possible_wrap,
     clippy::dbg_macro
 )]
+#![cfg_attr(not(test), warn(clippy::unwrap_used))]
 #![forbid(unsafe_code)]
 #![recursion_limit = "256"]
 
@@ -58,11 +59,11 @@ async fn main() {
         .expect("Could not initialize configuration");
 
     if let Command::DumpConfig = options.cmd {
-        dump_config(settings).unwrap();
+        dump_config(settings).expect("dump config");
         std::process::exit(0);
     }
 
-    trace::init_tracing(settings.logging.level).unwrap();
+    trace::init_tracing(settings.logging.level).expect("initialize tracing");
 
     let seed = config::Seed::from_file_or_generate(&settings.data.dir)
         .expect("Could not retrieve/initialize seed")
@@ -86,7 +87,7 @@ async fn main() {
 
     match options.cmd {
         Command::Trade => {
-            let runtime = tokio::runtime::Runtime::new().unwrap();
+            let runtime = tokio::runtime::Runtime::new().expect("Create runtime");
 
             trade(
                 runtime.handle().clone(),
@@ -106,7 +107,7 @@ async fn main() {
                 settings.bitcoin.network,
             )
             .await
-            .unwrap();
+            .expect("get wallet info");
             println!("{}", wallet_info);
         }
         Command::Balance => {
@@ -115,7 +116,7 @@ async fn main() {
                 bitcoin_wallet.expect("could not initialise bitcoin wallet"),
             )
             .await
-            .unwrap();
+            .expect("get wallet balances");
             println!("{}", balance);
         }
         Command::Deposit => {
@@ -124,7 +125,7 @@ async fn main() {
                 bitcoin_wallet.expect("could not initialise bitcoin wallet"),
             )
             .await
-            .unwrap();
+            .expect("get wallet addresses");
             println!("{}", deposit);
         }
         Command::Withdraw(arguments) => {
@@ -134,7 +135,7 @@ async fn main() {
                 arguments,
             )
             .await
-            .unwrap();
+            .expect("Withdraw assets");
             println!("Withdraw successful. Transaction Id: {}", tx_id);
         }
         Command::DumpConfig => unreachable!(),
