@@ -1,6 +1,6 @@
 use crate::{
     asset, identity, ledger,
-    network::protocols::orderbook::{MakerId, BTC_DAI},
+    network::orderbook::{MakerId, BTC_DAI},
 };
 use libp2p::gossipsub::Topic;
 use serde::{Deserialize, Serialize};

@@ -1,6 +1,7 @@
 pub mod comit;
 pub mod oneshot_behaviour;
 pub mod oneshot_protocol;
+pub mod orderbook;
 pub mod protocols;
 mod shared_swap_id;
 pub mod swap_digest;
@@ -11,7 +12,8 @@ use crate::{identity, SecretHash};
 
 pub use self::{
     comit::*,
-    protocols::{announce::Announce, orderbook::*, *},
+    orderbook::*,
+    protocols::{announce::Announce, *},
     shared_swap_id::SharedSwapId,
     swap_digest::SwapDigest,
 };
