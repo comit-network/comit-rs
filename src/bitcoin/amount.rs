@@ -3,7 +3,7 @@ use crate::{
     float_maths::string_int_to_float,
     Rate,
 };
-use bitcoin::Network;
+use ::bitcoin::Network;
 
 pub const SATS_IN_BITCOIN_EXP: u16 = 8;
 
