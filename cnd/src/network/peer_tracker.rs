@@ -39,16 +39,19 @@ impl NetworkBehaviour for PeerTracker {
     }
 
     fn addresses_of_peer(&mut self, peer: &PeerId) -> Vec<Multiaddr> {
+        let mut addresses: Vec<Multiaddr> = vec![];
+
         if let Some(addr) = self.address_hints.get(peer) {
-            return vec![addr.clone()];
+            addresses.push(addr.clone());
         }
 
-        // FIXME: Why do we return addresses of connected peers? Isn't this function
-        // called when another component wants to find out what addr to try to dial to?
-        self.connected_peers
-            .get(peer)
-            .cloned()
-            .unwrap_or_else(Vec::new)
+        if let Some(connected) = self.connected_peers.get(peer) {
+            for addr in connected.iter() {
+                addresses.push(addr.clone())
+            }
+        }
+
+        addresses
     }
 
     fn inject_connected(&mut self, _: &PeerId) {}
