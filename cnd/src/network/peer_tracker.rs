@@ -17,11 +17,16 @@ use std::{
 #[derive(Default, Debug)]
 pub struct PeerTracker {
     connected_peers: HashMap<PeerId, Vec<Multiaddr>>,
+    address_hints: HashMap<PeerId, Multiaddr>,
 }
 
 impl PeerTracker {
     pub fn connected_peers(&self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
         self.connected_peers.clone().into_iter()
+    }
+
+    pub fn add_address_hint(&mut self, id: PeerId, addr: Multiaddr) -> Option<Multiaddr> {
+        self.address_hints.insert(id, addr)
     }
 }
 
@@ -34,6 +39,12 @@ impl NetworkBehaviour for PeerTracker {
     }
 
     fn addresses_of_peer(&mut self, peer: &PeerId) -> Vec<Multiaddr> {
+        if let Some(addr) = self.address_hints.get(peer) {
+            return vec![addr.clone()];
+        }
+
+        // FIXME: Why do we return addresses of connected peers? Isn't this function
+        // called when another component wants to find out what addr to try to dial to?
         self.connected_peers
             .get(peer)
             .cloned()

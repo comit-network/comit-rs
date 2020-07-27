@@ -96,12 +96,19 @@ impl Swarm {
     ) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
 
-        // best effort attempt to establish a connection to the other party
         if let Some(address_hint) = address_hint {
+            if let Some(addr) = guard.add_address_hint(peer.clone(), address_hint.clone()) {
+                tracing::warn!(
+                    "clobbered old address hint, old: {}, new: {}",
+                    addr,
+                    address_hint,
+                );
+            }
             let existing_connection_to_peer =
                 libp2p::Swarm::connection_info(&mut guard, &peer).is_some();
 
             if !existing_connection_to_peer {
+                tracing::debug!("dialing ...");
                 match libp2p::Swarm::dial_addr(&mut guard, address_hint) {
                     Ok(()) => {}
                     // How did we hit the connection limit if we are not connected?
@@ -400,6 +407,10 @@ impl ComitNode {
 
     pub fn get_orders(&self) -> Vec<Order> {
         self.orderbook.get_orders()
+    }
+
+    pub(crate) fn add_address_hint(&mut self, id: PeerId, addr: Multiaddr) -> Option<Multiaddr> {
+        self.peer_tracker.add_address_hint(id, addr)
     }
 }
 
