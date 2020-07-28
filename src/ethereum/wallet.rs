@@ -123,16 +123,7 @@ impl Wallet {
             .send_raw_transaction(transaction_hex)
             .await?;
 
-        let transaction_receipt = loop {
-            tokio::time::delay_for(Duration::from_millis(1_000)).await;
-
-            match self.get_transaction_receipt(hash).await? {
-                Some(transaction_receipt) => break transaction_receipt,
-                None => continue,
-            };
-        };
-
-        let contract_address = match transaction_receipt {
+        let contract_address = match self.wait_until_transaction_receipt(hash).await? {
             TransactionReceipt {
                 status: 1,
                 contract_address: Some(contract_address),
@@ -333,13 +324,29 @@ impl Wallet {
             .await
     }
 
-    pub async fn get_transaction_receipt(
+    pub async fn wait_until_transaction_receipt(
         &self,
         transaction_hash: Hash,
-    ) -> anyhow::Result<Option<TransactionReceipt>> {
-        self.geth_client
-            .get_transaction_receipt(transaction_hash)
-            .await
+    ) -> anyhow::Result<TransactionReceipt> {
+        let start_time = std::time::Instant::now();
+        let max_retry_time = Duration::from_millis(60_000);
+
+        loop {
+            if std::time::Instant::now() > start_time + max_retry_time {
+                anyhow::bail!(
+                    "failed to find transaction receipt for transaction {}",
+                    transaction_hash
+                )
+            }
+
+            if let Some(transaction_receipt) =
+                self.get_transaction_receipt(transaction_hash).await?
+            {
+                return Ok(transaction_receipt);
+            }
+
+            tokio::time::delay_for(Duration::from_millis(1_000)).await;
+        }
     }
 
     pub async fn erc20_balance(&self, token_contract: Address) -> anyhow::Result<Erc20> {
@@ -356,6 +363,15 @@ impl Wallet {
 
     pub async fn ether_balance(&self) -> anyhow::Result<ether::Amount> {
         self.geth_client.get_balance(self.account()).await
+    }
+
+    async fn get_transaction_receipt(
+        &self,
+        transaction_hash: Hash,
+    ) -> anyhow::Result<Option<TransactionReceipt>> {
+        self.geth_client
+            .get_transaction_receipt(transaction_hash)
+            .await
     }
 
     async fn get_transaction_count(&self) -> anyhow::Result<u32> {
