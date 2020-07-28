@@ -11,7 +11,7 @@ bimap = "0.4"
 bitcoin = { version = "0.23.0", features = ["rand", "use-serde"] }
 chrono = "0.4"
 clarity = "0.1"
-comit = { git = "https://github.com/comit-network/comit-rs", package = "comit", branch = "nectar-new-orderbook" }
+comit = { git = "https://github.com/comit-network/comit-rs", package = "comit", rev = "35aeb97525ebca153c5f8483c0aa2952c8e16d39" }
 config = "0.10"
 conquer-once = "0.2"
 csv = "1.1"
@@ -28,9 +28,8 @@ num = "0.3"
 num256 = "0.2"
 pem = "0.8"
 reqwest = { version = "0.10", default-features = false, features = ["json", "native-tls"] }
-serde = { version = "1.0", features = ["derive"] }
-serde-hex = "0.1.0"
-serde_derive = "<1.0.99" # Try to fix mac os CI issue with bitcoin crate
+serde = { version = "1", features = ["derive"] }
+serde-hex = "0.1"
 serde_json = "1.0"
 sha2 = "0.9"
 sled = "0.32"
