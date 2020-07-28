@@ -130,22 +130,17 @@ impl Maker {
 
     pub fn new_sell_order(&self) -> anyhow::Result<BtcDaiOrder> {
         match (self.mid_market_rate, self.btc_balance) {
-            (Some(mid_market_rate), Some(btc_balance)) => {
-                let order = BtcDaiOrder::new_sell(
-                    btc_balance,
-                    self.btc_fee,
-                    self.btc_reserved_funds,
-                    self.btc_max_sell_amount,
-                    mid_market_rate.into(),
-                    self.spread,
-                    self.dai_contract_address,
-                    self.bitcoin_network,
-                    self.ethereum_network,
-                )?;
-
-                tracing::info!("New order created: {}", order);
-                Ok(order)
-            }
+            (Some(mid_market_rate), Some(btc_balance)) => BtcDaiOrder::new_sell(
+                btc_balance,
+                self.btc_fee,
+                self.btc_reserved_funds,
+                self.btc_max_sell_amount,
+                mid_market_rate.into(),
+                self.spread,
+                self.dai_contract_address,
+                self.bitcoin_network,
+                self.ethereum_network,
+            ),
             (None, _) => anyhow::bail!(RateNotAvailable(Position::Sell)),
             (_, None) => anyhow::bail!(BalanceNotAvailable(Symbol::Btc)),
         }
@@ -153,21 +148,16 @@ impl Maker {
 
     pub fn new_buy_order(&self) -> anyhow::Result<BtcDaiOrder> {
         match (self.mid_market_rate, self.dai_balance.clone()) {
-            (Some(mid_market_rate), Some(dai_balance)) => {
-                let order = BtcDaiOrder::new_buy(
-                    dai_balance,
-                    self.dai_reserved_funds.clone(),
-                    self.dai_max_sell_amount.clone(),
-                    mid_market_rate.into(),
-                    self.spread,
-                    self.dai_contract_address,
-                    self.bitcoin_network,
-                    self.ethereum_network,
-                )?;
-
-                tracing::info!("New order created: {}", order);
-                Ok(order)
-            }
+            (Some(mid_market_rate), Some(dai_balance)) => BtcDaiOrder::new_buy(
+                dai_balance,
+                self.dai_reserved_funds.clone(),
+                self.dai_max_sell_amount.clone(),
+                mid_market_rate.into(),
+                self.spread,
+                self.dai_contract_address,
+                self.bitcoin_network,
+                self.ethereum_network,
+            ),
             (None, _) => anyhow::bail!(RateNotAvailable(Position::Buy)),
             (_, None) => anyhow::bail!(BalanceNotAvailable(Symbol::Dai)),
         }

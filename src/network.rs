@@ -86,6 +86,7 @@ impl Swarm {
     }
 
     pub fn publish(&mut self, order: PublishOrder) -> anyhow::Result<()> {
+        tracing::info!("Publishing new order: {}", order.0);
         self.inner.make(order)
     }
 
