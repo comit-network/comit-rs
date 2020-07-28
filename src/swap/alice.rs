@@ -252,9 +252,7 @@ pub mod wallet_actor {
     //! Nectar never executes a swap as Alice.
 
     use super::*;
-    use crate::swap::bitcoin;
     use comit::Secret;
-    use std::time::Duration;
 
     #[derive(Clone, Debug)]
     pub struct WalletAlice<AW, BW, DB, AP, BP> {
@@ -310,8 +308,9 @@ pub mod wallet_actor {
     }
 
     #[async_trait::async_trait]
-    impl<BW, DB, BP> Execute<hbit::Refunded> for WalletAlice<bitcoin::Wallet, BW, DB, hbit::Params, BP>
+    impl<AW, BW, DB, BP> Execute<hbit::Refunded> for WalletAlice<AW, BW, DB, hbit::Params, BP>
     where
+        AW: hbit::ExecuteRefund + Send + Sync,
         BW: Send + Sync,
         DB: Send + Sync,
         BP: Send + Sync,
@@ -319,37 +318,9 @@ pub mod wallet_actor {
         type Args = hbit::Funded;
 
         async fn execute(&self, fund_event: hbit::Funded) -> anyhow::Result<hbit::Refunded> {
-            loop {
-                let bitcoin_time =
-                    comit::bitcoin::median_time_past(self.alpha_wallet.connector.as_ref()).await?;
-
-                if bitcoin_time >= self.alpha_params.shared.expiry {
-                    break;
-                }
-
-                tokio::time::delay_for(Duration::from_secs(1)).await;
-            }
-
-            let refund_event = self.refund(fund_event).await?;
-
-            Ok(refund_event)
-        }
-    }
-
-    impl<BW, DB, BP> WalletAlice<bitcoin::Wallet, BW, DB, hbit::Params, BP> {
-        async fn refund(&self, fund_event: hbit::Funded) -> anyhow::Result<hbit::Refunded> {
-            let refund_address = self.alpha_wallet.inner.new_address().await?;
-            let refund_action = self.alpha_params.shared.build_refund_action(
-                &crate::SECP,
-                fund_event.asset,
-                fund_event.location,
-                self.alpha_params.transient_sk,
-                refund_address,
-            )?;
-            let transaction = self.alpha_wallet.refund(refund_action).await?;
-            let refund_event = hbit::Refunded { transaction };
-
-            Ok(refund_event)
+            self.alpha_wallet
+                .execute_refund(self.alpha_params, fund_event)
+                .await
         }
     }
 
