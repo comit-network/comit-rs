@@ -108,6 +108,7 @@ impl Wallet {
             signature: None,
         };
 
+        // TODO: Reduce duplication across different functions
         let signed_transaction =
             transaction.sign(&self.private_key, Some(u32::from(chain_id) as u64));
         let transaction_hex =
