@@ -5,6 +5,7 @@ pub mod orderbook;
 pub mod protocols;
 mod shared_swap_id;
 pub mod swap_digest;
+pub mod take_order;
 #[cfg(any(test, feature = "test"))]
 pub mod test;
 
