@@ -75,6 +75,9 @@ impl herc20::ExecuteRedeem for Wallet {
     }
 }
 
+/// Trigger the refund path of the HTLC corresponding to the
+/// `herc20::Params` and the `herc20::Deployed` event passed, once
+/// it's possible.
 #[async_trait::async_trait]
 impl herc20::ExecuteRefund for Wallet {
     async fn execute_refund(

@@ -2,7 +2,7 @@ use crate::swap::{hbit, BetaLedgerTime};
 use comit::{
     asset, bitcoin::median_time_past, btsieve::bitcoin::BitcoindConnector, Secret, Timestamp,
 };
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 pub use crate::bitcoin::Amount;
 pub use ::bitcoin::{secp256k1::SecretKey, Address, Block, BlockHash, OutPoint, Transaction};
@@ -78,6 +78,9 @@ impl hbit::ExecuteRedeem for Wallet {
     }
 }
 
+/// Trigger the refund path of the HTLC corresponding to the
+/// `hbit::Params` and the `hbit::Funded` event passed, once it's
+/// possible.
 #[async_trait::async_trait]
 impl hbit::ExecuteRefund for Wallet {
     async fn execute_refund(
@@ -85,6 +88,16 @@ impl hbit::ExecuteRefund for Wallet {
         params: hbit::Params,
         fund_event: hbit::Funded,
     ) -> anyhow::Result<hbit::Refunded> {
+        loop {
+            let bitcoin_time = comit::bitcoin::median_time_past(self.connector.as_ref()).await?;
+
+            if bitcoin_time >= params.shared.expiry {
+                break;
+            }
+
+            tokio::time::delay_for(Duration::from_secs(1)).await;
+        }
+
         let refund_address = self.inner.new_address().await?;
 
         let action = params.shared.build_refund_action(
@@ -101,14 +114,6 @@ impl hbit::ExecuteRefund for Wallet {
 }
 
 impl Wallet {
-    #[cfg(test)]
-    pub async fn refund(
-        &self,
-        action: hbit::BroadcastSignedTransaction,
-    ) -> anyhow::Result<bitcoin::Transaction> {
-        self.spend(action).await
-    }
-
     async fn spend(
         &self,
         action: hbit::BroadcastSignedTransaction,
