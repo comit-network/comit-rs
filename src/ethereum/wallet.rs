@@ -204,8 +204,7 @@ impl Wallet {
             .send_raw_transaction(transaction_hex)
             .await?;
 
-        // TODO: Return TransactionReceipt instead
-        std::thread::sleep(std::time::Duration::from_millis(2000));
+        let _ = self.wait_until_transaction_receipt(hash).await?;
 
         Ok(hash)
     }
@@ -261,8 +260,7 @@ impl Wallet {
             .send_raw_transaction(transaction_hex)
             .await?;
 
-        // TODO: Return TransactionReceipt instead
-        std::thread::sleep(std::time::Duration::from_millis(2000));
+        let _ = self.wait_until_transaction_receipt(hash).await?;
 
         Ok(hash)
     }
@@ -310,8 +308,7 @@ impl Wallet {
             .send_raw_transaction(transaction_hex)
             .await?;
 
-        // TODO: Return TransactionReceipt instead
-        std::thread::sleep(std::time::Duration::from_millis(2000));
+        let _ = self.wait_until_transaction_receipt(hash).await?;
 
         Ok(hash)
     }
