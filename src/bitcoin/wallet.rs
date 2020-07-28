@@ -12,7 +12,6 @@ use ::bitcoin::{
 use anyhow::Context;
 use rand::RngCore;
 use sha2::{Digest, Sha256};
-use std::path::Path;
 use url::Url;
 
 const BITCOIND_DEFAULT_EXTERNAL_DERIVATION_PATH: &str = "/0h/0h/*h";
@@ -141,19 +140,6 @@ impl Wallet {
         private_key.to_wif()
     }
 
-    /// This is the same way bitcoind generate the master extended private key for the hd wallet
-    ///when the seed is being passed with `sethdseed`. See the test
-    /// `root_key_calculated_from_seed_is_the_same_than_bitcoind_s`
-    pub async fn root_extended_private_key(
-        &self,
-        network: Network,
-    ) -> anyhow::Result<ExtendedPrivKey> {
-        self.assert_network(network).await?;
-        Ok(Wallet::root_extended_private_key_from_seed(
-            &self.seed, network,
-        ))
-    }
-
     pub fn root_extended_private_key_from_seed(seed: &Seed, network: Network) -> ExtendedPrivKey {
         let (key, chain_code) = seed.root_secret_key_chain_code();
         let chain_code = ChainCode::from(chain_code.as_slice());
@@ -257,7 +243,8 @@ impl Wallet {
         Ok(transaction)
     }
 
-    pub async fn dump(&self, filename: &Path) -> anyhow::Result<()> {
+    #[cfg(test)]
+    pub async fn dump(&self, filename: &std::path::Path) -> anyhow::Result<()> {
         self.bitcoind_client.dump_wallet(&self.name, filename).await
     }
 
@@ -292,6 +279,7 @@ mod docker_tests {
     use crate::test_harness::bitcoin;
     use std::fs::File;
     use std::io::{BufRead, BufReader};
+    use std::path::Path;
     use std::process::{Command, Stdio};
     use tempdir::TempDir;
     use testcontainers::clients;
@@ -363,10 +351,7 @@ mod docker_tests {
         let key = line.split_ascii_whitespace().last().unwrap();
         assert_eq!(
             key,
-            &wallet
-                .root_extended_private_key(Network::Regtest)
-                .await
-                .unwrap()
+            &Wallet::root_extended_private_key_from_seed(&wallet.seed, Network::Regtest)
                 .to_string()
         );
     }

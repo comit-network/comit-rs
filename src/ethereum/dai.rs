@@ -10,36 +10,35 @@ use comit::{
 };
 use conquer_once::Lazy;
 use ethereum_types::U256;
-use num::{pow::Pow, BigUint, CheckedAdd, Integer, ToPrimitive, Zero};
+use num::{BigUint, CheckedAdd, Integer, ToPrimitive, Zero};
 use std::str::FromStr;
 
 pub const ATTOS_IN_DAI_EXP: u16 = 18;
-pub static DAI_DEC: Lazy<BigUint> = Lazy::new(|| BigUint::from(10u16).pow(ATTOS_IN_DAI_EXP));
 
 /// As per https://github.com/makerdao/developerguides/blob/804bb1f4d1ea737f0287cbf6480a570b888dd547/dai/dai-token/dai-token.md
 /// Dai Version 1.0.8
 static DAI_CONTRACT_ADDRESS_MAINNET: Lazy<Address> = Lazy::new(|| {
     "0x6B175474E89094C44Da98b954EedeAC495271d0F"
         .parse()
-        .unwrap()
+        .expect("Valid hex")
 });
 /// Dai Version 1.0.8
 static DAI_CONTRACT_ADDRESS_KOVAN: Lazy<Address> = Lazy::new(|| {
     "0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa"
         .parse()
-        .unwrap()
+        .expect("Valid hex")
 });
 /// Dai Version 1.0.4
 static DAI_CONTRACT_ADDRESS_RINKEBY: Lazy<Address> = Lazy::new(|| {
     "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
         .parse()
-        .unwrap()
+        .expect("Valid hex")
 });
 /// Dai Version 1.0.4
 static DAI_CONTRACT_ADDRESS_ROPSTEN: Lazy<Address> = Lazy::new(|| {
     "0x31F42841c2db5173425b5223809CF3A38FEde360"
         .parse()
-        .unwrap()
+        .expect("Valid hex")
 });
 
 // TODO: There is duplicated information between `contract_address`

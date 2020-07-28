@@ -3,7 +3,6 @@ use crate::jsonrpc;
 use ::bitcoin::{consensus::encode::serialize_hex, hashes::hex::FromHex, Transaction, Txid};
 use anyhow::Context;
 use serde::Deserialize;
-use std::path::Path;
 
 pub const JSONRPC_VERSION: &str = "1.0";
 
@@ -214,7 +213,12 @@ impl Client {
         Ok(transaction)
     }
 
-    pub async fn dump_wallet(&self, wallet_name: &str, filename: &Path) -> anyhow::Result<()> {
+    #[cfg(test)]
+    pub async fn dump_wallet(
+        &self,
+        wallet_name: &str,
+        filename: &std::path::Path,
+    ) -> anyhow::Result<()> {
         let _: DumpWalletResponse = self
             .rpc_client
             .send_with_path(
@@ -230,6 +234,7 @@ impl Client {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn list_wallets(&self) -> anyhow::Result<Vec<String>> {
         let wallets: Vec<String> = self
             .rpc_client
@@ -243,6 +248,7 @@ impl Client {
         Ok(wallets)
     }
 
+    #[allow(dead_code)]
     pub async fn derive_addresses(
         &self,
         descriptor: &str,

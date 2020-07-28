@@ -1,4 +1,3 @@
-use anyhow::Context;
 use async_trait::async_trait;
 use comit::btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use comit::ethereum::ChainId;
@@ -15,30 +14,6 @@ pub struct NetworkMismatch<T: Debug> {
 #[derive(Error, Debug, Copy, Clone)]
 #[error("connection failure")]
 pub struct ConnectionFailure;
-
-/// Validate that the connector is connected to the network.
-///
-/// This function returns a double-result to differentiate between arbitrary
-/// connection errors and the network mismatch error.
-pub async fn validate_connection_to_network<C, S>(
-    connector: &C,
-    specified: S,
-) -> anyhow::Result<Result<(), NetworkMismatch<S>>>
-where
-    C: FetchNetworkId<S>,
-    S: PartialEq + Debug + Send + Sync + 'static,
-{
-    let actual = connector.network_id().await.context(ConnectionFailure)?;
-
-    if actual != specified {
-        return Ok(Err(NetworkMismatch {
-            connected_network: actual,
-            specified_network: specified,
-        }));
-    }
-
-    Ok(Ok(()))
-}
 
 #[async_trait]
 pub trait FetchNetworkId<S>: Send + Sync + 'static {

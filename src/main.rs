@@ -1,12 +1,54 @@
+#![warn(
+    unused_extern_crates,
+    missing_debug_implementations,
+    missing_copy_implementations,
+    rust_2018_idioms,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::fallible_impl_from,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_wrap,
+    clippy::dbg_macro
+)]
+#![cfg_attr(not(test), warn(clippy::unwrap_used))]
+#![forbid(unsafe_code)]
+#![recursion_limit = "256"]
+
+mod bitcoin;
+mod command;
+mod config;
+mod ethereum;
+mod float_maths;
+mod fs;
+mod history;
+mod jsonrpc;
+mod maker;
+mod mid_market_rate;
+mod network;
+mod order;
+mod rate;
+mod seed;
+mod swap;
+mod swap_id;
 mod trace;
 
-use anyhow::Context;
-use nectar::{
-    bitcoin,
+#[cfg(all(test, feature = "test-docker"))]
+mod test_harness;
+
+use crate::{
     command::{balance, deposit, dump_config, trade, wallet_info, withdraw, Command, Options},
-    config::{self, Settings},
-    ethereum,
+    config::Settings,
 };
+use anyhow::Context;
+use conquer_once::Lazy;
+pub use maker::Maker;
+pub use mid_market_rate::MidMarketRate;
+pub use rate::{Rate, Spread};
+pub use seed::Seed;
+pub use swap_id::SwapId;
+
+pub static SECP: Lazy<::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All>> =
+    Lazy::new(::bitcoin::secp256k1::Secp256k1::new);
 
 #[tokio::main]
 async fn main() {
@@ -17,11 +59,11 @@ async fn main() {
         .expect("Could not initialize configuration");
 
     if let Command::DumpConfig = options.cmd {
-        dump_config(settings).unwrap();
+        dump_config(settings).expect("dump config");
         std::process::exit(0);
     }
 
-    trace::init_tracing(settings.logging.level).unwrap();
+    trace::init_tracing(settings.logging.level).expect("initialize tracing");
 
     let seed = config::Seed::from_file_or_generate(&settings.data.dir)
         .expect("Could not retrieve/initialize seed")
@@ -45,7 +87,7 @@ async fn main() {
 
     match options.cmd {
         Command::Trade => {
-            let runtime = tokio::runtime::Runtime::new().unwrap();
+            let runtime = tokio::runtime::Runtime::new().expect("Create runtime");
 
             trade(
                 runtime.handle().clone(),
@@ -65,7 +107,7 @@ async fn main() {
                 settings.bitcoin.network,
             )
             .await
-            .unwrap();
+            .expect("get wallet info");
             println!("{}", wallet_info);
         }
         Command::Balance => {
@@ -74,7 +116,7 @@ async fn main() {
                 bitcoin_wallet.expect("could not initialise bitcoin wallet"),
             )
             .await
-            .unwrap();
+            .expect("get wallet balances");
             println!("{}", balance);
         }
         Command::Deposit => {
@@ -83,7 +125,7 @@ async fn main() {
                 bitcoin_wallet.expect("could not initialise bitcoin wallet"),
             )
             .await
-            .unwrap();
+            .expect("get wallet addresses");
             println!("{}", deposit);
         }
         Command::Withdraw(arguments) => {
@@ -93,7 +135,7 @@ async fn main() {
                 arguments,
             )
             .await
-            .unwrap();
+            .expect("Withdraw assets");
             println!("Withdraw successful. Transaction Id: {}", tx_id);
         }
         Command::DumpConfig => unreachable!(),
@@ -110,7 +152,7 @@ fn read_config(options: &Options) -> anyhow::Result<config::File> {
     }
 
     // try to load default config
-    let default_path = nectar::fs::default_config_path()?;
+    let default_path = crate::fs::default_config_path()?;
 
     if !default_path.exists() {
         return Ok(config::File::default());
