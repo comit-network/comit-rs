@@ -1,4 +1,4 @@
-use crate::ethereum::{self, ether, Address, ChainId, Client};
+use crate::ethereum::{self, ether, Address, ChainId};
 use anyhow::Context;
 use clarity::PrivateKey;
 use comit::{
@@ -93,6 +93,10 @@ impl<'c> Blockchain<'c> {
         })
     }
 
+    pub fn chain_id(&self) -> ChainId {
+        self.dev_account_wallet.chain_id
+    }
+
     pub async fn mint_ether(
         &self,
         to: Address,
@@ -145,12 +149,10 @@ impl<'c> Blockchain<'c> {
     }
 
     async fn deploy_token_contract(&self) -> anyhow::Result<Address> {
-        let geth_client = Client::new(self.node_url.clone());
-
         let contract = TOKEN_CONTRACT[2..].trim(); // remove the 0x in the front and any whitespace
         let contract = hex::decode(contract).context("token contract should be valid hex")?;
 
-        let transaction_hash = self
+        let deployed_contract = self
             .dev_account_wallet
             .deploy_contract(DeployContract {
                 data: contract,
@@ -160,14 +162,6 @@ impl<'c> Blockchain<'c> {
             })
             .await?;
 
-        let receipt = geth_client
-            .get_transaction_receipt(transaction_hash)
-            .await?;
-
-        let contract_address = receipt.contract_address.ok_or_else(|| {
-            anyhow::anyhow!("No address in token contract deployment transaction receipt")
-        })?;
-
-        Ok(contract_address)
+        Ok(deployed_contract.contract_address)
     }
 }

@@ -75,7 +75,7 @@ impl Client {
     pub async fn get_transaction_receipt(
         &self,
         transaction_hash: Hash,
-    ) -> anyhow::Result<TransactionReceipt> {
+    ) -> anyhow::Result<Option<TransactionReceipt>> {
         let receipt = self
             .rpc_client
             .send(jsonrpc::Request::new(
