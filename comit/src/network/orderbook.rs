@@ -1,9 +1,8 @@
-mod order;
 pub mod take_order;
 
 use crate::{
     network::orderbook::take_order::{Response, TakeOrderCodec, TakeOrderProtocol},
-    SharedSwapId,
+    Order, OrderId, SharedSwapId, BTC_DAI,
 };
 use libp2p::{
     core::either::EitherOutput,
@@ -26,11 +25,6 @@ use std::{
     task::{Context, Poll},
     time::Duration,
 };
-
-pub use self::order::*;
-
-/// String representing the BTC/DAI trading pair.
-const BTC_DAI: &str = "BTC/DAI";
 
 /// The time we wait for a take order request to be confirmed or denied.
 const REQUEST_TIMEOUT_SECS: u64 = 10;
@@ -188,6 +182,12 @@ pub struct OrderNotFound(OrderId);
 /// MakerId is a PeerId wrapper so we control serialization/deserialization.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MakerId(PeerId);
+
+impl MakerId {
+    pub fn new(id: PeerId) -> Self {
+        MakerId(id)
+    }
+}
 
 impl From<PeerId> for MakerId {
     fn from(id: PeerId) -> Self {
@@ -379,7 +379,7 @@ mod tests {
         // arrange
 
         let (mut alice, mut bob) = new_connected_swarm_pair(Orderbook::new).await;
-        let bob_order = order::meaningless_test_order(MakerId::from(bob.peer_id.clone()));
+        let bob_order = crate::order::meaningless_test_order(MakerId::from(bob.peer_id.clone()));
 
         // act
 

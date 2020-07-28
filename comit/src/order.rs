@@ -1,11 +1,11 @@
-use crate::{
-    asset, identity, ledger,
-    network::orderbook::{MakerId, BTC_DAI},
-};
+use crate::{asset, identity, ledger, network::orderbook::MakerId};
 use libp2p::gossipsub::Topic;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
+
+/// String representing the BTC/DAI trading pair.
+pub const BTC_DAI: &str = "BTC/DAI";
 
 #[derive(Debug, Clone, Copy, Hash, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OrderId(Uuid);
@@ -42,6 +42,7 @@ impl FromStr for OrderId {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Order {
     pub id: OrderId,
+    // TODO: Consider doing this with serde custom function instead of using the MakerId wrapper?
     pub maker: MakerId,
     pub position: Position,
     #[serde(with = "asset::bitcoin::sats_as_string")]
@@ -144,7 +145,7 @@ mod tests {
     fn btc_dai_order_serialization_stability() {
         let given = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY".to_string();
         let peer_id = PeerId::from_str(&given).expect("failed to parse peer id");
-        let maker_id = MakerId(peer_id);
+        let maker_id = MakerId::new(peer_id);
 
         let order = Order {
             id: meaningless_test_order_id(),
