@@ -11,6 +11,7 @@ use std::path::PathBuf;
 use url::Url;
 
 pub use self::{file::File, seed::Seed, settings::*};
+use anyhow::Context;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Data {
@@ -35,6 +36,31 @@ pub struct MaxSell {
     #[serde(default)]
     #[serde(with = "crate::config::serde::dai_amount")]
     pub dai: Option<dai::Amount>,
+}
+
+pub fn read_config(config_file: &Option<PathBuf>) -> anyhow::Result<File> {
+    // if the user specifies a config path, use it
+    if let Some(path) = config_file {
+        eprintln!("Using config file {}", path.display());
+
+        return File::read(&path)
+            .with_context(|| format!("failed to read config file {}", path.display()));
+    }
+
+    // try to load default config
+    let default_path = crate::fs::default_config_path()?;
+
+    if !default_path.exists() {
+        return Ok(File::default());
+    }
+
+    eprintln!(
+        "Using config file at default path: {}",
+        default_path.display()
+    );
+
+    File::read(&default_path)
+        .with_context(|| format!("failed to read config file {}", default_path.display()))
 }
 
 #[cfg(test)]
