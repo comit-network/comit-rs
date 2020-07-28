@@ -35,14 +35,14 @@ jobs:
         with:
           path: ~/.cargo/bin
           # The cargo binary cache is useful as long as we use the same Rust version but regardless of our dependencies.
-          key: ubuntu-latest-cargo-binaries-${{ steps.toolchain.outputs.rustc_hash }}
+          key: ubuntu-latest-cargo-binaries-${{ steps.toolchain.outputs.rustc_hash }}-v1
 
       - name: Cache target directory
         uses: actions/cache@v2
         with:
           path: target
           # The target directory is only useful with the same Rust version, dependencies and operating system.
-          key: ubuntu-latest-target-${{ steps.toolchain.outputs.rustc_hash }}-${{ hashFiles('Cargo.lock') }}-clippy
+          key: ubuntu-latest-target-${{ steps.toolchain.outputs.rustc_hash }}-${{ hashFiles('Cargo.lock') }}-clippy-v1
 
       - name: Check formatting
         run: make check_format
@@ -83,7 +83,7 @@ jobs:
         with:
           path: ~/.cargo/bin
           # The cargo binary cache is useful as long as we use the same Rust version and operating system, but regardless of our dependencies.
-          key: ${{ matrix.os }}-cargo-binaries-${{ steps.toolchain.outputs.rustc_hash }}
+          key: ${{ matrix.os }}-cargo-binaries-${{ steps.toolchain.outputs.rustc_hash }}-v1
 
       - name: Cache target directory
         uses: actions/cache@v2
@@ -91,7 +91,7 @@ jobs:
         with:
           path: target
           # The target directory is only useful with the same Rust version, dependencies and operating system.
-          key: ${{ matrix.os }}-target-${{ steps.toolchain.outputs.rustc_hash }}-${{ hashFiles('Cargo.lock') }}-build
+          key: ${{ matrix.os }}-target-${{ steps.toolchain.outputs.rustc_hash }}-${{ hashFiles('Cargo.lock') }}-build-v1
 
       - name: Build ${{ matrix.os }} binary
         run: make build
@@ -123,7 +123,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: api_tests/node_modules
-          key: ${{ matrix.os }}-node-modules-directory-${{ hashFiles('api_tests/package.json') }}
+          key: ${{ matrix.os }}-node-modules-directory-${{ hashFiles('api_tests/package.json') }}-v1
 
       - name: Run e2e tests
         if: matrix.e2e
