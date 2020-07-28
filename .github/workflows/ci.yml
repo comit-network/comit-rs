@@ -28,7 +28,7 @@ jobs:
         with:
           path: ~/.cargo/registry
           # The registry cache is useful as long as we need the same dependencies as another job, regardless of the Rust version and operating system.
-          key: cargo-registry-${{ hashFiles('Cargo.lock') }}
+          key: cargo-registry-${{ hashFiles('Cargo.lock') }}-v1
 
       - name: Cache cargo binaries
         uses: actions/cache@v2
@@ -76,7 +76,7 @@ jobs:
         with:
           path: ~/.cargo/registry
           # The registry cache is useful as long as we need the same dependencies as another job, regardless of the Rust version and operating system.
-          key: cargo-registry-${{ hashFiles('Cargo.lock') }}
+          key: cargo-registry-${{ hashFiles('Cargo.lock') }}-v1
 
       - name: Cache cargo binaries
         uses: actions/cache@v2
