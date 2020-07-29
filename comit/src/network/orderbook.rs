@@ -80,6 +80,8 @@ impl Orderbook {
             events: VecDeque::new(),
         };
 
+        std::thread::sleep(std::time::Duration::from_secs(2));
+
         // Since we only support a single trading pair topic just subscribe to it now.
         orderbook
             .gossipsub
