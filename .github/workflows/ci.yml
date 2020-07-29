@@ -25,7 +25,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.cargo/bin
-          key: ubuntu-rust-${{ env.RUST_TOOLCHAIN }}-cargo-bin-directory-v1
+          key: ubuntu-rust-${{ env.RUST_TOOLCHAIN }}-cargo-bin-directory-v2
 
       - name: Install tomlfmt
         run: which cargo-tomlfmt || cargo install cargo-tomlfmt
@@ -59,13 +59,13 @@ jobs:
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ matrix.os }}-rust-${{ env.RUST_TOOLCHAIN }}-target-directory-${{ hashFiles('Cargo.lock') }}-v4
+          key: ${{ matrix.os }}-rust-${{ env.RUST_TOOLCHAIN }}-target-directory-${{ hashFiles('Cargo.lock') }}-v5
 
       - name: Cache ~/.cargo/registry directory
         uses: actions/cache@v1
         with:
           path: ~/.cargo/registry
-          key: ${{ matrix.os }}-rust-${{ env.RUST_TOOLCHAIN }}-cargo-registry-directory-${{ hashFiles('Cargo.lock') }}-v4
+          key: ${{ matrix.os }}-rust-${{ env.RUST_TOOLCHAIN }}-cargo-registry-directory-${{ hashFiles('Cargo.lock') }}-v5
 
       - name: Cargo check ${{ matrix.os }}
         run: cargo check
