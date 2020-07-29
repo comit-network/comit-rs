@@ -31,7 +31,6 @@ reqwest = { version = "0.10", default-features = false, features = ["json", "nat
 serde = { version = "1", features = ["derive"] }
 serde-hex = "0.1"
 serde_json = "1.0"
-sha2 = "0.9"
 sled = "0.32"
 spectral = "0.6"
 structopt = "0.3"

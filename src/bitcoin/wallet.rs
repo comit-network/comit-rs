@@ -1,17 +1,14 @@
 use crate::{
     bitcoin::{Address, Amount, Client, Network, WalletInfoResponse},
     seed::Seed,
+    SwapId,
 };
 use ::bitcoin::{
-    hash_types::PubkeyHash,
-    hashes::Hash,
-    secp256k1::{self, SecretKey},
+    hashes::{sha256, Hash, HashEngine},
+    secp256k1::SecretKey,
     util::bip32::{ChainCode, ExtendedPrivKey},
     PrivateKey, Transaction, Txid,
 };
-use anyhow::Context;
-use rand::RngCore;
-use sha2::{Digest, Sha256};
 use url::Url;
 
 const BITCOIND_DEFAULT_EXTERNAL_DERIVATION_PATH: &str = "/0h/0h/*h";
@@ -19,7 +16,7 @@ const BITCOIND_DEFAULT_INTERNAL_DERIVATION_PATH: &str = "/0h/1h/*h";
 
 #[derive(Debug, Clone)]
 pub struct Wallet {
-    /// The wallet is named `nectar_x` with `x` being the first 4 byte of the public key hash
+    /// The wallet is named `nectar_x` with `x` being the first 4 bytes of the hash of the seed
     name: String,
     bitcoind_client: Client,
     seed: Seed,
@@ -28,17 +25,8 @@ pub struct Wallet {
 
 impl Wallet {
     pub async fn new(seed: Seed, url: Url, network: Network) -> anyhow::Result<Wallet> {
-        let key = secp256k1::SecretKey::from_slice(&seed.bytes())?;
-
-        let private_key = ::bitcoin::PrivateKey {
-            compressed: true,
-            network,
-            key,
-        };
-
+        let name = Wallet::gen_name(seed);
         let bitcoind_client = Client::new(url);
-
-        let name = Wallet::gen_name(private_key);
 
         let wallet = Wallet {
             name,
@@ -84,18 +72,16 @@ impl Wallet {
         }
     }
 
-    pub fn random_transient_sk(&self) -> anyhow::Result<SecretKey> {
-        // TODO: Replace random bytes with SwapId or SharedSwapId?
-        let mut random_bytes = [0u8; 32];
+    pub fn derive_transient_sk(&self, swap_id: SwapId) -> SecretKey {
+        let mut engine = sha256::HashEngine::default();
 
-        rand::thread_rng().fill_bytes(&mut random_bytes);
-        // TODO: use bitcoin_hashes instead of adding new dependency sha2
-        let mut hash = Sha256::new();
-        hash.update(random_bytes);
+        engine.input(&self.seed.bytes());
+        engine.input(swap_id.as_bytes());
+        engine.input(b"TRANSIENT_KEY");
 
-        let sk = hash.finalize();
+        let hash = sha256::Hash::from_engine(engine);
 
-        SecretKey::from_slice(&sk).context("failed to generate random transient key")
+        SecretKey::from_slice(&hash.into_inner()).expect("any 32 bytes are a valid secret key")
     }
 
     pub async fn info(&self) -> anyhow::Result<WalletInfoResponse> {
@@ -258,17 +244,17 @@ impl Wallet {
         Ok(())
     }
 
-    // TODO: Just hash the seed instead of the public key of the seed (as a private key)
-    fn gen_name(private_key: PrivateKey) -> String {
-        let mut hash_engine = PubkeyHash::engine();
-        private_key
-            .public_key(&crate::SECP)
-            .write_into(&mut hash_engine);
-        let public_key_hash = PubkeyHash::from_engine(hash_engine);
+    fn gen_name(seed: Seed) -> String {
+        let mut engine = sha256::HashEngine::default();
+
+        engine.input(&seed.bytes());
+
+        let hash = sha256::Hash::from_engine(engine);
+        let hash = hash.into_inner();
 
         format!(
             "nectar_{:x}{:x}{:x}{:x}",
-            public_key_hash[0], public_key_hash[1], public_key_hash[2], public_key_hash[3]
+            hash[0], hash[1], hash[2], hash[3]
         )
     }
 }
