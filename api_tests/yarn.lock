@@ -2456,10 +2456,10 @@ ethers@^4.0.38:
     uuid "2.0.1"
     xmlhttprequest "1.8.0"
 
-ethers@^5.0.6:
-  version "5.0.6"
-  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.6.tgz#a11c5cd96d3f1ae59c1f551111529af99cff4b05"
-  integrity sha512-lVcu1uLn8SKuluY8Q/TmvV2REZ8o2+alkotEmHniyFMY9qx9yBZcicpaV4nKRV/STJyMSrclMqln2RHQG2MpHg==
+ethers@^5.0.7:
+  version "5.0.7"
+  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.7.tgz#41c3d774e0a57bfde12b0198885789fb41a14976"
+  integrity sha512-1Zu9s+z4BgsDAZcGIYACJdWBB6mVtCCmUonj68Njul7STcSdgwOyj0sCAxCUr2Nsmsamckr4E12q3ecvZPGAUw==
   dependencies:
     "@ethersproject/abi" "^5.0.0"
     "@ethersproject/abstract-provider" "^5.0.0"
