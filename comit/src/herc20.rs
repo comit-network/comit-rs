@@ -14,6 +14,7 @@ use crate::{
 };
 use blockchain_contracts::ethereum::rfc003::Erc20Htlc;
 use chrono::NaiveDateTime;
+use conquer_once::Lazy;
 use futures::{
     future::{self, Either},
     Stream,
@@ -22,11 +23,21 @@ use genawaiter::sync::{Co, Gen};
 use std::cmp::Ordering;
 use tracing_futures::Instrument;
 
-lazy_static::lazy_static! {
-    static ref REDEEM_LOG_MSG: Hash = blockchain_contracts::ethereum::rfc003::REDEEMED_LOG_MSG.parse().expect("to be valid hex");
-    static ref REFUND_LOG_MSG: Hash = blockchain_contracts::ethereum::rfc003::REFUNDED_LOG_MSG.parse().expect("to be valid hex");
-    static ref TRANSFER_LOG_MSG: Hash = blockchain_contracts::ethereum::rfc003::ERC20_TRANSFER.parse().expect("to be valid hex");
-}
+static REDEEM_LOG_MSG: Lazy<Hash> = Lazy::new(|| {
+    blockchain_contracts::ethereum::rfc003::REDEEMED_LOG_MSG
+        .parse()
+        .expect("to be valid hex")
+});
+static REFUND_LOG_MSG: Lazy<Hash> = Lazy::new(|| {
+    blockchain_contracts::ethereum::rfc003::REFUNDED_LOG_MSG
+        .parse()
+        .expect("to be valid hex")
+});
+static TRANSFER_LOG_MSG: Lazy<Hash> = Lazy::new(|| {
+    blockchain_contracts::ethereum::rfc003::ERC20_TRANSFER
+        .parse()
+        .expect("to be valid hex")
+});
 
 /// Represents the events in the herc20 protocol.
 #[derive(Debug, Clone, PartialEq, strum_macros::Display)]

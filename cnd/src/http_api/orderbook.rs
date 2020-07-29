@@ -1,7 +1,7 @@
 use crate::{
     asset::{self, Erc20},
     hbit, herc20,
-    http_api::problem,
+    http_api::{problem, serde_peer_id},
     identity, ledger,
     network::NewOrder,
     storage::{CreatedSwap, Save},
@@ -10,8 +10,9 @@ use crate::{
 use chrono::Utc;
 use comit::{
     ethereum,
-    network::{MakerId, Order, OrderId, Position},
+    network::{Order, OrderId, Position},
 };
+use libp2p::PeerId;
 use serde::{Deserialize, Serialize};
 use warp::{http, http::StatusCode, Rejection, Reply};
 
@@ -20,7 +21,6 @@ pub async fn post_take_order(
     body: serde_json::Value,
     mut facade: Facade,
 ) -> Result<impl Reply, Rejection> {
-    tracing::info!("entered take order controller");
     let body = TakeOrderBody::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
@@ -30,7 +30,6 @@ pub async fn post_take_order(
 
     let swap_id = LocalSwapId::default();
 
-    let order_id = order_id;
     let order = match facade.get_order(order_id).await {
         Some(order) => order,
         None => panic!("order not found"),
@@ -58,7 +57,7 @@ pub async fn post_take_order(
                     chain_id: order.ethereum_ledger.chain_id,
                     absolute_expiry: order.ethereum_absolute_expiry,
                 },
-                peer: order.maker.clone().into(),
+                peer: order.maker.clone(),
                 address_hint: None,
                 role: Role::Alice,
                 start_of_swap,
@@ -87,7 +86,7 @@ pub async fn post_take_order(
                     network: order.bitcoin_ledger,
                     absolute_expiry: order.bitcoin_absolute_expiry,
                 },
-                peer: order.maker.clone().into(),
+                peer: order.maker.clone(),
                 address_hint: None,
                 role: Role::Alice,
                 start_of_swap,
@@ -100,7 +99,7 @@ pub async fn post_take_order(
         }
     }
 
-    tracing::info!("swap created and saved from order: {:?}", order_id);
+    tracing::info!("swap created and saved from order: {}", order_id);
 
     facade
         .take_order(
@@ -125,7 +124,6 @@ pub async fn post_make_order(
     body: serde_json::Value,
     facade: Facade,
 ) -> Result<impl Reply, Rejection> {
-    tracing::info!("entered make order controller");
     let body = MakeOrderBody::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
@@ -262,7 +260,8 @@ struct TakeOrderBody {
 #[derive(Clone, Debug, Serialize)]
 struct OrderResponse {
     id: OrderId,
-    maker: MakerId,
+    #[serde(with = "serde_peer_id")]
+    maker: PeerId,
     position: Position,
     #[serde(with = "asset::bitcoin::sats_as_string")]
     bitcoin_amount: asset::Bitcoin,
