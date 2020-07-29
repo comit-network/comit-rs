@@ -26,7 +26,6 @@ pub const GETH_DEV_ACCOUNT_PRIVATE_KEY: &str =
 #[derive(Debug)]
 pub struct Blockchain<'c> {
     _container: Container<'c, clients::Cli, GenericImage>,
-    pub token_contract: Option<Address>,
     dev_account_wallet: ethereum::Wallet,
     pub node_url: Url,
 }
@@ -72,29 +71,21 @@ impl<'c> Blockchain<'c> {
         Ok(Self {
             _container: container,
             node_url: url,
-            token_contract: None,
             dev_account_wallet,
         })
     }
 
     pub async fn init(&mut self) -> anyhow::Result<()> {
-        let contract_address = self.deploy_token_contract().await?;
-
-        self.token_contract = Some(contract_address);
-
+        self.deploy_token_contract().await?;
         Ok(())
     }
 
-    pub fn token_contract(&self) -> anyhow::Result<Address> {
-        self.token_contract.ok_or_else(|| {
-            anyhow::anyhow!(
-                "No token contract address set. Did you forget to call init in order to deploy?"
-            )
-        })
+    pub fn token_contract(&self) -> Address {
+        self.dev_account_wallet.dai_contract_address()
     }
 
     pub fn chain_id(&self) -> ChainId {
-        self.dev_account_wallet.chain_id
+        self.dev_account_wallet.chain_id()
     }
 
     pub async fn mint_ether(
@@ -148,13 +139,12 @@ impl<'c> Blockchain<'c> {
         Ok(transfer)
     }
 
-    async fn deploy_token_contract(&self) -> anyhow::Result<Address> {
+    async fn deploy_token_contract(&mut self) -> anyhow::Result<()> {
         let contract = TOKEN_CONTRACT[2..].trim(); // remove the 0x in the front and any whitespace
         let contract = hex::decode(contract).context("token contract should be valid hex")?;
 
-        let deployed_contract = self
-            .dev_account_wallet
-            .deploy_contract(DeployContract {
+        self.dev_account_wallet
+            .deploy_dai_token_contract(DeployContract {
                 data: contract,
                 amount: Ether::zero(),
                 gas_limit: 1_000_000,
@@ -162,6 +152,6 @@ impl<'c> Blockchain<'c> {
             })
             .await?;
 
-        Ok(deployed_contract.contract_address)
+        Ok(())
     }
 }

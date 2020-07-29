@@ -339,13 +339,13 @@ mod tests {
     };
     use ::bitcoin::secp256k1;
     use chrono::Utc;
-    use comit::ethereum::ChainId;
     use comit::{
         asset::{
             self,
             ethereum::{Erc20Quantity, FromWei},
         },
         btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
+        ethereum::ChainId,
         identity, Secret, SecretHash, Timestamp,
     };
     use std::{str::FromStr, sync::Arc};
@@ -429,8 +429,7 @@ mod tests {
             blockchain.init().await?;
 
             let node_url = blockchain.node_url.clone();
-
-            let token_contract = blockchain.token_contract()?;
+            let token_contract = blockchain.token_contract();
 
             (
                 Arc::new(Web3Connector::new(node_url.clone())),
@@ -459,8 +458,7 @@ mod tests {
             let ethereum_wallet = crate::ethereum::Wallet::new(
                 seed,
                 ethereum_node_url.clone(),
-                token_contract,
-                ChainId::regtest(),
+                crate::ethereum::Chain::new(ChainId::regtest(), token_contract),
             )
             .await?;
 
@@ -492,8 +490,7 @@ mod tests {
             let ethereum_wallet = crate::ethereum::Wallet::new(
                 seed,
                 ethereum_node_url,
-                token_contract,
-                ChainId::regtest(),
+                crate::ethereum::Chain::new(ChainId::regtest(), token_contract),
             )
             .await?;
 

@@ -69,8 +69,6 @@ async fn main() {
         .expect("Could not retrieve/initialize seed")
         .into();
 
-    let dai_contract_addr = settings.ethereum.dai_contract_address;
-
     let bitcoin_wallet = bitcoin::Wallet::new(
         seed,
         settings.bitcoin.bitcoind.node_url.clone(),
@@ -80,8 +78,7 @@ async fn main() {
     let ethereum_wallet = ethereum::Wallet::new(
         seed,
         settings.ethereum.node_url.clone(),
-        dai_contract_addr.into(),
-        settings.ethereum.chain_id,
+        settings.ethereum.chain,
     )
     .await;
 

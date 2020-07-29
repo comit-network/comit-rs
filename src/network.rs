@@ -2,7 +2,7 @@ mod active_takers;
 
 use crate::{
     bitcoin,
-    ethereum::dai::{self, DaiContractAddress},
+    ethereum::{self, dai},
     order::{BtcDaiOrder, Position},
     swap::{hbit, herc20, SwapKind, SwapParams},
     Seed,
@@ -469,11 +469,10 @@ impl TakenOrder {
             amount: order.bitcoin_amount.into(),
             network: order.bitcoin_ledger.into(),
         };
-        let contract_address = DaiContractAddress::local(order.token_contract);
+        let chain = ethereum::Chain::new(order.ethereum_ledger.chain_id, order.token_contract);
         let quote = dai::Asset {
             amount: order.ethereum_amount.into(),
-            contract_address,
-            chain_id: order.ethereum_ledger.chain_id,
+            chain,
         };
         let inner = BtcDaiOrder {
             position: order.position.into(),
@@ -545,8 +544,8 @@ impl PublishOrder {
             bitcoin_ledger: self.0.base.network.into(),
             bitcoin_absolute_expiry: bitcoin_absolute_expiry.into(),
             ethereum_amount: self.0.quote.amount.into(),
-            token_contract: self.0.quote.contract_address.into(),
-            ethereum_ledger: comit::ledger::Ethereum::new(self.0.quote.chain_id),
+            token_contract: self.0.quote.chain.dai_contract_address(),
+            ethereum_ledger: comit::ledger::Ethereum::new(self.0.quote.chain.chain_id()),
             ethereum_absolute_expiry: ethereum_absolute_expiry.into(),
         }
     }

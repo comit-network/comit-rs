@@ -173,9 +173,8 @@ async fn init_maker(
         dai_max_sell,
         initial_rate,
         spread,
-        settings.ethereum.dai_contract_address,
         settings.bitcoin.network,
-        settings.ethereum.chain_id,
+        settings.ethereum.chain,
     ))
 }
 
@@ -585,13 +584,12 @@ impl FinishedSwap {
 #[cfg(all(test, feature = "test-docker"))]
 mod tests {
     use super::*;
-    use crate::config::{settings, Data, Logging, MaxSell, Network};
-    use crate::swap::herc20::asset::ethereum::FromWei;
-    use crate::{test_harness, Seed};
-    use comit::asset;
-    use comit::asset::Erc20Quantity;
-    use comit::ethereum::ChainId;
-    use dai::DaiContractAddress;
+    use crate::{
+        config::{settings, Data, Logging, MaxSell, Network},
+        swap::herc20::asset::ethereum::FromWei,
+        test_harness, Seed,
+    };
+    use comit::{asset, asset::Erc20Quantity, ethereum::ChainId};
     use ethereum::ether;
     use log::LevelFilter;
 
@@ -632,11 +630,11 @@ mod tests {
             },
             bitcoin: Default::default(),
             ethereum: settings::Ethereum {
-                dai_contract_address: DaiContractAddress::local(
-                    ethereum_blockchain.token_contract.unwrap(),
-                ),
-                chain_id: ChainId::regtest(),
                 node_url: ethereum_blockchain.node_url.clone(),
+                chain: ethereum::Chain::new(
+                    ChainId::regtest(),
+                    ethereum_blockchain.token_contract(),
+                ),
             },
         };
 
@@ -651,8 +649,7 @@ mod tests {
         let ethereum_wallet = crate::ethereum::Wallet::new(
             seed,
             ethereum_blockchain.node_url.clone(),
-            ethereum_blockchain.token_contract().unwrap(),
-            settings.ethereum.chain_id,
+            settings.ethereum.chain,
         )
         .await
         .unwrap();
@@ -669,7 +666,7 @@ mod tests {
             .mint_ether(
                 ethereum_wallet.account(),
                 ether::Amount::from(1_000_000_000_000_000_000u64),
-                settings.ethereum.chain_id,
+                settings.ethereum.chain.chain_id(),
             )
             .await
             .unwrap();
@@ -677,10 +674,10 @@ mod tests {
             .mint_erc20_token(
                 ethereum_wallet.account(),
                 asset::Erc20::new(
-                    settings.ethereum.dai_contract_address.into(),
+                    settings.ethereum.chain.dai_contract_address(),
                     Erc20Quantity::from_wei(5_000_000_000u64),
                 ),
-                settings.ethereum.chain_id,
+                settings.ethereum.chain.chain_id(),
             )
             .await
             .unwrap();

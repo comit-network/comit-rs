@@ -1,9 +1,6 @@
 use crate::{
     bitcoin,
-    ethereum::{
-        self,
-        dai::{self, DaiContractAddress},
-    },
+    ethereum::{self, dai},
     MidMarketRate, Rate, Spread,
 };
 use std::fmt::{Display, Formatter};
@@ -38,9 +35,8 @@ impl BtcDaiOrder {
         max_amount: Option<bitcoin::Amount>,
         mid_market_rate: Rate,
         spread: Spread,
-        dai_contract_address: DaiContractAddress,
         bitcoin_network: bitcoin::Network,
-        chain_id: ethereum::ChainId,
+        dai_chain: ethereum::Chain,
     ) -> anyhow::Result<BtcDaiOrder> {
         if let Some(max_amount) = max_amount {
             if max_amount < base_fees {
@@ -71,8 +67,7 @@ impl BtcDaiOrder {
 
         let quote = dai::Asset {
             amount: quote_amount,
-            contract_address: dai_contract_address,
-            chain_id,
+            chain: dai_chain,
         };
 
         Ok(BtcDaiOrder {
@@ -89,9 +84,8 @@ impl BtcDaiOrder {
         max_amount: Option<dai::Amount>,
         mid_market_rate: Rate,
         spread: Spread,
-        dai_contract_address: DaiContractAddress,
         bitcoin_network: bitcoin::Network,
-        chain_id: ethereum::ChainId,
+        dai_chain: ethereum::Chain,
     ) -> anyhow::Result<BtcDaiOrder> {
         if quote_balance <= quote_reserved_funds {
             anyhow::bail!(InsufficientFunds(Symbol::Dai))
@@ -112,8 +106,7 @@ impl BtcDaiOrder {
 
         let quote = dai::Asset {
             amount: quote_amount,
-            contract_address: dai_contract_address,
-            chain_id,
+            chain: dai_chain,
         };
 
         Ok(BtcDaiOrder {
@@ -215,8 +208,7 @@ impl Default for BtcDaiOrder {
             },
             quote: dai::Asset {
                 amount: dai::Amount::from_atto(num::BigUint::from(1u8)),
-                contract_address: DaiContractAddress::Mainnet,
-                chain_id: ethereum::ChainId::mainnet(),
+                chain: ethereum::Chain::default(),
             },
         }
     }
@@ -249,8 +241,7 @@ mod tests {
     fn dai_asset(dai: f64) -> dai::Asset {
         dai::Asset {
             amount: dai_amount(dai),
-            contract_address: DaiContractAddress::Mainnet,
-            chain_id: ethereum::ChainId::mainnet(),
+            chain: ethereum::Chain::default(),
         }
     }
 
@@ -264,9 +255,8 @@ mod tests {
             Some(btc(100.0)),
             rate,
             Spread::new(0).unwrap(),
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         )
         .unwrap();
 
@@ -278,9 +268,8 @@ mod tests {
             Some(dai_amount(100.0)),
             rate,
             Spread::new(0).unwrap(),
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         )
         .unwrap();
 
@@ -297,9 +286,8 @@ mod tests {
             Some(btc(100.0)),
             rate,
             Spread::new(0).unwrap(),
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         )
         .unwrap();
 
@@ -311,9 +299,8 @@ mod tests {
             None,
             rate,
             Spread::new(0).unwrap(),
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         )
         .unwrap();
 
@@ -330,9 +317,8 @@ mod tests {
             Some(btc(2.0)),
             rate,
             Spread::new(0).unwrap(),
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         )
         .unwrap();
 
@@ -344,9 +330,8 @@ mod tests {
             Some(dai_amount(2.0)),
             rate,
             Spread::new(0).unwrap(),
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         )
         .unwrap();
 
@@ -362,9 +347,8 @@ mod tests {
             Some(dai_amount(1.0)),
             rate,
             Spread::new(0).unwrap(),
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         )
         .unwrap();
 
@@ -383,9 +367,8 @@ mod tests {
             None,
             rate,
             spread,
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         )
         .unwrap();
 
@@ -402,9 +385,8 @@ mod tests {
             None,
             rate,
             spread,
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         )
         .unwrap();
 
@@ -418,9 +400,8 @@ mod tests {
             None,
             rate,
             spread,
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         )
         .unwrap();
 
@@ -434,9 +415,8 @@ mod tests {
             None,
             rate,
             spread,
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         )
         .unwrap();
 
@@ -456,9 +436,8 @@ mod tests {
             None,
             rate,
             spread,
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         )
         .unwrap();
 
@@ -471,9 +450,8 @@ mod tests {
             None,
             rate,
             spread,
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         )
         .unwrap();
 
@@ -493,9 +471,8 @@ mod tests {
             None,
             rate,
             spread,
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         );
         assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
 
@@ -505,9 +482,8 @@ mod tests {
             None,
             rate,
             spread,
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         );
         assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
     }
@@ -524,9 +500,8 @@ mod tests {
             None,
             rate,
             spread,
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         );
         assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
 
@@ -536,9 +511,8 @@ mod tests {
             None,
             rate,
             spread,
-            DaiContractAddress::Mainnet,
             bitcoin::Network::Bitcoin,
-            ethereum::ChainId::mainnet(),
+            ethereum::Chain::Mainnet,
         );
         assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
     }
@@ -642,7 +616,7 @@ mod tests {
                 let dai_reserved_funds = dai::Amount::from_atto(dai_reserved_funds);
                 let dai_max_amount = dai::Amount::from_atto(dai_max_amount);
 
-                let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_buy(dai_balance, dai_reserved_funds, Some(dai_max_amount), rate, spread, DaiContractAddress::Mainnet, bitcoin::Network::Bitcoin, ethereum::ChainId::mainnet());
+                let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_buy(dai_balance, dai_reserved_funds, Some(dai_max_amount), rate, spread, bitcoin::Network::Bitcoin, ethereum::Chain::Mainnet);
             }
         }
     }
@@ -660,7 +634,7 @@ mod tests {
                 let dai_balance = dai::Amount::from_atto(dai_balance);
                 let dai_reserved_funds = dai::Amount::from_atto(dai_reserved_funds);
 
-                let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_buy(dai_balance, dai_reserved_funds, None, rate, spread, DaiContractAddress::Mainnet, bitcoin::Network::Bitcoin, ethereum::ChainId::mainnet());
+                let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_buy(dai_balance, dai_reserved_funds, None, rate, spread, bitcoin::Network::Bitcoin, ethereum::Chain::Mainnet);
             }
         }
     }
@@ -677,7 +651,7 @@ mod tests {
             let spread = Spread::new(spread);
 
             if let (Ok(rate), Ok(spread)) = (rate, spread) {
-                let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_sell(btc_balance, btc_fees, btc_reserved_funds, Some(btc_max_amount), rate, spread, DaiContractAddress::Mainnet, bitcoin::Network::Bitcoin, ethereum::ChainId::mainnet());
+                let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_sell(btc_balance, btc_fees, btc_reserved_funds, Some(btc_max_amount), rate, spread, bitcoin::Network::Bitcoin, ethereum::Chain::Mainnet);
             }
         }
     }
@@ -693,7 +667,7 @@ mod tests {
             let spread = Spread::new(spread);
 
             if let (Ok(rate), Ok(spread)) = (rate, spread) {
-                let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_sell(btc_balance, btc_fees, btc_reserved_funds, None, rate, spread, DaiContractAddress::Mainnet, bitcoin::Network::Bitcoin, ethereum::ChainId::mainnet());
+                let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_sell(btc_balance, btc_fees, btc_reserved_funds, None, rate, spread, bitcoin::Network::Bitcoin, ethereum::Chain::Mainnet);
             }
         }
     }

@@ -3,6 +3,7 @@ mod geth;
 mod wallet;
 
 pub use comit::ethereum::{Address, ChainId, Hash};
+pub use dai::Chain;
 pub use geth::Client;
 pub use wallet::Wallet;
 

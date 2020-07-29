@@ -46,47 +46,67 @@ static DAI_CONTRACT_ADDRESS_ROPSTEN: Lazy<Address> = Lazy::new(|| {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Asset {
     pub amount: Amount,
-    pub contract_address: DaiContractAddress,
-    pub chain_id: ChainId,
+    pub chain: Chain,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DaiContractAddress {
+pub enum Chain {
     Mainnet,
     Kovan,
     Rinkeby,
     Ropsten,
-    Local(Address),
+    Local {
+        chain_id: u32,
+        dai_contract_address: Address,
+    },
 }
 
-impl From<DaiContractAddress> for Address {
-    fn from(var: DaiContractAddress) -> Self {
-        match var {
-            DaiContractAddress::Mainnet => *DAI_CONTRACT_ADDRESS_MAINNET,
-            DaiContractAddress::Kovan => *DAI_CONTRACT_ADDRESS_KOVAN,
-            DaiContractAddress::Rinkeby => *DAI_CONTRACT_ADDRESS_RINKEBY,
-            DaiContractAddress::Ropsten => *DAI_CONTRACT_ADDRESS_ROPSTEN,
-            DaiContractAddress::Local(address) => address,
+impl Chain {
+    pub fn new(chain_id: ChainId, dai_contract_address: Address) -> Self {
+        use Chain::*;
+        match (chain_id.into(), dai_contract_address) {
+            (1, contract) if contract == *DAI_CONTRACT_ADDRESS_MAINNET => Mainnet,
+            (3, contract) if contract == *DAI_CONTRACT_ADDRESS_ROPSTEN => Ropsten,
+            (4, contract) if contract == *DAI_CONTRACT_ADDRESS_RINKEBY => Rinkeby,
+            (42, contract) if contract == *DAI_CONTRACT_ADDRESS_KOVAN => Kovan,
+            (chain_id, dai_contract_address) => Local {
+                chain_id,
+                dai_contract_address,
+            },
         }
     }
-}
 
-impl DaiContractAddress {
-    // TODO: What if we pass the token contract address of, for
-    // example, the Mainnet token contract. I think this should be
-    // renamed, together with the Local variant of DaiContractAddress
-    pub fn local(dai_contract_address: Address) -> Self {
-        Self::Local(dai_contract_address)
+    pub fn from_public_chain_id(chain_id: ChainId) -> anyhow::Result<Self> {
+        use Chain::*;
+        match chain_id.into() {
+            1 => Ok(Mainnet),
+            3 => Ok(Ropsten),
+            4 => Ok(Rinkeby),
+            42 => Ok(Kovan),
+            _ => anyhow::bail!("chain_id does not correspond to public chain"),
+        }
     }
 
-    pub fn from_public_chain_id(chain_id: ChainId) -> Option<Self> {
-        use DaiContractAddress::*;
-        match chain_id.into() {
-            1 => Some(Mainnet),
-            3 => Some(Ropsten),
-            4 => Some(Rinkeby),
-            42 => Some(Kovan),
-            _ => None,
+    pub fn dai_contract_address(&self) -> Address {
+        match self {
+            Chain::Mainnet => *DAI_CONTRACT_ADDRESS_MAINNET,
+            Chain::Kovan => *DAI_CONTRACT_ADDRESS_KOVAN,
+            Chain::Rinkeby => *DAI_CONTRACT_ADDRESS_RINKEBY,
+            Chain::Ropsten => *DAI_CONTRACT_ADDRESS_ROPSTEN,
+            Chain::Local {
+                dai_contract_address,
+                ..
+            } => *dai_contract_address,
+        }
+    }
+
+    pub fn chain_id(&self) -> ChainId {
+        match self {
+            Chain::Mainnet => ChainId::mainnet(),
+            Chain::Kovan => ChainId::from(42),
+            Chain::Rinkeby => ChainId::from(4),
+            Chain::Ropsten => ChainId::ropsten(),
+            Chain::Local { chain_id, .. } => ChainId::from(*chain_id),
         }
     }
 }
@@ -242,6 +262,13 @@ impl From<Amount> for Erc20Quantity {
         let wei = U256::from_big_endian(&buf);
 
         Self::from_wei(wei)
+    }
+}
+
+#[cfg(test)]
+impl Default for Chain {
+    fn default() -> Self {
+        Chain::Mainnet
     }
 }
 
