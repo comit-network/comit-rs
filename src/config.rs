@@ -6,6 +6,7 @@ pub mod validation;
 
 use crate::{bitcoin, ethereum::dai};
 use ::serde::{Deserialize, Serialize};
+use anyhow::anyhow;
 use libp2p::Multiaddr;
 use std::path::PathBuf;
 use url::Url;
@@ -39,28 +40,34 @@ pub struct MaxSell {
 }
 
 pub fn read_config(config_file: &Option<PathBuf>) -> anyhow::Result<File> {
-    // if the user specifies a config path, use it
-    if let Some(path) = config_file {
-        eprintln!("Using config file {}", path.display());
+    let path = config_file
+        .as_ref()
+        .map(|path| {
+            eprintln!("Using config file {}", path.display());
+            path
+        })
+        .ok_or_else(|| {
+            // try to load default config
+            let default_path = crate::fs::default_config_path()?;
 
-        return File::read(&path)
-            .with_context(|| format!("failed to read config file {}", path.display()));
+            if default_path.exists() {
+                eprintln!(
+                    "Using config file at default path: {}",
+                    default_path.display()
+                );
+                Ok(default_path)
+            } else {
+                eprintln!("Config file default path is {}", default_path.display());
+                Err(anyhow!("internal error (unreachable)"))
+            }
+        })
+        .ok();
+
+    match path {
+        Some(path) => File::read(&path)
+            .with_context(|| format!("failed to read config file {}", path.display())),
+        None => Ok(File::default()),
     }
-
-    // try to load default config
-    let default_path = crate::fs::default_config_path()?;
-
-    if !default_path.exists() {
-        return Ok(File::default());
-    }
-
-    eprintln!(
-        "Using config file at default path: {}",
-        default_path.display()
-    );
-
-    File::read(&default_path)
-        .with_context(|| format!("failed to read config file {}", default_path.display()))
 }
 
 #[cfg(test)]
