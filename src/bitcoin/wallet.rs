@@ -1,6 +1,7 @@
 use crate::{
     bitcoin::{Address, Amount, Client, Network, WalletInfoResponse},
     seed::Seed,
+    SwapId,
 };
 use ::bitcoin::{
     hash_types::PubkeyHash,
@@ -9,9 +10,7 @@ use ::bitcoin::{
     util::bip32::{ChainCode, ExtendedPrivKey},
     PrivateKey, Transaction, Txid,
 };
-use anyhow::Context;
-use rand::RngCore;
-use sha2::{Digest, Sha256};
+use sha2::{digest::FixedOutput as _, Digest, Sha256};
 use url::Url;
 
 const BITCOIND_DEFAULT_EXTERNAL_DERIVATION_PATH: &str = "/0h/0h/*h";
@@ -84,18 +83,16 @@ impl Wallet {
         }
     }
 
-    pub fn random_transient_sk(&self) -> anyhow::Result<SecretKey> {
-        // TODO: Replace random bytes with SwapId or SharedSwapId?
-        let mut random_bytes = [0u8; 32];
-
-        rand::thread_rng().fill_bytes(&mut random_bytes);
+    pub fn derive_transient_sk(&self, swap_id: SwapId) -> SecretKey {
         // TODO: use bitcoin_hashes instead of adding new dependency sha2
         let mut hash = Sha256::new();
-        hash.update(random_bytes);
+        hash.update(&self.seed.bytes());
+        hash.update(swap_id.as_bytes());
+        hash.update(b"TRANSIENT_KEY");
 
-        let sk = hash.finalize();
+        let sk = hash.finalize_fixed();
 
-        SecretKey::from_slice(&sk).context("failed to generate random transient key")
+        SecretKey::from_slice(&sk).expect("any 32 bytes are a valid secret key")
     }
 
     pub async fn info(&self) -> anyhow::Result<WalletInfoResponse> {

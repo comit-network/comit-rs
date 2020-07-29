@@ -5,7 +5,7 @@ use crate::{
     ethereum::dai::{self, DaiContractAddress},
     order::{BtcDaiOrder, Position},
     swap::{hbit, herc20, SwapKind, SwapParams},
-    Seed, SwapId,
+    Seed,
 };
 use bimap::BiMap;
 use chrono::Utc;
@@ -124,8 +124,35 @@ pub enum Event {
 
 #[derive(Debug)]
 pub struct SwapMetadata {
-    shared_swap_id: SharedSwapId,
+    swap_id: SwapId,
     taker_peer_id: PeerId,
+}
+
+impl SwapMetadata {
+    pub fn swap_id(&self) -> SwapId {
+        self.swap_id
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct SwapId {
+    inner: crate::SwapId,
+    shared: SharedSwapId,
+}
+
+impl SwapId {
+    pub fn new(shared: SharedSwapId) -> Self {
+        Self {
+            inner: crate::SwapId::default(),
+            shared,
+        }
+    }
+}
+
+impl From<SwapId> for crate::SwapId {
+    fn from(from: SwapId) -> Self {
+        from.inner
+    }
 }
 
 /// A `NetworkBehaviour` that delegates to the `Orderbook` and `Comit` behaviours.
@@ -144,9 +171,9 @@ pub struct Nectar {
     #[behaviour(ignore)]
     active_takers: ActiveTakers,
     #[behaviour(ignore)]
-    order_swap_ids: BiMap<OrderId, SharedSwapId>,
+    swap_id_to_order_id: BiMap<SharedSwapId, OrderId>,
     #[behaviour(ignore)]
-    bitcoin_transient_sks: HashMap<SharedSwapId, ::bitcoin::secp256k1::SecretKey>,
+    swap_id_to_bitcoin_transient_sk: HashMap<SharedSwapId, ::bitcoin::secp256k1::SecretKey>,
     #[behaviour(ignore)]
     local_data: HashMap<SharedSwapId, LocalData>,
 }
@@ -160,8 +187,8 @@ impl Nectar {
             local_peer_id,
             takers: HashMap::new(),
             active_takers,
-            order_swap_ids: BiMap::new(),
-            bitcoin_transient_sks: HashMap::new(),
+            swap_id_to_order_id: BiMap::new(),
+            swap_id_to_bitcoin_transient_sk: HashMap::new(),
             local_data: HashMap::new(),
         }
     }
@@ -192,7 +219,7 @@ impl Nectar {
     fn set_swap_identities(
         &mut self,
         SwapMetadata {
-            shared_swap_id,
+            swap_id,
             taker_peer_id,
         }: SwapMetadata,
         bitcoin_transient_sk: ::bitcoin::secp256k1::SecretKey,
@@ -201,8 +228,8 @@ impl Nectar {
         // TODO: Saving this and the bitcoin identity inside
         // `LocalData` is redundant. It may be better to just save the
         // bitcoin transient key and the ethereum identity
-        self.bitcoin_transient_sks
-            .insert(shared_swap_id, bitcoin_transient_sk);
+        self.swap_id_to_bitcoin_transient_sk
+            .insert(swap_id.shared, bitcoin_transient_sk);
 
         let bitcoin_identity =
             identity::Bitcoin::from_secret_key(&crate::SECP, &bitcoin_transient_sk);
@@ -214,10 +241,10 @@ impl Nectar {
         };
         let local_data = LocalData::for_bob(identities);
 
-        self.local_data.insert(shared_swap_id, local_data);
+        self.local_data.insert(swap_id.shared, local_data);
 
         self.comit
-            .communicate(taker_peer_id, shared_swap_id, local_data);
+            .communicate(taker_peer_id, swap_id.shared, local_data);
     }
 
     pub fn remove_from_active_takers(&mut self, taker: &Taker) -> anyhow::Result<()> {
@@ -291,11 +318,13 @@ impl NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> for Nectar {
                 shared_swap_id,
                 peer_id: taker_peer_id,
             } => {
-                self.order_swap_ids.insert(order_id, shared_swap_id);
+                let swap_id = SwapId::new(shared_swap_id);
+
+                self.swap_id_to_order_id.insert(swap_id.shared, order_id);
 
                 self.events
                     .push_back(Event::SetSwapIdentities(SwapMetadata {
-                        shared_swap_id,
+                        swap_id,
                         taker_peer_id,
                     }))
             }
@@ -349,19 +378,19 @@ impl NetworkBehaviourEventProcess<network::comit::BehaviourOutEvent> for Nectar 
                         }
                     };
 
-                let bitcoin_transient_sk = match self.bitcoin_transient_sks.remove(&shared_swap_id)
-                {
-                    Some(bitcoin_transient_sk) => bitcoin_transient_sk,
-                    None => {
-                        tracing::warn!(
-                            "could not find bitcoin transient sk for shared_swap_id: {}",
-                            shared_swap_id,
-                        );
-                        return;
-                    }
-                };
+                let bitcoin_transient_sk =
+                    match self.swap_id_to_bitcoin_transient_sk.remove(&shared_swap_id) {
+                        Some(bitcoin_transient_sk) => bitcoin_transient_sk,
+                        None => {
+                            tracing::warn!(
+                                "could not find bitcoin transient sk for shared_swap_id: {}",
+                                shared_swap_id,
+                            );
+                            return;
+                        }
+                    };
 
-                let order = match self.order_swap_ids.get_by_right(&shared_swap_id) {
+                let order = match self.swap_id_to_order_id.get_by_left(&shared_swap_id) {
                     Some(order_id) => match self.orderbook.get_order(order_id) {
                         Some(order) => order,
                         None => {
@@ -412,7 +441,7 @@ impl NetworkBehaviourEventProcess<network::comit::BehaviourOutEvent> for Nectar 
                     herc20_params,
                     secret_hash,
                     start_of_swap: Utc::now().naive_local(),
-                    swap_id: SwapId::default(),
+                    swap_id: crate::SwapId::default(),
                     taker,
                 });
 

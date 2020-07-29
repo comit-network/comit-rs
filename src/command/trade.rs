@@ -385,13 +385,8 @@ fn handle_network_event(
             }
         }
         network::Event::SetSwapIdentities(swap_metadata) => {
-            let bitcoin_identity = match bitcoin_wallet.random_transient_sk() {
-                Ok(bitcoin_identity) => bitcoin_identity,
-                Err(e) => {
-                    tracing::error!("Generating transient sk yielded error: {}", e);
-                    return;
-                }
-            };
+            let bitcoin_identity =
+                bitcoin_wallet.derive_transient_sk(swap_metadata.swap_id().into());
             let ethereum_identity = ethereum_wallet.account();
 
             swarm.set_swap_identities(swap_metadata, bitcoin_identity, ethereum_identity)
