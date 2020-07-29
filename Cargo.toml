@@ -45,6 +45,8 @@ tracing-log = "0.1"
 tracing-subscriber = "0.2"
 url = { version = "2", features = ["serde"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
+wagyu-ethereum = "0.6"
+wagyu-model = "0.6"
 
 [dependencies.rand]
 default-features = false
