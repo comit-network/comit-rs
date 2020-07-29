@@ -135,17 +135,7 @@ impl Wallet {
             data,
             signature: None,
         };
-
-        // TODO: Reduce duplication across different functions
-        let signed_transaction =
-            transaction.sign(&self.private_key, Some(u32::from(chain_id) as u64));
-        let transaction_hex =
-            format!(
-                "0x{}",
-                hex::encode(signed_transaction.to_bytes().map_err(|_| anyhow::anyhow!(
-                    "Failed to serialize signed transaction to bytes"
-                ))?)
-            );
+        let transaction_hex = self.sign(transaction)?;
 
         let hash = self
             .geth_client
@@ -215,17 +205,7 @@ impl Wallet {
             data: data.unwrap_or_default(),
             signature: None,
         };
-
-        #[allow(clippy::cast_possible_truncation)]
-        let signed_transaction =
-            transaction.sign(&self.private_key, Some(u32::from(chain_id) as u64));
-        let transaction_hex =
-            format!(
-                "0x{}",
-                hex::encode(signed_transaction.to_bytes().map_err(|_| anyhow::anyhow!(
-                    "Failed to serialize signed transaction to bytes"
-                ))?)
-            );
+        let transaction_hex = self.sign(transaction)?;
 
         let hash = self
             .geth_client
@@ -271,17 +251,7 @@ impl Wallet {
             data,
             signature: None,
         };
-
-        #[allow(clippy::cast_possible_truncation)]
-        let signed_transaction =
-            transaction.sign(&self.private_key, Some(u32::from(chain_id) as u64));
-        let transaction_hex =
-            format!(
-                "0x{}",
-                hex::encode(signed_transaction.to_bytes().map_err(|_| anyhow::anyhow!(
-                    "Failed to serialize signed transaction to bytes"
-                ))?)
-            );
+        let transaction_hex = self.sign(transaction)?;
 
         let hash = self
             .geth_client
@@ -319,17 +289,7 @@ impl Wallet {
             data: data.unwrap_or_default(),
             signature: None,
         };
-
-        #[allow(clippy::cast_possible_truncation)]
-        let signed_transaction =
-            transaction.sign(&self.private_key, Some(u32::from(chain_id) as u64));
-        let transaction_hex =
-            format!(
-                "0x{}",
-                hex::encode(signed_transaction.to_bytes().map_err(|_| anyhow::anyhow!(
-                    "Failed to serialize signed transaction to bytes"
-                ))?)
-            );
+        let transaction_hex = self.sign(transaction)?;
 
         let hash = self
             .geth_client
@@ -420,6 +380,20 @@ impl Wallet {
 
     async fn gas_limit(&self, request: EstimateGasRequest) -> anyhow::Result<num256::Uint256> {
         self.geth_client.gas_limit(request).await
+    }
+
+    fn sign(&self, transaction: clarity::Transaction) -> anyhow::Result<String> {
+        let signed_transaction =
+            transaction.sign(&self.private_key, Some(u32::from(self.chain_id) as u64));
+        let transaction_hex =
+            format!(
+                "0x{}",
+                hex::encode(signed_transaction.to_bytes().map_err(|_| anyhow::anyhow!(
+                    "Failed to serialize signed transaction to bytes"
+                ))?)
+            );
+
+        Ok(transaction_hex)
     }
 }
 
