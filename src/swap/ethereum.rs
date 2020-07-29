@@ -21,18 +21,9 @@ pub struct Wallet {
 impl herc20::ExecuteDeploy for Wallet {
     async fn execute_deploy(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {
         let action = params.build_deploy_action();
-        let transaction_hash = self.inner.deploy_contract(action).await?;
-        let transaction = self.inner.get_transaction_by_hash(transaction_hash).await?;
+        let deployed_contract = self.inner.deploy_contract(dbg!(action)).await?;
 
-        let receipt = self.inner.get_transaction_receipt(transaction_hash).await?;
-        let location = receipt
-            .contract_address
-            .ok_or_else(|| anyhow::anyhow!("Contract address missing from receipt"))?;
-
-        Ok(herc20::Deployed {
-            transaction,
-            location,
-        })
+        Ok(deployed_contract.into())
     }
 }
 

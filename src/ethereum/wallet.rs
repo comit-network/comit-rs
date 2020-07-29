@@ -10,10 +10,11 @@ use crate::{
 use comit::{
     actions::ethereum::{CallContract, DeployContract},
     asset::Erc20,
-    ethereum::TransactionReceipt,
+    ethereum::{Transaction, TransactionReceipt},
 };
 use num::BigUint;
 use num256::Uint256;
+use std::time::Duration;
 use url::Url;
 
 #[derive(Debug, Clone)]
@@ -91,7 +92,7 @@ impl Wallet {
             chain_id,
             ..
         }: DeployContract,
-    ) -> anyhow::Result<Hash> {
+    ) -> anyhow::Result<DeployedContract> {
         self.assert_chain(chain_id).await?;
 
         let nonce = self.get_transaction_count().await?;
@@ -107,6 +108,7 @@ impl Wallet {
             signature: None,
         };
 
+        // TODO: Reduce duplication across different functions
         let signed_transaction =
             transaction.sign(&self.private_key, Some(u32::from(chain_id) as u64));
         let transaction_hex =
@@ -122,10 +124,28 @@ impl Wallet {
             .send_raw_transaction(transaction_hex)
             .await?;
 
-        // TODO: Return TransactionReceipt instead
-        std::thread::sleep(std::time::Duration::from_millis(2000));
+        let contract_address = match self.wait_until_transaction_receipt(hash).await? {
+            TransactionReceipt {
+                status: 1,
+                contract_address: Some(contract_address),
+                ..
+            } => contract_address,
+            TransactionReceipt { status: 0, .. } => {
+                anyhow::bail!("Transaction receipt status failed")
+            }
+            TransactionReceipt {
+                contract_address: None,
+                ..
+            } => anyhow::bail!("No contract address in deployment transaction receipt"),
+            receipt => anyhow::bail!("Fetched invalid transaction receipt: {:?}", receipt),
+        };
 
-        Ok(hash)
+        let transaction = self.get_transaction_by_hash(hash).await?;
+
+        Ok(DeployedContract {
+            transaction,
+            contract_address,
+        })
     }
 
     pub async fn send_transaction(
@@ -184,8 +204,7 @@ impl Wallet {
             .send_raw_transaction(transaction_hex)
             .await?;
 
-        // TODO: Return TransactionReceipt instead
-        std::thread::sleep(std::time::Duration::from_millis(2000));
+        let _ = self.wait_until_transaction_receipt(hash).await?;
 
         Ok(hash)
     }
@@ -241,8 +260,7 @@ impl Wallet {
             .send_raw_transaction(transaction_hex)
             .await?;
 
-        // TODO: Return TransactionReceipt instead
-        std::thread::sleep(std::time::Duration::from_millis(2000));
+        let _ = self.wait_until_transaction_receipt(hash).await?;
 
         Ok(hash)
     }
@@ -290,8 +308,7 @@ impl Wallet {
             .send_raw_transaction(transaction_hex)
             .await?;
 
-        // TODO: Return TransactionReceipt instead
-        std::thread::sleep(std::time::Duration::from_millis(2000));
+        let _ = self.wait_until_transaction_receipt(hash).await?;
 
         Ok(hash)
     }
@@ -299,19 +316,35 @@ impl Wallet {
     pub async fn get_transaction_by_hash(
         &self,
         transaction_hash: Hash,
-    ) -> anyhow::Result<comit::ethereum::Transaction> {
+    ) -> anyhow::Result<Transaction> {
         self.geth_client
             .get_transaction_by_hash(transaction_hash)
             .await
     }
 
-    pub async fn get_transaction_receipt(
+    pub async fn wait_until_transaction_receipt(
         &self,
         transaction_hash: Hash,
     ) -> anyhow::Result<TransactionReceipt> {
-        self.geth_client
-            .get_transaction_receipt(transaction_hash)
-            .await
+        let start_time = std::time::Instant::now();
+        let max_retry_time = Duration::from_millis(60_000);
+
+        loop {
+            if std::time::Instant::now() > start_time + max_retry_time {
+                anyhow::bail!(
+                    "failed to find transaction receipt for transaction {}",
+                    transaction_hash
+                )
+            }
+
+            if let Some(transaction_receipt) =
+                self.get_transaction_receipt(transaction_hash).await?
+            {
+                return Ok(transaction_receipt);
+            }
+
+            tokio::time::delay_for(Duration::from_millis(1_000)).await;
+        }
     }
 
     pub async fn erc20_balance(&self, token_contract: Address) -> anyhow::Result<Erc20> {
@@ -328,6 +361,15 @@ impl Wallet {
 
     pub async fn ether_balance(&self) -> anyhow::Result<ether::Amount> {
         self.geth_client.get_balance(self.account()).await
+    }
+
+    async fn get_transaction_receipt(
+        &self,
+        transaction_hash: Hash,
+    ) -> anyhow::Result<Option<TransactionReceipt>> {
+        self.geth_client
+            .get_transaction_receipt(transaction_hash)
+            .await
     }
 
     async fn get_transaction_count(&self) -> anyhow::Result<u32> {
@@ -353,12 +395,27 @@ impl Wallet {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct DeployedContract {
+    pub transaction: Transaction,
+    pub contract_address: Address,
+}
+
+impl From<DeployedContract> for comit::herc20::Deployed {
+    fn from(from: DeployedContract) -> Self {
+        Self {
+            transaction: from.transaction,
+            location: from.contract_address,
+        }
+    }
+}
+
 #[cfg(all(test, feature = "test-docker"))]
 mod tests {
     use super::*;
     use crate::{ethereum::ether, test_harness::ethereum::Blockchain};
     use comit::asset::ethereum::FromWei;
-    use comit::asset::Erc20Quantity;
+    use comit::asset::{self, Erc20Quantity};
 
     async fn random_wallet(node_url: Url, dai_contract_address: Address) -> anyhow::Result<Wallet> {
         let seed = Seed::random().unwrap();
@@ -439,6 +496,8 @@ mod tests {
         let mut blockchain = Blockchain::new(&client).unwrap();
         blockchain.init().await.unwrap();
 
+        let chain_id = blockchain.chain_id();
+
         let wallet = random_wallet(
             blockchain.node_url.clone(),
             blockchain.token_contract().unwrap(),
@@ -452,7 +511,7 @@ mod tests {
             .mint_ether(
                 address,
                 ether::Amount::from_ether_str("2").unwrap(),
-                ChainId::regtest(),
+                chain_id,
             )
             .await
             .unwrap();
@@ -464,7 +523,7 @@ mod tests {
                     quantity: Erc20Quantity::from_wei(initial_deposit),
                     token_contract: wallet.dai_contract_addr,
                 },
-                ChainId::regtest(),
+                chain_id,
             )
             .await
             .unwrap();
@@ -476,7 +535,7 @@ mod tests {
             .transfer_dai(
                 Address::random(),
                 dai::Amount::from_dai_trunc(1.0).unwrap(),
-                ChainId::regtest(),
+                chain_id,
             )
             .await
             .unwrap();
@@ -486,5 +545,65 @@ mod tests {
             balance,
             dai::Amount::from_atto(4_000_000_000_000_000_000u64.into())
         );
+    }
+
+    #[tokio::test]
+    async fn can_deploy_htlc() {
+        let client = testcontainers::clients::Cli::default();
+
+        let mut blockchain = Blockchain::new(&client).unwrap();
+        blockchain.init().await.unwrap();
+
+        let chain_id = blockchain.chain_id();
+
+        let wallet = random_wallet(
+            blockchain.node_url.clone(),
+            blockchain.token_contract().unwrap(),
+        )
+        .await
+        .unwrap();
+
+        blockchain
+            .mint_ether(
+                wallet.account(),
+                ether::Amount::from_ether_str("2").unwrap(),
+                chain_id,
+            )
+            .await
+            .unwrap();
+
+        blockchain
+            .mint_erc20_token(
+                wallet.account(),
+                Erc20 {
+                    quantity: Erc20Quantity::from_wei(5_000_000_000_000_000_000u64),
+                    token_contract: wallet.dai_contract_addr,
+                },
+                chain_id,
+            )
+            .await
+            .unwrap();
+
+        let htlc_params = comit::herc20::Params {
+            asset: asset::Erc20 {
+                token_contract: wallet.dai_contract_addr,
+                quantity: Erc20Quantity::from_wei(5_000_000_000u64),
+            },
+            redeem_identity: Address::random(),
+            refund_identity: Address::random(),
+            expiry: comit::Timestamp::now(),
+            secret_hash: comit::SecretHash::from_vec(b"hello world, you are beautiful!!").unwrap(),
+            chain_id,
+        };
+
+        wallet
+            .deploy_contract(DeployContract {
+                data: htlc_params.bytecode(),
+                amount: asset::Ether::zero(),
+                gas_limit: 160_000,
+                chain_id,
+            })
+            .await
+            .unwrap();
     }
 }
