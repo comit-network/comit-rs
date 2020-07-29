@@ -37,10 +37,10 @@ mod test_harness;
 
 use crate::{
     command::{balance, deposit, dump_config, trade, wallet_info, withdraw, Command, Options},
-    config::Settings,
+    config::{read_config, Settings},
 };
-use anyhow::Context;
 use conquer_once::Lazy;
+
 pub use maker::Maker;
 pub use mid_market_rate::MidMarketRate;
 pub use rate::{Rate, Spread};
@@ -54,7 +54,7 @@ pub static SECP: Lazy<::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All>
 async fn main() {
     let options = Options::from_args();
 
-    let settings = read_config(&options)
+    let settings = read_config(&options.config_file)
         .and_then(Settings::from_config_file_and_defaults)
         .expect("Could not initialize configuration");
 
@@ -140,29 +140,4 @@ async fn main() {
         }
         Command::DumpConfig => unreachable!(),
     }
-}
-
-fn read_config(options: &Options) -> anyhow::Result<config::File> {
-    // if the user specifies a config path, use it
-    if let Some(path) = &options.config_file {
-        eprintln!("Using config file {}", path.display());
-
-        return config::File::read(&path)
-            .with_context(|| format!("failed to read config file {}", path.display()));
-    }
-
-    // try to load default config
-    let default_path = crate::fs::default_config_path()?;
-
-    if !default_path.exists() {
-        return Ok(config::File::default());
-    }
-
-    eprintln!(
-        "Using config file at default path: {}",
-        default_path.display()
-    );
-
-    config::File::read(&default_path)
-        .with_context(|| format!("failed to read config file {}", default_path.display()))
 }

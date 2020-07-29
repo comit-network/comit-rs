@@ -142,7 +142,7 @@ mod tests {
     use crate::config::{Bitcoind, Settings};
     use crate::{bitcoin, ethereum::dai};
     use spectral::prelude::*;
-    use std::io::Write;
+    use std::io::{BufRead, BufReader, Write};
     use std::path::PathBuf;
     use tempdir::TempDir;
 
@@ -229,6 +229,83 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
         let file = File::read(&file_path);
 
         assert_that(&file).is_ok().is_equal_to(expected);
+    }
+
+    #[test]
+    fn full_config_serializes_correctly() {
+        let file = File {
+            maker: Some(Maker {
+                max_sell: Some(MaxSell {
+                    bitcoin: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
+                    dai: Some(dai::Amount::from_dai_trunc(9876.54321).unwrap()),
+                }),
+                spread: Some(Spread::new(1000).unwrap()),
+                maximum_possible_fee: Some(Fees {
+                    bitcoin: Some(bitcoin::Amount::from_btc(0.01).unwrap()),
+                }),
+            }),
+            network: Some(Network {
+                listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
+            }),
+            data: Some(Data {
+                dir: PathBuf::from("/tmp/nectar/"),
+            }),
+            logging: Some(Logging {
+                level: Some(Level::Debug),
+            }),
+            bitcoin: Some(Bitcoin {
+                network: bitcoin::Network::Regtest,
+                bitcoind: Some(Bitcoind {
+                    node_url: "http://localhost:18443".parse().unwrap(),
+                }),
+            }),
+            ethereum: Some(Ethereum {
+                chain_id: ChainId::regtest(),
+                node_url: Some("http://localhost:8545".parse().unwrap()),
+                local_dai_contract_address: Some(
+                    "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
+                        .parse()
+                        .unwrap(),
+                ),
+            }),
+        };
+
+        let expected = r#"[maker]
+spread = 1000
+
+[maker.max_sell]
+bitcoin = 1.23456
+dai = 9876.54
+
+[maker.maximum_possible_fee]
+bitcoin = 0.01
+
+[network]
+listen = ["/ip4/0.0.0.0/tcp/9939"]
+
+[data]
+dir = "/tmp/nectar/"
+
+[logging]
+level = "Debug"
+
+[bitcoin]
+network = "regtest"
+
+[bitcoin.bitcoind]
+node_url = "http://localhost:18443/"
+
+[ethereum]
+chain_id = 1337
+node_url = "http://localhost:8545/"
+local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
+"#;
+
+        let serialized = toml::to_string(&file);
+
+        assert_that(&serialized)
+            .is_ok()
+            .is_equal_to(expected.to_string());
     }
 
     #[test]
@@ -406,5 +483,30 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
             .unwrap();
 
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn sample_config_deserializes_correctly() {
+        let file = std::fs::File::open("nectar-toml.md").unwrap();
+        let file = BufReader::new(file);
+
+        let config_lines: Result<Vec<String>, _> = file
+            .lines()
+            .skip_while(|line| {
+                line.as_ref()
+                    .map(|line| !line.starts_with("[maker]"))
+                    .unwrap_or(true)
+            })
+            .take_while(|line| {
+                line.as_ref()
+                    .map(|line| !line.ends_with("```"))
+                    .unwrap_or(false)
+            })
+            .collect();
+
+        let config = config_lines.unwrap().join("\n");
+
+        let file = toml::from_str::<File>(&config);
+        assert!(file.is_ok());
     }
 }
