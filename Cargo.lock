@@ -249,15 +249,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdcf67bb7ba7797a081cd19009948ab533af7c355d5caf1d08c777582d351e9c"
 
 [[package]]
-name = "bimap"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "783204f24fd7724ea274d327619cfa6a6018047bb0561a68aadff6f56787591b"
-dependencies = [
- "cfg-if",
-]
-
-[[package]]
 name = "bincode"
 version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2039,7 +2030,6 @@ dependencies = [
  "anyhow",
  "async-trait",
  "base64 0.12.3",
- "bimap",
  "bitcoin",
  "chrono",
  "clarity",

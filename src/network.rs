@@ -8,7 +8,6 @@ use crate::{
     Seed,
 };
 use ::bitcoin::hashes::{sha256, Hash, HashEngine};
-use bimap::BiMap;
 use chrono::Utc;
 use comit::{
     asset, identity,
@@ -171,7 +170,7 @@ pub struct Nectar {
     #[behaviour(ignore)]
     active_takers: ActiveTakers,
     #[behaviour(ignore)]
-    swap_id_to_order_id: BiMap<SharedSwapId, OrderId>,
+    swap_id_to_order_id: HashMap<SharedSwapId, OrderId>,
     #[behaviour(ignore)]
     swap_id_to_bitcoin_transient_sk: HashMap<SharedSwapId, ::bitcoin::secp256k1::SecretKey>,
     #[behaviour(ignore)]
@@ -187,7 +186,7 @@ impl Nectar {
             local_peer_id,
             takers: HashMap::new(),
             active_takers,
-            swap_id_to_order_id: BiMap::new(),
+            swap_id_to_order_id: HashMap::new(),
             swap_id_to_bitcoin_transient_sk: HashMap::new(),
             local_data: HashMap::new(),
         }
@@ -390,7 +389,7 @@ impl NetworkBehaviourEventProcess<network::comit::BehaviourOutEvent> for Nectar 
                         }
                     };
 
-                let order = match self.swap_id_to_order_id.get_by_left(&shared_swap_id) {
+                let order = match self.swap_id_to_order_id.get(&shared_swap_id) {
                     Some(order_id) => match self.orderbook.get_order(order_id) {
                         Some(order) => order,
                         None => {
