@@ -6,7 +6,8 @@ use crate::{
     },
     MidMarketRate, Rate, Spread,
 };
-use std::{cmp::min, convert::TryFrom};
+use std::fmt::{Display, Formatter};
+use std::{cmp::min, convert::TryFrom, fmt};
 
 #[derive(Debug, Copy, Clone, strum_macros::Display)]
 #[strum(serialize_all = "UPPERCASE")]
@@ -142,6 +143,19 @@ impl BtcDaiOrder {
                 Ok(order_rate >= mid_market_rate.into())
             }
         }
+    }
+}
+
+impl Display for BtcDaiOrder {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}, {}, {}",
+            self.position,
+            self.base.amount.to_string(),
+            self.quote.amount.to_string()
+        )?;
+        Ok(())
     }
 }
 
