@@ -170,11 +170,9 @@ pub struct Nectar {
     #[behaviour(ignore)]
     active_takers: ActiveTakers,
     #[behaviour(ignore)]
-    swap_id_to_order_id: HashMap<SharedSwapId, OrderId>,
+    order_ids: HashMap<SharedSwapId, OrderId>,
     #[behaviour(ignore)]
-    swap_id_to_bitcoin_transient_sk: HashMap<SharedSwapId, ::bitcoin::secp256k1::SecretKey>,
-    #[behaviour(ignore)]
-    local_data: HashMap<SharedSwapId, LocalData>,
+    local_identities: HashMap<SharedSwapId, LocalIdentities>,
 }
 
 impl Nectar {
@@ -186,9 +184,8 @@ impl Nectar {
             local_peer_id,
             takers: HashMap::new(),
             active_takers,
-            swap_id_to_order_id: HashMap::new(),
-            swap_id_to_bitcoin_transient_sk: HashMap::new(),
-            local_data: HashMap::new(),
+            order_ids: HashMap::new(),
+            local_identities: HashMap::new(),
         }
     }
 
@@ -224,11 +221,10 @@ impl Nectar {
         bitcoin_transient_sk: ::bitcoin::secp256k1::SecretKey,
         ethereum_identity: identity::Ethereum,
     ) {
-        // TODO: Saving this and the bitcoin identity inside
-        // `LocalData` is redundant. It may be better to just save the
-        // bitcoin transient key and the ethereum identity
-        self.swap_id_to_bitcoin_transient_sk
-            .insert(swap_id.shared, bitcoin_transient_sk);
+        self.local_identities.insert(
+            swap_id.shared,
+            LocalIdentities::new(bitcoin_transient_sk, ethereum_identity),
+        );
 
         let bitcoin_identity =
             identity::Bitcoin::from_secret_key(&crate::SECP, &bitcoin_transient_sk);
@@ -239,8 +235,6 @@ impl Nectar {
             lightning_identity: None,
         };
         let local_data = LocalData::for_bob(identities);
-
-        self.local_data.insert(swap_id.shared, local_data);
 
         self.comit
             .communicate(taker_peer_id, swap_id.shared, local_data);
@@ -261,6 +255,17 @@ impl Nectar {
 
         // We trust in libp2p to poll us.
         Poll::Pending
+    }
+}
+
+struct LocalIdentities {
+    bitcoin: ::bitcoin::secp256k1::SecretKey,
+    ethereum: identity::Ethereum,
+}
+
+impl LocalIdentities {
+    fn new(bitcoin: ::bitcoin::secp256k1::SecretKey, ethereum: identity::Ethereum) -> Self {
+        Self { bitcoin, ethereum }
     }
 }
 
@@ -319,7 +324,7 @@ impl NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> for Nectar {
             } => {
                 let swap_id = SwapId::new(shared_swap_id);
 
-                self.swap_id_to_order_id.insert(swap_id.shared, order_id);
+                self.order_ids.insert(swap_id.shared, order_id);
 
                 self.events
                     .push_back(Event::SetSwapIdentities(SwapMetadata {
@@ -361,13 +366,9 @@ impl NetworkBehaviourEventProcess<network::comit::BehaviourOutEvent> for Nectar 
                         }
                     };
 
-                let (maker_bitcoin_identity, maker_ethereum_identity) =
-                    match self.local_data.remove(&shared_swap_id) {
-                        Some(LocalData {
-                            bitcoin_identity: Some(bitcoin_identity),
-                            ethereum_identity: Some(ethereum_identity),
-                            ..
-                        }) => (bitcoin_identity, ethereum_identity),
+                let (maker_bitcoin_transient_sk, maker_ethereum_identity) =
+                    match self.local_identities.remove(&shared_swap_id) {
+                        Some(LocalIdentities { bitcoin, ethereum }) => (bitcoin, ethereum),
                         _ => {
                             tracing::warn!(
                                 "could not find identities for shared_swap_id: {}",
@@ -377,29 +378,17 @@ impl NetworkBehaviourEventProcess<network::comit::BehaviourOutEvent> for Nectar 
                         }
                     };
 
-                let bitcoin_transient_sk =
-                    match self.swap_id_to_bitcoin_transient_sk.remove(&shared_swap_id) {
-                        Some(bitcoin_transient_sk) => bitcoin_transient_sk,
-                        None => {
-                            tracing::warn!(
-                                "could not find bitcoin transient sk for shared_swap_id: {}",
-                                shared_swap_id,
-                            );
-                            return;
-                        }
-                    };
-
-                let order = match self.swap_id_to_order_id.get(&shared_swap_id) {
+                let order = match self.order_ids.get(&shared_swap_id) {
                     Some(order_id) => match self.orderbook.get_order(order_id) {
                         Some(order) => order,
                         None => {
-                            tracing::warn!("could not find order with id, id: {}", order_id);
+                            tracing::warn!("could not find order with id: {}", order_id);
                             return;
                         }
                     },
                     None => {
                         tracing::warn!(
-                            "could order_id corresponding to shared_swap_id: {}",
+                            "could not find order_id corresponding to shared_swap_id: {}",
                             shared_swap_id
                         );
                         return;
@@ -414,16 +403,18 @@ impl NetworkBehaviourEventProcess<network::comit::BehaviourOutEvent> for Nectar 
                     }
                 };
 
+                let redeem_identity =
+                    identity::Bitcoin::from_secret_key(&crate::SECP, &maker_bitcoin_transient_sk);
                 let hbit_params = hbit::Params::new(
                     hbit::SharedParams {
                         asset: order.bitcoin_amount,
-                        redeem_identity: maker_bitcoin_identity,
+                        redeem_identity,
                         refund_identity: taker_bitcoin_identity,
                         expiry: order.bitcoin_absolute_expiry.into(),
                         secret_hash,
                         network: order.bitcoin_ledger.into(),
                     },
-                    bitcoin_transient_sk,
+                    maker_bitcoin_transient_sk,
                 );
 
                 let herc20_params = herc20::Params {
