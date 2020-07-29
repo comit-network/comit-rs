@@ -6,7 +6,6 @@
 import { twoActorTest } from "../src/actor_test";
 import OrderFactory from "../src/actors/order_factory";
 import { sleep } from "../src/utils";
-import { getIdentities } from "../src/actors/defaults";
 
 // todo: move test initialisation into single mega function to reduce noise
 describe("orderbook", () => {
@@ -14,23 +13,12 @@ describe("orderbook", () => {
         "btc_dai_buy_order",
         twoActorTest(async ({ alice, bob }) => {
             await alice.connect(bob);
-
-            await OrderFactory.initWalletsForBtcDaiOrder(alice, bob);
-
-            const order = await OrderFactory.newBtcDaiOrder(bob, "buy");
-            await alice.initLedgerAndBalancesForOrder(order);
-            await bob.initLedgerAndBalancesForOrder(order);
-
-            const aliceIdentities = await getIdentities(alice);
+            const order = await OrderFactory.newBtcDaiOrder(alice, bob, "buy");
 
             const orderUrl = await bob.makeOrder(order);
+            await alice.takeOrder();
 
-            await alice.takeOrderAndAssertSwapCreated(
-                aliceIdentities.bitcoin,
-                aliceIdentities.ethereum
-            );
-
-            await bob.checkSwapCreatedFromOrder(orderUrl);
+            await bob.assertSwapCreatedFromOrder(orderUrl);
 
             await alice.assertAndExecuteNextAction("fund");
 
@@ -51,22 +39,12 @@ describe("orderbook", () => {
         "btc_dai_sell_order",
         twoActorTest(async ({ alice, bob }) => {
             await alice.connect(bob);
-            await OrderFactory.initWalletsForBtcDaiOrder(alice, bob);
-
-            const order = await OrderFactory.newBtcDaiOrder(bob, "sell");
-            await alice.initLedgerAndBalancesForOrder(order);
-            await bob.initLedgerAndBalancesForOrder(order);
-
-            const aliceIdentities = await getIdentities(alice);
+            const order = await OrderFactory.newBtcDaiOrder(alice, bob, "sell");
 
             const orderUrl = await bob.makeOrder(order);
+            await alice.takeOrder();
 
-            await alice.takeOrderAndAssertSwapCreated(
-                aliceIdentities.bitcoin,
-                aliceIdentities.ethereum
-            );
-
-            await bob.checkSwapCreatedFromOrder(orderUrl);
+            await bob.assertSwapCreatedFromOrder(orderUrl);
 
             await alice.assertAndExecuteNextAction("deploy");
             await alice.assertAndExecuteNextAction("fund");

@@ -27,7 +27,11 @@ interface Ethereum {
 }
 
 export default class OrderbookFactory {
-    public static async initWalletsForBtcDaiOrder(alice: Actor, bob: Actor) {
+    public static async newBtcDaiOrder(
+        alice: Actor,
+        bob: Actor,
+        position: string
+    ): Promise<BtcDaiOrder> {
         await alice.wallets.initializeForLedger(
             "bitcoin",
             alice.logger,
@@ -41,12 +45,7 @@ export default class OrderbookFactory {
 
         await bob.wallets.initializeForLedger("bitcoin", bob.logger, "bob");
         await bob.wallets.initializeForLedger("ethereum", bob.logger, "bob");
-    }
 
-    public static async newBtcDaiOrder(
-        bob: Actor,
-        position: string
-    ): Promise<BtcDaiOrder> {
         const bobIdentities = await getIdentities(bob);
 
         // todo: do make this the actual DAI contract? It doesnt actually matter
@@ -73,7 +72,7 @@ export default class OrderbookFactory {
             }
         };
 
-        return {
+        const order = {
             position,
             bitcoin_amount: "1000000",
             bitcoin_ledger: "regtest",
@@ -87,5 +86,10 @@ export default class OrderbookFactory {
             bitcoin_identity: bobIdentities.bitcoin,
             ethereum_identity: bobIdentities.ethereum,
         };
+
+        await alice.initLedgerAndBalancesForOrder(order);
+        await bob.initLedgerAndBalancesForOrder(order);
+
+        return order;
     }
 }

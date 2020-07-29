@@ -30,7 +30,7 @@ import { Ledger, LedgerKind } from "../ledgers/ledger";
 import { LedgerConfig, sleep } from "../utils";
 import { Actors } from "./index";
 import { Wallets } from "../wallets";
-import { defaultLedgerDescriptionForLedger } from "./defaults";
+import { defaultLedgerDescriptionForLedger, getIdentities } from "./defaults";
 import pTimeout from "p-timeout";
 import { Entity, Link } from "comit-sdk/dist/src/cnd/siren";
 import { BtcDaiOrder } from "./order_factory";
@@ -337,11 +337,13 @@ export class Actor {
     /**
      * Takes a BtcDai sell order (herc20-hbit Swap)
      */
-    public async takeOrderAndAssertSwapCreated(
-        bitcoinIdentity: string,
-        ethereumIdentity: string
-    ) {
+    public async takeOrder() {
         if (this.name === "alice") {
+            const {
+                ethereum: ethereumIdentity,
+                bitcoin: bitcoinIdentity,
+            } = await getIdentities(this);
+
             // Poll until Alice receives an order. The order must be the one that Bob created above.
             // @ts-ignore
             const aliceOrdersResponse = await this.pollCndUntil<Entity>(
@@ -400,7 +402,7 @@ export class Actor {
     /**
      * Wait until a swap is created on bobs end
      */
-    public async checkSwapCreatedFromOrder(orderUrl: string) {
+    public async assertSwapCreatedFromOrder(orderUrl: string) {
         if (this.name === "bob") {
             // Since Alice has taken the swap, the order created by Bob should have an associated swap in the navigational link
             const bobGetOrderResponse = await this.cnd.fetch<Entity>(orderUrl);
