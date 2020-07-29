@@ -7,6 +7,7 @@ use crate::{
     swap::{hbit, herc20, SwapKind, SwapParams},
     Seed,
 };
+use ::bitcoin::hashes::{sha256, Hash, HashEngine};
 use bimap::BiMap;
 use chrono::Utc;
 use comit::{
@@ -26,7 +27,6 @@ use libp2p::{
     NetworkBehaviour, PeerId,
 };
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
-use sha2::{Digest, Sha256};
 use std::{
     collections::{HashMap, VecDeque},
     pin::Pin,
@@ -591,12 +591,13 @@ impl<'de> Deserialize<'de> for Taker {
 }
 
 fn derive_key_pair(seed: &Seed) -> libp2p::identity::Keypair {
-    let mut sha = Sha256::new();
-    sha.update(seed.bytes());
-    sha.update(b"LIBP2P_KEYPAIR");
+    let mut engine = sha256::HashEngine::default();
 
-    let bytes = sha.finalize();
-    let key = ed25519::SecretKey::from_bytes(bytes).expect("we always pass 32 bytes");
+    engine.input(&seed.bytes());
+    engine.input(b"LIBP2P_KEYPAIR");
+
+    let hash = sha256::Hash::from_engine(engine);
+    let key = ed25519::SecretKey::from_bytes(hash.into_inner()).expect("we always pass 32 bytes");
     libp2p::identity::Keypair::Ed25519(key.into())
 }
 

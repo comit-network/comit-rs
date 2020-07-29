@@ -2065,7 +2065,6 @@ dependencies = [
  "serde 1.0.114",
  "serde-hex",
  "serde_json",
- "sha2 0.9.1",
  "sled",
  "spectral",
  "structopt",

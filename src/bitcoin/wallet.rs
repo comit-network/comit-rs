@@ -5,12 +5,11 @@ use crate::{
 };
 use ::bitcoin::{
     hash_types::PubkeyHash,
-    hashes::Hash,
+    hashes::{sha256, Hash, HashEngine},
     secp256k1::{self, SecretKey},
     util::bip32::{ChainCode, ExtendedPrivKey},
     PrivateKey, Transaction, Txid,
 };
-use sha2::{digest::FixedOutput as _, Digest, Sha256};
 use url::Url;
 
 const BITCOIND_DEFAULT_EXTERNAL_DERIVATION_PATH: &str = "/0h/0h/*h";
@@ -84,15 +83,15 @@ impl Wallet {
     }
 
     pub fn derive_transient_sk(&self, swap_id: SwapId) -> SecretKey {
-        // TODO: use bitcoin_hashes instead of adding new dependency sha2
-        let mut hash = Sha256::new();
-        hash.update(&self.seed.bytes());
-        hash.update(swap_id.as_bytes());
-        hash.update(b"TRANSIENT_KEY");
+        let mut engine = sha256::HashEngine::default();
 
-        let sk = hash.finalize_fixed();
+        engine.input(&self.seed.bytes());
+        engine.input(swap_id.as_bytes());
+        engine.input(b"TRANSIENT_KEY");
 
-        SecretKey::from_slice(&sk).expect("any 32 bytes are a valid secret key")
+        let hash = sha256::Hash::from_engine(engine);
+
+        SecretKey::from_slice(&hash.into_inner()).expect("any 32 bytes are a valid secret key")
     }
 
     pub async fn info(&self) -> anyhow::Result<WalletInfoResponse> {
