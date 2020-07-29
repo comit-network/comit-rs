@@ -538,7 +538,7 @@ dependencies = [
 [[package]]
 name = "comit"
 version = "0.1.0"
-source = "git+https://github.com/comit-network/comit-rs?rev=35aeb97525ebca153c5f8483c0aa2952c8e16d39#35aeb97525ebca153c5f8483c0aa2952c8e16d39"
+source = "git+https://github.com/comit-network/comit-rs?rev=3605d8710cc4b03d5145f595d45786da93b85324#3605d8710cc4b03d5145f595d45786da93b85324"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -803,7 +803,7 @@ dependencies = [
 [[package]]
 name = "digest"
 version = "0.1.0"
-source = "git+https://github.com/comit-network/comit-rs?rev=35aeb97525ebca153c5f8483c0aa2952c8e16d39#35aeb97525ebca153c5f8483c0aa2952c8e16d39"
+source = "git+https://github.com/comit-network/comit-rs?rev=3605d8710cc4b03d5145f595d45786da93b85324#3605d8710cc4b03d5145f595d45786da93b85324"
 dependencies = [
  "digest-macro-derive",
  "hex 0.4.2",
@@ -830,7 +830,7 @@ dependencies = [
 [[package]]
 name = "digest-macro-derive"
 version = "0.1.0"
-source = "git+https://github.com/comit-network/comit-rs?rev=35aeb97525ebca153c5f8483c0aa2952c8e16d39#35aeb97525ebca153c5f8483c0aa2952c8e16d39"
+source = "git+https://github.com/comit-network/comit-rs?rev=3605d8710cc4b03d5145f595d45786da93b85324#3605d8710cc4b03d5145f595d45786da93b85324"
 dependencies = [
  "hex 0.4.2",
  "proc-macro2 1.0.19",
