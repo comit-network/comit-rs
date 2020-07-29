@@ -402,7 +402,7 @@ export class Actor {
     /**
      * Wait until a swap is created on bobs end
      */
-    public async checkSwapCreatedFromOrder(orderUrl: string) {
+    public async assertSwapCreatedFromOrder(orderUrl: string) {
         if (this.name === "bob") {
             // Since Alice has taken the swap, the order created by Bob should have an associated swap in the navigational link
             const bobGetOrderResponse = await this.cnd.fetch<Entity>(orderUrl);

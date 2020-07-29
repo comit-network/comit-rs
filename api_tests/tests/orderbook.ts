@@ -18,7 +18,7 @@ describe("orderbook", () => {
             const orderUrl = await bob.makeOrder(order);
             await alice.takeOrder();
 
-            await bob.checkSwapCreatedFromOrder(orderUrl);
+            await bob.assertSwapCreatedFromOrder(orderUrl);
 
             await alice.assertAndExecuteNextAction("fund");
 
@@ -44,7 +44,7 @@ describe("orderbook", () => {
             const orderUrl = await bob.makeOrder(order);
             await alice.takeOrder();
 
-            await bob.checkSwapCreatedFromOrder(orderUrl);
+            await bob.assertSwapCreatedFromOrder(orderUrl);
 
             await alice.assertAndExecuteNextAction("deploy");
             await alice.assertAndExecuteNextAction("fund");
