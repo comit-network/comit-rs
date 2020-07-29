@@ -6,7 +6,6 @@
 import { twoActorTest } from "../src/actor_test";
 import OrderFactory from "../src/actors/order_factory";
 import { sleep } from "../src/utils";
-import { getIdentities } from "../src/actors/defaults";
 
 // todo: move test initialisation into single mega function to reduce noise
 describe("orderbook", () => {
@@ -16,14 +15,8 @@ describe("orderbook", () => {
             await alice.connect(bob);
             const order = await OrderFactory.newBtcDaiOrder(alice, bob, "buy");
 
-            const aliceIdentities = await getIdentities(alice);
-
             const orderUrl = await bob.makeOrder(order);
-
-            await alice.takeOrderAndAssertSwapCreated(
-                aliceIdentities.bitcoin,
-                aliceIdentities.ethereum
-            );
+            await alice.takeOrder();
 
             await bob.checkSwapCreatedFromOrder(orderUrl);
 
@@ -48,14 +41,8 @@ describe("orderbook", () => {
             await alice.connect(bob);
             const order = await OrderFactory.newBtcDaiOrder(alice, bob, "sell");
 
-            const aliceIdentities = await getIdentities(alice);
-
             const orderUrl = await bob.makeOrder(order);
-
-            await alice.takeOrderAndAssertSwapCreated(
-                aliceIdentities.bitcoin,
-                aliceIdentities.ethereum
-            );
+            await alice.takeOrder();
 
             await bob.checkSwapCreatedFromOrder(orderUrl);
 
