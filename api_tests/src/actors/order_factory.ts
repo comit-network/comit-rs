@@ -1,5 +1,4 @@
 import { Actor } from "./actor";
-import { sleep } from "../utils";
 import { HarnessGlobal } from "../utils";
 import { defaultExpiries, getIdentities } from "./defaults";
 
@@ -28,15 +27,6 @@ interface Ethereum {
 }
 
 export default class OrderbookFactory {
-    public static async connect(alice: Actor, bob: Actor) {
-        const addr = await bob.cnd.getPeerListenAddresses();
-        // @ts-ignore
-        await alice.cnd.client.post("dial", { addresses: addr });
-
-        /// Wait for alice to accept an incoming connection from Bob
-        await sleep(1000);
-    }
-
     public static async initWalletsForBtcDaiOrder(alice: Actor, bob: Actor) {
         await alice.wallets.initializeForLedger(
             "bitcoin",

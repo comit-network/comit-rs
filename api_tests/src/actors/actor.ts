@@ -98,6 +98,15 @@ export class Actor {
         this.expectedBalanceChanges = new Map();
     }
 
+    public async connect(other: Actor) {
+        const addr = await other.cnd.getPeerListenAddresses();
+        // @ts-ignore
+        await this.cnd.client.post("dial", { addresses: addr });
+
+        const otherPeerId = await other.cnd.getPeerId();
+        await this.pollUntilConnectedTo(otherPeerId);
+    }
+
     /**
      * Create a herc20<->halbit Swap
      * @param create
@@ -924,5 +933,24 @@ export class Actor {
 
     get betaLedgerWallet() {
         return this.wallets.getWalletForLedger(this.betaLedger.name);
+    }
+
+    private async pollUntilConnectedTo(peer: string) {
+        interface Peers {
+            peers: Peer[];
+        }
+
+        interface Peer {
+            id: string;
+            // these are multi-addresses
+            endpoints: string[];
+        }
+
+        await this.pollCndUntil<Peers>(
+            "/peers",
+            (peers) =>
+                peers.peers.findIndex((candidate) => candidate.id === peer) !==
+                -1
+        );
     }
 }

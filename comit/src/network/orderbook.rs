@@ -278,7 +278,7 @@ pub enum BehaviourOutEvent {
 
 impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
     fn inject_event(&mut self, event: GossipsubEvent) {
-        if let GossipsubEvent::Message(_peer_id, _message_id, message) = event {
+        if let GossipsubEvent::Message(_peer_id, message_id, message) = event {
             let decoded: Message = match bincode::deserialize(&message.data[..]) {
                 Ok(msg) => msg,
                 Err(e) => {
@@ -289,6 +289,7 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
 
             match decoded {
                 Message::CreateOrder(order) => {
+                    tracing::debug!("received create order message: {}", message_id);
                     // This implies new orders remove old orders from
                     // the orderbook. This means nodes can spoof the
                     // network using previously seen order ids in
@@ -296,6 +297,7 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
                     self.orders.insert(order.id, order);
                 }
                 Message::DeleteOrder(order_id) => {
+                    tracing::debug!("received delete order message: {}", message_id);
                     // Same consideration here, nodes can cause orders
                     // they did not create to be removed by spoofing
                     // the network with a previously seen order id.
