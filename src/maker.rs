@@ -28,7 +28,7 @@ pub struct Maker {
     mid_market_rate: Option<MidMarketRate>,
     spread: Spread,
     bitcoin_network: bitcoin::Network,
-    ethereum_chain: dai::Chain,
+    ethereum_chain: ethereum::Chain,
 }
 
 impl Maker {

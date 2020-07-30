@@ -1,12 +1,12 @@
-use crate::float_maths::string_int_to_float;
 use crate::{
     bitcoin::{self, SATS_IN_BITCOIN_EXP},
-    float_maths::{divide_pow_ten_trunc, multiply_pow_ten, truncate},
+    ethereum,
+    float_maths::{divide_pow_ten_trunc, multiply_pow_ten, string_int_to_float, truncate},
     Rate,
 };
 use comit::{
     asset::{ethereum::FromWei, Erc20, Erc20Quantity},
-    ethereum::{Address, ChainId},
+    ethereum::Address,
 };
 use conquer_once::Lazy;
 use ethereum_types::U256;
@@ -17,25 +17,25 @@ pub const ATTOS_IN_DAI_EXP: u16 = 18;
 
 /// As per https://github.com/makerdao/developerguides/blob/804bb1f4d1ea737f0287cbf6480a570b888dd547/dai/dai-token/dai-token.md
 /// Dai Version 1.0.8
-static DAI_CONTRACT_ADDRESS_MAINNET: Lazy<Address> = Lazy::new(|| {
+static MAINNET_DAI_CONTRACT_ADDRESS: Lazy<Address> = Lazy::new(|| {
     "0x6B175474E89094C44Da98b954EedeAC495271d0F"
         .parse()
         .expect("Valid hex")
 });
 /// Dai Version 1.0.8
-static DAI_CONTRACT_ADDRESS_KOVAN: Lazy<Address> = Lazy::new(|| {
+static KOVAN_DAI_CONTRACT_ADDRESS: Lazy<Address> = Lazy::new(|| {
     "0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa"
         .parse()
         .expect("Valid hex")
 });
 /// Dai Version 1.0.4
-static DAI_CONTRACT_ADDRESS_RINKEBY: Lazy<Address> = Lazy::new(|| {
+static RINKEBY_DAI_CONTRACT_ADDRESS: Lazy<Address> = Lazy::new(|| {
     "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
         .parse()
         .expect("Valid hex")
 });
 /// Dai Version 1.0.4
-static DAI_CONTRACT_ADDRESS_ROPSTEN: Lazy<Address> = Lazy::new(|| {
+static ROPSTEN_DAI_CONTRACT_ADDRESS: Lazy<Address> = Lazy::new(|| {
     "0x31F42841c2db5173425b5223809CF3A38FEde360"
         .parse()
         .expect("Valid hex")
@@ -44,69 +44,7 @@ static DAI_CONTRACT_ADDRESS_ROPSTEN: Lazy<Address> = Lazy::new(|| {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Asset {
     pub amount: Amount,
-    pub chain: Chain,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Chain {
-    Mainnet,
-    Kovan,
-    Rinkeby,
-    Ropsten,
-    Local {
-        chain_id: u32,
-        dai_contract_address: Address,
-    },
-}
-
-impl Chain {
-    pub fn new(chain_id: ChainId, dai_contract_address: Address) -> Self {
-        use Chain::*;
-        match (chain_id.into(), dai_contract_address) {
-            (1, contract) if contract == *DAI_CONTRACT_ADDRESS_MAINNET => Mainnet,
-            (3, contract) if contract == *DAI_CONTRACT_ADDRESS_ROPSTEN => Ropsten,
-            (4, contract) if contract == *DAI_CONTRACT_ADDRESS_RINKEBY => Rinkeby,
-            (42, contract) if contract == *DAI_CONTRACT_ADDRESS_KOVAN => Kovan,
-            (chain_id, dai_contract_address) => Local {
-                chain_id,
-                dai_contract_address,
-            },
-        }
-    }
-
-    pub fn from_public_chain_id(chain_id: ChainId) -> anyhow::Result<Self> {
-        use Chain::*;
-        match chain_id.into() {
-            1 => Ok(Mainnet),
-            3 => Ok(Ropsten),
-            4 => Ok(Rinkeby),
-            42 => Ok(Kovan),
-            _ => anyhow::bail!("chain_id does not correspond to public chain"),
-        }
-    }
-
-    pub fn dai_contract_address(&self) -> Address {
-        match self {
-            Chain::Mainnet => *DAI_CONTRACT_ADDRESS_MAINNET,
-            Chain::Kovan => *DAI_CONTRACT_ADDRESS_KOVAN,
-            Chain::Rinkeby => *DAI_CONTRACT_ADDRESS_RINKEBY,
-            Chain::Ropsten => *DAI_CONTRACT_ADDRESS_ROPSTEN,
-            Chain::Local {
-                dai_contract_address,
-                ..
-            } => *dai_contract_address,
-        }
-    }
-
-    pub fn chain_id(&self) -> ChainId {
-        match self {
-            Chain::Mainnet => ChainId::mainnet(),
-            Chain::Kovan => ChainId::from(42),
-            Chain::Rinkeby => ChainId::from(4),
-            Chain::Ropsten => ChainId::ropsten(),
-            Chain::Local { chain_id, .. } => ChainId::from(*chain_id),
-        }
-    }
+    pub chain: ethereum::Chain,
 }
 
 #[derive(Clone, Ord, PartialOrd, PartialEq, Eq, Default)]
@@ -211,6 +149,36 @@ impl Amount {
     }
 }
 
+pub(super) fn is_mainnet_contract_address(contract_address: Address) -> bool {
+    contract_address == *MAINNET_DAI_CONTRACT_ADDRESS
+}
+
+pub(super) fn is_ropsten_contract_address(contract_address: Address) -> bool {
+    contract_address == *ROPSTEN_DAI_CONTRACT_ADDRESS
+}
+
+pub(super) fn is_rinkeby_contract_address(contract_address: Address) -> bool {
+    contract_address == *RINKEBY_DAI_CONTRACT_ADDRESS
+}
+
+pub(super) fn is_kovan_contract_address(contract_address: Address) -> bool {
+    contract_address == *KOVAN_DAI_CONTRACT_ADDRESS
+}
+
+pub(super) fn token_contract_address(chain: ethereum::Chain) -> Address {
+    use ethereum::Chain::*;
+    match chain {
+        Mainnet => *MAINNET_DAI_CONTRACT_ADDRESS,
+        Ropsten => *ROPSTEN_DAI_CONTRACT_ADDRESS,
+        Rinkeby => *RINKEBY_DAI_CONTRACT_ADDRESS,
+        Kovan => *KOVAN_DAI_CONTRACT_ADDRESS,
+        Local {
+            dai_contract_address,
+            ..
+        } => dai_contract_address,
+    }
+}
+
 impl std::fmt::Debug for Amount {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
@@ -260,13 +228,6 @@ impl From<Amount> for Erc20Quantity {
         let wei = U256::from_big_endian(&buf);
 
         Self::from_wei(wei)
-    }
-}
-
-#[cfg(test)]
-impl Default for Chain {
-    fn default() -> Self {
-        Chain::Mainnet
     }
 }
 

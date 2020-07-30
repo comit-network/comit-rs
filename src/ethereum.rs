@@ -3,12 +3,72 @@ mod geth;
 mod wallet;
 
 pub use comit::ethereum::{Address, ChainId, Hash};
-pub use dai::Chain;
 pub use geth::Client;
 pub use wallet::Wallet;
 
 pub const STANDARD_ETH_TRANSFER_GAS_LIMIT: u64 = 21_000;
 pub const DAI_TRANSFER_GAS_LIMIT: u64 = 100_000;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Chain {
+    Mainnet,
+    Ropsten,
+    Rinkeby,
+    Kovan,
+    Local {
+        chain_id: u32,
+        dai_contract_address: Address,
+    },
+}
+
+impl Chain {
+    pub fn new(chain_id: ChainId, dai_contract_address: Address) -> Self {
+        use Chain::*;
+        match (chain_id.into(), dai_contract_address) {
+            (1, contract) if dai::is_mainnet_contract_address(contract) => Mainnet,
+            (3, contract) if dai::is_ropsten_contract_address(contract) => Ropsten,
+            (4, contract) if dai::is_rinkeby_contract_address(contract) => Rinkeby,
+            (42, contract) if dai::is_kovan_contract_address(contract) => Kovan,
+            (chain_id, dai_contract_address) => Local {
+                chain_id,
+                dai_contract_address,
+            },
+        }
+    }
+
+    pub fn from_public_chain_id(chain_id: ChainId) -> anyhow::Result<Self> {
+        use Chain::*;
+        match chain_id.into() {
+            1 => Ok(Mainnet),
+            3 => Ok(Ropsten),
+            4 => Ok(Rinkeby),
+            42 => Ok(Kovan),
+            _ => anyhow::bail!("chain_id does not correspond to public chain"),
+        }
+    }
+
+    pub fn dai_contract_address(&self) -> Address {
+        dai::token_contract_address(*self)
+    }
+
+    pub fn chain_id(&self) -> ChainId {
+        use Chain::*;
+        match self {
+            Mainnet => ChainId::mainnet(),
+            Ropsten => ChainId::ropsten(),
+            Rinkeby => ChainId::from(4),
+            Kovan => ChainId::from(42),
+            Local { chain_id, .. } => ChainId::from(*chain_id),
+        }
+    }
+}
+
+#[cfg(test)]
+impl Default for Chain {
+    fn default() -> Self {
+        Chain::Mainnet
+    }
+}
 
 pub mod ether {
     use crate::float_maths::multiply_pow_ten;
