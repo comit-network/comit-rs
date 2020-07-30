@@ -1,5 +1,5 @@
 use crate::{network::SwapDigest, SharedSwapId};
-use futures::{prelude::*, AsyncWriteExt};
+use futures::prelude::*;
 use libp2p::{
     core::upgrade,
     request_response::{
@@ -65,7 +65,7 @@ struct ReceivedAnnouncement {
     /// The peer we received the announcement from.
     from: PeerId,
     /// The channel we can use to send a response back.
-    channel: ResponseChannel<Response>,
+    channel: ResponseChannel<SharedSwapId>,
 }
 
 impl ReceivedAnnouncement {
@@ -147,13 +147,12 @@ where
         }
     }
 
-    fn confirm(&mut self, peer: PeerId, context: C, channel: ResponseChannel<Response>) {
+    fn confirm(&mut self, peer: PeerId, context: C, channel: ResponseChannel<SharedSwapId>) {
         let shared_swap_id = SharedSwapId::default();
 
         tracing::info!("confirming swap as {}", shared_swap_id);
 
-        self.inner
-            .send_response(channel, Response::Confirmation(shared_swap_id));
+        self.inner.send_response(channel, shared_swap_id);
         self.events.push_back(BehaviourOutEvent::Confirmed {
             peer,
             shared_swap_id,
@@ -161,12 +160,13 @@ where
         })
     }
 
-    fn abort(&mut self, peer: PeerId, context: C, channel: ResponseChannel<Response>) {
+    fn abort(&mut self, peer: PeerId, context: C, channel: ResponseChannel<SharedSwapId>) {
         tracing::info!("aborting announce protocol with {}", peer);
 
         self.events
             .push_back(BehaviourOutEvent::Failed { peer, context });
-        self.inner.send_response(channel, Response::Error);
+        std::mem::drop(channel); // this closes the substream and reports an
+                                 // error on the other end
     }
 
     fn poll(
@@ -183,9 +183,9 @@ where
 }
 
 impl<C: fmt::Display + Send>
-    NetworkBehaviourEventProcess<RequestResponseEvent<SwapDigest, Response>> for Announce<C>
+    NetworkBehaviourEventProcess<RequestResponseEvent<SwapDigest, SharedSwapId>> for Announce<C>
 {
-    fn inject_event(&mut self, event: RequestResponseEvent<SwapDigest, Response>) {
+    fn inject_event(&mut self, event: RequestResponseEvent<SwapDigest, SharedSwapId>) {
         match event {
             RequestResponseEvent::Message {
                 peer,
@@ -215,16 +215,10 @@ impl<C: fmt::Display + Send>
                 peer,
                 message:
                     RequestResponseMessage::Response {
-                        response,
+                        response: shared_swap_id,
                         request_id,
                     },
             } => {
-                // this is a bit awkward because we use the same code for Alice and Bob
-                let shared_swap_id = match response {
-                    Response::Confirmation(shared_swap_id) => shared_swap_id,
-                    Response::Error => unimplemented!("we never emit this for Alice"),
-                };
-
                 let context = self
                     .sent_announcements
                     .remove(&request_id)
@@ -294,21 +288,11 @@ impl ProtocolName for AnnounceProtocol {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct AnnounceCodec;
 
-/// The different responses we can send back as part of an announcement.
-///
-/// For now, this only includes a generic error variant in addition to the
-/// confirmation because we simply close the connection in case of an error.
-#[derive(Clone, Copy, Debug)]
-pub enum Response {
-    Confirmation(SharedSwapId),
-    Error,
-}
-
 #[async_trait::async_trait]
 impl RequestResponseCodec for AnnounceCodec {
     type Protocol = AnnounceProtocol;
     type Request = SwapDigest;
-    type Response = Response;
+    type Response = SharedSwapId;
 
     async fn read_request<T>(&mut self, _: &Self::Protocol, io: &mut T) -> io::Result<Self::Request>
     where
@@ -337,7 +321,7 @@ impl RequestResponseCodec for AnnounceCodec {
         let mut de = serde_json::Deserializer::from_slice(&message);
         let swap_id = SharedSwapId::deserialize(&mut de)?;
 
-        Ok(Response::Confirmation(swap_id))
+        Ok(swap_id)
     }
 
     async fn write_request<T>(
@@ -359,23 +343,13 @@ impl RequestResponseCodec for AnnounceCodec {
         &mut self,
         _: &Self::Protocol,
         io: &mut T,
-        res: Self::Response,
+        shared_swap_id: Self::Response,
     ) -> io::Result<()>
     where
         T: AsyncWrite + Unpin + Send,
     {
-        match res {
-            Response::Confirmation(shared_swap_id) => {
-                let bytes = serde_json::to_vec(&shared_swap_id)?;
-                upgrade::write_one(io, &bytes).await?;
-            }
-            Response::Error => {
-                // for now, errors just close the substream.
-                // we can send actual error responses at a later point
-            }
-        }
-
-        let _ = io.close().await;
+        let bytes = serde_json::to_vec(&shared_swap_id)?;
+        upgrade::write_one(io, &bytes).await?;
 
         Ok(())
     }
