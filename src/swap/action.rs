@@ -22,54 +22,42 @@ use std::time::Duration;
 /// If doing the action succeeds, we store the resulting event `E` via
 /// `StoreEvent` to ensure that repeated calls to this function do not
 /// result in doing the action more than once.
-#[async_trait::async_trait]
-pub trait TryDoItOnce<E>
-where
-    Self: LookUpEvent<E> + BetaHasExpired + Execute<E> + StoreEvent<E>,
-    E: Clone + Send + Sync + 'static,
-    <Self as Execute<E>>::Args: Send + Sync,
-{
-    async fn try_do_it_once(
-        &self,
-        execution_args: <Self as Execute<E>>::Args,
-    ) -> anyhow::Result<E> {
-        if let Some(event) = self.look_up_event()? {
-            return Ok(event);
-        }
-
-        // For Nectar, we conservatively abort if Beta has expired
-        let beta_expired = async {
-            loop {
-                if self.beta_has_expired().await? {
-                    return Result::<(), anyhow::Error>::Ok(());
-                }
-
-                tokio::time::delay_for(Duration::from_secs(1)).await;
-            }
-        };
-        let execute_future = Execute::<E>::execute(self, execution_args);
-
-        pin_mut!(execute_future);
-        pin_mut!(beta_expired);
-
-        match future::select(execute_future, beta_expired).await {
-            Either::Left((Ok(event), _)) => {
-                self.store_event(event.clone()).await?;
-                Ok(event)
-            }
-            Either::Right(_) => anyhow::bail!(BetaHasExpiredError),
-            _ => anyhow::bail!("A future has failed"),
-        }
-    }
-}
-
-#[async_trait::async_trait]
-impl<E, A> TryDoItOnce<E> for A
+pub async fn try_do_it_once<A, E>(
+    actor: &A,
+    execution_args: <A as Execute<E>>::Args,
+) -> anyhow::Result<E>
 where
     A: LookUpEvent<E> + BetaHasExpired + Execute<E> + StoreEvent<E>,
     E: Clone + Send + Sync + 'static,
-    <Self as Execute<E>>::Args: Send + Sync,
+    <A as Execute<E>>::Args: Send + Sync,
 {
+    if let Some(event) = actor.look_up_event()? {
+        return Ok(event);
+    }
+
+    // For Nectar, we conservatively abort if Beta has expired
+    let beta_expired = async {
+        loop {
+            if actor.beta_has_expired().await? {
+                return Result::<(), anyhow::Error>::Ok(());
+            }
+
+            tokio::time::delay_for(Duration::from_secs(1)).await;
+        }
+    };
+    let execute_future = Execute::<E>::execute(actor, execution_args);
+
+    pin_mut!(execute_future);
+    pin_mut!(beta_expired);
+
+    match future::select(execute_future, beta_expired).await {
+        Either::Left((Ok(event), _)) => {
+            actor.store_event(event.clone()).await?;
+            Ok(event)
+        }
+        Either::Right(_) => anyhow::bail!(BetaHasExpiredError),
+        _ => anyhow::bail!("A future has failed"),
+    }
 }
 
 /// Do an action resulting in the event `E`.
@@ -84,32 +72,23 @@ where
 /// If doing the action succeeds, we store the resulting event `E` via
 /// `StoreEvent` to ensure that repeated calls to this function do not
 /// result in doing the action more than once.
-#[async_trait::async_trait]
-pub trait DoItOnce<E>
-where
-    Self: LookUpEvent<E> + Execute<E> + StoreEvent<E>,
-    E: Clone + Send + Sync + 'static,
-    <Self as Execute<E>>::Args: Send + Sync,
-{
-    async fn do_it_once(&self, execution_args: <Self as Execute<E>>::Args) -> anyhow::Result<E> {
-        if let Some(event) = self.look_up_event()? {
-            return Ok(event);
-        }
-
-        let event = Execute::<E>::execute(self, execution_args).await?;
-        self.store_event(event.clone()).await?;
-
-        Ok(event)
-    }
-}
-
-#[async_trait::async_trait]
-impl<E, A> DoItOnce<E> for A
+pub async fn do_it_once<A, E>(
+    actor: &A,
+    execution_args: <A as Execute<E>>::Args,
+) -> anyhow::Result<E>
 where
     A: LookUpEvent<E> + BetaHasExpired + Execute<E> + StoreEvent<E>,
     E: Clone + Send + Sync + 'static,
-    <Self as Execute<E>>::Args: Send + Sync,
+    <A as Execute<E>>::Args: Send + Sync,
 {
+    if let Some(event) = actor.look_up_event()? {
+        return Ok(event);
+    }
+
+    let event = Execute::<E>::execute(actor, execution_args).await?;
+    actor.store_event(event.clone()).await?;
+
+    Ok(event)
 }
 
 pub trait LookUpEvent<E> {
@@ -193,7 +172,6 @@ pub struct BetaHasExpiredError;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::swap::TryDoItOnce;
     use std::{
         collections::HashMap,
         sync::{Arc, RwLock},
@@ -283,12 +261,12 @@ mod tests {
         };
 
         assert!(blockchain.read().unwrap().events.is_empty());
-        let res = actor.try_do_it_once(()).await;
+        let res = try_do_it_once(&actor, ()).await;
 
         assert!(matches!(res, Ok(ArbitraryEvent)));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
 
-        let res = actor.try_do_it_once(()).await;
+        let res = try_do_it_once(&actor, ()).await;
         assert!(matches!(res, Ok(ArbitraryEvent)));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
     }
@@ -311,12 +289,12 @@ mod tests {
         };
 
         assert!(blockchain.read().unwrap().events.is_empty());
-        let res = actor.do_it_once(()).await;
+        let res = do_it_once(&actor, ()).await;
 
         assert!(matches!(res, Ok(ArbitraryEvent)));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
 
-        let res = actor.do_it_once(()).await;
+        let res = do_it_once(&actor, ()).await;
         assert!(matches!(res, Ok(ArbitraryEvent)));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
     }
