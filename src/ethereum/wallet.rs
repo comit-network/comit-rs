@@ -1,9 +1,8 @@
-use crate::ethereum::DAI_TRANSFER_GAS_LIMIT;
 use crate::{
     ethereum::{
-        dai, ether,
+        self, dai, ether,
         geth::{Client, EstimateGasRequest},
-        Address, ChainId, Hash,
+        Address, ChainId, Hash, DAI_TRANSFER_GAS_LIMIT,
     },
     Seed,
 };
@@ -18,8 +17,7 @@ use num256::Uint256;
 use std::time::Duration;
 use url::Url;
 use wagyu_ethereum::{EthereumDerivationPath, EthereumFormat, EthereumNetwork};
-use wagyu_model::derivation_path::ChildIndex;
-use wagyu_model::ExtendedPrivateKey;
+use wagyu_model::{derivation_path::ChildIndex, ExtendedPrivateKey};
 
 pub use wagyu_ethereum::EthereumExtendedPrivateKey;
 
@@ -31,31 +29,25 @@ const DERIVATION_PATH: EthereumDerivationPath<wagyu_ethereum::network::Mainnet> 
 pub struct Wallet {
     private_key: clarity::PrivateKey,
     geth_client: Client,
-    dai_contract_addr: Address,
-    pub chain_id: ChainId,
+    chain: ethereum::Chain,
 }
 
 impl Wallet {
-    pub async fn new(
-        seed: Seed,
-        url: Url,
-        dai_contract_addr: Address,
-        chain_id: ChainId,
-    ) -> anyhow::Result<Self> {
+    pub async fn new(seed: Seed, url: Url, chain: ethereum::Chain) -> anyhow::Result<Self> {
         let geth_client = Client::new(url);
 
         let private_key = Self::private_key_from_seed(&seed)?;
         let wallet = Self {
             geth_client,
-            dai_contract_addr,
-            chain_id,
             private_key,
+            chain,
         };
 
-        wallet.assert_chain(chain_id).await?;
+        wallet.assert_chain(chain.chain_id()).await?;
 
         Ok(wallet)
     }
+
     #[cfg(test)]
     pub fn new_from_private_key(
         private_key: clarity::PrivateKey,
@@ -63,13 +55,15 @@ impl Wallet {
         chain_id: ChainId,
     ) -> Self {
         let geth_client = Client::new(url);
-        let dai_contract_adr = Address::random();
 
+        // In tests, the DAI contract doesn't exist until after _we_
+        // deploy it. We will replace this placeholder once that happens
+        let placeholder_dai_contract_address = Address::default();
+        let chain = ethereum::Chain::new(chain_id, placeholder_dai_contract_address);
         Self {
             private_key,
             geth_client,
-            dai_contract_addr: dai_contract_adr,
-            chain_id,
+            chain,
         }
     }
 
@@ -112,6 +106,15 @@ impl Wallet {
         self.private_key
     }
 
+    pub fn chain_id(&self) -> ChainId {
+        self.chain.chain_id()
+    }
+
+    #[cfg(test)]
+    pub fn dai_contract_address(&self) -> Address {
+        self.chain.dai_contract_address()
+    }
+
     pub async fn deploy_contract(
         &self,
         DeployContract {
@@ -135,17 +138,7 @@ impl Wallet {
             data,
             signature: None,
         };
-
-        // TODO: Reduce duplication across different functions
-        let signed_transaction =
-            transaction.sign(&self.private_key, Some(u32::from(chain_id) as u64));
-        let transaction_hex =
-            format!(
-                "0x{}",
-                hex::encode(signed_transaction.to_bytes().map_err(|_| anyhow::anyhow!(
-                    "Failed to serialize signed transaction to bytes"
-                ))?)
-            );
+        let transaction_hex = self.sign(transaction)?;
 
         let hash = self
             .geth_client
@@ -215,17 +208,7 @@ impl Wallet {
             data: data.unwrap_or_default(),
             signature: None,
         };
-
-        #[allow(clippy::cast_possible_truncation)]
-        let signed_transaction =
-            transaction.sign(&self.private_key, Some(u32::from(chain_id) as u64));
-        let transaction_hex =
-            format!(
-                "0x{}",
-                hex::encode(signed_transaction.to_bytes().map_err(|_| anyhow::anyhow!(
-                    "Failed to serialize signed transaction to bytes"
-                ))?)
-            );
+        let transaction_hex = self.sign(transaction)?;
 
         let hash = self
             .geth_client
@@ -251,8 +234,10 @@ impl Wallet {
         let to = clarity::Address::from_slice(to.as_bytes())
             .map_err(|_| anyhow::anyhow!("Failed to deserialize slice into clarity::Address"))?;
 
-        let dai_contract_addr = clarity::Address::from_slice(self.dai_contract_addr.as_bytes())
-            .map_err(|_| anyhow::anyhow!("Failed to deserialize slice into clarity::Address"))?;
+        let dai_contract_addr = clarity::Address::from_slice(
+            self.chain.dai_contract_address().as_bytes(),
+        )
+        .map_err(|_| anyhow::anyhow!("Failed to deserialize slice into clarity::Address"))?;
 
         let data = clarity::abi::encode_call(
             "transfer(address,uint256)",
@@ -271,17 +256,7 @@ impl Wallet {
             data,
             signature: None,
         };
-
-        #[allow(clippy::cast_possible_truncation)]
-        let signed_transaction =
-            transaction.sign(&self.private_key, Some(u32::from(chain_id) as u64));
-        let transaction_hex =
-            format!(
-                "0x{}",
-                hex::encode(signed_transaction.to_bytes().map_err(|_| anyhow::anyhow!(
-                    "Failed to serialize signed transaction to bytes"
-                ))?)
-            );
+        let transaction_hex = self.sign(transaction)?;
 
         let hash = self
             .geth_client
@@ -319,17 +294,7 @@ impl Wallet {
             data: data.unwrap_or_default(),
             signature: None,
         };
-
-        #[allow(clippy::cast_possible_truncation)]
-        let signed_transaction =
-            transaction.sign(&self.private_key, Some(u32::from(chain_id) as u64));
-        let transaction_hex =
-            format!(
-                "0x{}",
-                hex::encode(signed_transaction.to_bytes().map_err(|_| anyhow::anyhow!(
-                    "Failed to serialize signed transaction to bytes"
-                ))?)
-            );
+        let transaction_hex = self.sign(transaction)?;
 
         let hash = self
             .geth_client
@@ -382,7 +347,9 @@ impl Wallet {
     }
 
     pub async fn dai_balance(&self) -> anyhow::Result<dai::Amount> {
-        let balance = self.erc20_balance(self.dai_contract_addr).await?;
+        let balance = self
+            .erc20_balance(self.chain.dai_contract_address())
+            .await?;
         let int = BigUint::from_bytes_le(&balance.quantity.to_bytes());
         Ok(dai::Amount::from_atto(int))
     }
@@ -421,6 +388,36 @@ impl Wallet {
     async fn gas_limit(&self, request: EstimateGasRequest) -> anyhow::Result<num256::Uint256> {
         self.geth_client.gas_limit(request).await
     }
+
+    fn sign(&self, transaction: clarity::Transaction) -> anyhow::Result<String> {
+        let signed_transaction = transaction.sign(
+            &self.private_key,
+            Some(u32::from(self.chain.chain_id()) as u64),
+        );
+        let transaction_hex =
+            format!(
+                "0x{}",
+                hex::encode(signed_transaction.to_bytes().map_err(|_| anyhow::anyhow!(
+                    "Failed to serialize signed transaction to bytes"
+                ))?)
+            );
+
+        Ok(transaction_hex)
+    }
+
+    #[cfg(test)]
+    pub async fn deploy_dai_token_contract(
+        &mut self,
+        deployment_data: DeployContract,
+    ) -> anyhow::Result<()> {
+        let deployed_contract = self.deploy_contract(deployment_data).await?;
+
+        // Set correct value for DAI token contract address after deployment
+        self.chain =
+            ethereum::Chain::new(self.chain.chain_id(), deployed_contract.contract_address);
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -447,7 +444,12 @@ mod tests {
 
     async fn random_wallet(node_url: Url, dai_contract_address: Address) -> anyhow::Result<Wallet> {
         let seed = Seed::random().unwrap();
-        let wallet = Wallet::new(seed, node_url, dai_contract_address, ChainId::regtest()).await?;
+        let wallet = Wallet::new(
+            seed,
+            node_url,
+            ethereum::Chain::new(ChainId::regtest(), dai_contract_address),
+        )
+        .await?;
 
         Ok(wallet)
     }
@@ -459,12 +461,9 @@ mod tests {
         let mut blockchain = Blockchain::new(&client).unwrap();
         blockchain.init().await.unwrap();
 
-        let wallet = random_wallet(
-            blockchain.node_url.clone(),
-            blockchain.token_contract().unwrap(),
-        )
-        .await
-        .unwrap();
+        let wallet = random_wallet(blockchain.node_url.clone(), blockchain.token_contract())
+            .await
+            .unwrap();
 
         let balance = wallet.ether_balance().await.unwrap();
 
@@ -478,12 +477,9 @@ mod tests {
         let mut blockchain = Blockchain::new(&client).unwrap();
         blockchain.init().await.unwrap();
 
-        let wallet = random_wallet(
-            blockchain.node_url.clone(),
-            blockchain.token_contract().unwrap(),
-        )
-        .await
-        .unwrap();
+        let wallet = random_wallet(blockchain.node_url.clone(), blockchain.token_contract())
+            .await
+            .unwrap();
 
         let gas_price = wallet.gas_price().await.unwrap();
 
@@ -497,12 +493,9 @@ mod tests {
         let mut blockchain = Blockchain::new(&client).unwrap();
         blockchain.init().await.unwrap();
 
-        let wallet = random_wallet(
-            blockchain.node_url.clone(),
-            blockchain.token_contract().unwrap(),
-        )
-        .await
-        .unwrap();
+        let wallet = random_wallet(blockchain.node_url.clone(), blockchain.token_contract())
+            .await
+            .unwrap();
 
         let request = EstimateGasRequest {
             from: Some(Address::random()),
@@ -526,12 +519,9 @@ mod tests {
 
         let chain_id = blockchain.chain_id();
 
-        let wallet = random_wallet(
-            blockchain.node_url.clone(),
-            blockchain.token_contract().unwrap(),
-        )
-        .await
-        .unwrap();
+        let wallet = random_wallet(blockchain.node_url.clone(), blockchain.token_contract())
+            .await
+            .unwrap();
 
         let address = wallet.account();
         let initial_deposit = 5_000_000_000_000_000_000u64;
@@ -549,7 +539,7 @@ mod tests {
                 address,
                 Erc20 {
                     quantity: Erc20Quantity::from_wei(initial_deposit),
-                    token_contract: wallet.dai_contract_addr,
+                    token_contract: wallet.chain.dai_contract_address(),
                 },
                 chain_id,
             )
@@ -584,12 +574,9 @@ mod tests {
 
         let chain_id = blockchain.chain_id();
 
-        let wallet = random_wallet(
-            blockchain.node_url.clone(),
-            blockchain.token_contract().unwrap(),
-        )
-        .await
-        .unwrap();
+        let wallet = random_wallet(blockchain.node_url.clone(), blockchain.token_contract())
+            .await
+            .unwrap();
 
         blockchain
             .mint_ether(
@@ -605,7 +592,7 @@ mod tests {
                 wallet.account(),
                 Erc20 {
                     quantity: Erc20Quantity::from_wei(5_000_000_000_000_000_000u64),
-                    token_contract: wallet.dai_contract_addr,
+                    token_contract: wallet.chain.dai_contract_address(),
                 },
                 chain_id,
             )
@@ -614,7 +601,7 @@ mod tests {
 
         let htlc_params = comit::herc20::Params {
             asset: asset::Erc20 {
-                token_contract: wallet.dai_contract_addr,
+                token_contract: wallet.chain.dai_contract_address(),
                 quantity: Erc20Quantity::from_wei(5_000_000_000u64),
             },
             redeem_identity: Address::random(),

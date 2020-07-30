@@ -33,8 +33,8 @@ impl From<MidMarketRate> for Rate {
 
 mod kraken {
     use super::*;
-    use serde::de::Error;
-    use serde::Deserialize;
+    use crate::float_maths::truncate;
+    use serde::{de::Error, Deserialize};
     use std::convert::TryFrom;
 
     /// Fetch mid-market rate for the trading pair BTC-DAI from Kraken.
@@ -64,8 +64,10 @@ mod kraken {
         type Error = anyhow::Error;
 
         fn try_from(AskAndBid { ask, bid }: AskAndBid) -> anyhow::Result<Self> {
-            // TODO: Fix the ceil to precision of 9
-            let value = ((bid + ask) / 2f64).ceil();
+            let value = (bid + ask) / 2f64;
+
+            // `Rate::try_from`'s maximum precision is 9 decimal places
+            let value = truncate(value, 9);
             let value = Rate::try_from(value)?;
 
             Ok(Self { 0: value })

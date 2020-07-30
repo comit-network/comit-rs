@@ -19,7 +19,7 @@ pub async fn withdraw(
         }
         Withdraw::Dai { amount, to_address } => {
             let tx_id = ethereum_wallet
-                .transfer_dai(to_address, amount.clone(), ethereum_wallet.chain_id)
+                .transfer_dai(to_address, amount.clone(), ethereum_wallet.chain_id())
                 .await?;
             Ok(format!(
                 "{} transferred to {}\nTransaction id: {}",
@@ -33,7 +33,7 @@ pub async fn withdraw(
                     amount.clone(),
                     Some(STANDARD_ETH_TRANSFER_GAS_LIMIT),
                     None,
-                    ethereum_wallet.chain_id,
+                    ethereum_wallet.chain_id(),
                 )
                 .await?;
             Ok(format!(
@@ -83,8 +83,7 @@ mod tests {
         let ethereum_wallet = crate::ethereum::Wallet::new(
             seed,
             ethereum_blockchain.node_url.clone(),
-            ethereum_blockchain.token_contract().unwrap(),
-            ChainId::regtest(),
+            ethereum::Chain::new(ChainId::regtest(), ethereum_blockchain.token_contract()),
         )
         .await
         .unwrap();
@@ -103,7 +102,7 @@ mod tests {
                 ethereum_address,
                 Erc20 {
                     quantity: Erc20Quantity::from_wei(10_000_000_000_000_000_000u64),
-                    token_contract: ethereum_blockchain.token_contract().unwrap(),
+                    token_contract: ethereum_blockchain.token_contract(),
                 },
                 ChainId::regtest(),
             )

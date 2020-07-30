@@ -2,10 +2,7 @@
 
 use crate::{
     bitcoin,
-    ethereum::{
-        self,
-        dai::{self, DaiContractAddress},
-    },
+    ethereum::{self, dai},
     network::{self, Taker},
     order::{BtcDaiOrder, Position, Symbol},
     rate::Spread,
@@ -30,9 +27,8 @@ pub struct Maker {
     dai_max_sell_amount: Option<dai::Amount>,
     mid_market_rate: Option<MidMarketRate>,
     spread: Spread,
-    dai_contract_address: DaiContractAddress,
     bitcoin_network: bitcoin::Network,
-    ethereum_network: ethereum::ChainId,
+    ethereum_chain: ethereum::Chain,
 }
 
 impl Maker {
@@ -45,9 +41,8 @@ impl Maker {
         dai_max_sell_amount: Option<dai::Amount>,
         mid_market_rate: MidMarketRate,
         spread: Spread,
-        dai_contract_address: DaiContractAddress,
         bitcoin_network: bitcoin::Network,
-        ethereum_network: ethereum::ChainId,
+        dai_chain: ethereum::Chain,
     ) -> Self {
         Maker {
             btc_balance: Some(btc_balance),
@@ -59,9 +54,8 @@ impl Maker {
             dai_max_sell_amount,
             mid_market_rate: Some(mid_market_rate),
             spread,
-            dai_contract_address,
             bitcoin_network,
-            ethereum_network,
+            ethereum_chain: dai_chain,
         }
     }
 
@@ -137,9 +131,8 @@ impl Maker {
                 self.btc_max_sell_amount,
                 mid_market_rate.into(),
                 self.spread,
-                self.dai_contract_address,
                 self.bitcoin_network,
-                self.ethereum_network,
+                self.ethereum_chain,
             ),
             (None, _) => anyhow::bail!(RateNotAvailable(Position::Sell)),
             (_, None) => anyhow::bail!(BalanceNotAvailable(Symbol::Btc)),
@@ -154,9 +147,8 @@ impl Maker {
                 self.dai_max_sell_amount.clone(),
                 mid_market_rate.into(),
                 self.spread,
-                self.dai_contract_address,
                 self.bitcoin_network,
-                self.ethereum_network,
+                self.ethereum_chain,
             ),
             (None, _) => anyhow::bail!(RateNotAvailable(Position::Buy)),
             (_, None) => anyhow::bail!(BalanceNotAvailable(Symbol::Dai)),
@@ -279,7 +271,6 @@ mod tests {
         order::{BtcDaiOrder, Position},
         MidMarketRate, Rate,
     };
-    use comit::ethereum::ChainId;
     use std::convert::TryFrom;
 
     impl Default for Maker {
@@ -294,9 +285,8 @@ mod tests {
                 dai_max_sell_amount: None,
                 mid_market_rate: Some(MidMarketRate::default()),
                 spread: Spread::default(),
-                dai_contract_address: DaiContractAddress::Mainnet,
                 bitcoin_network: bitcoin::Network::Bitcoin,
-                ethereum_network: ethereum::ChainId::mainnet(),
+                ethereum_chain: ethereum::Chain::default(),
             }
         }
     }
@@ -344,8 +334,7 @@ mod tests {
     fn dai_asset(amount: dai::Amount) -> dai::Asset {
         dai::Asset {
             amount,
-            contract_address: DaiContractAddress::Mainnet,
-            chain_id: ChainId::mainnet(),
+            chain: ethereum::Chain::default(),
         }
     }
 

@@ -1,12 +1,12 @@
-use crate::float_maths::string_int_to_float;
 use crate::{
     bitcoin::{self, SATS_IN_BITCOIN_EXP},
-    float_maths::{divide_pow_ten_trunc, multiply_pow_ten, truncate},
+    ethereum,
+    float_maths::{divide_pow_ten_trunc, multiply_pow_ten, string_int_to_float, truncate},
     Rate,
 };
 use comit::{
     asset::{ethereum::FromWei, Erc20, Erc20Quantity},
-    ethereum::{Address, ChainId},
+    ethereum::Address,
 };
 use conquer_once::Lazy;
 use ethereum_types::U256;
@@ -17,78 +17,34 @@ pub const ATTOS_IN_DAI_EXP: u16 = 18;
 
 /// As per https://github.com/makerdao/developerguides/blob/804bb1f4d1ea737f0287cbf6480a570b888dd547/dai/dai-token/dai-token.md
 /// Dai Version 1.0.8
-static DAI_CONTRACT_ADDRESS_MAINNET: Lazy<Address> = Lazy::new(|| {
+static MAINNET_DAI_CONTRACT_ADDRESS: Lazy<Address> = Lazy::new(|| {
     "0x6B175474E89094C44Da98b954EedeAC495271d0F"
         .parse()
         .expect("Valid hex")
 });
 /// Dai Version 1.0.8
-static DAI_CONTRACT_ADDRESS_KOVAN: Lazy<Address> = Lazy::new(|| {
+static KOVAN_DAI_CONTRACT_ADDRESS: Lazy<Address> = Lazy::new(|| {
     "0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa"
         .parse()
         .expect("Valid hex")
 });
 /// Dai Version 1.0.4
-static DAI_CONTRACT_ADDRESS_RINKEBY: Lazy<Address> = Lazy::new(|| {
+static RINKEBY_DAI_CONTRACT_ADDRESS: Lazy<Address> = Lazy::new(|| {
     "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
         .parse()
         .expect("Valid hex")
 });
 /// Dai Version 1.0.4
-static DAI_CONTRACT_ADDRESS_ROPSTEN: Lazy<Address> = Lazy::new(|| {
+static ROPSTEN_DAI_CONTRACT_ADDRESS: Lazy<Address> = Lazy::new(|| {
     "0x31F42841c2db5173425b5223809CF3A38FEde360"
         .parse()
         .expect("Valid hex")
 });
 
-// TODO: There is duplicated information between `contract_address`
-// and `chain_id` that can be avoided.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Asset {
     pub amount: Amount,
-    pub contract_address: DaiContractAddress,
-    pub chain_id: ChainId,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DaiContractAddress {
-    Mainnet,
-    Kovan,
-    Rinkeby,
-    Ropsten,
-    Local(Address),
-}
-
-impl From<DaiContractAddress> for Address {
-    fn from(var: DaiContractAddress) -> Self {
-        match var {
-            DaiContractAddress::Mainnet => *DAI_CONTRACT_ADDRESS_MAINNET,
-            DaiContractAddress::Kovan => *DAI_CONTRACT_ADDRESS_KOVAN,
-            DaiContractAddress::Rinkeby => *DAI_CONTRACT_ADDRESS_RINKEBY,
-            DaiContractAddress::Ropsten => *DAI_CONTRACT_ADDRESS_ROPSTEN,
-            DaiContractAddress::Local(address) => address,
-        }
-    }
-}
-
-impl DaiContractAddress {
-    // TODO: What if we pass the token contract address of, for
-    // example, the Mainnet token contract. I think this should be
-    // renamed, together with the Local variant of DaiContractAddress
-    pub fn local(dai_contract_address: Address) -> Self {
-        Self::Local(dai_contract_address)
-    }
-
-    pub fn from_public_chain_id(chain_id: ChainId) -> Option<Self> {
-        use DaiContractAddress::*;
-        match chain_id.into() {
-            1 => Some(Mainnet),
-            3 => Some(Ropsten),
-            4 => Some(Rinkeby),
-            42 => Some(Kovan),
-            _ => None,
-        }
-    }
+    pub chain: ethereum::Chain,
 }
 
 #[derive(Clone, Ord, PartialOrd, PartialEq, Eq, Default)]
@@ -190,6 +146,36 @@ impl Amount {
 
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_bytes_le()
+    }
+}
+
+pub(super) fn is_mainnet_contract_address(contract_address: Address) -> bool {
+    contract_address == *MAINNET_DAI_CONTRACT_ADDRESS
+}
+
+pub(super) fn is_ropsten_contract_address(contract_address: Address) -> bool {
+    contract_address == *ROPSTEN_DAI_CONTRACT_ADDRESS
+}
+
+pub(super) fn is_rinkeby_contract_address(contract_address: Address) -> bool {
+    contract_address == *RINKEBY_DAI_CONTRACT_ADDRESS
+}
+
+pub(super) fn is_kovan_contract_address(contract_address: Address) -> bool {
+    contract_address == *KOVAN_DAI_CONTRACT_ADDRESS
+}
+
+pub(super) fn token_contract_address(chain: ethereum::Chain) -> Address {
+    use ethereum::Chain::*;
+    match chain {
+        Mainnet => *MAINNET_DAI_CONTRACT_ADDRESS,
+        Ropsten => *ROPSTEN_DAI_CONTRACT_ADDRESS,
+        Rinkeby => *RINKEBY_DAI_CONTRACT_ADDRESS,
+        Kovan => *KOVAN_DAI_CONTRACT_ADDRESS,
+        Local {
+            dai_contract_address,
+            ..
+        } => dai_contract_address,
     }
 }
 

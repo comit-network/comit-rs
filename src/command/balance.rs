@@ -29,7 +29,7 @@ pub async fn balance(
 #[cfg(all(test, feature = "test-docker"))]
 mod tests {
     use super::*;
-    use crate::{test_harness, Seed};
+    use crate::{ethereum, test_harness, Seed};
     use comit::ethereum::ChainId;
 
     // Run cargo test with `--ignored --nocapture` to see the `println output`
@@ -56,8 +56,7 @@ mod tests {
         let ethereum_wallet = crate::ethereum::Wallet::new(
             seed,
             ethereum_blockchain.node_url.clone(),
-            ethereum_blockchain.token_contract().unwrap(),
-            ChainId::regtest(),
+            ethereum::Chain::new(ChainId::regtest(), ethereum_blockchain.token_contract()),
         )
         .await
         .unwrap();
