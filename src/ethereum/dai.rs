@@ -41,8 +41,6 @@ static DAI_CONTRACT_ADDRESS_ROPSTEN: Lazy<Address> = Lazy::new(|| {
         .expect("Valid hex")
 });
 
-// TODO: There is duplicated information between `contract_address`
-// and `chain_id` that can be avoided.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Asset {
     pub amount: Amount,
