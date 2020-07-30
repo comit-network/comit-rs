@@ -10,7 +10,7 @@ anyhow = "1"
 async-trait = "0.1"
 base64 = "0.12.3"
 bincode = "1.2.1"
-bitcoin = { version = "0.23.0", features = ["rand"] }
+bitcoin = { version = "0.23.0", features = ["rand", "use-serde"] }
 blockchain_contracts = "0.3.2"
 chrono = { version = "0.4", features = ["serde"] }
 derivative = "2"
