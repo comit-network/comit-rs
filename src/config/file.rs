@@ -142,7 +142,7 @@ mod tests {
     use crate::config::{Bitcoind, Settings};
     use crate::{bitcoin, ethereum::dai};
     use spectral::prelude::*;
-    use std::io::{BufRead, BufReader, Write};
+    use std::io::Write;
     use std::path::PathBuf;
     use tempdir::TempDir;
 
@@ -483,30 +483,5 @@ local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
             .unwrap();
 
         assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn sample_config_deserializes_correctly() {
-        let file = std::fs::File::open("nectar-toml.md").unwrap();
-        let file = BufReader::new(file);
-
-        let config_lines: Result<Vec<String>, _> = file
-            .lines()
-            .skip_while(|line| {
-                line.as_ref()
-                    .map(|line| !line.starts_with("[maker]"))
-                    .unwrap_or(true)
-            })
-            .take_while(|line| {
-                line.as_ref()
-                    .map(|line| !line.ends_with("```"))
-                    .unwrap_or(false)
-            })
-            .collect();
-
-        let config = config_lines.unwrap().join("\n");
-
-        let file = toml::from_str::<File>(&config);
-        assert!(file.is_ok());
     }
 }

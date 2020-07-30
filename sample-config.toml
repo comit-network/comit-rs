@@ -1,10 +1,9 @@
-# `nectar.toml` Configuration File
+# Nectar Configuration File
 
-The configuration file must be in TOML format.
-The current config can be printed using `nectar dump-config`.
-A custom location to the config file can be specified using `--config`.
+# The configuration file must be in TOML format.
+# The current config can be printed using `nectar dump-config`.
+# A custom location to the config file can be specified using `--config`.
 
-```toml
 [maker]
 # The spread to apply to the mid-market when publish an offer. It's a pyrimiad format, 12.34 = 12.34% spread.
 spread = 500
@@ -47,4 +46,3 @@ node_url = "http://localhost:18443/"
 chain_id = 1
 # The url to the web3 node, can include an infura key: `https://mainnet.infura.io/v3/YOUR-PROJECT-ID`
 node_url = "http://localhost:8545/"
-```

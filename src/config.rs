@@ -73,6 +73,7 @@ pub fn read_config(config_file: &Option<PathBuf>) -> anyhow::Result<File> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{bitcoin, config::file::Level, ethereum::ChainId, Spread};
 
     #[test]
     fn network_deserializes_correctly() {
@@ -104,5 +105,47 @@ mod tests {
             .unwrap();
 
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn sample_config_deserializes_correctly() {
+        let expected = File {
+            maker: Some(file::Maker {
+                max_sell: Some(MaxSell {
+                    bitcoin: Some(bitcoin::Amount::from_btc(0.1).unwrap()),
+                    dai: Some(dai::Amount::from_dai_trunc(1000.0).unwrap()),
+                }),
+                spread: Some(Spread::new(500).unwrap()),
+                maximum_possible_fee: Some(file::Fees {
+                    bitcoin: Some(bitcoin::Amount::from_btc(0.00009275).unwrap()),
+                }),
+            }),
+            network: Some(Network {
+                listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
+            }),
+            data: Some(Data {
+                dir: "/Users/froyer/Library/Application Support/nectar"
+                    .parse()
+                    .unwrap(),
+            }),
+            logging: Some(file::Logging {
+                level: Some(Level::Info),
+            }),
+            bitcoin: Some(file::Bitcoin {
+                network: bitcoin::Network::Regtest,
+                bitcoind: Some(Bitcoind {
+                    node_url: "http://localhost:18443/".parse().unwrap(),
+                }),
+            }),
+            ethereum: Some(file::Ethereum {
+                chain_id: ChainId::mainnet(),
+                node_url: Some("http://localhost:8545/".parse().unwrap()),
+                local_dai_contract_address: None,
+            }),
+        };
+
+        let config = read_config(&Some(PathBuf::from("sample-config.toml"))).unwrap();
+
+        assert_eq!(config, expected);
     }
 }
