@@ -57,9 +57,9 @@ impl Wallet {
         let geth_client = Client::new(url);
 
         // In tests, the DAI contract doesn't exist until after _we_
-        // deploy it. We will replace this value once that happens
-        let random_dai_contract_address = Address::random();
-        let chain = ethereum::Chain::new(chain_id, random_dai_contract_address);
+        // deploy it. We will replace this placeholder once that happens
+        let placeholder_dai_contract_address = Address::default();
+        let chain = ethereum::Chain::new(chain_id, placeholder_dai_contract_address);
         Self {
             private_key,
             geth_client,
