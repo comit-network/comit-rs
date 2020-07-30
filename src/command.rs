@@ -35,11 +35,17 @@ impl Options {
 
 #[derive(StructOpt, Debug, Clone)]
 pub enum Command {
+    /// Start to publish order and execute them
     Trade,
+    /// Print all wallets information for backup or export purposes
     WalletInfo,
+    /// Print the actual balance on all assets
     Balance,
+    /// Print wallet addresses to deposit assets
     Deposit,
+    /// Dump the current configuration
     DumpConfig,
+    /// Withdraw assets
     Withdraw(Withdraw),
 }
 
