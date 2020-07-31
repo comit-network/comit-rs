@@ -1,5 +1,3 @@
-#![allow(unused_variables)]
-
 use crate::{
     bitcoin,
     ethereum::{self, dai},
@@ -175,7 +173,7 @@ impl Maker {
                     .spread
                     .apply(current_mid_market_rate.into(), order.inner.position)?;
 
-                if !order.inner.is_as_good_as(current_mid_market_rate)? {
+                if !order.inner.is_as_profitable_as(current_profitable_rate)? {
                     return Ok(TakeRequestDecision::RateNotProfitable);
                 }
 
