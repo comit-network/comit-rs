@@ -18,11 +18,11 @@ use chrono::{DateTime, Local};
 use num::BigUint;
 use std::str::FromStr;
 
-pub use balance::*;
-pub use deposit::*;
-pub use trade::*;
-pub use wallet_info::*;
-pub use withdraw::*;
+pub use balance::balance;
+pub use deposit::deposit;
+pub use trade::trade;
+pub use wallet_info::wallet_info;
+pub use withdraw::withdraw;
 
 #[derive(StructOpt, Debug)]
 pub struct Options {
