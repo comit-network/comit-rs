@@ -507,6 +507,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde-hex",
+ "serde_derive",
  "serde_json",
  "serde_urlencoded",
  "serdebug",
@@ -565,6 +566,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde-hex",
+ "serde_derive",
  "serde_json",
  "serdebug",
  "sha2 0.9.1",
@@ -761,6 +763,7 @@ dependencies = [
  "hex 0.4.2",
  "multihash",
  "serde",
+ "serde_derive",
 ]
 
 [[package]]

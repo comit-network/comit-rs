@@ -10,7 +10,7 @@ anyhow = "1"
 async-trait = "0.1"
 base64 = "0.12.3"
 bincode = "1.2.1"
-bitcoin = { version = "0.23.0", features = ["rand"] }
+bitcoin = { version = "0.23.0", features = ["rand", "use-serde"] }
 blockchain_contracts = "0.3.2"
 chrono = { version = "0.4", features = ["serde"] }
 derivative = "2"
@@ -29,6 +29,7 @@ rand = "0.7"
 reqwest = { version = "0.10.7", default-features = false, features = ["json", "native-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde-hex = "0.1.0"
+serde_derive = "1.0"
 serde_json = "1"
 serdebug = "1"
 sha2 = "0.9"
