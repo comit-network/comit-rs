@@ -2,10 +2,12 @@ use self::{
     hbit::{HbitFunded, HbitRedeemed, HbitRefunded},
     herc20::{Herc20Deployed, Herc20Funded, Herc20Redeemed, Herc20Refunded},
 };
-use crate::{network, swap, swap::SwapKind, SwapId};
+use crate::{network, network::Taker, swap, swap::SwapKind, SwapId};
 use anyhow::{anyhow, Context};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
+use std::iter::FromIterator;
 
 mod hbit;
 mod herc20;
@@ -33,6 +35,13 @@ impl Database {
             .to_str()
             .ok_or_else(|| anyhow!("The path is not utf-8 valid: {:?}", path))?;
         let db = sled::open(path).context(format!("Could not open the DB at {}", path))?;
+
+        if !db.contains_key("takers")? {
+            let takers = Vec::<Taker>::new();
+            let takers = serde_json::to_vec(&takers)?;
+            let _ = db.insert("takers", takers)?;
+        }
+
         Ok(Database { db })
     }
 
@@ -43,6 +52,10 @@ impl Database {
             "Could not open the DB at {}",
             tmp_dir.path().display()
         ))?;
+
+        let takers = Vec::<Taker>::new();
+        let takers = serde_json::to_vec(&takers)?;
+        let _ = db.insert("takers", takers)?;
 
         Ok(Database { db, tmp_dir })
     }
@@ -125,6 +138,49 @@ impl Database {
             .ok_or_else(|| anyhow!("Swap does not exists {}", swap_id))?;
 
         serde_json::from_slice(&swap).context("Could not deserialize swap")
+    }
+}
+
+impl Database {
+    pub fn insert_active_taker(&self, taker: Taker) -> anyhow::Result<()> {
+        self.modify_takers_with(|takers: &mut HashSet<Taker>| takers.insert(taker.clone()))
+    }
+
+    pub fn remove_active_taker(&self, taker: &Taker) -> anyhow::Result<()> {
+        self.modify_takers_with(|takers: &mut HashSet<Taker>| takers.remove(taker))
+    }
+
+    pub fn contains_active_taker(&self, taker: &Taker) -> anyhow::Result<bool> {
+        let takers = self.takers()?;
+
+        Ok(takers.contains(&taker))
+    }
+
+    fn modify_takers_with(
+        &self,
+        operation_fn: impl Fn(&mut HashSet<Taker>) -> bool,
+    ) -> anyhow::Result<()> {
+        let mut takers = self.takers()?;
+
+        operation_fn(&mut takers);
+
+        let updated_takers = Vec::<Taker>::from_iter(takers);
+        let updated_takers = serde_json::to_vec(&updated_takers)?;
+
+        self.db.insert("takers", updated_takers)?;
+
+        Ok(())
+    }
+
+    fn takers(&self) -> anyhow::Result<HashSet<Taker>> {
+        let takers = self
+            .db
+            .get("takers")?
+            .ok_or_else(|| anyhow::anyhow!("no key \"takers\" in db"))?;
+        let takers: Vec<Taker> = serde_json::from_slice(&takers)?;
+        let takers = HashSet::<Taker>::from_iter(takers);
+
+        Ok(takers)
     }
 }
 
@@ -273,5 +329,21 @@ mod tests {
         let stored_swaps = db.load_all().unwrap();
 
         assert_eq!(stored_swaps, vec![swap_2]);
+    }
+
+    #[test]
+    fn taker_no_longer_has_ongoing_trade_after_removal() {
+        let db = Database::new_test().unwrap();
+        let taker = Taker::default();
+
+        let _ = db.insert_active_taker(taker.clone()).unwrap();
+
+        let res = db.contains_active_taker(&taker);
+        assert!(matches!(res, Ok(true)));
+
+        let _ = db.remove_active_taker(&taker).unwrap();
+        let res = db.contains_active_taker(&taker);
+
+        assert!(matches!(res, Ok(false)));
     }
 }

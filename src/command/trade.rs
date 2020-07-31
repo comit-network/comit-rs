@@ -1,15 +1,13 @@
-use crate::command::into_history_trade;
-use crate::swap::{SwapKind, SwapParams};
 use crate::{
     bitcoin,
-    command::FinishedSwap,
+    command::{into_history_trade, FinishedSwap},
     config::Settings,
     ethereum::{self, dai},
     history::History,
     maker::{PublishOrders, TakeRequestDecision},
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, Swarm},
-    swap::Database,
+    swap::{Database, SwapKind, SwapParams},
     Maker, MidMarketRate, Seed, Spread,
 };
 use anyhow::Context;
@@ -44,7 +42,12 @@ pub async fn trade(
     .await
     .context("Could not initialise Maker")?;
 
-    let mut swarm = Swarm::new(&seed, &settings, runtime_handle)?;
+    #[cfg(not(test))]
+    let db = Arc::new(Database::new(&settings.data.dir.join("database"))?);
+    #[cfg(test)]
+    let db = Arc::new(Database::new_test()?);
+
+    let mut swarm = Swarm::new(&seed, &settings, runtime_handle, Arc::clone(&db))?;
 
     let initial_sell_order = maker
         .new_sell_order()
@@ -74,11 +77,6 @@ pub async fn trade(
 
     let (swap_execution_finished_sender, mut swap_execution_finished_receiver) =
         futures::channel::mpsc::channel::<FinishedSwap>(ENSURED_CONSUME_ZERO_BUFFER);
-
-    #[cfg(not(test))]
-    let db = Arc::new(Database::new(&settings.data.dir.join("database"))?);
-    #[cfg(test)]
-    let db = Arc::new(Database::new_test()?);
 
     let history = Arc::new(Mutex::new(History::new(
         settings.data.dir.join("history.csv").as_path(),
@@ -481,7 +479,7 @@ fn handle_finished_swap(
     maker: &mut Maker,
     db: &Database,
     history: Arc<Mutex<History>>,
-    swarm: &mut Swarm,
+    _swarm: &mut Swarm,
 ) {
     {
         let trade = into_history_trade(
@@ -514,8 +512,8 @@ fn handle_finished_swap(
 
     maker.free_funds(dai, btc);
 
-    let _ = swarm
-        .remove_from_active_takers(&finished_swap.taker)
+    let _ = db
+        .remove_active_taker(&finished_swap.taker)
         .map_err(|error| tracing::error!("Unable to remove from active takers: {}", error));
 
     let _ = db
