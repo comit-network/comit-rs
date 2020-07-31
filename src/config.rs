@@ -46,23 +46,25 @@ pub fn read_config(config_file: &Option<PathBuf>) -> anyhow::Result<File> {
             eprintln!("Using config file {}", path.display());
             path
         })
-        .ok_or_else(|| {
-            // try to load default config
-            let default_path = crate::fs::default_config_path()?;
+        .map_or_else(
+            || {
+                // try to load default config
+                let default_path = crate::fs::default_config_path()?;
 
-            if default_path.exists() {
-                eprintln!(
-                    "Using config file at default path: {}",
-                    default_path.display()
-                );
-                Ok(default_path)
-            } else {
-                eprintln!("Config file default path is {}", default_path.display());
-                Err(anyhow!("internal error (unreachable)"))
-            }
-        })
+                if default_path.exists() {
+                    eprintln!(
+                        "Using config file at default path: {}",
+                        default_path.display()
+                    );
+                    Ok(default_path)
+                } else {
+                    eprintln!("Config file default path is {}", default_path.display());
+                    Err(anyhow!("internal error (unreachable)"))
+                }
+            },
+            |path| Ok(path.to_path_buf()),
+        )
         .ok();
-
     match path {
         Some(path) => File::read(&path)
             .with_context(|| format!("failed to read config file {}", path.display())),
