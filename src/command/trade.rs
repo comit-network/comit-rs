@@ -17,10 +17,8 @@ use comit::btsieve::ethereum::Web3Connector;
 use futures::channel::mpsc::Sender;
 use futures::{channel::mpsc::Receiver, Future, FutureExt, SinkExt, StreamExt};
 use futures_timer::Delay;
-use std::{
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+
+use std::{sync::Arc, time::Duration};
 
 const ENSURED_CONSUME_ZERO_BUFFER: usize = 0;
 
@@ -78,9 +76,7 @@ pub async fn trade(
     let (swap_execution_finished_sender, mut swap_execution_finished_receiver) =
         futures::channel::mpsc::channel::<FinishedSwap>(ENSURED_CONSUME_ZERO_BUFFER);
 
-    let history = Arc::new(Mutex::new(History::new(
-        settings.data.dir.join("history.csv").as_path(),
-    )?));
+    let mut history = History::new(settings.data.dir.join("history.csv").as_path())?;
 
     let bitcoin_connector = Arc::new(BitcoindConnector::new(
         settings.bitcoin.bitcoind.node_url,
@@ -103,7 +99,7 @@ pub async fn trade(
         futures::select! {
             finished_swap = swap_execution_finished_receiver.next().fuse() => {
                 if let Some(finished_swap) = finished_swap {
-                    handle_finished_swap(finished_swap, &mut maker, &db, Arc::clone(&history), &mut swarm);
+                    handle_finished_swap(finished_swap, &mut maker, &db, &mut history, &mut swarm);
                 }
             },
             network_event = swarm.as_inner().next().fuse() => {
@@ -478,7 +474,7 @@ fn handle_finished_swap(
     finished_swap: FinishedSwap,
     maker: &mut Maker,
     db: &Database,
-    history: Arc<Mutex<History>>,
+    history: &mut History,
     _swarm: &mut Swarm,
 ) {
     {
@@ -489,9 +485,6 @@ fn handle_finished_swap(
             finished_swap.final_timestamp,
         );
 
-        let mut history = history
-            .lock()
-            .expect("No thread panicked while holding the lock");
         let _ = history.write(trade).map_err(|error| {
             tracing::error!(
                 "Unable to register history entry: {}; {:?}",
