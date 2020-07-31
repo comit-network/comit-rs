@@ -1,6 +1,7 @@
 //! Execute a swap.
 
 mod action;
+#[cfg(test)]
 mod alice;
 pub mod bitcoin;
 mod bob;
@@ -11,88 +12,171 @@ pub mod herc20;
 
 use crate::{
     network::Taker,
-    swap::action::{do_it_once, try_do_it_once, AsSwapId, BetaExpiry, BetaLedgerTime, Execute},
+    swap::{
+        action::{AsSwapId, BetaExpiry, BetaLedgerTime, Execute},
+        bob::WalletBob,
+    },
     SwapId,
 };
-use comit::Secret;
-use futures::future::{self, Either};
-use futures::pin_mut;
+use chrono::NaiveDateTime;
+use comit::btsieve::{self, BlockByHash, LatestBlock};
+use futures::{
+    future::{self, Either},
+    pin_mut,
+};
 use std::sync::Arc;
 
-pub use alice::WatchOnlyAlice;
-pub use bob::WalletBob;
 pub use db::Database;
 
-/// Execute a Hbit<->Herc20 swap.
-pub async fn hbit_herc20<A, B>(alice: A, bob: B) -> anyhow::Result<()>
+/// Execute Bob's side of a Hbit<->Herc20 swap.
+pub async fn hbit_herc20_bob<B, BC, EC>(
+    bob: B,
+    bitcoin_connector: &BC,
+    ethereum_connector: &EC,
+    hbit_params: hbit::Params,
+    herc20_params: herc20::Params,
+    start_of_swap: NaiveDateTime,
+) -> anyhow::Result<()>
 where
-    A: Execute<hbit::Funded, Args = ()>
-        + Execute<herc20::Redeemed, Args = herc20::Deployed>
-        + Execute<hbit::Refunded, Args = hbit::Funded>
-        + BetaExpiry
-        + BetaLedgerTime
-        + AsSwapId
-        + db::Load<hbit::Funded>
-        + db::Save<hbit::Funded>
-        + db::Save<herc20::Redeemed>
-        + db::Load<herc20::Redeemed>
-        + db::Save<hbit::Refunded>
-        + db::Load<hbit::Refunded>
-        + Sync,
-    B: Execute<herc20::Deployed, Args = ()>
-        + Execute<herc20::Funded, Args = herc20::Deployed>
-        + Execute<hbit::Redeemed, Args = (hbit::Funded, Secret)>
-        + Execute<herc20::Refunded, Args = herc20::Deployed>
-        + BetaExpiry
-        + BetaLedgerTime
-        + AsSwapId
-        + db::Save<herc20::Deployed>
-        + db::Load<herc20::Deployed>
-        + db::Save<herc20::Funded>
-        + db::Load<herc20::Funded>
-        + db::Save<hbit::Redeemed>
-        + db::Load<hbit::Redeemed>
-        + db::Save<herc20::Refunded>
-        + db::Load<herc20::Refunded>
-        + Sync,
+    B: herc20::ExecuteDeploy + herc20::ExecuteFund + herc20::ExecuteRefund + hbit::ExecuteRedeem,
+    BC: LatestBlock<Block = bitcoin::Block>
+        + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
+    EC: LatestBlock<Block = ethereum::Block>
+        + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
+        + btsieve::ethereum::ReceiptByHash,
 {
-    let hbit_funded = match try_do_it_once::<_, hbit::Funded>(&alice, ()).await {
-        Ok(hbit_funded) => hbit_funded,
+    let hbit_funded =
+        match hbit::watch_for_funded(bitcoin_connector, &hbit_params.shared, start_of_swap).await {
+            Ok(hbit_funded) => hbit_funded,
+            Err(_) => return Ok(()),
+        };
+
+    let herc20_deployed = match bob.execute_deploy(herc20_params.clone()).await {
+        Ok(herc20_deployed) => herc20_deployed,
         Err(_) => return Ok(()),
     };
 
-    let herc20_deployed = match try_do_it_once::<_, herc20::Deployed>(&bob, ()).await {
-        Ok(herc20_deployed) => herc20_deployed,
+    let _herc20_funded = match bob
+        .execute_fund(
+            herc20_params.clone(),
+            herc20_deployed.clone(),
+            start_of_swap,
+        )
+        .await
+    {
+        Ok(herc20_funded) => herc20_funded,
+        Err(_) => return Ok(()),
+    };
+
+    let herc20_redeemed = match herc20::watch_for_redeemed(
+        ethereum_connector,
+        start_of_swap,
+        herc20_deployed.clone(),
+    )
+    .await
+    {
+        Ok(herc20_redeemed) => herc20_redeemed,
         Err(_) => {
-            do_it_once::<_, hbit::Refunded>(&alice, hbit_funded).await?;
+            bob.execute_refund(herc20_params, herc20_deployed, start_of_swap)
+                .await?;
 
             return Ok(());
         }
     };
 
-    let _herc20_funded =
-        match try_do_it_once::<_, herc20::Funded>(&bob, herc20_deployed.clone()).await {
-            Ok(herc20_funded) => herc20_funded,
+    let hbit_redeem = bob.execute_redeem(hbit_params, hbit_funded, herc20_redeemed.secret);
+    let hbit_refund = hbit::watch_for_refunded(
+        bitcoin_connector,
+        &hbit_params.shared,
+        hbit_funded.location,
+        start_of_swap,
+    );
+
+    pin_mut!(hbit_redeem);
+    pin_mut!(hbit_refund);
+
+    match future::select(hbit_redeem, hbit_refund).await {
+        Either::Left((Ok(_hbit_redeemed), _)) => Ok(()),
+        Either::Right((Ok(_hbit_refunded), _)) => Ok(()),
+        Either::Left((Err(_), _hbit_refund)) => Ok(()),
+        Either::Right((Err(_), hbit_redeem)) => {
+            hbit_redeem.await?;
+            Ok(())
+        }
+    }
+}
+
+/// Execute Alice's side of a Hbit<->Herc20 swap.
+#[cfg(test)]
+pub async fn hbit_herc20_alice<A, BC, EC>(
+    alice: A,
+    bitcoin_connector: &BC,
+    ethereum_connector: &EC,
+    hbit_params: hbit::Params,
+    herc20_params: herc20::Params,
+    secret: comit::Secret,
+    start_of_swap: NaiveDateTime,
+) -> anyhow::Result<()>
+where
+    A: hbit::ExecuteFund + hbit::ExecuteRefund + herc20::ExecuteRedeem,
+    BC: LatestBlock<Block = bitcoin::Block>
+        + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
+    EC: LatestBlock<Block = ethereum::Block>
+        + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
+        + btsieve::ethereum::ReceiptByHash,
+{
+    let hbit_funded = match alice.execute_fund(&hbit_params).await {
+        Ok(hbit_funded) => hbit_funded,
+        Err(_) => return Ok(()),
+    };
+
+    let herc20_deployed =
+        match herc20::watch_for_deployed(ethereum_connector, herc20_params.clone(), start_of_swap)
+            .await
+        {
+            Ok(herc20_deployed) => herc20_deployed,
             Err(_) => {
-                do_it_once::<_, hbit::Refunded>(&alice, hbit_funded).await?;
+                alice.execute_refund(hbit_params, hbit_funded).await?;
 
                 return Ok(());
             }
         };
 
-    let herc20_redeemed =
-        match try_do_it_once::<_, herc20::Redeemed>(&alice, herc20_deployed.clone()).await {
-            Ok(herc20_redeemed) => herc20_redeemed,
-            Err(_) => {
-                do_it_once::<_, hbit::Refunded>(&alice, hbit_funded).await?;
-                do_it_once::<_, herc20::Refunded>(&bob, herc20_deployed.clone()).await?;
+    let _herc20_funded = match herc20::watch_for_funded(
+        ethereum_connector,
+        herc20_params.clone(),
+        start_of_swap,
+        herc20_deployed.clone(),
+    )
+    .await
+    {
+        Ok(herc20_funded) => herc20_funded,
+        Err(_) => {
+            alice.execute_refund(hbit_params, hbit_funded).await?;
 
-                return Ok(());
-            }
-        };
+            return Ok(());
+        }
+    };
 
-    let hbit_redeem = do_it_once::<_, hbit::Redeemed>(&bob, (hbit_funded, herc20_redeemed.secret));
-    let hbit_refund = do_it_once::<_, hbit::Refunded>(&alice, hbit_funded);
+    let _herc20_redeemed = match alice
+        .execute_redeem(herc20_params, secret, herc20_deployed, start_of_swap)
+        .await
+    {
+        Ok(herc20_redeemed) => herc20_redeemed,
+        Err(_) => {
+            alice.execute_refund(hbit_params, hbit_funded).await?;
+
+            return Ok(());
+        }
+    };
+
+    let hbit_redeem = hbit::watch_for_redeemed(
+        bitcoin_connector,
+        &hbit_params.shared,
+        hbit_funded.location,
+        start_of_swap,
+    );
+    let hbit_refund = alice.execute_refund(hbit_params, hbit_funded);
 
     pin_mut!(hbit_redeem);
     pin_mut!(hbit_refund);
@@ -104,101 +188,98 @@ where
             hbit_refund.await?;
             Ok(())
         }
-        Either::Right((Err(_), hbit_redeem)) => {
-            hbit_redeem.await?;
-            Ok(())
-        }
+        Either::Right((Err(_), _hbit_redeem)) => Ok(()),
     }
 }
 
 /// Execute a Herc20<->Hbit swap.
-pub async fn herc20_hbit<A, B>(alice: A, bob: B) -> anyhow::Result<()>
-where
-    A: Execute<herc20::Deployed, Args = ()>
-        + Execute<herc20::Funded, Args = herc20::Deployed>
-        + Execute<hbit::Redeemed, Args = hbit::Funded>
-        + Execute<herc20::Refunded, Args = herc20::Deployed>
-        + AsSwapId
-        + BetaExpiry
-        + BetaLedgerTime
-        + db::Save<herc20::Deployed>
-        + db::Load<herc20::Deployed>
-        + db::Save<herc20::Funded>
-        + db::Load<herc20::Funded>
-        + db::Save<hbit::Redeemed>
-        + db::Load<hbit::Redeemed>
-        + db::Save<herc20::Refunded>
-        + db::Load<herc20::Refunded>
-        + Sync,
-    B: Execute<hbit::Funded, Args = ()>
-        + Execute<herc20::Redeemed, Args = (herc20::Deployed, Secret)>
-        + Execute<hbit::Refunded, Args = hbit::Funded>
-        + AsSwapId
-        + BetaExpiry
-        + BetaLedgerTime
-        + db::Load<hbit::Funded>
-        + db::Save<hbit::Funded>
-        + db::Save<herc20::Redeemed>
-        + db::Load<herc20::Redeemed>
-        + db::Save<hbit::Refunded>
-        + db::Load<hbit::Refunded>
-        + Sync,
-{
-    let herc20_deployed = match try_do_it_once::<_, herc20::Deployed>(&alice, ()).await {
-        Ok(herc20_deployed) => herc20_deployed,
-        Err(_) => {
-            return Ok(());
-        }
-    };
+// pub async fn herc20_hbit<A, B>(alice: A, bob: B) -> anyhow::Result<()>
+// where
+//     A: Execute<herc20::Deployed, Args = ()>
+//         + Execute<herc20::Funded, Args = herc20::Deployed>
+//         + Execute<hbit::Redeemed, Args = hbit::Funded>
+//         + Execute<herc20::Refunded, Args = herc20::Deployed>
+//         + AsSwapId
+//         + BetaExpiry
+//         + BetaLedgerTime
+//         + db::Save<herc20::Deployed>
+//         + db::Load<herc20::Deployed>
+//         + db::Save<herc20::Funded>
+//         + db::Load<herc20::Funded>
+//         + db::Save<hbit::Redeemed>
+//         + db::Load<hbit::Redeemed>
+//         + db::Save<herc20::Refunded>
+//         + db::Load<herc20::Refunded>
+//         + Sync,
+//     B: Execute<hbit::Funded, Args = ()>
+//         + Execute<herc20::Redeemed, Args = (herc20::Deployed, Secret)>
+//         + Execute<hbit::Refunded, Args = hbit::Funded>
+//         + AsSwapId
+//         + BetaExpiry
+//         + BetaLedgerTime
+//         + db::Load<hbit::Funded>
+//         + db::Save<hbit::Funded>
+//         + db::Save<herc20::Redeemed>
+//         + db::Load<herc20::Redeemed>
+//         + db::Save<hbit::Refunded>
+//         + db::Load<hbit::Refunded>
+//         + Sync,
+// {
+//     let herc20_deployed = match try_do_it_once::<_, herc20::Deployed>(&alice, ()).await {
+//         Ok(herc20_deployed) => herc20_deployed,
+//         Err(_) => {
+//             return Ok(());
+//         }
+//     };
 
-    let _herc20_funded =
-        match try_do_it_once::<_, herc20::Funded>(&alice, herc20_deployed.clone()).await {
-            Ok(herc20_funded) => herc20_funded,
-            Err(_) => {
-                return Ok(());
-            }
-        };
+//     let _herc20_funded =
+//         match try_do_it_once::<_, herc20::Funded>(&alice, herc20_deployed.clone()).await {
+//             Ok(herc20_funded) => herc20_funded,
+//             Err(_) => {
+//                 return Ok(());
+//             }
+//         };
 
-    let hbit_funded = match try_do_it_once::<_, hbit::Funded>(&bob, ()).await {
-        Ok(hbit_funded) => hbit_funded,
-        Err(_) => {
-            do_it_once::<_, herc20::Refunded>(&alice, herc20_deployed.clone()).await?;
+//     let hbit_funded = match try_do_it_once::<_, hbit::Funded>(&bob, ()).await {
+//         Ok(hbit_funded) => hbit_funded,
+//         Err(_) => {
+//             do_it_once::<_, herc20::Refunded>(&alice, herc20_deployed.clone()).await?;
 
-            return Ok(());
-        }
-    };
+//             return Ok(());
+//         }
+//     };
 
-    let hbit_redeemed = match try_do_it_once::<_, hbit::Redeemed>(&alice, hbit_funded).await {
-        Ok(hbit_redeemed) => hbit_redeemed,
-        Err(_) => {
-            let herc20_refund = do_it_once::<_, herc20::Refunded>(&alice, herc20_deployed.clone());
-            let hbit_refund = do_it_once::<_, hbit::Refunded>(&bob, hbit_funded);
-            future::try_join(herc20_refund, hbit_refund).await?;
+//     let hbit_redeemed = match try_do_it_once::<_, hbit::Redeemed>(&alice, hbit_funded).await {
+//         Ok(hbit_redeemed) => hbit_redeemed,
+//         Err(_) => {
+//             let herc20_refund = do_it_once::<_, herc20::Refunded>(&alice, herc20_deployed.clone());
+//             let hbit_refund = do_it_once::<_, hbit::Refunded>(&bob, hbit_funded);
+//             future::try_join(herc20_refund, hbit_refund).await?;
 
-            return Ok(());
-        }
-    };
+//             return Ok(());
+//         }
+//     };
 
-    let herc20_redeem =
-        do_it_once::<_, herc20::Redeemed>(&bob, (herc20_deployed.clone(), hbit_redeemed.secret));
-    let herc20_refund = do_it_once::<_, herc20::Refunded>(&alice, herc20_deployed.clone());
+//     let herc20_redeem =
+//         do_it_once::<_, herc20::Redeemed>(&bob, (herc20_deployed.clone(), hbit_redeemed.secret));
+//     let herc20_refund = do_it_once::<_, herc20::Refunded>(&alice, herc20_deployed.clone());
 
-    pin_mut!(herc20_redeem);
-    pin_mut!(herc20_refund);
+//     pin_mut!(herc20_redeem);
+//     pin_mut!(herc20_refund);
 
-    match future::select(herc20_redeem, herc20_refund).await {
-        Either::Left((Ok(_herc20_redeemed), _)) => Ok(()),
-        Either::Right((Ok(_herc20_refunded), _)) => Ok(()),
-        Either::Left((Err(_), herc20_refund)) => {
-            herc20_refund.await?;
-            Ok(())
-        }
-        Either::Right((Err(_), herc20_redeem)) => {
-            herc20_redeem.await?;
-            Ok(())
-        }
-    }
-}
+//     match future::select(herc20_redeem, herc20_refund).await {
+//         Either::Left((Ok(_herc20_redeemed), _)) => Ok(()),
+//         Either::Right((Ok(_herc20_refunded), _)) => Ok(()),
+//         Either::Left((Err(_), herc20_refund)) => {
+//             herc20_refund.await?;
+//             Ok(())
+//         }
+//         Either::Right((Err(_), herc20_redeem)) => {
+//             herc20_redeem.await?;
+//             Ok(())
+//         }
+//     }
+// }
 
 // TODO: This is awkward to manipulate
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -240,17 +321,6 @@ impl SwapKind {
                 swap_id,
                 ..
             }) => {
-                let alice = WatchOnlyAlice {
-                    alpha_connector: Arc::clone(&bitcoin_connector),
-                    beta_connector: Arc::clone(&ethereum_connector),
-                    db: Arc::clone(&db),
-                    alpha_params: hbit_params.shared,
-                    beta_params: herc20_params.clone(),
-                    secret_hash: *secret_hash,
-                    start_of_swap: *start_of_swap,
-                    swap_id: *swap_id,
-                };
-
                 let bob = WalletBob {
                     alpha_wallet: bitcoin_wallet,
                     beta_wallet: ethereum_wallet,
@@ -262,7 +332,15 @@ impl SwapKind {
                     swap_id: *swap_id,
                 };
 
-                hbit_herc20(alice, bob).await?
+                hbit_herc20_bob(
+                    bob,
+                    bitcoin_connector.as_ref(),
+                    ethereum_connector.as_ref(),
+                    *hbit_params,
+                    herc20_params.clone(),
+                    *start_of_swap,
+                )
+                .await?
             }
             SwapKind::Herc20Hbit(SwapParams {
                 hbit_params,
@@ -272,28 +350,30 @@ impl SwapKind {
                 swap_id,
                 ..
             }) => {
-                let alice = WatchOnlyAlice {
-                    alpha_connector: Arc::clone(&ethereum_connector),
-                    beta_connector: Arc::clone(&bitcoin_connector),
-                    db: Arc::clone(&db),
-                    alpha_params: herc20_params.clone(),
-                    beta_params: hbit_params.shared,
-                    secret_hash: *secret_hash,
-                    start_of_swap: *start_of_swap,
-                    swap_id: *swap_id,
-                };
-                let bob = WalletBob {
-                    alpha_wallet: ethereum_wallet,
-                    beta_wallet: bitcoin_wallet,
-                    db,
-                    alpha_params: herc20_params.clone(),
-                    beta_params: *hbit_params,
-                    secret_hash: *secret_hash,
-                    start_of_swap: *start_of_swap,
-                    swap_id: *swap_id,
-                };
+                // let alice = WatchOnlyAlice {
+                //     alpha_connector: Arc::clone(&ethereum_connector),
+                //     beta_connector: Arc::clone(&bitcoin_connector),
+                //     db: Arc::clone(&db),
+                //     alpha_params: herc20_params.clone(),
+                //     beta_params: hbit_params.shared,
+                //     secret_hash: *secret_hash,
+                //     start_of_swap: *start_of_swap,
+                //     swap_id: *swap_id,
+                // };
+                // let bob = WalletBob {
+                //     alpha_wallet: ethereum_wallet,
+                //     beta_wallet: bitcoin_wallet,
+                //     db,
+                //     alpha_params: herc20_params.clone(),
+                //     beta_params: *hbit_params,
+                //     secret_hash: *secret_hash,
+                //     start_of_swap: *start_of_swap,
+                //     swap_id: *swap_id,
+                // };
 
-                herc20_hbit(alice, bob).await?
+                // herc20_hbit(alice, bob).await?
+
+                todo!()
             }
         };
 
@@ -319,7 +399,8 @@ impl Default for SwapParams {
         use ::bitcoin::secp256k1;
         use std::str::FromStr;
 
-        let secret_hash = SecretHash::new(Secret::from(*b"hello world, you are beautiful!!"));
+        let secret_hash =
+            SecretHash::new(comit::Secret::from(*b"hello world, you are beautiful!!"));
 
         SwapParams {
             hbit_params: hbit::Params {
@@ -356,7 +437,7 @@ impl Default for SwapParams {
                 secret_hash,
                 chain_id: 42.into(),
             },
-            secret_hash: SecretHash::new(Secret::from(*b"hello world, you are beautiful!!")),
+            secret_hash: SecretHash::new(comit::Secret::from(*b"hello world, you are beautiful!!")),
             start_of_swap: chrono::Local::now().naive_local(),
             swap_id: Default::default(),
             taker: Taker::default(),
@@ -368,7 +449,7 @@ impl Default for SwapParams {
 mod tests {
     use super::*;
     use crate::{
-        swap::{alice::wallet_actor::WalletAlice, bitcoin, bob::watch_only_actor::WatchOnlyBob},
+        swap::{alice::WalletAlice, bitcoin},
         test_harness, Seed, SwapId,
     };
     use ::bitcoin::secp256k1;
@@ -592,28 +673,27 @@ mod tests {
 
             alice_db.insert(swap).unwrap();
 
+            let hbit_params = hbit::Params::new(hbit_params, hbit_transient_refund_sk);
             let alice = WalletAlice {
                 alpha_wallet: alice_bitcoin_wallet.clone(),
                 beta_wallet: alice_ethereum_wallet.clone(),
                 db: Arc::clone(&alice_db),
-                alpha_params: hbit::Params::new(hbit_params, hbit_transient_refund_sk),
+                alpha_params: hbit_params,
                 beta_params: herc20_params.clone(),
                 secret,
                 start_of_swap,
                 swap_id,
             };
-            let bob = WatchOnlyBob {
-                alpha_connector: Arc::clone(&bitcoin_connector),
-                beta_connector: Arc::clone(&ethereum_connector),
-                db: alice_db,
-                alpha_params: hbit_params,
-                beta_params: herc20_params.clone(),
-                secret_hash,
-                start_of_swap,
-                swap_id,
-            };
 
-            hbit_herc20(alice, bob)
+            hbit_herc20_alice(
+                alice,
+                bitcoin_connector.as_ref(),
+                ethereum_connector.as_ref(),
+                hbit_params,
+                herc20_params.clone(),
+                secret,
+                start_of_swap,
+            )
         };
 
         let bob_swap = {
@@ -633,28 +713,26 @@ mod tests {
 
             bob_db.insert(swap).unwrap();
 
-            let alice = WatchOnlyAlice {
-                alpha_connector: Arc::clone(&bitcoin_connector),
-                beta_connector: Arc::clone(&ethereum_connector),
-                db: Arc::clone(&bob_db),
+            let hbit_params = hbit::Params::new(hbit_params, hbit_transient_redeem_sk);
+            let bob = WalletBob {
+                alpha_wallet: bob_bitcoin_wallet.clone(),
+                beta_wallet: bob_ethereum_wallet.clone(),
+                db: bob_db,
                 alpha_params: hbit_params,
                 beta_params: herc20_params.clone(),
                 secret_hash,
                 start_of_swap,
                 swap_id,
             };
-            let bob = WalletBob {
-                alpha_wallet: bob_bitcoin_wallet.clone(),
-                beta_wallet: bob_ethereum_wallet.clone(),
-                db: bob_db,
-                alpha_params: hbit::Params::new(hbit_params, hbit_transient_redeem_sk),
-                beta_params: herc20_params.clone(),
-                secret_hash,
-                start_of_swap,
-                swap_id,
-            };
 
-            hbit_herc20(alice, bob)
+            hbit_herc20_bob(
+                bob,
+                bitcoin_connector.as_ref(),
+                ethereum_connector.as_ref(),
+                hbit_params,
+                herc20_params.clone(),
+                start_of_swap,
+            )
         };
 
         let alice_bitcoin_starting_balance = alice_bitcoin_wallet.inner.balance().await?;
