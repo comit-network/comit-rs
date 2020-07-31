@@ -116,7 +116,7 @@ impl Swarm {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Event {
-    TakeOrderRequest(TakenOrder),
+    TakeRequest(TakenOrder),
     SetSwapIdentities(SwapMetadata),
     SpawnSwap(SwapKind),
 }
@@ -315,7 +315,7 @@ impl NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> for Nectar {
                 self.takers.insert(order_id, taker.peer_id.clone());
 
                 let taken_order = TakenOrder::new(order, taker, response_channel);
-                self.events.push_back(Event::TakeOrderRequest(taken_order))
+                self.events.push_back(Event::TakeRequest(taken_order))
             }
             orderbook::BehaviourOutEvent::TakeOrderConfirmation {
                 order_id,

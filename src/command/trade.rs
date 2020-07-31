@@ -121,7 +121,7 @@ pub async fn trade(
                     Arc::clone(&bitcoin_wallet),
                     Arc::clone(&ethereum_wallet),
                     Arc::clone(&bitcoin_connector),
-        Arc::clone(&ethereum_connector),
+                    Arc::clone(&ethereum_connector),
                     swap_execution_finished_sender.clone(),
                 );
             },
@@ -355,7 +355,7 @@ fn handle_network_event(
     finished_swap_sender: Sender<FinishedSwap>,
 ) {
     match network_event {
-        network::Event::TakeOrderRequest(order) => {
+        network::Event::TakeRequest(order) => {
             let order_ref = &order;
             let result = maker.process_taken_order(order_ref.into());
 
