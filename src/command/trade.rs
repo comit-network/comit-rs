@@ -1,5 +1,3 @@
-#![allow(unreachable_code, unused_variables)]
-
 use crate::{
     bitcoin,
     config::Settings,
@@ -136,8 +134,6 @@ pub async fn trade(
             }
         }
     }
-
-    Ok(())
 }
 
 async fn init_maker(
@@ -291,7 +287,7 @@ async fn execute_swap(
             Local::now(),
         ))
         .await
-        .map_err(|e| {
+        .map_err(|_| {
             tracing::trace!("Error when sending execution finished from sender to receiver.")
         });
 
@@ -311,18 +307,12 @@ fn respawn_swaps(
         // Reserve funds
         match swap {
             SwapKind::HbitHerc20(SwapParams {
-                swap_id,
-                ref herc20_params,
-                ..
+                ref herc20_params, ..
             }) => {
                 let fund_amount = herc20_params.asset.clone().into();
                 maker.dai_reserved_funds = maker.dai_reserved_funds.clone() + fund_amount;
             }
-            SwapKind::Herc20Hbit(SwapParams {
-                swap_id,
-                hbit_params,
-                ..
-            }) => {
+            SwapKind::Herc20Hbit(SwapParams { hbit_params, .. }) => {
                 let fund_amount = hbit_params.shared.asset.into();
                 maker.btc_reserved_funds = maker.btc_reserved_funds + fund_amount + maker.btc_fee;
             }
@@ -496,9 +486,10 @@ fn handle_finished_swap(
     swarm: &mut Swarm,
 ) {
     {
-        let trade = into_trade(
+        let trade = into_history_trade(
             finished_swap.taker.peer_id(),
             finished_swap.swap.clone(),
+            #[cfg(not(test))]
             finished_swap.final_timestamp,
         );
 
@@ -534,7 +525,11 @@ fn handle_finished_swap(
         .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
 }
 
-fn into_trade(peer_id: PeerId, swap: SwapKind, final_timestamp: DateTime<Local>) -> history::Trade {
+fn into_history_trade(
+    peer_id: PeerId,
+    swap: SwapKind,
+    #[cfg(not(test))] final_timestamp: DateTime<Local>,
+) -> history::Trade {
     use history::*;
 
     let (swap, position) = match swap {
