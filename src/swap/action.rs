@@ -1,10 +1,12 @@
-use crate::{swap::db, SwapId};
+use crate::{
+    swap::db::{Load, Save},
+    SwapId,
+};
 use comit::Timestamp;
 use futures::{
     future::{self, Either},
-    pin_mut,
+    pin_mut, Future,
 };
-use std::time::Duration;
 
 /// Try to do an action resulting in the event `E`.
 ///
@@ -22,152 +24,62 @@ use std::time::Duration;
 /// If doing the action succeeds, we store the resulting event `E` via
 /// `StoreEvent` to ensure that repeated calls to this function do not
 /// result in doing the action more than once.
-pub async fn try_do_it_once<A, E>(
-    actor: &A,
-    execution_args: <A as Execute<E>>::Args,
+#[allow(dead_code)] // Not sure why this is flagged as dead code
+pub async fn try_do_it_once<E, DB>(
+    db: &DB,
+    swap_id: SwapId,
+    action: impl Future<Output = anyhow::Result<E>>,
+    poll_abortion_condition: impl Future<Output = anyhow::Result<()>>,
 ) -> anyhow::Result<E>
 where
-    A: LookUpEvent<E> + BetaHasExpired + Execute<E> + StoreEvent<E>,
+    DB: Load<E> + Save<E>,
     E: Clone + Send + Sync + 'static,
-    <A as Execute<E>>::Args: Send + Sync,
 {
-    if let Some(event) = actor.look_up_event()? {
+    if let Some(event) = db.load(swap_id)? {
         return Ok(event);
     }
 
-    // For Nectar, we conservatively abort if Beta has expired
-    let beta_expired = async {
-        loop {
-            if actor.beta_has_expired().await? {
-                return Result::<(), anyhow::Error>::Ok(());
-            }
+    pin_mut!(action);
+    pin_mut!(poll_abortion_condition);
 
-            tokio::time::delay_for(Duration::from_secs(1)).await;
-        }
-    };
-    let execute_future = Execute::<E>::execute(actor, execution_args);
-
-    pin_mut!(execute_future);
-    pin_mut!(beta_expired);
-
-    match future::select(execute_future, beta_expired).await {
-        Either::Left((Ok(event), _)) => {
-            actor.store_event(event.clone()).await?;
-            Ok(event)
-        }
-        Either::Right(_) => anyhow::bail!(BetaHasExpiredError),
+    let event = match future::select(action, poll_abortion_condition).await {
+        Either::Left((Ok(event), _)) => event,
+        Either::Right(_) => anyhow::bail!(AbortConditionMet),
         _ => anyhow::bail!("A future has failed"),
-    }
-}
+    };
 
-/// Do an action resulting in the event `E`.
-///
-/// If we already know that event `E` has happened because we can look
-/// it up in our internal state via `LookUpEvent`, we return
-/// `Next::Continue<E>` early and do not try to do the action again.
-///
-/// We do the action by calling `Execute::<E>::execute` and awaiting
-/// on it, which will yield the event `E` if it resolves successfully.
-///
-/// If doing the action succeeds, we store the resulting event `E` via
-/// `StoreEvent` to ensure that repeated calls to this function do not
-/// result in doing the action more than once.
-pub async fn do_it_once<A, E>(
-    actor: &A,
-    execution_args: <A as Execute<E>>::Args,
-) -> anyhow::Result<E>
-where
-    A: LookUpEvent<E> + BetaHasExpired + Execute<E> + StoreEvent<E>,
-    E: Clone + Send + Sync + 'static,
-    <A as Execute<E>>::Args: Send + Sync,
-{
-    if let Some(event) = actor.look_up_event()? {
-        return Ok(event);
-    }
-
-    let event = Execute::<E>::execute(actor, execution_args).await?;
-    actor.store_event(event.clone()).await?;
-
+    db.save(event.clone(), swap_id).await?;
     Ok(event)
 }
 
-pub trait LookUpEvent<E> {
-    fn look_up_event(&self) -> anyhow::Result<Option<E>>;
+/// Fetch the current `Timestamp` for the a ledger.
+#[async_trait::async_trait]
+pub trait LedgerTime {
+    async fn ledger_time(&self) -> anyhow::Result<Timestamp>;
 }
 
-/// Look up swap event `E` by attempting to `Load` it from a database
-/// using our `SwapId`.
-impl<E, A> LookUpEvent<E> for A
+#[allow(dead_code)] // Not sure why this is flagged as dead code
+pub async fn poll_beta_has_expired<BC>(
+    beta_connector: &BC,
+    beta_expiry: Timestamp,
+) -> anyhow::Result<()>
 where
-    A: db::Load<E> + AsSwapId,
-    E: 'static,
+    BC: LedgerTime,
 {
-    fn look_up_event(&self) -> anyhow::Result<Option<E>> {
-        self.load(self.as_swap_id())
+    loop {
+        let beta_ledger_time = beta_connector.ledger_time().await?;
+
+        if beta_expiry <= beta_ledger_time {
+            return Ok(());
+        }
+
+        tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
     }
-}
-
-#[async_trait::async_trait]
-pub trait BetaHasExpired {
-    async fn beta_has_expired(&self) -> anyhow::Result<bool>;
-}
-
-#[async_trait::async_trait]
-impl<A> BetaHasExpired for A
-where
-    A: BetaLedgerTime + BetaExpiry + Sync,
-{
-    async fn beta_has_expired(&self) -> anyhow::Result<bool> {
-        let beta_ledger_time = self.beta_ledger_time().await?;
-
-        Ok(self.beta_expiry() <= beta_ledger_time)
-    }
-}
-
-/// Execute an action which yields the event `E`.
-#[async_trait::async_trait]
-pub trait Execute<E> {
-    type Args;
-    async fn execute(&self, args: Self::Args) -> anyhow::Result<E>;
-}
-
-#[async_trait::async_trait]
-pub trait StoreEvent<E> {
-    async fn store_event(&self, event: E) -> anyhow::Result<()>;
-}
-
-/// Store the event `E` associated with our `SwapId` by saving it to a
-/// database through the `Save` trait.
-#[async_trait::async_trait]
-impl<E, A> StoreEvent<E> for A
-where
-    A: db::Save<E> + AsSwapId,
-    E: Send + 'static,
-{
-    async fn store_event(&self, event: E) -> anyhow::Result<()> {
-        self.save(event, self.as_swap_id()).await
-    }
-}
-
-/// Get the expiry timestamp for the Beta asset in a swap protocol.
-pub trait BetaExpiry {
-    fn beta_expiry(&self) -> Timestamp;
-}
-
-/// Fetch the current `Timestamp` for the Beta ledger in a swap
-/// protocol.
-#[async_trait::async_trait]
-pub trait BetaLedgerTime {
-    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp>;
-}
-
-pub trait AsSwapId {
-    fn as_swap_id(&self) -> SwapId;
 }
 
 #[derive(Debug, Copy, Clone, thiserror::Error)]
-#[error("Beta expiry has been reached")]
-pub struct BetaHasExpiredError;
+#[error("The abort condition has been met")]
+pub struct AbortConditionMet;
 
 #[cfg(test)]
 mod tests {
@@ -178,14 +90,21 @@ mod tests {
     };
 
     struct FakeActor {
-        db: FakeDatabase,
         wallet: FakeWallet,
-        swap_id: SwapId,
     }
 
     #[derive(Default)]
     struct FakeDatabase {
         events: Arc<RwLock<HashMap<SwapId, ArbitraryEvent>>>,
+    }
+
+    impl FakeActor {
+        async fn arbitrary_action(&self) -> anyhow::Result<ArbitraryEvent> {
+            let mut blockchain = self.wallet.node.write().unwrap();
+            blockchain.events.push(ArbitraryEvent);
+
+            Ok(ArbitraryEvent)
+        }
     }
 
     struct FakeWallet {
@@ -200,46 +119,22 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct ArbitraryEvent;
 
-    #[allow(clippy::unit_arg)]
     #[async_trait::async_trait]
-    impl Execute<ArbitraryEvent> for FakeActor {
-        type Args = ();
-        async fn execute(&self, (): Self::Args) -> anyhow::Result<ArbitraryEvent> {
-            let mut blockchain = self.wallet.node.write().unwrap();
-            blockchain.events.push(ArbitraryEvent);
-
-            Ok(ArbitraryEvent)
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl BetaHasExpired for FakeActor {
-        async fn beta_has_expired(&self) -> anyhow::Result<bool> {
-            Ok(false)
-        }
-    }
-
-    impl db::Load<ArbitraryEvent> for FakeActor {
-        fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<ArbitraryEvent>> {
-            let events = self.db.events.read().unwrap();
-
-            Ok(events.get(&swap_id).cloned())
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl db::Save<ArbitraryEvent> for FakeActor {
+    impl Save<ArbitraryEvent> for FakeDatabase {
         async fn save(&self, deploy_event: ArbitraryEvent, swap_id: SwapId) -> anyhow::Result<()> {
-            let mut events = self.db.events.write().unwrap();
+            let mut events = self.events.write().unwrap();
             events.insert(swap_id, deploy_event);
 
             Ok(())
         }
     }
 
-    impl AsSwapId for FakeActor {
-        fn as_swap_id(&self) -> SwapId {
-            self.swap_id
+    #[async_trait::async_trait]
+    impl Load<ArbitraryEvent> for FakeDatabase {
+        fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<ArbitraryEvent>> {
+            let events = self.events.read().unwrap();
+
+            Ok(events.get(&swap_id).cloned())
         }
     }
 
@@ -254,47 +149,27 @@ mod tests {
 
         let swap_id = SwapId::default();
 
-        let actor = FakeActor {
-            db,
-            wallet,
-            swap_id,
-        };
+        let actor = FakeActor { wallet };
 
         assert!(blockchain.read().unwrap().events.is_empty());
-        let res = try_do_it_once(&actor, ()).await;
-
-        assert!(matches!(res, Ok(ArbitraryEvent)));
-        assert_eq!(blockchain.read().unwrap().events.len(), 1);
-
-        let res = try_do_it_once(&actor, ()).await;
-        assert!(matches!(res, Ok(ArbitraryEvent)));
-        assert_eq!(blockchain.read().unwrap().events.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn doing_an_arbitrary_action_once_is_idempotent() {
-        let blockchain = Arc::new(RwLock::new(FakeBlockchain::default()));
-        let wallet = FakeWallet {
-            node: Arc::clone(&blockchain),
-        };
-
-        let db = FakeDatabase::default();
-
-        let swap_id = SwapId::default();
-
-        let actor = FakeActor {
-            db,
-            wallet,
+        let res = try_do_it_once(
+            &db,
             swap_id,
-        };
-
-        assert!(blockchain.read().unwrap().events.is_empty());
-        let res = do_it_once(&actor, ()).await;
+            actor.arbitrary_action(),
+            futures::future::pending(),
+        )
+        .await;
 
         assert!(matches!(res, Ok(ArbitraryEvent)));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
 
-        let res = do_it_once(&actor, ()).await;
+        let res = try_do_it_once(
+            &db,
+            swap_id,
+            actor.arbitrary_action(),
+            futures::future::pending(),
+        )
+        .await;
         assert!(matches!(res, Ok(ArbitraryEvent)));
         assert_eq!(blockchain.read().unwrap().events.len(), 1);
     }

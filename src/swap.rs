@@ -12,10 +12,7 @@ pub mod herc20;
 
 use crate::{
     network::Taker,
-    swap::{
-        action::{AsSwapId, BetaExpiry, BetaLedgerTime, Execute},
-        bob::WalletBob,
-    },
+    swap::{action::LedgerTime, bob::WalletBob},
     SwapId,
 };
 use chrono::NaiveDateTime;
@@ -678,11 +675,10 @@ mod tests {
                 alpha_wallet: alice_bitcoin_wallet.clone(),
                 beta_wallet: alice_ethereum_wallet.clone(),
                 db: Arc::clone(&alice_db),
-                alpha_params: hbit_params,
-                beta_params: herc20_params.clone(),
+                swap_id,
                 secret,
                 start_of_swap,
-                swap_id,
+                beta_expiry: herc20_params.expiry,
             };
 
             hbit_herc20_alice(

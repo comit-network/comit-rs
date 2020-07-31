@@ -1,4 +1,4 @@
-use crate::swap::{hbit, BetaLedgerTime};
+use crate::swap::{hbit, LedgerTime};
 use comit::{
     asset,
     bitcoin::median_time_past,
@@ -148,15 +148,15 @@ impl BlockByHash for Wallet {
 }
 
 #[async_trait::async_trait]
-impl BetaLedgerTime for BitcoindConnector {
-    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
+impl LedgerTime for BitcoindConnector {
+    async fn ledger_time(&self) -> anyhow::Result<Timestamp> {
         median_time_past(self).await
     }
 }
 
 #[async_trait::async_trait]
-impl BetaLedgerTime for Wallet {
-    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
-        self.connector.as_ref().beta_ledger_time().await
+impl LedgerTime for Wallet {
+    async fn ledger_time(&self) -> anyhow::Result<Timestamp> {
+        self.connector.as_ref().ledger_time().await
     }
 }
