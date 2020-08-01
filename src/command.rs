@@ -7,12 +7,19 @@ mod trade;
 mod wallet_info;
 mod withdraw;
 
-use crate::bitcoin;
-use crate::config::{File, Settings};
-use crate::ethereum::{self, dai, ether};
+use crate::{
+    config::{File, Settings},
+    ethereum::{self, dai, ether},
+    network::Taker,
+    swap::SwapKind,
+    {bitcoin, history},
+};
+use chrono::{DateTime, Local};
+use num::BigUint;
+use std::str::FromStr;
+
 pub use balance::*;
 pub use deposit::*;
-use std::str::FromStr;
 pub use trade::*;
 pub use wallet_info::*;
 pub use withdraw::*;
@@ -93,4 +100,55 @@ fn parse_dai(str: &str) -> anyhow::Result<dai::Amount> {
 
 fn parse_ether(str: &str) -> anyhow::Result<ether::Amount> {
     ether::Amount::from_ether_str(str)
+}
+
+pub fn into_history_trade(
+    peer_id: libp2p::PeerId,
+    swap: SwapKind,
+    #[cfg(not(test))] final_timestamp: DateTime<Local>,
+) -> history::Trade {
+    use crate::history::*;
+
+    let (swap, position) = match swap {
+        SwapKind::HbitHerc20(swap) => (swap, history::Position::Sell),
+        SwapKind::Herc20Hbit(swap) => (swap, history::Position::Buy),
+    };
+
+    #[cfg(not(test))]
+    let final_timestamp = final_timestamp.into();
+
+    #[cfg(test)]
+    let final_timestamp = DateTime::from_str("2020-07-10T17:48:26.123+10:00")
+        .unwrap()
+        .into();
+
+    Trade {
+        start_timestamp: history::LocalDateTime::from_utc_naive(&swap.start_of_swap),
+        final_timestamp,
+        base_symbol: Symbol::Btc,
+        quote_symbol: Symbol::Dai,
+        position,
+        base_precise_amount: swap.hbit_params.shared.asset.as_sat().into(),
+        quote_precise_amount: BigUint::from_str(&swap.herc20_params.asset.quantity.to_wei_dec())
+            .expect("number to number conversion")
+            .into(),
+        peer: peer_id.into(),
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FinishedSwap {
+    pub swap: SwapKind,
+    pub taker: Taker,
+    pub final_timestamp: DateTime<Local>,
+}
+
+impl FinishedSwap {
+    pub fn new(swap: SwapKind, taker: Taker, final_timestamp: DateTime<Local>) -> Self {
+        Self {
+            swap,
+            taker,
+            final_timestamp,
+        }
+    }
 }

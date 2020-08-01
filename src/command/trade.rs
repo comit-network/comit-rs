@@ -1,27 +1,25 @@
+use crate::command::into_history_trade;
+use crate::swap::{SwapKind, SwapParams};
 use crate::{
     bitcoin,
+    command::FinishedSwap,
     config::Settings,
     ethereum::{self, dai},
-    history::{self, History},
+    history::History,
     maker::{PublishOrders, TakeRequestDecision},
     mid_market_rate::get_btc_dai_mid_market_rate,
-    network::{self, Swarm, Taker},
-    swap::{Database, SwapKind, SwapParams},
+    network::{self, Swarm},
+    swap::Database,
     Maker, MidMarketRate, Seed, Spread,
 };
 use anyhow::Context;
-use chrono::{DateTime, Local};
+use chrono::Local;
 use comit::btsieve::bitcoin::BitcoindConnector;
 use comit::btsieve::ethereum::Web3Connector;
-use futures::{
-    channel::mpsc::{Receiver, Sender},
-    Future, FutureExt, SinkExt, StreamExt,
-};
+use futures::channel::mpsc::Sender;
+use futures::{channel::mpsc::Receiver, Future, FutureExt, SinkExt, StreamExt};
 use futures_timer::Delay;
-use libp2p::PeerId;
-use num::BigUint;
 use std::{
-    str::FromStr,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -523,57 +521,6 @@ fn handle_finished_swap(
     let _ = db
         .remove(&swap_id)
         .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
-}
-
-fn into_history_trade(
-    peer_id: PeerId,
-    swap: SwapKind,
-    #[cfg(not(test))] final_timestamp: DateTime<Local>,
-) -> history::Trade {
-    use history::*;
-
-    let (swap, position) = match swap {
-        SwapKind::HbitHerc20(swap) => (swap, history::Position::Sell),
-        SwapKind::Herc20Hbit(swap) => (swap, history::Position::Buy),
-    };
-
-    #[cfg(not(test))]
-    let final_timestamp = final_timestamp.into();
-
-    #[cfg(test)]
-    let final_timestamp = DateTime::from_str("2020-07-10T17:48:26.123+10:00")
-        .unwrap()
-        .into();
-
-    Trade {
-        start_timestamp: history::LocalDateTime::from_utc_naive(&swap.start_of_swap),
-        final_timestamp,
-        base_symbol: Symbol::Btc,
-        quote_symbol: Symbol::Dai,
-        position,
-        base_precise_amount: swap.hbit_params.shared.asset.as_sat().into(),
-        quote_precise_amount: BigUint::from_str(&swap.herc20_params.asset.quantity.to_wei_dec())
-            .expect("number to number conversion")
-            .into(),
-        peer: peer_id.into(),
-    }
-}
-
-#[derive(Debug, Clone)]
-struct FinishedSwap {
-    pub swap: SwapKind,
-    pub taker: Taker,
-    pub final_timestamp: DateTime<Local>,
-}
-
-impl FinishedSwap {
-    pub fn new(swap: SwapKind, taker: Taker, final_timestamp: DateTime<Local>) -> Self {
-        Self {
-            swap,
-            taker,
-            final_timestamp,
-        }
-    }
 }
 
 #[cfg(all(test, feature = "test-docker"))]
