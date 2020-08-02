@@ -46,7 +46,7 @@ sha2 = "0.9"
 siren = { version = "0.2.1", package = "siren-types" }
 socket2 = "0.3"
 structopt = "0.3"
-strum = "0.18"
+strum = "0.19"
 strum_macros = "0.18"
 thiserror = "1"
 tokio = { version = "0.2", features = ["rt-threaded", "time", "macros", "sync"] }

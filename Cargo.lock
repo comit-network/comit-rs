@@ -3204,9 +3204,9 @@ dependencies = [
 
 [[package]]
 name = "strum"
-version = "0.18.0"
+version = "0.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57bd81eb48f4c437cadc685403cad539345bf703d78e63707418431cecd4522b"
+checksum = "548779cd5867cc3c58521a613620578cf6cedc557d7dd5d51081f1c4c46adfa6"
 
 [[package]]
 name = "strum_macros"
