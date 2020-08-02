@@ -37,7 +37,7 @@ strum = "0.18.0"
 strum_macros = "0.18.0"
 thiserror = "1"
 tokio = { version = "0.2.22", features = ["sync"] }
-tracing = "0.1.17"
+tracing = "0.1.18"
 tracing-futures = { version = "0.2", features = ["std-future", "futures-03"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
 
