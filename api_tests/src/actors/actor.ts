@@ -134,7 +134,7 @@ export class Actor {
             ledger: LedgerKind.Lightning,
         };
 
-        await this.setDefaultStartingBalances();
+        await this.setStartingBalances();
 
         const location = await this.createHerc20Halbit(create);
 
@@ -173,7 +173,7 @@ export class Actor {
             tokenContract: create.beta.token_contract,
         };
 
-        await this.setDefaultStartingBalances();
+        await this.setStartingBalances();
 
         const location = await this.createHalbitHerc20(create);
 
@@ -212,7 +212,7 @@ export class Actor {
             ledger: LedgerKind.Bitcoin,
         };
 
-        await this.setDefaultStartingBalances();
+        await this.setStartingBalances();
 
         const location = await this.createHerc20Hbit(create);
 
@@ -251,7 +251,7 @@ export class Actor {
             tokenContract: create.beta.token_contract,
         };
 
-        await this.setDefaultStartingBalances();
+        await this.setStartingBalances();
 
         const location = await this.createHbitHerc20(create);
 
@@ -393,8 +393,12 @@ export class Actor {
                     bitcoin: this.wallets.bitcoin.inner,
                 })
             );
-            await this.actors.alice.setStartingBalances(partialTakeAmount);
-            await this.actors.bob.setStartingBalances(partialTakeAmount);
+            await this.actors.alice.setStartingBalancesForPartialTake(
+                partialTakeAmount
+            );
+            await this.actors.bob.setStartingBalancesForPartialTake(
+                partialTakeAmount
+            );
         } else {
             throw new Error(
                 `takeOrder does not support the actor ${this.name} yet`
@@ -439,7 +443,7 @@ export class Actor {
         }
     }
 
-    private async setDefaultStartingBalances() {
+    private async setStartingBalances() {
         switch (this.name) {
             case "alice": {
                 // Alice purchases beta asset with alpha asset
@@ -490,7 +494,7 @@ export class Actor {
         );
     }
 
-    public async setStartingBalances(partialTakeAmount: string) {
+    public async setStartingBalancesForPartialTake(partialTakeAmount: string) {
         switch (this.name) {
             case "alice": {
                 // Alice purchases beta asset with alpha asset
