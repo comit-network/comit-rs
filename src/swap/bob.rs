@@ -14,24 +14,21 @@ use comit::{Secret, SecretHash, Timestamp};
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
-pub struct WalletBob<AW, BW, DB, AP, BP> {
+pub struct WalletBob<AW, BW, DB> {
     pub alpha_wallet: AW,
     pub beta_wallet: BW,
     pub db: Arc<DB>,
-    pub alpha_params: AP,
-    pub beta_params: BP,
     pub secret_hash: SecretHash,
     pub start_of_swap: NaiveDateTime,
     pub swap_id: SwapId,
 }
 
 #[async_trait::async_trait]
-impl<AW, BW, DB, AP> herc20::ExecuteDeploy for WalletBob<AW, BW, DB, AP, herc20::Params>
+impl<AW, BW, DB> herc20::ExecuteDeploy for WalletBob<AW, BW, DB>
 where
     AW: Send + Sync,
     BW: herc20::ExecuteDeploy + Send + Sync,
     DB: Send + Sync,
-    AP: Send + Sync,
 {
     async fn execute_deploy(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {
         self.beta_wallet.execute_deploy(params).await
@@ -39,12 +36,11 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AW, BW, DB, AP> herc20::ExecuteFund for WalletBob<AW, BW, DB, AP, herc20::Params>
+impl<AW, BW, DB> herc20::ExecuteFund for WalletBob<AW, BW, DB>
 where
     AW: Send + Sync,
     BW: herc20::ExecuteFund + Send + Sync,
     DB: Send + Sync,
-    AP: Send + Sync,
 {
     async fn execute_fund(
         &self,
@@ -84,12 +80,11 @@ where
 // }
 
 #[async_trait::async_trait]
-impl<AW, BW, DB, AP> herc20::ExecuteRefund for WalletBob<AW, BW, DB, AP, herc20::Params>
+impl<AW, BW, DB> herc20::ExecuteRefund for WalletBob<AW, BW, DB>
 where
     AW: Send + Sync,
     BW: herc20::ExecuteRefund + Send + Sync,
     DB: Send + Sync,
-    AP: Send + Sync,
 {
     async fn execute_refund(
         &self,
@@ -120,12 +115,11 @@ where
 // }
 
 #[async_trait::async_trait]
-impl<AW, BW, DB, BP> hbit::ExecuteRedeem for WalletBob<AW, BW, DB, hbit::Params, BP>
+impl<AW, BW, DB> hbit::ExecuteRedeem for WalletBob<AW, BW, DB>
 where
     AW: hbit::ExecuteRedeem + Send + Sync,
     BW: Send + Sync,
     DB: Send + Sync,
-    BP: Send + Sync,
 {
     async fn execute_redeem(
         &self,
@@ -157,27 +151,23 @@ where
 // }
 
 #[async_trait::async_trait]
-impl<AW, BW, DB, AP, BP> LedgerTime for WalletBob<AW, BW, DB, AP, BP>
+impl<AW, BW, DB> LedgerTime for WalletBob<AW, BW, DB>
 where
     AW: Send + Sync,
     BW: LedgerTime + Send + Sync,
     DB: Send + Sync,
-    AP: Send + Sync,
-    BP: Send + Sync,
 {
     async fn ledger_time(&self) -> anyhow::Result<Timestamp> {
         self.beta_wallet.ledger_time().await
     }
 }
 
-impl<E, AW, BW, DB, AP, BP> db::Load<E> for WalletBob<AW, BW, DB, AP, BP>
+impl<E, AW, BW, DB> db::Load<E> for WalletBob<AW, BW, DB>
 where
     E: 'static,
     AW: Send + Sync + 'static,
     BW: Send + Sync + 'static,
     DB: db::Load<E>,
-    AP: Send + Sync + 'static,
-    BP: Send + Sync + 'static,
 {
     fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<E>> {
         self.db.load(swap_id)
@@ -185,14 +175,12 @@ where
 }
 
 #[async_trait::async_trait]
-impl<E, AW, BW, DB, AP, BP> db::Save<E> for WalletBob<AW, BW, DB, AP, BP>
+impl<E, AW, BW, DB> db::Save<E> for WalletBob<AW, BW, DB>
 where
     E: Send + 'static,
     AW: Send + Sync + 'static,
     BW: Send + Sync + 'static,
     DB: db::Save<E>,
-    AP: Send + Sync + 'static,
-    BP: Send + Sync + 'static,
 {
     async fn save(&self, event: E, swap_id: SwapId) -> anyhow::Result<()> {
         self.db.save(event, swap_id).await
