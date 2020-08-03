@@ -281,3 +281,113 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<OrderId, Confirmation>> f
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        asset, identity, ledger,
+        network::{
+            orderbook::BehaviourOutEvent,
+            test::{await_events_or_timeout, new_connected_swarm_pair},
+        },
+    };
+    use libp2p::Swarm;
+    use std::str::FromStr;
+
+    fn new_order() -> NewOrder {
+        let token_contract =
+            identity::Ethereum::from_str("0xc5549e335b2786520f4c5d706c76c9ee69d0a028").unwrap();
+
+        NewOrder {
+            position: Position::Buy,
+            bitcoin_amount: asset::Bitcoin::meaningless_test_value(),
+            bitcoin_ledger: ledger::Bitcoin::Regtest,
+            // TODO: Add test function helper to return expiry value.
+            bitcoin_absolute_expiry: 100,
+            ethereum_amount: asset::Erc20Quantity::meaningless_test_value(),
+            token_contract,
+            ethereum_ledger: ledger::Ethereum::default(),
+            ethereum_absolute_expiry: 100,
+        }
+    }
+
+    #[tokio::test]
+    async fn take_order_request_confirmation() {
+        let (mut alice, mut bob) = new_connected_swarm_pair(Orderbook::new).await;
+
+        // Poll to trigger the initial get_orders request/response (done on dial).
+        poll_no_event(&mut bob.swarm).await;
+        poll_no_event(&mut alice.swarm).await;
+
+        let _order_id = bob.swarm.make(new_order());
+
+        // Poll to trigger get_orders request/response messages
+        poll_no_event(&mut bob.swarm).await;
+        poll_no_event(&mut alice.swarm).await;
+
+        let alice_order = alice
+            .swarm
+            .orders()
+            .all()
+            .next()
+            .cloned()
+            .expect("Alice has no orders");
+
+        alice
+            .swarm
+            .take(alice_order.id)
+            .expect("failed to take order");
+
+        // Poll to trigger take_order request/response messages.
+        poll_no_event(&mut alice.swarm).await;
+        let bob_event = tokio::time::timeout(Duration::from_secs(2), bob.swarm.next())
+            .await
+            .expect("failed to get TakeOrderRequest event");
+
+        let (alice_peer_id, channel, order_id) = match bob_event {
+            BehaviourOutEvent::TakeOrderRequest {
+                peer_id,
+                response_channel,
+                order_id,
+            } => (peer_id, response_channel, order_id),
+            _ => panic!("unexepected bob event"),
+        };
+        bob.swarm.confirm(order_id, channel, alice_peer_id);
+
+        let (alice_event, bob_event) =
+            await_events_or_timeout(alice.swarm.next(), bob.swarm.next()).await;
+        match (alice_event, bob_event) {
+            (
+                BehaviourOutEvent::TakeOrderConfirmation {
+                    peer_id: alice_got_peer_id,
+                    order_id: alice_got_order_id,
+                    shared_swap_id: alice_got_swap_id,
+                },
+                BehaviourOutEvent::TakeOrderConfirmation {
+                    peer_id: bob_got_peer_id,
+                    order_id: bob_got_order_id,
+                    shared_swap_id: bob_got_swap_id,
+                },
+            ) => {
+                assert_eq!(alice_got_peer_id, bob.peer_id);
+                assert_eq!(bob_got_peer_id, alice.peer_id);
+
+                assert_eq!(alice_got_order_id, alice_order.id);
+                assert_eq!(bob_got_order_id, alice_got_order_id);
+
+                assert_eq!(alice_got_swap_id, bob_got_swap_id);
+            }
+            _ => panic!("failed to get take order confirmation"),
+        }
+    }
+
+    // Poll the swarm for some time, we don't expect any events though.
+    async fn poll_no_event(swarm: &mut Swarm<Orderbook>) {
+        let delay = Duration::from_secs(2);
+
+        while let Ok(event) = tokio::time::timeout(delay, swarm.next()).await {
+            panic!("unexpected event emitted: {:?}", event)
+        }
+    }
+}
