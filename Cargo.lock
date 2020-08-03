@@ -529,7 +529,7 @@ dependencies = [
 [[package]]
 name = "comit"
 version = "0.1.0"
-source = "git+https://github.com/comit-network/comit-rs?rev=3605d8710cc4b03d5145f595d45786da93b85324#3605d8710cc4b03d5145f595d45786da93b85324"
+source = "git+https://github.com/comit-network/comit-rs?rev=2a5020205dec357fbf85d16bec08864ac9c8af80#2a5020205dec357fbf85d16bec08864ac9c8af80"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -554,10 +554,11 @@ dependencies = [
  "reqwest",
  "serde 1.0.114",
  "serde-hex",
+ "serde_derive",
  "serde_json",
  "serdebug",
  "sha2 0.9.1",
- "strum",
+ "strum 0.19.1",
  "strum_macros",
  "thiserror",
  "tokio",
@@ -794,7 +795,7 @@ dependencies = [
 [[package]]
 name = "digest"
 version = "0.1.0"
-source = "git+https://github.com/comit-network/comit-rs?rev=3605d8710cc4b03d5145f595d45786da93b85324#3605d8710cc4b03d5145f595d45786da93b85324"
+source = "git+https://github.com/comit-network/comit-rs?rev=2a5020205dec357fbf85d16bec08864ac9c8af80#2a5020205dec357fbf85d16bec08864ac9c8af80"
 dependencies = [
  "digest-macro-derive",
  "hex 0.4.2",
@@ -821,7 +822,7 @@ dependencies = [
 [[package]]
 name = "digest-macro-derive"
 version = "0.1.0"
-source = "git+https://github.com/comit-network/comit-rs?rev=3605d8710cc4b03d5145f595d45786da93b85324#3605d8710cc4b03d5145f595d45786da93b85324"
+source = "git+https://github.com/comit-network/comit-rs?rev=2a5020205dec357fbf85d16bec08864ac9c8af80#2a5020205dec357fbf85d16bec08864ac9c8af80"
 dependencies = [
  "hex 0.4.2",
  "proc-macro2 1.0.19",
@@ -2058,7 +2059,7 @@ dependencies = [
  "sled",
  "spectral",
  "structopt",
- "strum",
+ "strum 0.18.0",
  "strum_macros",
  "tempdir",
  "testcontainers",
@@ -2591,9 +2592,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-error"
-version = "1.0.3"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc175e9777c3116627248584e8f8b3e2987405cabe1c0adf7d1dd28f09dc7880"
+checksum = "da25490ff9892aab3fcf7c36f08cfb902dd3e71ca0f9f9517bea02a73a5ce38c"
 dependencies = [
  "proc-macro-error-attr",
  "proc-macro2 1.0.19",
@@ -2604,14 +2605,12 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-error-attr"
-version = "1.0.3"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cc9795ca17eb581285ec44936da7fc2335a3f34f2ddd13118b6f4d515435c50"
+checksum = "a1be40180e52ecc98ad80b184934baf3d0d29f979574e439af5a55274b35f869"
 dependencies = [
  "proc-macro2 1.0.19",
  "quote 1.0.7",
- "syn 1.0.36",
- "syn-mid",
  "version_check",
 ]
 
@@ -3429,9 +3428,9 @@ dependencies = [
 
 [[package]]
 name = "signature"
-version = "1.1.0"
+version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65211b7b6fc3f14ff9fc7a2011a434e3e6880585bd2e9e9396315ae24cbf7852"
+checksum = "29f060a7d147e33490ec10da418795238fd7545bba241504d6b31a409f2e6210"
 
 [[package]]
 name = "slab"
@@ -3551,6 +3550,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57bd81eb48f4c437cadc685403cad539345bf703d78e63707418431cecd4522b"
 
 [[package]]
+name = "strum"
+version = "0.19.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "548779cd5867cc3c58521a613620578cf6cedc557d7dd5d51081f1c4c46adfa6"
+
+[[package]]
 name = "strum_macros"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3605,17 +3610,6 @@ dependencies = [
  "proc-macro2 1.0.19",
  "quote 1.0.7",
  "unicode-xid 0.2.1",
-]
-
-[[package]]
-name = "syn-mid"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7be3539f6c128a931cf19dcee741c1af532c7fd387baa739c03dd2e96479338a"
-dependencies = [
- "proc-macro2 1.0.19",
- "quote 1.0.7",
- "syn 1.0.36",
 ]
 
 [[package]]
@@ -3812,9 +3806,9 @@ checksum = "e987b6bf443f4b5b3b6f38704195592cca41c5bb7aedd3c3693c7081f8289860"
 
 [[package]]
 name = "tracing"
-version = "0.1.17"
+version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbdf4ccd1652592b01286a5dbe1e2a77d78afaa34beadd9872a5f7396f92aaa9"
+checksum = "f0aae59226cf195d8e74d4b34beae1859257efb4e5fed3f147d2dc2c7d372178"
 dependencies = [
  "cfg-if",
  "log",
@@ -3835,9 +3829,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94ae75f0d28ae10786f3b1895c55fe72e79928fd5ccdebb5438c75e93fec178f"
+checksum = "b2734b5a028fa697686f16c6d18c2c6a3c7e41513f9a213abb6754c4acb3c8d7"
 dependencies = [
  "lazy_static",
 ]
@@ -3877,9 +3871,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.2.9"
+version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4f5dd7095c2481b7b3cbed71c8de53085fb3542bc3c2b4c73cba43e8f11c7ba"
+checksum = "f7b33f8b2ef2ab0c3778c12646d9c42a24f7772bee4cdafc72199644a9f58fdc"
 dependencies = [
  "ansi_term 0.12.1",
  "chrono",

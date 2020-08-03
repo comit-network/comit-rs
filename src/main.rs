@@ -36,7 +36,9 @@ mod trace;
 mod test_harness;
 
 use crate::{
-    command::{balance, deposit, dump_config, trade, wallet_info, withdraw, Command, Options},
+    command::{
+        balance, deposit, dump_config, resume_only, trade, wallet_info, withdraw, Command, Options,
+    },
     config::{read_config, Settings},
 };
 use conquer_once::Lazy;
@@ -136,5 +138,12 @@ async fn main() {
             println!("Withdraw successful. Transaction Id: {}", tx_id);
         }
         Command::DumpConfig => unreachable!(),
+        Command::ResumeOnly => resume_only(
+            settings,
+            bitcoin_wallet.expect("could not initialise bitcoin wallet"),
+            ethereum_wallet.expect("could not initialise ethereum wallet"),
+        )
+        .await
+        .expect("Wrapping up"),
     }
 }

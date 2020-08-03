@@ -166,7 +166,6 @@ where
     }
 }
 
-// TODO: This is awkward to manipulate
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SwapKind {
     HbitHerc20(SwapParams),
@@ -178,6 +177,10 @@ impl SwapKind {
         match self {
             SwapKind::HbitHerc20(params) | SwapKind::Herc20Hbit(params) => params.clone(),
         }
+    }
+
+    pub fn swap_id(&self) -> SwapId {
+        self.params().swap_id
     }
 
     pub async fn execute(
@@ -556,7 +559,7 @@ mod tests {
                 taker: Taker::default(),
             });
 
-            alice_db.insert(swap).unwrap();
+            alice_db.insert_swap(swap).unwrap();
 
             let alice = WalletAlice {
                 alpha_wallet: alice_bitcoin_wallet.clone(),
@@ -597,7 +600,7 @@ mod tests {
                 taker: Taker::default(),
             });
 
-            bob_db.insert(swap).unwrap();
+            bob_db.insert_swap(swap).unwrap();
 
             let alice = WatchOnlyAlice {
                 alpha_connector: Arc::clone(&bitcoin_connector),
