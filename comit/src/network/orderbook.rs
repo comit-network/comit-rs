@@ -103,20 +103,41 @@ impl Orderbook {
 
     /// Take an order, called by Alice i.e., the taker.
     /// Does _not_ remove the order from the order book.
-    pub fn take(&mut self, order_id: OrderId, amount: asset::Bitcoin) -> anyhow::Result<()> {
+    pub fn take(
+        &mut self,
+        order_id: OrderId,
+        partial_take_amount: asset::Bitcoin,
+    ) -> anyhow::Result<()> {
         let maker_id = self
             .maker_id(order_id)
             .ok_or_else(|| OrderNotFound(order_id))?;
+        let order_amount = self
+            .order_amount(order_id)
+            .ok_or_else(|| OrderNotFound(order_id))?;
+        if partial_take_amount > order_amount {
+            Err(anyhow::Error::from(PartialTakeAmountToLarge(
+                partial_take_amount,
+                order_amount,
+                order_id,
+            )))
+        } else {
+            self.take_order.send_request(&maker_id.into(), Request {
+                order_id,
+                amount: partial_take_amount,
+            });
 
-        self.take_order
-            .send_request(&maker_id.into(), Request { order_id, amount });
-
-        Ok(())
+            Ok(())
+        }
     }
 
     /// Get the ID of the node that published this order.
     fn maker_id(&self, order_id: OrderId) -> Option<MakerId> {
         self.orders.get(&order_id).map(|order| order.maker.clone())
+    }
+
+    /// Get the bitcoin amount in this order.
+    fn order_amount(&self, order_id: OrderId) -> Option<asset::Bitcoin> {
+        self.orders.get(&order_id).map(|order| order.bitcoin_amount)
     }
 
     /// Confirm a take order request, called by Bob i.e., the maker.
@@ -186,6 +207,10 @@ impl Orderbook {
 #[derive(PartialEq, Clone, Copy, Debug, thiserror::Error)]
 #[error("order {0} not found in orderbook")]
 pub struct OrderNotFound(OrderId);
+
+#[derive(PartialEq, Clone, Copy, Debug, thiserror::Error)]
+#[error("partial take amount {0}, is greater than amount {1} specified in order {2}")]
+pub struct PartialTakeAmountToLarge(asset::Bitcoin, asset::Bitcoin, OrderId);
 
 /// MakerId is a PeerId wrapper so we control serialization/deserialization.
 #[derive(Debug, Clone, PartialEq)]
