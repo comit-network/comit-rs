@@ -123,11 +123,7 @@ fn handle_finished_swap(
         });
     }
 
-    // TODO: Add a function to get the swap_id instead of matching all the time
-    let swap_id = match finished_swap.swap {
-        SwapKind::HbitHerc20(swap) => swap.swap_id,
-        SwapKind::Herc20Hbit(swap) => swap.swap_id,
-    };
+    let swap_id = finished_swap.swap.swap_id();
 
     let _ = db
         .remove_active_taker(&finished_swap.taker)

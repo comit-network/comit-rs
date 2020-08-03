@@ -61,10 +61,7 @@ impl Database {
     }
 
     pub fn insert(&self, swap: SwapKind) -> anyhow::Result<()> {
-        let swap_id = match swap {
-            SwapKind::HbitHerc20(ref swap_params) => swap_params.swap_id,
-            SwapKind::Herc20Hbit(ref swap_params) => swap_params.swap_id,
-        };
+        let swap_id = swap.swap_id();
 
         let stored_swap = self.get(&swap_id);
 

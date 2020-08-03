@@ -180,6 +180,10 @@ impl SwapKind {
         }
     }
 
+    pub fn swap_id(&self) -> SwapId {
+        self.params().swap_id
+    }
+
     pub async fn execute(
         &self,
         db: Arc<Database>,
