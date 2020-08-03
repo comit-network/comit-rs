@@ -51,7 +51,7 @@ async fn respawn_swaps(
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
     history: Arc<Mutex<History>>,
 ) -> anyhow::Result<()> {
-    let futures = db.load_all()?.into_iter().map(|swap| {
+    let futures = db.all_swaps()?.into_iter().map(|swap| {
         execute_swap(
             Arc::clone(&db),
             Arc::clone(&bitcoin_wallet),
@@ -80,7 +80,7 @@ async fn execute_swap(
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
     swap: SwapKind,
 ) -> anyhow::Result<FinishedSwap> {
-    db.insert(swap.clone())?;
+    db.insert_swap(swap.clone())?;
 
     swap.execute(
         Arc::clone(&db),
@@ -130,6 +130,6 @@ fn handle_finished_swap(
         .map_err(|error| tracing::error!("Unable to remove from active takers: {}", error));
 
     let _ = db
-        .remove(&swap_id)
+        .remove_swap(&swap_id)
         .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
 }

@@ -59,15 +59,19 @@ impl Database {
 
         Ok(Database { db, tmp_dir })
     }
-
-    pub fn insert(&self, swap: SwapKind) -> anyhow::Result<()> {
+}
+/// Swap related functions
+impl Database {
+    // TODO: Add versioning to the data
+    pub fn insert_swap(&self, swap: SwapKind) -> anyhow::Result<()> {
         let swap_id = swap.swap_id();
 
-        let stored_swap = self.get(&swap_id);
+        let stored_swap = self.get_swap(&swap_id);
 
         match stored_swap {
             Ok(_) => Err(anyhow!("Swap is already stored")),
             Err(_) => {
+                // TODO: Consider using https://github.com/3Hren/msgpack-rust instead
                 let key = serde_json::to_vec(&swap_id)?;
 
                 let swap: Swap = swap.into();
@@ -82,28 +86,27 @@ impl Database {
         }
     }
 
-    pub fn load_all(&self) -> anyhow::Result<Vec<SwapKind>> {
+    pub fn all_swaps(&self) -> anyhow::Result<Vec<SwapKind>> {
         self.db
             .iter()
-            .map(|item| match item {
+            .filter_map(|item| match item {
                 Ok((key, value)) => {
-                    let swap_id = serde_json::from_slice::<SwapId>(&key)
-                        .context("Could not deserialize swap id");
+                    let swap_id = serde_json::from_slice::<SwapId>(&key);
                     let swap = serde_json::from_slice::<Swap>(&value)
                         .context("Could not deserialize swap");
 
                     match (swap_id, swap) {
-                        (Ok(swap_id), Ok(swap)) => Ok(SwapKind::from((swap, swap_id))),
-                        (Err(err), _) => Err(err),
-                        (_, Err(err)) => Err(err),
+                        (Ok(swap_id), Ok(swap)) => Some(Ok(SwapKind::from((swap, swap_id)))),
+                        (Ok(_), Err(err)) => Some(Err(err)), // If the swap id deserialize, then it should be a swap
+                        (_, _) => None,                      // This is not a swap item
                     }
                 }
-                Err(err) => Err(err).context("Could not retrieve swap"),
+                Err(err) => Some(Err(err).context("Could not retrieve data")),
             })
             .collect()
     }
 
-    pub fn remove(&self, swap_id: &SwapId) -> anyhow::Result<()> {
+    pub fn remove_swap(&self, swap_id: &SwapId) -> anyhow::Result<()> {
         let key = serde_json::to_vec(swap_id)?;
 
         self.db
@@ -112,21 +115,7 @@ impl Database {
             .map(|_| ())
     }
 
-    // TODO: Add versioning to the data
-    fn _insert(&self, swap_id: &SwapId, swap: &Swap) -> anyhow::Result<()> {
-        let key = serde_json::to_vec(swap_id)?;
-        // TODO: Consider using https://github.com/3Hren/msgpack-rust instead
-        let value = serde_json::to_vec(&swap)
-            .context(format!("Could not serialize the swap: {:?}", swap))?;
-
-        self.db
-            .insert(&key, value)
-            .context(format!("Could not insert swap {}", swap_id))?;
-
-        Ok(())
-    }
-
-    fn get(&self, swap_id: &SwapId) -> anyhow::Result<Swap> {
+    fn get_swap(&self, swap_id: &SwapId) -> anyhow::Result<Swap> {
         let key = serde_json::to_vec(swap_id)?;
 
         let swap = self
@@ -138,6 +127,7 @@ impl Database {
     }
 }
 
+/// Active takers related functions
 impl Database {
     pub fn insert_active_taker(&self, taker: Taker) -> anyhow::Result<()> {
         self.modify_takers_with(|takers: &mut HashSet<Taker>| takers.insert(taker.clone()))
@@ -232,7 +222,6 @@ impl Default for Swap {
     }
 }
 
-// TODO: Is that needed?
 impl From<(Swap, SwapId)> for SwapKind {
     fn from(swap_data: (Swap, SwapId)) -> Self {
         let (swap, swap_id) = swap_data;
@@ -299,10 +288,10 @@ mod tests {
         let swap_1 = SwapKind::HbitHerc20(swap::SwapParams::default());
         let swap_2 = SwapKind::Herc20Hbit(swap::SwapParams::default());
 
-        db.insert(swap_1.clone()).unwrap();
-        db.insert(swap_2.clone()).unwrap();
+        db.insert_swap(swap_1.clone()).unwrap();
+        db.insert_swap(swap_2.clone()).unwrap();
 
-        let stored_swaps = db.load_all().unwrap();
+        let stored_swaps = db.all_swaps().unwrap();
 
         assert_eq!(stored_swaps.len(), 2);
         assert!(stored_swaps.contains(&swap_1));
@@ -318,12 +307,12 @@ mod tests {
         let swap_1 = SwapKind::HbitHerc20(swap_1);
         let swap_2 = SwapKind::Herc20Hbit(swap::SwapParams::default());
 
-        db.insert(swap_1).unwrap();
-        db.insert(swap_2.clone()).unwrap();
+        db.insert_swap(swap_1).unwrap();
+        db.insert_swap(swap_2.clone()).unwrap();
 
-        db.remove(&swap_id_1).unwrap();
+        db.remove_swap(&swap_id_1).unwrap();
 
-        let stored_swaps = db.load_all().unwrap();
+        let stored_swaps = db.all_swaps().unwrap();
 
         assert_eq!(stored_swaps, vec![swap_2]);
     }

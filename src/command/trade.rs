@@ -265,7 +265,7 @@ async fn execute_swap(
     mut finished_swap_sender: Sender<FinishedSwap>,
     swap: SwapKind,
 ) -> anyhow::Result<()> {
-    db.insert(swap.clone())?;
+    db.insert_swap(swap.clone())?;
 
     swap.execute(
         Arc::clone(&db),
@@ -299,7 +299,7 @@ fn respawn_swaps(
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
     finished_swap_sender: Sender<FinishedSwap>,
 ) -> anyhow::Result<()> {
-    for swap in db.load_all()?.into_iter() {
+    for swap in db.all_swaps()?.into_iter() {
         // Reserve funds
         match swap {
             SwapKind::HbitHerc20(SwapParams {
@@ -517,7 +517,7 @@ fn handle_finished_swap(
         .map_err(|error| tracing::error!("Unable to remove from active takers: {}", error));
 
     let _ = db
-        .remove(&swap_id)
+        .remove_swap(&swap_id)
         .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
 }
 

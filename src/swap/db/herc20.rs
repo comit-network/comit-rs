@@ -42,7 +42,7 @@ impl From<herc20::Deployed> for Herc20Deployed {
 #[async_trait::async_trait]
 impl Save<herc20::Deployed> for Database {
     async fn save(&self, event: herc20::Deployed, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get(&swap_id)?;
+        let stored_swap = self.get_swap(&swap_id)?;
 
         match stored_swap.herc20_deployed {
             Some(_) => Err(anyhow!("Herc20 Deployed event is already stored")),
@@ -74,7 +74,7 @@ impl Save<herc20::Deployed> for Database {
 
 impl Load<herc20::Deployed> for Database {
     fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Deployed>> {
-        let swap = self.get(&swap_id)?;
+        let swap = self.get_swap(&swap_id)?;
 
         Ok(swap.herc20_deployed.map(Into::into))
     }
@@ -107,7 +107,7 @@ impl From<herc20::Funded> for Herc20Funded {
 #[async_trait::async_trait]
 impl Save<herc20::Funded> for Database {
     async fn save(&self, event: herc20::Funded, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get(&swap_id)?;
+        let stored_swap = self.get_swap(&swap_id)?;
 
         match stored_swap.herc20_funded {
             Some(_) => Err(anyhow!("Herc20 Funded event is already stored")),
@@ -139,7 +139,7 @@ impl Save<herc20::Funded> for Database {
 
 impl Load<herc20::Funded> for Database {
     fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Funded>> {
-        let swap = self.get(&swap_id)?;
+        let swap = self.get_swap(&swap_id)?;
 
         Ok(swap.herc20_funded.map(Into::into))
     }
@@ -172,7 +172,7 @@ impl From<herc20::Redeemed> for Herc20Redeemed {
 #[async_trait::async_trait]
 impl Save<herc20::Redeemed> for Database {
     async fn save(&self, event: herc20::Redeemed, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get(&swap_id)?;
+        let stored_swap = self.get_swap(&swap_id)?;
 
         match stored_swap.herc20_redeemed {
             Some(_) => Err(anyhow!("Herc20 Redeemed event is already stored")),
@@ -204,7 +204,7 @@ impl Save<herc20::Redeemed> for Database {
 
 impl Load<herc20::Redeemed> for Database {
     fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Redeemed>> {
-        let swap = self.get(&swap_id)?;
+        let swap = self.get_swap(&swap_id)?;
 
         Ok(swap.herc20_redeemed.map(Into::into))
     }
@@ -234,7 +234,7 @@ impl From<herc20::Refunded> for Herc20Refunded {
 #[async_trait::async_trait]
 impl Save<herc20::Refunded> for Database {
     async fn save(&self, event: herc20::Refunded, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get(&swap_id)?;
+        let stored_swap = self.get_swap(&swap_id)?;
 
         match stored_swap.herc20_refunded {
             Some(_) => Err(anyhow!("Herc20 Refunded event is already stored")),
@@ -266,7 +266,7 @@ impl Save<herc20::Refunded> for Database {
 
 impl Load<herc20::Refunded> for Database {
     fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Refunded>> {
-        let swap = self.get(&swap_id)?;
+        let swap = self.get_swap(&swap_id)?;
 
         Ok(swap.herc20_refunded.map(Into::into))
     }
@@ -395,7 +395,7 @@ impl Default for Params {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::swap::db::Swap;
+    use crate::swap::{db::Swap, SwapKind};
 
     #[tokio::test]
     async fn save_and_load_herc20_deployed() {
@@ -405,7 +405,9 @@ mod tests {
         let transaction = comit::transaction::Ethereum::default();
         let location = comit::htlc_location::Ethereum::random();
 
-        db._insert(&swap_id, &swap).unwrap();
+        let swap_kind = SwapKind::from((swap, swap_id));
+
+        db.insert_swap(swap_kind).unwrap();
 
         let event = herc20::Deployed {
             transaction: transaction.clone(),
@@ -433,7 +435,9 @@ mod tests {
             comit::asset::Erc20Quantity::from_wei_dec_str("123456789012345678").unwrap(),
         );
 
-        db._insert(&swap_id, &swap).unwrap();
+        let swap_kind = SwapKind::from((swap, swap_id));
+
+        db.insert_swap(swap_kind).unwrap();
 
         let event = herc20::Funded {
             transaction: transaction.clone(),
@@ -458,7 +462,9 @@ mod tests {
         let transaction = comit::transaction::Ethereum::default();
         let secret = Secret::from_vec(b"are those thirty-two bytes? Hum.").unwrap();
 
-        db._insert(&swap_id, &swap).unwrap();
+        let swap_kind = SwapKind::from((swap, swap_id));
+
+        db.insert_swap(swap_kind).unwrap();
 
         let event = herc20::Redeemed {
             transaction: transaction.clone(),
@@ -482,7 +488,9 @@ mod tests {
         let swap_id = SwapId::default();
         let transaction = comit::transaction::Ethereum::default();
 
-        db._insert(&swap_id, &swap).unwrap();
+        let swap_kind = SwapKind::from((swap, swap_id));
+
+        db.insert_swap(swap_kind).unwrap();
 
         let event = herc20::Refunded {
             transaction: transaction.clone(),
