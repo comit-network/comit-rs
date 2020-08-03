@@ -41,7 +41,7 @@ impl Database {
 
         if !db.contains_key("takers")? {
             let takers = Vec::<Taker>::new();
-            let takers = serde_json::to_vec(&takers)?;
+            let takers = serialize(&takers)?;
             let _ = db.insert("takers", takers)?;
         }
 
@@ -57,7 +57,7 @@ impl Database {
         ))?;
 
         let takers = Vec::<Taker>::new();
-        let takers = serde_json::to_vec(&takers)?;
+        let takers = serialize(&takers)?;
         let _ = db.insert("takers", takers)?;
 
         Ok(Database { db, tmp_dir })
@@ -75,11 +75,10 @@ impl Database {
             Ok(_) => Err(anyhow!("Swap is already stored")),
             Err(_) => {
                 // TODO: Consider using https://github.com/3Hren/msgpack-rust instead
-                let key = serde_json::to_vec(&swap_id)?;
+                let key = serialize(&swap_id)?;
 
                 let swap: Swap = swap.into();
-                let new_value =
-                    serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
+                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
 
                 self.db
                     .compare_and_swap(key, Option::<Vec<u8>>::None, Some(new_value))
@@ -94,9 +93,8 @@ impl Database {
             .iter()
             .filter_map(|item| match item {
                 Ok((key, value)) => {
-                    let swap_id = serde_json::from_slice::<SwapId>(&key);
-                    let swap = serde_json::from_slice::<Swap>(&value)
-                        .context("Could not deserialize swap");
+                    let swap_id = deserialize::<SwapId>(&key);
+                    let swap = deserialize::<Swap>(&value).context("Could not deserialize swap");
 
                     match (swap_id, swap) {
                         (Ok(swap_id), Ok(swap)) => Some(Ok(SwapKind::from((swap, swap_id)))),
@@ -110,7 +108,7 @@ impl Database {
     }
 
     pub fn remove_swap(&self, swap_id: &SwapId) -> anyhow::Result<()> {
-        let key = serde_json::to_vec(swap_id)?;
+        let key = serialize(swap_id)?;
 
         self.db
             .remove(key)
@@ -119,14 +117,14 @@ impl Database {
     }
 
     fn get_swap(&self, swap_id: &SwapId) -> anyhow::Result<Swap> {
-        let key = serde_json::to_vec(swap_id)?;
+        let key = serialize(swap_id)?;
 
         let swap = self
             .db
             .get(&key)?
             .ok_or_else(|| anyhow!("Swap does not exists {}", swap_id))?;
 
-        serde_json::from_slice(&swap).context("Could not deserialize swap")
+        deserialize(&swap).context("Could not deserialize swap")
     }
 }
 
@@ -155,7 +153,7 @@ impl Database {
         operation_fn(&mut takers);
 
         let updated_takers = Vec::<Taker>::from_iter(takers);
-        let updated_takers = serde_json::to_vec(&updated_takers)?;
+        let updated_takers = serialize(&updated_takers)?;
 
         self.db.insert("takers", updated_takers)?;
 
@@ -167,11 +165,25 @@ impl Database {
             .db
             .get("takers")?
             .ok_or_else(|| anyhow::anyhow!("no key \"takers\" in db"))?;
-        let takers: Vec<Taker> = serde_json::from_slice(&takers)?;
+        let takers: Vec<Taker> = deserialize(&takers)?;
         let takers = HashSet::<Taker>::from_iter(takers);
 
         Ok(takers)
     }
+}
+
+pub fn serialize<T>(t: &T) -> anyhow::Result<Vec<u8>>
+where
+    T: Serialize,
+{
+    Ok(serde_json::to_vec(t)?)
+}
+
+pub fn deserialize<'a, T>(v: &'a [u8]) -> anyhow::Result<T>
+where
+    T: Deserialize<'a>,
+{
+    Ok(serde_json::from_slice(v)?)
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
