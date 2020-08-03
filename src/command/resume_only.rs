@@ -80,7 +80,7 @@ async fn execute_swap(
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
     swap: SwapKind,
 ) -> anyhow::Result<FinishedSwap> {
-    db.insert_swap(swap.clone())?;
+    db.insert_swap(swap.clone()).await?;
 
     swap.execute(
         Arc::clone(&db),

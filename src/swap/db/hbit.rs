@@ -331,7 +331,7 @@ mod tests {
 
         let swap_kind = SwapKind::from((swap, swap_id));
 
-        db.insert_swap(swap_kind).unwrap();
+        db.insert_swap(swap_kind).await.unwrap();
 
         let funded = hbit::Funded { asset, location };
         db.save(funded, swap_id).await.unwrap();
@@ -355,7 +355,7 @@ mod tests {
 
         let swap_kind = SwapKind::from((swap, swap_id));
 
-        db.insert_swap(swap_kind).unwrap();
+        db.insert_swap(swap_kind).await.unwrap();
 
         let event = hbit::Redeemed {
             transaction: transaction.clone(),
@@ -381,7 +381,7 @@ mod tests {
 
         let swap_kind = SwapKind::from((swap, swap_id));
 
-        db.insert_swap(swap_kind).unwrap();
+        db.insert_swap(swap_kind).await.unwrap();
 
         let event = hbit::Refunded {
             transaction: transaction.clone(),

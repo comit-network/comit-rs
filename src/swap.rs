@@ -559,7 +559,7 @@ mod tests {
                 taker: Taker::static_stub(),
             });
 
-            alice_db.insert_swap(swap).unwrap();
+            alice_db.insert_swap(swap).await.unwrap();
 
             let alice = WalletAlice {
                 alpha_wallet: alice_bitcoin_wallet.clone(),
@@ -600,7 +600,7 @@ mod tests {
                 taker: Taker::static_stub(),
             });
 
-            bob_db.insert_swap(swap).unwrap();
+            bob_db.insert_swap(swap).await.unwrap();
 
             let alice = WatchOnlyAlice {
                 alpha_connector: Arc::clone(&bitcoin_connector),

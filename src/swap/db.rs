@@ -66,7 +66,7 @@ impl Database {
 /// Swap related functions
 impl Database {
     // TODO: Add versioning to the data
-    pub fn insert_swap(&self, swap: SwapKind) -> anyhow::Result<()> {
+    pub async fn insert_swap(&self, swap: SwapKind) -> anyhow::Result<()> {
         let swap_id = swap.swap_id();
 
         let stored_swap = self.get_swap(&swap_id);
@@ -83,7 +83,13 @@ impl Database {
                 self.db
                     .compare_and_swap(key, Option::<Vec<u8>>::None, Some(new_value))
                     .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")
+                    .context("Stored swap somehow changed, aborting saving")?;
+
+                self.db
+                    .flush_async()
+                    .await
+                    .map(|_| ())
+                    .context("Could not flush db")
             }
         }
     }
@@ -107,13 +113,19 @@ impl Database {
             .collect()
     }
 
-    pub fn remove_swap(&self, swap_id: &SwapId) -> anyhow::Result<()> {
+    pub async fn remove_swap(&self, swap_id: &SwapId) -> anyhow::Result<()> {
         let key = serialize(swap_id)?;
 
         self.db
             .remove(key)
             .context(format!("Could not delete swap {}", swap_id))
+            .map(|_| ())?;
+
+        self.db
+            .flush_async()
+            .await
             .map(|_| ())
+            .context("Could not flush db")
     }
 
     fn get_swap(&self, swap_id: &SwapId) -> anyhow::Result<Swap> {
@@ -130,12 +142,23 @@ impl Database {
 
 /// Active takers related functions
 impl Database {
-    pub fn insert_active_taker(&self, taker: Taker) -> anyhow::Result<()> {
-        self.modify_takers_with(|takers: &mut HashSet<Taker>| takers.insert(taker.clone()))
+    pub async fn insert_active_taker(&self, taker: Taker) -> anyhow::Result<()> {
+        self.modify_takers_with(|takers: &mut HashSet<Taker>| takers.insert(taker.clone()))?;
+
+        self.db
+            .flush_async()
+            .await
+            .map(|_| ())
+            .context("Could not flush db")
     }
 
-    pub fn remove_active_taker(&self, taker: &Taker) -> anyhow::Result<()> {
-        self.modify_takers_with(|takers: &mut HashSet<Taker>| takers.remove(taker))
+    pub async fn remove_active_taker(&self, taker: &Taker) -> anyhow::Result<()> {
+        self.modify_takers_with(|takers: &mut HashSet<Taker>| takers.remove(taker))?;
+        self.db
+            .flush_async()
+            .await
+            .map(|_| ())
+            .context("Could not flush db")
     }
 
     pub fn contains_active_taker(&self, taker: &Taker) -> anyhow::Result<bool> {
@@ -296,15 +319,15 @@ impl From<SwapKind> for Swap {
 mod tests {
     use super::*;
 
-    #[test]
-    fn save_and_retrieve_swaps() {
+    #[tokio::test]
+    async fn save_and_retrieve_swaps() {
         let db = Database::new_test().unwrap();
 
         let swap_1 = SwapKind::HbitHerc20(swap::SwapParams::static_stub());
         let swap_2 = SwapKind::Herc20Hbit(swap::SwapParams::static_stub());
 
-        db.insert_swap(swap_1.clone()).unwrap();
-        db.insert_swap(swap_2.clone()).unwrap();
+        db.insert_swap(swap_1.clone()).await.unwrap();
+        db.insert_swap(swap_2.clone()).await.unwrap();
 
         let stored_swaps = db.all_swaps().unwrap();
 
@@ -313,8 +336,8 @@ mod tests {
         assert!(stored_swaps.contains(&swap_2));
     }
 
-    #[test]
-    fn save_and_delete_correct_swap() {
+    #[tokio::test]
+    async fn save_and_delete_correct_swap() {
         let db = Database::new_test().unwrap();
         let swap_1 = swap::SwapParams::static_stub();
         let swap_id_1 = swap_1.swap_id;
@@ -322,27 +345,27 @@ mod tests {
         let swap_1 = SwapKind::HbitHerc20(swap_1);
         let swap_2 = SwapKind::Herc20Hbit(swap::SwapParams::static_stub());
 
-        db.insert_swap(swap_1).unwrap();
-        db.insert_swap(swap_2.clone()).unwrap();
+        db.insert_swap(swap_1).await.unwrap();
+        db.insert_swap(swap_2.clone()).await.unwrap();
 
-        db.remove_swap(&swap_id_1).unwrap();
+        db.remove_swap(&swap_id_1).await.unwrap();
 
         let stored_swaps = db.all_swaps().unwrap();
 
         assert_eq!(stored_swaps, vec![swap_2]);
     }
 
-    #[test]
-    fn taker_no_longer_has_ongoing_trade_after_removal() {
+    #[tokio::test]
+    async fn taker_no_longer_has_ongoing_trade_after_removal() {
         let db = Database::new_test().unwrap();
         let taker = Taker::static_stub();
 
-        let _ = db.insert_active_taker(taker.clone()).unwrap();
+        let _ = db.insert_active_taker(taker.clone()).await.unwrap();
 
         let res = db.contains_active_taker(&taker);
         assert!(matches!(res, Ok(true)));
 
-        let _ = db.remove_active_taker(&taker).unwrap();
+        let _ = db.remove_active_taker(&taker).await.unwrap();
         let res = db.contains_active_taker(&taker);
 
         assert!(matches!(res, Ok(false)));

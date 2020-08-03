@@ -83,8 +83,8 @@ impl Swarm {
         self.inner.make(order)
     }
 
-    pub fn confirm(&mut self, order: TakenOrder) -> anyhow::Result<()> {
-        self.inner.confirm(order)
+    pub async fn confirm(&mut self, order: TakenOrder) -> anyhow::Result<()> {
+        self.inner.confirm(order).await
     }
 
     pub fn deny(&mut self, order: TakenOrder) {
@@ -187,8 +187,10 @@ impl Nectar {
         Ok(())
     }
 
-    fn confirm(&mut self, order: TakenOrder) -> anyhow::Result<()> {
-        self.database.insert_active_taker(order.taker.clone())?;
+    async fn confirm(&mut self, order: TakenOrder) -> anyhow::Result<()> {
+        self.database
+            .insert_active_taker(order.taker.clone())
+            .await?;
 
         self.orderbook
             .confirm(order.id, order.confirmation_channel, order.taker.peer_id());

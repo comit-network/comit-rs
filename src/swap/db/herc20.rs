@@ -406,7 +406,7 @@ mod tests {
 
         let swap_kind = SwapKind::from((swap, swap_id));
 
-        db.insert_swap(swap_kind).unwrap();
+        db.insert_swap(swap_kind).await.unwrap();
 
         let event = herc20::Deployed {
             transaction: transaction.clone(),
@@ -436,7 +436,7 @@ mod tests {
 
         let swap_kind = SwapKind::from((swap, swap_id));
 
-        db.insert_swap(swap_kind).unwrap();
+        db.insert_swap(swap_kind).await.unwrap();
 
         let event = herc20::Funded {
             transaction: transaction.clone(),
@@ -463,7 +463,7 @@ mod tests {
 
         let swap_kind = SwapKind::from((swap, swap_id));
 
-        db.insert_swap(swap_kind).unwrap();
+        db.insert_swap(swap_kind).await.unwrap();
 
         let event = herc20::Redeemed {
             transaction: transaction.clone(),
@@ -489,7 +489,7 @@ mod tests {
 
         let swap_kind = SwapKind::from((swap, swap_id));
 
-        db.insert_swap(swap_kind).unwrap();
+        db.insert_swap(swap_kind).await.unwrap();
 
         let event = herc20::Refunded {
             transaction: transaction.clone(),
