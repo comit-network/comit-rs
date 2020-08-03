@@ -373,8 +373,8 @@ impl From<comit::herc20::Params> for Params {
 }
 
 #[cfg(test)]
-impl Default for Params {
-    fn default() -> Self {
+impl crate::StaticStub for Params {
+    fn static_stub() -> Self {
         Params {
             asset: Erc20Asset {
                 token_contract: Default::default(),
@@ -395,12 +395,15 @@ impl Default for Params {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::swap::{db::Swap, SwapKind};
+    use crate::{
+        swap::{db::Swap, SwapKind},
+        StaticStub,
+    };
 
     #[tokio::test]
     async fn save_and_load_herc20_deployed() {
         let db = Database::new_test().unwrap();
-        let swap = Swap::default();
+        let swap = Swap::static_stub();
         let swap_id = SwapId::default();
         let transaction = comit::transaction::Ethereum::default();
         let location = comit::htlc_location::Ethereum::random();
@@ -427,7 +430,7 @@ mod tests {
     #[tokio::test]
     async fn save_and_load_herc20_funded() {
         let db = Database::new_test().unwrap();
-        let swap = Swap::default();
+        let swap = Swap::static_stub();
         let swap_id = SwapId::default();
         let transaction = comit::transaction::Ethereum::default();
         let asset = comit::asset::Erc20::new(
@@ -457,7 +460,7 @@ mod tests {
     #[tokio::test]
     async fn save_and_load_herc20_redeemed() {
         let db = Database::new_test().unwrap();
-        let swap = Swap::default();
+        let swap = Swap::static_stub();
         let swap_id = SwapId::default();
         let transaction = comit::transaction::Ethereum::default();
         let secret = Secret::from_vec(b"are those thirty-two bytes? Hum.").unwrap();
@@ -484,7 +487,7 @@ mod tests {
     #[tokio::test]
     async fn save_and_load_herc20_refunded() {
         let db = Database::new_test().unwrap();
-        let swap = Swap::default();
+        let swap = Swap::static_stub();
         let swap_id = SwapId::default();
         let transaction = comit::transaction::Ethereum::default();
 

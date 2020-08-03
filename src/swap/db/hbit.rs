@@ -269,8 +269,8 @@ impl From<hbit::Params> for Params {
 }
 
 #[cfg(test)]
-impl Default for Params {
-    fn default() -> Self {
+impl crate::StaticStub for Params {
+    fn static_stub() -> Self {
         use std::str::FromStr;
 
         Params {
@@ -299,8 +299,13 @@ impl Default for Params {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::swap::db::{Database, Swap};
-    use crate::swap::SwapKind;
+    use crate::{
+        swap::{
+            db::{Database, Swap},
+            SwapKind,
+        },
+        StaticStub,
+    };
 
     fn bitcoin_transaction() -> ::bitcoin::Transaction {
         ::bitcoin::Transaction {
@@ -324,7 +329,7 @@ mod tests {
         let db = Database::new_test().unwrap();
         let asset = comit::asset::Bitcoin::from_sat(123456);
         let location = comit::htlc_location::Bitcoin::default();
-        let swap = Swap::default();
+        let swap = Swap::static_stub();
         let swap_id = SwapId::default();
 
         let swap_kind = SwapKind::from((swap, swap_id));
@@ -348,7 +353,7 @@ mod tests {
         let db = Database::new_test().unwrap();
         let transaction = bitcoin_transaction();
         let secret = Secret::from_vec(b"are those thirty-two bytes? Hum.").unwrap();
-        let swap = Swap::default();
+        let swap = Swap::static_stub();
         let swap_id = SwapId::default();
 
         let swap_kind = SwapKind::from((swap, swap_id));
@@ -374,7 +379,7 @@ mod tests {
     async fn save_and_load_hbit_refunded() {
         let db = Database::new_test().unwrap();
         let transaction = bitcoin_transaction();
-        let swap = Swap::default();
+        let swap = Swap::static_stub();
         let swap_id = SwapId::default();
 
         let swap_kind = SwapKind::from((swap, swap_id));

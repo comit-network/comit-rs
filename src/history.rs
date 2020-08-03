@@ -155,8 +155,8 @@ pub struct Trade {
 }
 
 #[cfg(test)]
-impl Default for PeerId {
-    fn default() -> Self {
+impl crate::StaticStub for PeerId {
+    fn static_stub() -> Self {
         use std::str::FromStr;
 
         Self(libp2p::PeerId::from_str("QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg").unwrap())

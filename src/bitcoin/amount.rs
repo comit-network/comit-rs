@@ -108,8 +108,8 @@ impl std::fmt::Display for Amount {
 }
 
 #[cfg(test)]
-impl Default for Asset {
-    fn default() -> Self {
+impl crate::StaticStub for Asset {
+    fn static_stub() -> Self {
         Self {
             amount: Amount::default(),
             network: Network::Bitcoin,
