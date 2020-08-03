@@ -10,21 +10,19 @@ use futures::{
 
 /// Try to do an action resulting in the event `E`.
 ///
-/// If we already know that event `E` has happened because we can look
-/// it up in our internal state via `LookUpEvent`, we return
-/// `Next::Continue<E>` early and do not try to do the action again.
+/// If we can `Load` the event `E` corresponding to `swap_id` from the
+/// `DB`, we early return `Ok(E)` early and do not try to do the
+/// action again.
 ///
-/// We do the action by calling `Execute::<E>::execute` and awaiting
-/// on it, which will yield the event `E` if it resolves successfully.
 ///
-/// Whilst waiting for the `Execute<E>` future to resolve, we
-/// continuously check if `BetaHasExpired`. If Beta expires before
-/// we finish doing the action, we fail.
+/// We `futures::future::select` on the `action` future and the
+/// `poll_abortion_condition` future passed as arguments. If the
+/// `action` is completed successfully before the
+/// `poll_abortion_condition` future is met, we return `Ok(E)`.
+/// Otherwise, we return `Err(AbortConditionMet)`.
 ///
-/// If doing the action succeeds, we store the resulting event `E` via
-/// `StoreEvent` to ensure that repeated calls to this function do not
-/// result in doing the action more than once.
-#[allow(dead_code)] // Not sure why this is flagged as dead code
+/// Before returning the event resulted from successfully executing
+/// the action, we store it in the `DB` through the `Save` trait.
 pub async fn try_do_it_once<E, DB>(
     db: &DB,
     swap_id: SwapId,
@@ -58,7 +56,6 @@ pub trait LedgerTime {
     async fn ledger_time(&self) -> anyhow::Result<Timestamp>;
 }
 
-#[allow(dead_code)] // Not sure why this is flagged as dead code
 pub async fn poll_beta_has_expired<BC>(
     beta_connector: &BC,
     beta_expiry: Timestamp,
@@ -139,7 +136,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn trying_to_do_an_arbitrary_action_once_is_idempotent() {
+    async fn trying_to_do_an_arbitrary_action_more_than_once_is_idempotent() {
         let blockchain = Arc::new(RwLock::new(FakeBlockchain::default()));
         let wallet = FakeWallet {
             node: Arc::clone(&blockchain),
