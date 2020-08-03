@@ -4,9 +4,7 @@
 use crate::{
     swap::{
         action::{poll_beta_has_expired, try_do_it_once},
-        bitcoin,
-        db::Database,
-        ethereum, hbit, herc20, LedgerTime,
+        bitcoin, ethereum, hbit, herc20, Database, LedgerTime,
     },
     SwapId,
 };
@@ -74,7 +72,7 @@ where
 #[async_trait::async_trait]
 impl<BW> hbit::ExecuteRefund for WalletAlice<bitcoin::Wallet, BW>
 where
-    BW: LedgerTime + Send + Sync,
+    BW: Send + Sync,
 {
     async fn execute_refund(
         &self,

@@ -6,9 +6,7 @@
 use crate::{
     swap::{
         action::{poll_beta_has_expired, try_do_it_once},
-        bitcoin,
-        db::Database,
-        ethereum, LedgerTime, {hbit, herc20},
+        bitcoin, ethereum, Database, {hbit, herc20},
     },
     SwapId,
 };
@@ -72,30 +70,31 @@ where
     }
 }
 
-// #[async_trait::async_trait]
-// impl<AW, BW, DB, BP> Execute<herc20::Redeemed> for WalletBob<AW, BW, DB, herc20::Params, BP>
-// where
-//     AW: herc20::ExecuteRedeem + Send + Sync,
-//     BW: Send + Sync,
-//     DB: Send + Sync,
-//     BP: Send + Sync,
-// {
-//     type Args = (herc20::Deployed, Secret);
+#[async_trait::async_trait]
+impl<BW> herc20::ExecuteRedeem for WalletBob<ethereum::Wallet, BW>
+where
+    BW: Send + Sync,
+{
+    async fn execute_redeem(
+        &self,
+        params: comit::herc20::Params,
+        secret: Secret,
+        deploy_event: comit::herc20::Deployed,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<comit::herc20::Redeemed> {
+        let action = self
+            .alpha_wallet
+            .execute_redeem(params, secret, deploy_event, start_of_swap);
 
-//     async fn execute(
-//         &self,
-//         (deploy_event, secret): (herc20::Deployed, Secret),
-//     ) -> anyhow::Result<herc20::Redeemed> {
-//         self.alpha_wallet
-//             .execute_redeem(
-//                 self.alpha_params.clone(),
-//                 secret,
-//                 deploy_event,
-//                 self.start_of_swap,
-//             )
-//             .await
-//     }
-// }
+        try_do_it_once(
+            self.db.as_ref(),
+            self.swap_id,
+            action,
+            futures::future::pending(),
+        )
+        .await
+    }
+}
 
 #[async_trait::async_trait]
 impl<AW> herc20::ExecuteRefund for WalletBob<AW, ethereum::Wallet>
@@ -122,26 +121,29 @@ where
     }
 }
 
-// #[allow(clippy::unit_arg)]
-// #[async_trait::async_trait]
-// impl<AW, BW, DB, AP> Execute<hbit::Funded> for WalletBob<AW, BW, DB, AP, hbit::Params>
-// where
-//     AW: Send + Sync,
-//     BW: hbit::ExecuteFund + Send + Sync,
-//     DB: Send + Sync,
-//     AP: Send + Sync,
-// {
-//     type Args = ();
+#[async_trait::async_trait]
+impl<AW> hbit::ExecuteFund for WalletBob<AW, bitcoin::Wallet>
+where
+    AW: Send + Sync,
+{
+    async fn execute_fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::Funded> {
+        let action = self.beta_wallet.execute_fund(params);
+        let poll_beta_has_expired = poll_beta_has_expired(&self.beta_wallet, self.beta_expiry);
 
-//     async fn execute(&self, (): Self::Args) -> anyhow::Result<hbit::Funded> {
-//         self.beta_wallet.execute_fund(&self.beta_params).await
-//     }
-// }
+        try_do_it_once(
+            self.db.as_ref(),
+            self.swap_id,
+            action,
+            poll_beta_has_expired,
+        )
+        .await
+    }
+}
 
 #[async_trait::async_trait]
 impl<BW> hbit::ExecuteRedeem for WalletBob<bitcoin::Wallet, BW>
 where
-    BW: LedgerTime + Send + Sync,
+    BW: Send + Sync,
 {
     async fn execute_redeem(
         &self,
@@ -161,19 +163,24 @@ where
     }
 }
 
-// #[async_trait::async_trait]
-// impl<AW, BW, DB, AP> Execute<hbit::Refunded> for WalletBob<AW, BW, DB, AP, hbit::Params>
-// where
-//     AW: Send + Sync,
-//     BW: hbit::ExecuteRefund + Send + Sync,
-//     DB: Send + Sync,
-//     AP: Send + Sync,
-// {
-//     type Args = hbit::Funded;
+#[async_trait::async_trait]
+impl<AW> hbit::ExecuteRefund for WalletBob<AW, bitcoin::Wallet>
+where
+    AW: Send + Sync,
+{
+    async fn execute_refund(
+        &self,
+        params: hbit::Params,
+        fund_event: hbit::Funded,
+    ) -> anyhow::Result<comit::hbit::Refunded> {
+        let action = self.beta_wallet.execute_refund(params, fund_event);
 
-//     async fn execute(&self, fund_event: Self::Args) -> anyhow::Result<hbit::Refunded> {
-//         self.beta_wallet
-//             .execute_refund(self.beta_params, fund_event)
-//             .await
-//     }
-// }
+        try_do_it_once(
+            self.db.as_ref(),
+            self.swap_id,
+            action,
+            futures::future::pending(),
+        )
+        .await
+    }
+}
