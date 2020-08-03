@@ -583,6 +583,18 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                     .orderbook
                     .get_order(&order_id)
                     .expect("orderbook only bubbles up existing orders");
+
+                if order.bitcoin_amount < amount {
+                    self.orderbook.deny(peer_id, order_id, response_channel);
+                    tracing::info!(
+                        "denied take request for {} because partial take amount: {} is greater than order amount: {}",
+                        order_id,
+                        amount,
+                        order.bitcoin_amount
+                    );
+                    return;
+                }
+
                 let &local_swap_id = match self.order_swap_ids.get(&order_id) {
                     Some(id) => id,
                     None => {
@@ -644,9 +656,6 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                     chain_id: order.ethereum_ledger.chain_id,
                     absolute_expiry: order.ethereum_absolute_expiry,
                 };
-
-                tracing::info!("ethereum amount {}", order.ethereum_amount(amount));
-
                 match order.position {
                     Position::Buy => {
                         let swap = CreatedSwap {
