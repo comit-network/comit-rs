@@ -139,6 +139,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "atomic"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64f46ca51dca4837f1520754d1c8c36636356b81553d928dc9c177025369a06e"
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -483,7 +489,7 @@ dependencies = [
  "http-api-problem",
  "ipnet",
  "lazy_static",
- "libp2p 0.22.0",
+ "libp2p 0.23.0",
  "libp2p-tokio-socks5",
  "libsqlite3-sys",
  "log 0.4.11",
@@ -544,7 +550,7 @@ dependencies = [
  "hex 0.4.2",
  "lazy_static",
  "levenshtein",
- "libp2p 0.22.0",
+ "libp2p 0.23.0",
  "log 0.4.11",
  "lru 0.5.3",
  "num",
@@ -1537,10 +1543,11 @@ dependencies = [
 
 [[package]]
 name = "libp2p"
-version = "0.22.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0306a49ee6a89468f96089906f36b0eef82c988dcfc8acf3e2dcd6ad1c859f85"
+checksum = "b1ebb6c031584a5af181fe3a1e4b074af5d0b1a3b31663200f0251f4bcff6b5c"
 dependencies = [
+ "atomic",
  "bytes 0.5.6",
  "futures",
  "lazy_static",
