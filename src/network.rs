@@ -631,3 +631,22 @@ mod transport {
         Ok(transport)
     }
 }
+
+#[cfg(test)]
+mod arbitrary {
+    use super::*;
+    use libp2p::multihash;
+    use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for Taker {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let mut bytes = [0u8; 32];
+            for byte in bytes.iter_mut() {
+                *byte = u8::arbitrary(g);
+            }
+            let peer_id =
+                PeerId::from_multihash(multihash::wrap(multihash::Code::Sha2_256, &bytes)).unwrap();
+            Taker { peer_id }
+        }
+    }
+}

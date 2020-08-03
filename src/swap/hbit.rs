@@ -67,3 +67,52 @@ where
         comit::hbit::Funded::Incorrectly { .. } => anyhow::bail!("Bitcoin HTLC incorrectly funded"),
     }
 }
+
+#[cfg(test)]
+mod arbitrary {
+    use crate::swap::hbit::{Params, SharedParams};
+    use ::bitcoin::{secp256k1::SecretKey, Network};
+    use comit::{asset, identity};
+    use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for Params {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Params {
+                shared: SharedParams {
+                    network: bitcoin_network(g),
+                    asset: bitcoin_asset(g),
+                    redeem_identity: bitcoin_identity(g),
+                    refund_identity: bitcoin_identity(g),
+                    expiry: crate::arbitrary::timestamp(g),
+                    secret_hash: crate::arbitrary::secret_hash(g),
+                },
+                transient_sk: secret_key(g),
+            }
+        }
+    }
+
+    fn secret_key<G: Gen>(g: &mut G) -> SecretKey {
+        let mut bytes = [0u8; 32];
+        for byte in &mut bytes {
+            *byte = u8::arbitrary(g);
+        }
+        SecretKey::from_slice(&bytes).unwrap()
+    }
+
+    fn bitcoin_network<G: Gen>(g: &mut G) -> Network {
+        match u8::arbitrary(g) % 3 {
+            0 => Network::Bitcoin,
+            1 => Network::Testnet,
+            2 => Network::Regtest,
+            _ => unreachable!(),
+        }
+    }
+
+    fn bitcoin_asset<G: Gen>(g: &mut G) -> asset::Bitcoin {
+        asset::Bitcoin::from_sat(u64::arbitrary(g))
+    }
+
+    fn bitcoin_identity<G: Gen>(g: &mut G) -> identity::Bitcoin {
+        identity::Bitcoin::from_secret_key(&crate::SECP, &secret_key(g))
+    }
+}

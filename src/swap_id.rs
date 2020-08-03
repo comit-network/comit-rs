@@ -22,3 +22,20 @@ impl fmt::Display for SwapId {
         write!(f, "{}", self.0.to_string())
     }
 }
+
+#[cfg(test)]
+mod arbitrary {
+    use super::*;
+    use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for SwapId {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let mut bytes = [0u8; 16];
+            for byte in &mut bytes {
+                *byte = u8::arbitrary(g);
+            }
+            let uuid = Uuid::from_bytes(bytes);
+            SwapId(uuid)
+        }
+    }
+}

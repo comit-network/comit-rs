@@ -318,13 +318,11 @@ impl From<SwapKind> for Swap {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use quickcheck::{Arbitrary, StdThreadGen};
 
-    #[tokio::test]
-    async fn save_and_retrieve_swaps() {
+    #[quickcheck_async::tokio]
+    async fn save_and_retrieve_swaps(swap_1: SwapKind, swap_2: SwapKind) -> bool {
         let db = Database::new_test().unwrap();
-
-        let swap_1 = SwapKind::HbitHerc20(swap::SwapParams::static_stub());
-        let swap_2 = SwapKind::Herc20Hbit(swap::SwapParams::static_stub());
 
         db.insert_swap(swap_1.clone()).await.unwrap();
         db.insert_swap(swap_2.clone()).await.unwrap();
@@ -334,16 +332,16 @@ mod tests {
         assert_eq!(stored_swaps.len(), 2);
         assert!(stored_swaps.contains(&swap_1));
         assert!(stored_swaps.contains(&swap_2));
+
+        true
     }
 
-    #[tokio::test]
-    async fn save_and_delete_correct_swap() {
+    #[quickcheck_async::tokio]
+    async fn save_and_delete_correct_swap(swap_1: swap::SwapParams, swap_2: SwapKind) -> bool {
         let db = Database::new_test().unwrap();
-        let swap_1 = swap::SwapParams::static_stub();
         let swap_id_1 = swap_1.swap_id;
 
         let swap_1 = SwapKind::HbitHerc20(swap_1);
-        let swap_2 = SwapKind::Herc20Hbit(swap::SwapParams::static_stub());
 
         db.insert_swap(swap_1).await.unwrap();
         db.insert_swap(swap_2.clone()).await.unwrap();
@@ -353,12 +351,13 @@ mod tests {
         let stored_swaps = db.all_swaps().unwrap();
 
         assert_eq!(stored_swaps, vec![swap_2]);
+
+        true
     }
 
-    #[tokio::test]
-    async fn taker_no_longer_has_ongoing_trade_after_removal() {
+    #[quickcheck_async::tokio]
+    async fn taker_no_longer_has_ongoing_trade_after_removal(taker: Taker) -> bool {
         let db = Database::new_test().unwrap();
-        let taker = Taker::static_stub();
 
         let _ = db.insert_active_taker(taker.clone()).await.unwrap();
 
@@ -368,6 +367,29 @@ mod tests {
         let _ = db.remove_active_taker(&taker).await.unwrap();
         let res = db.contains_active_taker(&taker);
 
-        assert!(matches!(res, Ok(false)));
+        matches!(res, Ok(false))
+    }
+
+    #[tokio::test]
+    async fn save_and_retrieve_hundred_swaps() {
+        let db = Database::new_test().unwrap();
+
+        let mut gen = StdThreadGen::new(100);
+        let mut swaps = Vec::with_capacity(100);
+
+        for _ in 0..100 {
+            let swap = SwapKind::arbitrary(&mut gen);
+            swaps.push(swap);
+        }
+
+        for swap in swaps.iter() {
+            db.insert_swap(swap.clone()).await.unwrap();
+        }
+
+        let stored_swaps = db.all_swaps().unwrap();
+
+        for swap in swaps.iter() {
+            assert!(stored_swaps.contains(&swap))
+        }
     }
 }

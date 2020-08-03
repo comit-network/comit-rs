@@ -35,6 +35,9 @@ mod trace;
 #[cfg(test)]
 mod test_harness;
 
+#[cfg(test)]
+mod arbitrary;
+
 use crate::{
     command::{
         balance, deposit, dump_config, resume_only, trade, wallet_info, withdraw, Command, Options,
