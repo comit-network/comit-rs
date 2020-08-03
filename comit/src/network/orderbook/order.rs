@@ -4,36 +4,6 @@ use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, Hash, Serialize, Deserialize, PartialEq, Eq)]
-pub struct OrderId(Uuid);
-
-impl OrderId {
-    pub fn random() -> OrderId {
-        OrderId(Uuid::new_v4())
-    }
-}
-
-#[cfg(test)]
-fn meaningless_test_order_id() -> OrderId {
-    let uuid = Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap();
-    OrderId(uuid)
-}
-
-impl Display for OrderId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl FromStr for OrderId {
-    type Err = uuid::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let uuid = Uuid::from_str(s)?;
-        Ok(OrderId(uuid))
-    }
-}
-
 /// An order, created by a maker (Bob) and shared with the network via
 /// gossipsub.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -53,27 +23,32 @@ pub struct Order {
 
 // We explicitly only support BTC/DAI.
 impl Order {
-    pub fn tp(&self) -> TradingPair {
-        TradingPair::BtcDai
-    }
     pub fn ethereum_amount(&self, amount: asset::Bitcoin) -> Erc20Quantity {
         Erc20Quantity::from(BigUint::from(amount.as_sat()) * (BigUint::from(self.rate)))
     }
 }
 
-// Since we only support a single trading pair this struct is actually
-// not needed, the information is implicit in the Order struct. Keep
-// this and the calls to order.tp().topic() to make it explicit that
-// there is only a single trading pair and the trading pair is
-// defined by the order struct.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub enum TradingPair {
-    BtcDai,
+#[derive(Debug, Clone, Copy, Hash, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OrderId(Uuid);
+
+impl OrderId {
+    pub fn random() -> OrderId {
+        OrderId(Uuid::new_v4())
+    }
 }
 
-impl TradingPair {
-    pub fn to_topic(&self) -> Topic {
-        Topic::new(BTC_DAI.to_string())
+impl Display for OrderId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl FromStr for OrderId {
+    type Err = uuid::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let uuid = Uuid::from_str(s)?;
+        Ok(OrderId(uuid))
     }
 }
 
@@ -103,10 +78,10 @@ pub fn meaningless_test_order(maker: MakerId) -> Order {
         id: meaningless_test_order_id(),
         maker,
         position: Position::Sell,
-        rate: 9000,
+        bitcoin_amount: asset::Bitcoin::meaningless_test_value(),
         bitcoin_ledger: ledger::Bitcoin::Regtest,
         bitcoin_absolute_expiry: meaningless_expiry_value(),
-        bitcoin_amount: asset::Bitcoin::from_sat(1000),
+        rate: 9000,
         token_contract: Default::default(),
         ethereum_ledger: ledger::Ethereum::default(),
         ethereum_absolute_expiry: meaningless_expiry_value(),
@@ -116,6 +91,12 @@ pub fn meaningless_test_order(maker: MakerId) -> Order {
 #[cfg(test)]
 fn meaningless_expiry_value() -> u32 {
     100
+}
+
+#[cfg(test)]
+fn meaningless_test_order_id() -> OrderId {
+    let uuid = Uuid::parse_str("936DA01F9ABD4d9d80C702AF85C822A8").unwrap();
+    OrderId(uuid)
 }
 
 #[cfg(test)]
