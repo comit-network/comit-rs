@@ -3,6 +3,7 @@ use structopt::StructOpt;
 
 mod balance;
 mod deposit;
+mod resume_only;
 mod trade;
 mod wallet_info;
 mod withdraw;
@@ -20,6 +21,7 @@ use std::str::FromStr;
 
 pub use balance::balance;
 pub use deposit::deposit;
+pub use resume_only::resume_only;
 pub use trade::trade;
 pub use wallet_info::wallet_info;
 pub use withdraw::withdraw;
@@ -54,6 +56,8 @@ pub enum Command {
     DumpConfig,
     /// Withdraw assets
     Withdraw(Withdraw),
+    /// Only resume ongoing swaps, do not publish or accept new orders
+    ResumeOnly,
 }
 
 pub fn dump_config(settings: Settings) -> anyhow::Result<()> {
