@@ -5,6 +5,7 @@ use crate::{
     network::orderbook::take_order::{Response, TakeOrderCodec, TakeOrderProtocol},
     SharedSwapId,
 };
+
 use libp2p::{
     core::either::EitherOutput,
     gossipsub,
@@ -29,8 +30,10 @@ use std::{
 
 pub use self::order::*;
 
-/// String representing the BTC/DAI trading pair.
-const BTC_DAI: &str = "BTC/DAI";
+lazy_static::lazy_static! {
+    /// The Topic used to publish BTC/DAI orders.
+    static ref BTC_DAI_TOPIC: Topic = Topic::new("BTC/DAI".to_string());
+}
 
 /// The time we wait for a take order request to be confirmed or denied.
 const REQUEST_TIMEOUT_SECS: u64 = 10;
@@ -81,9 +84,7 @@ impl Orderbook {
         };
 
         // Since we only support a single trading pair topic just subscribe to it now.
-        orderbook
-            .gossipsub
-            .subscribe(Topic::new(BTC_DAI.to_string()));
+        orderbook.gossipsub.subscribe(BTC_DAI_TOPIC.clone());
 
         orderbook
     }
@@ -91,8 +92,7 @@ impl Orderbook {
     /// Create and publish a new 'make' order. Called by Bob i.e. the maker.
     pub fn make(&mut self, order: Order) -> anyhow::Result<OrderId> {
         let ser = bincode::serialize(&Message::CreateOrder(order.clone()))?;
-        let topic = order.tp().to_topic();
-        self.gossipsub.publish(&topic, ser);
+        self.gossipsub.publish(&BTC_DAI_TOPIC, ser);
 
         let id = order.id;
         self.orders.insert(id, order);

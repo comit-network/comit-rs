@@ -1,11 +1,24 @@
-use crate::{
-    asset, identity, ledger,
-    network::orderbook::{MakerId, BTC_DAI},
-};
-use libp2p::gossipsub::Topic;
+use crate::{asset, identity, ledger, network::orderbook::MakerId};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
+
+/// An order, created by a maker (Bob) and shared with the network via
+/// gossipsub.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Order {
+    pub id: OrderId,
+    pub maker: MakerId,
+    pub position: Position,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    pub bitcoin_amount: asset::Bitcoin,
+    pub bitcoin_ledger: ledger::Bitcoin,
+    pub bitcoin_absolute_expiry: u32,
+    pub ethereum_amount: asset::Erc20Quantity,
+    pub token_contract: identity::Ethereum,
+    pub ethereum_ledger: ledger::Ethereum,
+    pub ethereum_absolute_expiry: u32,
+}
 
 #[derive(Debug, Clone, Copy, Hash, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OrderId(Uuid);
@@ -34,46 +47,6 @@ impl FromStr for OrderId {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let uuid = Uuid::from_str(s)?;
         Ok(OrderId(uuid))
-    }
-}
-
-/// An order, created by a maker (Bob) and shared with the network via
-/// gossipsub.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Order {
-    pub id: OrderId,
-    pub maker: MakerId,
-    pub position: Position,
-    #[serde(with = "asset::bitcoin::sats_as_string")]
-    pub bitcoin_amount: asset::Bitcoin,
-    pub bitcoin_ledger: ledger::Bitcoin,
-    pub bitcoin_absolute_expiry: u32,
-    pub ethereum_amount: asset::Erc20Quantity,
-    pub token_contract: identity::Ethereum,
-    pub ethereum_ledger: ledger::Ethereum,
-    pub ethereum_absolute_expiry: u32,
-}
-
-// We explicitly only support BTC/DAI.
-impl Order {
-    pub fn tp(&self) -> TradingPair {
-        TradingPair::BtcDai
-    }
-}
-
-// Since we only support a single trading pair this struct is actually
-// not needed, the information is implicit in the Order struct. Keep
-// this and the calls to order.tp().topic() to make it explicit that
-// there is only a single trading pair and the trading pair is
-// defined by the order struct.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub enum TradingPair {
-    BtcDai,
-}
-
-impl TradingPair {
-    pub fn to_topic(&self) -> Topic {
-        Topic::new(BTC_DAI.to_string())
     }
 }
 
