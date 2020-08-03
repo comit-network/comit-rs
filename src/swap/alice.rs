@@ -82,13 +82,12 @@ where
         fund_event: hbit::Funded,
     ) -> anyhow::Result<comit::hbit::Refunded> {
         let action = self.alpha_wallet.execute_refund(params, fund_event);
-        let poll_beta_has_expired = poll_beta_has_expired(&self.beta_wallet, self.beta_expiry);
 
         try_do_it_once(
             self.db.as_ref(),
             self.swap_id,
             action,
-            poll_beta_has_expired,
+            futures::future::pending(),
         )
         .await
     }

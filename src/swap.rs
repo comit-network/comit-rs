@@ -322,9 +322,10 @@ impl SwapKind {
                     alpha_wallet: bitcoin_wallet,
                     beta_wallet: ethereum_wallet,
                     db,
+                    swap_id: *swap_id,
                     secret_hash: *secret_hash,
                     start_of_swap: *start_of_swap,
-                    swap_id: *swap_id,
+                    beta_expiry: herc20_params.expiry,
                 };
 
                 hbit_herc20_bob(
@@ -712,9 +713,10 @@ mod tests {
                 alpha_wallet: bob_bitcoin_wallet.clone(),
                 beta_wallet: bob_ethereum_wallet.clone(),
                 db: bob_db,
+                swap_id,
                 secret_hash,
                 start_of_swap,
-                swap_id,
+                beta_expiry: herc20_params.expiry,
             };
 
             hbit_herc20_bob(
