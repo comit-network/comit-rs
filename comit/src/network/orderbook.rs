@@ -254,7 +254,7 @@ pub enum BehaviourOutEvent {
         /// The peer from whom request originated.
         peer_id: PeerId,
         /// The amount of the order the taker wishes to fill
-        amount: crate::asset::Bitcoin,
+        amount: asset::Bitcoin,
         /// Channel to send a confirm/deny response on.
         response_channel: ResponseChannel<Response>,
         /// The ID of the order peer wants to take.
