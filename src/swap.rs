@@ -9,11 +9,7 @@ mod comit;
 mod db;
 pub mod ethereum;
 
-use crate::{
-    network::Taker,
-    swap::{action::LedgerTime, bob::WalletBob},
-    SwapId,
-};
+use crate::{network::Taker, swap::bob::WalletBob, SwapId};
 use std::sync::Arc;
 
 pub use self::comit::{hbit, herc20};
@@ -122,6 +118,30 @@ pub struct SwapParams {
     pub start_of_swap: chrono::NaiveDateTime,
     pub swap_id: SwapId,
     pub taker: Taker,
+}
+
+/// Fetch the current `Timestamp` for the a ledger.
+#[async_trait::async_trait]
+pub trait LedgerTime {
+    async fn ledger_time(&self) -> anyhow::Result<comit::Timestamp>;
+}
+
+async fn poll_beta_has_expired<BC>(
+    beta_connector: &BC,
+    beta_expiry: comit::Timestamp,
+) -> anyhow::Result<()>
+where
+    BC: LedgerTime,
+{
+    loop {
+        let beta_ledger_time = beta_connector.ledger_time().await?;
+
+        if beta_expiry <= beta_ledger_time {
+            return Ok(());
+        }
+
+        tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
+    }
 }
 
 #[cfg(test)]

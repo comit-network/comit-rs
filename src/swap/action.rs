@@ -2,7 +2,6 @@ use crate::{
     swap::db::{Load, Save},
     SwapId,
 };
-use comit::Timestamp;
 use futures::{
     future::{self, Either},
     pin_mut, Future,
@@ -48,30 +47,6 @@ where
 
     db.save(event.clone(), swap_id).await?;
     Ok(event)
-}
-
-/// Fetch the current `Timestamp` for the a ledger.
-#[async_trait::async_trait]
-pub trait LedgerTime {
-    async fn ledger_time(&self) -> anyhow::Result<Timestamp>;
-}
-
-pub async fn poll_beta_has_expired<BC>(
-    beta_connector: &BC,
-    beta_expiry: Timestamp,
-) -> anyhow::Result<()>
-where
-    BC: LedgerTime,
-{
-    loop {
-        let beta_ledger_time = beta_connector.ledger_time().await?;
-
-        if beta_expiry <= beta_ledger_time {
-            return Ok(());
-        }
-
-        tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
-    }
 }
 
 #[derive(Debug, Copy, Clone, thiserror::Error)]

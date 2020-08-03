@@ -5,8 +5,8 @@
 
 use crate::{
     swap::{
-        action::{poll_beta_has_expired, try_do_it_once},
-        bitcoin, ethereum, Database, {hbit, herc20},
+        action::try_do_it_once,
+        bitcoin, ethereum, poll_beta_has_expired, Database, {hbit, herc20},
     },
     SwapId,
 };

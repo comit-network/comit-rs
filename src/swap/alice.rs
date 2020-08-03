@@ -3,8 +3,8 @@
 
 use crate::{
     swap::{
-        action::{poll_beta_has_expired, try_do_it_once},
-        bitcoin, ethereum, hbit, herc20, Database, LedgerTime,
+        action::try_do_it_once, bitcoin, ethereum, hbit, herc20, poll_beta_has_expired, Database,
+        LedgerTime,
     },
     SwapId,
 };
