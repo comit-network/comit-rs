@@ -203,6 +203,72 @@ impl crate::StaticStub for SwapParams {
     }
 }
 
+#[cfg(test)]
+mod arbitrary {
+    use super::*;
+    use crate::{
+        arbitrary::*,
+        swap::comit::{
+            asset::{ethereum::TryFromWei, Erc20, Erc20Quantity},
+            ethereum::ChainId,
+        },
+    };
+    use quickcheck::{Arbitrary, Gen};
+
+    impl Arbitrary for SwapKind {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            if bool::arbitrary(g) {
+                SwapKind::HbitHerc20(SwapParams::arbitrary(g))
+            } else {
+                SwapKind::Herc20Hbit(SwapParams::arbitrary(g))
+            }
+        }
+    }
+
+    impl Arbitrary for SwapParams {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            let herc20_params = herc20::Params {
+                asset: erc20(g),
+                redeem_identity: ethereum_address(g),
+                refund_identity: ethereum_address(g),
+                expiry: timestamp(g),
+                secret_hash: secret_hash(g),
+                chain_id: ChainId::from(u32::arbitrary(g)),
+            };
+
+            SwapParams {
+                hbit_params: hbit::Params::arbitrary(g),
+                herc20_params,
+                secret_hash: secret_hash(g),
+                start_of_swap: chrono::NaiveDateTime::from_timestamp(u32::arbitrary(g) as i64, 0),
+                swap_id: SwapId::arbitrary(g),
+                taker: Taker::arbitrary(g),
+            }
+        }
+    }
+
+    fn ethereum_address<G: Gen>(g: &mut G) -> ethereum::Address {
+        let mut bytes = [0u8; 20];
+        for byte in &mut bytes {
+            *byte = u8::arbitrary(g);
+        }
+        ethereum::Address::from(bytes)
+    }
+
+    fn erc20<G: Gen>(g: &mut G) -> Erc20 {
+        let mut bytes = [0u8; 8];
+        for byte in bytes.iter_mut() {
+            *byte = u8::arbitrary(g);
+        }
+        let int = num::BigUint::from_bytes_be(&bytes);
+        let quantity = Erc20Quantity::try_from_wei(int).unwrap();
+        Erc20 {
+            token_contract: ethereum_address(g),
+            quantity,
+        }
+    }
+}
+
 #[cfg(all(test, feature = "test-docker"))]
 mod tests {
     use super::*;
@@ -429,7 +495,7 @@ mod tests {
                 taker: Taker::static_stub(),
             });
 
-            alice_db.insert_swap(swap).unwrap();
+            alice_db.insert_swap(swap).await.unwrap();
 
             let hbit_params = hbit::Params::new(hbit_params, hbit_transient_refund_sk);
             let alice = Alice {
@@ -467,7 +533,7 @@ mod tests {
                 taker: Taker::static_stub(),
             });
 
-            bob_db.insert_swap(swap).unwrap();
+            bob_db.insert_swap(swap).await.unwrap();
 
             let hbit_params = hbit::Params::new(hbit_params, hbit_transient_redeem_sk);
             let bob = Bob {

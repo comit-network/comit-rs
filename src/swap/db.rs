@@ -41,7 +41,7 @@ impl Database {
 
         if !db.contains_key("takers")? {
             let takers = Vec::<Taker>::new();
-            let takers = serde_json::to_vec(&takers)?;
+            let takers = serialize(&takers)?;
             let _ = db.insert("takers", takers)?;
         }
 
@@ -57,7 +57,7 @@ impl Database {
         ))?;
 
         let takers = Vec::<Taker>::new();
-        let takers = serde_json::to_vec(&takers)?;
+        let takers = serialize(&takers)?;
         let _ = db.insert("takers", takers)?;
 
         Ok(Database { db, tmp_dir })
@@ -66,7 +66,7 @@ impl Database {
 /// Swap related functions
 impl Database {
     // TODO: Add versioning to the data
-    pub fn insert_swap(&self, swap: SwapKind) -> anyhow::Result<()> {
+    pub async fn insert_swap(&self, swap: SwapKind) -> anyhow::Result<()> {
         let swap_id = swap.swap_id();
 
         let stored_swap = self.get_swap(&swap_id);
@@ -75,16 +75,21 @@ impl Database {
             Ok(_) => Err(anyhow!("Swap is already stored")),
             Err(_) => {
                 // TODO: Consider using https://github.com/3Hren/msgpack-rust instead
-                let key = serde_json::to_vec(&swap_id)?;
+                let key = serialize(&swap_id)?;
 
                 let swap: Swap = swap.into();
-                let new_value =
-                    serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
+                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
 
                 self.db
                     .compare_and_swap(key, Option::<Vec<u8>>::None, Some(new_value))
                     .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")
+                    .context("Stored swap somehow changed, aborting saving")?;
+
+                self.db
+                    .flush_async()
+                    .await
+                    .map(|_| ())
+                    .context("Could not flush db")
             }
         }
     }
@@ -94,9 +99,8 @@ impl Database {
             .iter()
             .filter_map(|item| match item {
                 Ok((key, value)) => {
-                    let swap_id = serde_json::from_slice::<SwapId>(&key);
-                    let swap = serde_json::from_slice::<Swap>(&value)
-                        .context("Could not deserialize swap");
+                    let swap_id = deserialize::<SwapId>(&key);
+                    let swap = deserialize::<Swap>(&value).context("Could not deserialize swap");
 
                     match (swap_id, swap) {
                         (Ok(swap_id), Ok(swap)) => Some(Ok(SwapKind::from((swap, swap_id)))),
@@ -109,35 +113,52 @@ impl Database {
             .collect()
     }
 
-    pub fn remove_swap(&self, swap_id: &SwapId) -> anyhow::Result<()> {
-        let key = serde_json::to_vec(swap_id)?;
+    pub async fn remove_swap(&self, swap_id: &SwapId) -> anyhow::Result<()> {
+        let key = serialize(swap_id)?;
 
         self.db
             .remove(key)
             .context(format!("Could not delete swap {}", swap_id))
+            .map(|_| ())?;
+
+        self.db
+            .flush_async()
+            .await
             .map(|_| ())
+            .context("Could not flush db")
     }
 
     fn get_swap(&self, swap_id: &SwapId) -> anyhow::Result<Swap> {
-        let key = serde_json::to_vec(swap_id)?;
+        let key = serialize(swap_id)?;
 
         let swap = self
             .db
             .get(&key)?
             .ok_or_else(|| anyhow!("Swap does not exists {}", swap_id))?;
 
-        serde_json::from_slice(&swap).context("Could not deserialize swap")
+        deserialize(&swap).context("Could not deserialize swap")
     }
 }
 
 /// Active takers related functions
 impl Database {
-    pub fn insert_active_taker(&self, taker: Taker) -> anyhow::Result<()> {
-        self.modify_takers_with(|takers: &mut HashSet<Taker>| takers.insert(taker.clone()))
+    pub async fn insert_active_taker(&self, taker: Taker) -> anyhow::Result<()> {
+        self.modify_takers_with(|takers: &mut HashSet<Taker>| takers.insert(taker.clone()))?;
+
+        self.db
+            .flush_async()
+            .await
+            .map(|_| ())
+            .context("Could not flush db")
     }
 
-    pub fn remove_active_taker(&self, taker: &Taker) -> anyhow::Result<()> {
-        self.modify_takers_with(|takers: &mut HashSet<Taker>| takers.remove(taker))
+    pub async fn remove_active_taker(&self, taker: &Taker) -> anyhow::Result<()> {
+        self.modify_takers_with(|takers: &mut HashSet<Taker>| takers.remove(taker))?;
+        self.db
+            .flush_async()
+            .await
+            .map(|_| ())
+            .context("Could not flush db")
     }
 
     pub fn contains_active_taker(&self, taker: &Taker) -> anyhow::Result<bool> {
@@ -155,7 +176,7 @@ impl Database {
         operation_fn(&mut takers);
 
         let updated_takers = Vec::<Taker>::from_iter(takers);
-        let updated_takers = serde_json::to_vec(&updated_takers)?;
+        let updated_takers = serialize(&updated_takers)?;
 
         self.db.insert("takers", updated_takers)?;
 
@@ -167,11 +188,25 @@ impl Database {
             .db
             .get("takers")?
             .ok_or_else(|| anyhow::anyhow!("no key \"takers\" in db"))?;
-        let takers: Vec<Taker> = serde_json::from_slice(&takers)?;
+        let takers: Vec<Taker> = deserialize(&takers)?;
         let takers = HashSet::<Taker>::from_iter(takers);
 
         Ok(takers)
     }
+}
+
+pub fn serialize<T>(t: &T) -> anyhow::Result<Vec<u8>>
+where
+    T: Serialize,
+{
+    Ok(serde_cbor::to_vec(t)?)
+}
+
+pub fn deserialize<'a, T>(v: &'a [u8]) -> anyhow::Result<T>
+where
+    T: Deserialize<'a>,
+{
+    Ok(serde_cbor::from_slice(v)?)
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -283,56 +318,78 @@ impl From<SwapKind> for Swap {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use quickcheck::{Arbitrary, StdThreadGen};
 
-    #[test]
-    fn save_and_retrieve_swaps() {
+    #[quickcheck_async::tokio]
+    async fn save_and_retrieve_swaps(swap_1: SwapKind, swap_2: SwapKind) -> bool {
         let db = Database::new_test().unwrap();
 
-        let swap_1 = SwapKind::HbitHerc20(swap::SwapParams::static_stub());
-        let swap_2 = SwapKind::Herc20Hbit(swap::SwapParams::static_stub());
-
-        db.insert_swap(swap_1.clone()).unwrap();
-        db.insert_swap(swap_2.clone()).unwrap();
+        db.insert_swap(swap_1.clone()).await.unwrap();
+        db.insert_swap(swap_2.clone()).await.unwrap();
 
         let stored_swaps = db.all_swaps().unwrap();
 
         assert_eq!(stored_swaps.len(), 2);
         assert!(stored_swaps.contains(&swap_1));
         assert!(stored_swaps.contains(&swap_2));
+
+        true
     }
 
-    #[test]
-    fn save_and_delete_correct_swap() {
+    #[quickcheck_async::tokio]
+    async fn save_and_delete_correct_swap(swap_1: swap::SwapParams, swap_2: SwapKind) -> bool {
         let db = Database::new_test().unwrap();
-        let swap_1 = swap::SwapParams::static_stub();
         let swap_id_1 = swap_1.swap_id;
 
         let swap_1 = SwapKind::HbitHerc20(swap_1);
-        let swap_2 = SwapKind::Herc20Hbit(swap::SwapParams::static_stub());
 
-        db.insert_swap(swap_1).unwrap();
-        db.insert_swap(swap_2.clone()).unwrap();
+        db.insert_swap(swap_1).await.unwrap();
+        db.insert_swap(swap_2.clone()).await.unwrap();
 
-        db.remove_swap(&swap_id_1).unwrap();
+        db.remove_swap(&swap_id_1).await.unwrap();
 
         let stored_swaps = db.all_swaps().unwrap();
 
         assert_eq!(stored_swaps, vec![swap_2]);
+
+        true
     }
 
-    #[test]
-    fn taker_no_longer_has_ongoing_trade_after_removal() {
+    #[quickcheck_async::tokio]
+    async fn taker_no_longer_has_ongoing_trade_after_removal(taker: Taker) -> bool {
         let db = Database::new_test().unwrap();
-        let taker = Taker::static_stub();
 
-        let _ = db.insert_active_taker(taker.clone()).unwrap();
+        let _ = db.insert_active_taker(taker.clone()).await.unwrap();
 
         let res = db.contains_active_taker(&taker);
         assert!(matches!(res, Ok(true)));
 
-        let _ = db.remove_active_taker(&taker).unwrap();
+        let _ = db.remove_active_taker(&taker).await.unwrap();
         let res = db.contains_active_taker(&taker);
 
-        assert!(matches!(res, Ok(false)));
+        matches!(res, Ok(false))
+    }
+
+    #[tokio::test]
+    async fn save_and_retrieve_hundred_swaps() {
+        let db = Database::new_test().unwrap();
+
+        let mut gen = StdThreadGen::new(100);
+        let mut swaps = Vec::with_capacity(100);
+
+        for _ in 0..100 {
+            let swap = SwapKind::arbitrary(&mut gen);
+            swaps.push(swap);
+        }
+
+        for swap in swaps.iter() {
+            db.insert_swap(swap.clone()).await.unwrap();
+        }
+
+        let stored_swaps = db.all_swaps().unwrap();
+
+        for swap in swaps.iter() {
+            assert!(stored_swaps.contains(&swap))
+        }
     }
 }
