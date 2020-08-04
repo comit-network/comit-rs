@@ -120,7 +120,10 @@ pub struct SwapParams {
     pub taker: Taker,
 }
 
-/// Fetch the current `Timestamp` for the a ledger.
+/// Fetch the current network time for a ledger.
+///
+/// It returns a `anyhow::Result<comit::Timestamp>` so that it can be
+/// used to determine whether a COMIT HTLC has expired.
 #[async_trait::async_trait]
 pub trait LedgerTime {
     async fn ledger_time(&self) -> anyhow::Result<comit::Timestamp>;
