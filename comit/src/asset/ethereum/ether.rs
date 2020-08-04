@@ -2,7 +2,7 @@ use crate::{
     asset::ethereum::{Error, FromWei, TryFromWei},
     ethereum::U256,
 };
-use lazy_static::lazy_static;
+use conquer_once::Lazy;
 use num::{pow::Pow, BigUint, Integer, Num, Zero};
 use serde::{
     de::{self, Deserialize, Deserializer},
@@ -10,10 +10,8 @@ use serde::{
 };
 use std::{fmt, str::FromStr};
 
-lazy_static! {
-    static ref WEI_IN_ETHER_U128: u128 = (10u128).pow(18);
-    static ref WEI_IN_ETHER_BIGUINT: BigUint = BigUint::from(*WEI_IN_ETHER_U128);
-}
+static WEI_IN_ETHER_U128: Lazy<u128> = Lazy::new(|| (10u128).pow(18));
+static WEI_IN_ETHER_BIGUINT: Lazy<BigUint> = Lazy::new(|| BigUint::from(*WEI_IN_ETHER_U128));
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Ether(BigUint);

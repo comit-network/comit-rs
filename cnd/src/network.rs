@@ -8,7 +8,7 @@ pub use transport::ComitTransport;
 use crate::{
     config::Settings,
     hbit, herc20, identity,
-    network::{peer_tracker::PeerTracker, Comit, LocalData, MakerId},
+    network::{peer_tracker::PeerTracker, Comit, LocalData},
     spawn,
     storage::{CreatedSwap, ForSwap, Load, Save, SwapContext},
     LocalSwapId, Never, Protocol, ProtocolSpawner, Role, RootSeed, SecretHash, SharedSwapId, Side,
@@ -206,11 +206,9 @@ pub struct ComitNode {
     peer_tracker: PeerTracker,
 
     #[behaviour(ignore)]
-    pub seed: RootSeed,
+    seed: RootSeed,
     #[behaviour(ignore)]
     task_executor: Handle,
-    #[behaviour(ignore)]
-    pub peer_id: PeerId,
     /// We receive the LocalData for the execution parameter exchange at the
     /// same time as we announce the swap. We save `LocalData` here until the
     /// swap is confirmed.
@@ -222,9 +220,9 @@ pub struct ComitNode {
     #[behaviour(ignore)]
     local_swap_ids: HashMap<SharedSwapId, LocalSwapId>,
     #[behaviour(ignore)]
-    pub storage: Storage,
+    storage: Storage,
     #[behaviour(ignore)]
-    pub protocol_spawner: ProtocolSpawner,
+    protocol_spawner: ProtocolSpawner,
     #[behaviour(ignore)]
     bitcoin_addresses: HashMap<identity::Bitcoin, crate::bitcoin::Address>,
     #[behaviour(ignore)]
@@ -241,12 +239,11 @@ impl ComitNode {
     ) -> Result<Self, io::Error> {
         Ok(Self {
             announce: Announce::default(),
-            orderbook: Orderbook::new(peer_id.clone()),
+            orderbook: Orderbook::new(peer_id),
             comit: Comit::default(),
             peer_tracker: PeerTracker::default(),
             seed,
             task_executor,
-            peer_id,
             local_data: HashMap::default(),
             local_swap_ids: HashMap::default(),
             storage,
@@ -312,10 +309,8 @@ impl ComitNode {
         bitcoin_identity: crate::bitcoin::Address,
         ethereum_identity: identity::Ethereum,
     ) -> anyhow::Result<()> {
-        let order = self
-            .orderbook
-            .get_order(&order_id)
-            .expect("orderbook only bubbles up existing orders");
+        let order = self.orderbook.take(order_id)?;
+
         let transient = match order.position {
             Position::Buy => {
                 self.storage
@@ -338,9 +333,7 @@ impl ComitNode {
             lightning_identity: None,
         };
         self.local_data.insert(swap_id, data);
-
         self.order_swap_ids.insert(order_id, swap_id);
-        self.orderbook.take(order_id)?;
 
         Ok(())
     }
@@ -374,30 +367,22 @@ impl ComitNode {
         };
         self.local_data.insert(swap_id, data);
 
-        let order = Order {
-            id: OrderId::random(),
-            maker: MakerId::from(self.peer_id.clone()),
-            position: new_order.position,
-            bitcoin_amount: new_order.bitcoin_amount,
-            bitcoin_ledger: new_order.bitcoin_ledger,
-            bitcoin_absolute_expiry: new_order.bitcoin_absolute_expiry,
-            ethereum_amount: new_order.ethereum_amount,
-            token_contract: new_order.token_contract,
-            ethereum_ledger: new_order.ethereum_ledger,
-            ethereum_absolute_expiry: new_order.ethereum_absolute_expiry,
-        };
-        let order_id = self.orderbook.make(order)?;
+        let order_id = self.orderbook.make(new_order);
         self.order_swap_ids.insert(order_id, swap_id);
 
         Ok(order_id)
     }
 
     pub fn get_order(&self, order_id: OrderId) -> Option<Order> {
-        self.orderbook.get_order(&order_id)
+        self.orderbook
+            .orders()
+            .all()
+            .find(|order| order.id == order_id)
+            .cloned()
     }
 
     pub fn get_orders(&self) -> Vec<Order> {
-        self.orderbook.get_orders()
+        self.orderbook.orders().all().cloned().collect()
     }
 
     pub(crate) fn add_address_hint(&mut self, id: PeerId, addr: Multiaddr) -> Option<Multiaddr> {
@@ -453,31 +438,6 @@ impl ListenAddresses for Swarm {
             .chain(libp2p::Swarm::external_addresses(&swarm))
             .cloned()
             .collect()
-    }
-}
-
-/// Used by the controller to pass in data for a new order.
-#[derive(Debug)]
-pub struct NewOrder {
-    pub position: Position,
-    pub bitcoin_amount: asset::Bitcoin,
-    pub bitcoin_ledger: ledger::Bitcoin,
-    pub bitcoin_absolute_expiry: u32,
-    pub ethereum_amount: asset::Erc20Quantity,
-    pub token_contract: identity::Ethereum,
-    pub ethereum_ledger: ledger::Ethereum,
-    pub ethereum_absolute_expiry: u32,
-}
-
-impl NewOrder {
-    pub fn assert_valid_ledger_pair(&self) -> anyhow::Result<()> {
-        let a = self.bitcoin_ledger;
-        let b = self.ethereum_ledger;
-
-        if ledger::is_valid_ledger_pair(a, b) {
-            return Ok(());
-        }
-        Err(anyhow::anyhow!("invalid ledger pair {}/{}", a, b))
     }
 }
 
@@ -569,10 +529,13 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                 response_channel,
                 order_id,
             } => {
-                let order = self
-                    .orderbook
-                    .get_order(&order_id)
-                    .expect("orderbook only bubbles up existing orders");
+                let order = match self.orderbook.orders_mut().remove_ours(order_id) {
+                    Some(order) => order,
+                    None => {
+                        return;
+                    }
+                };
+
                 let &local_swap_id = match self.order_swap_ids.get(&order_id) {
                     Some(id) => id,
                     None => {
