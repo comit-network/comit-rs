@@ -199,14 +199,14 @@ pub fn serialize<T>(t: &T) -> anyhow::Result<Vec<u8>>
 where
     T: Serialize,
 {
-    Ok(serde_json::to_vec(t)?)
+    Ok(serde_cbor::to_vec(t)?)
 }
 
 pub fn deserialize<'a, T>(v: &'a [u8]) -> anyhow::Result<T>
 where
     T: Deserialize<'a>,
 {
-    Ok(serde_json::from_slice(v)?)
+    Ok(serde_cbor::from_slice(v)?)
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
