@@ -13,7 +13,7 @@ use comit::{Secret, Timestamp};
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
-pub struct WalletAlice<AW, BW> {
+pub struct Alice<AW, BW> {
     pub alpha_wallet: AW,
     pub beta_wallet: BW,
     pub db: Arc<Database>,
@@ -24,7 +24,7 @@ pub struct WalletAlice<AW, BW> {
 }
 
 #[async_trait::async_trait]
-impl<BW> hbit::ExecuteFund for WalletAlice<bitcoin::Wallet, BW>
+impl<BW> hbit::ExecuteFund for Alice<bitcoin::Wallet, BW>
 where
     BW: LedgerTime + Send + Sync,
 {
@@ -43,7 +43,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AW> herc20::ExecuteRedeem for WalletAlice<AW, ethereum::Wallet>
+impl<AW> herc20::ExecuteRedeem for Alice<AW, ethereum::Wallet>
 where
     AW: Send + Sync,
 {
@@ -70,7 +70,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<BW> hbit::ExecuteRefund for WalletAlice<bitcoin::Wallet, BW>
+impl<BW> hbit::ExecuteRefund for Alice<bitcoin::Wallet, BW>
 where
     BW: Send + Sync,
 {

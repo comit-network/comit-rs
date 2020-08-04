@@ -15,7 +15,7 @@ use comit::{Secret, SecretHash, Timestamp};
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
-pub struct WalletBob<AW, BW> {
+pub struct Bob<AW, BW> {
     pub alpha_wallet: AW,
     pub beta_wallet: BW,
     pub db: Arc<Database>,
@@ -26,7 +26,7 @@ pub struct WalletBob<AW, BW> {
 }
 
 #[async_trait::async_trait]
-impl<AW> herc20::ExecuteDeploy for WalletBob<AW, ethereum::Wallet>
+impl<AW> herc20::ExecuteDeploy for Bob<AW, ethereum::Wallet>
 where
     AW: Send + Sync,
 {
@@ -45,7 +45,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AW> herc20::ExecuteFund for WalletBob<AW, ethereum::Wallet>
+impl<AW> herc20::ExecuteFund for Bob<AW, ethereum::Wallet>
 where
     AW: Send + Sync,
 {
@@ -71,7 +71,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<BW> herc20::ExecuteRedeem for WalletBob<ethereum::Wallet, BW>
+impl<BW> herc20::ExecuteRedeem for Bob<ethereum::Wallet, BW>
 where
     BW: Send + Sync,
 {
@@ -97,7 +97,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AW> herc20::ExecuteRefund for WalletBob<AW, ethereum::Wallet>
+impl<AW> herc20::ExecuteRefund for Bob<AW, ethereum::Wallet>
 where
     AW: Send + Sync,
 {
@@ -122,7 +122,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AW> hbit::ExecuteFund for WalletBob<AW, bitcoin::Wallet>
+impl<AW> hbit::ExecuteFund for Bob<AW, bitcoin::Wallet>
 where
     AW: Send + Sync,
 {
@@ -141,7 +141,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<BW> hbit::ExecuteRedeem for WalletBob<bitcoin::Wallet, BW>
+impl<BW> hbit::ExecuteRedeem for Bob<bitcoin::Wallet, BW>
 where
     BW: Send + Sync,
 {
@@ -164,7 +164,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<AW> hbit::ExecuteRefund for WalletBob<AW, bitcoin::Wallet>
+impl<AW> hbit::ExecuteRefund for Bob<AW, bitcoin::Wallet>
 where
     AW: Send + Sync,
 {

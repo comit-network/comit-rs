@@ -9,7 +9,7 @@ mod comit;
 mod db;
 pub mod ethereum;
 
-use crate::{network::Taker, swap::bob::WalletBob, SwapId};
+use crate::{network::Taker, swap::bob::Bob, SwapId};
 use std::sync::Arc;
 
 pub use self::comit::{hbit, herc20};
@@ -55,7 +55,7 @@ impl SwapKind {
                 swap_id,
                 ..
             }) => {
-                let bob = WalletBob {
+                let bob = Bob {
                     alpha_wallet: bitcoin_wallet,
                     beta_wallet: ethereum_wallet,
                     db,
@@ -83,7 +83,7 @@ impl SwapKind {
                 swap_id,
                 ..
             }) => {
-                let bob = WalletBob {
+                let bob = Bob {
                     alpha_wallet: ethereum_wallet,
                     beta_wallet: bitcoin_wallet,
                     db,
@@ -205,7 +205,7 @@ mod tests {
     use super::*;
     use crate::{
         swap::{
-            alice::WalletAlice,
+            alice::Alice,
             bitcoin,
             comit::{
                 asset::{
@@ -429,7 +429,7 @@ mod tests {
             alice_db.insert(swap).unwrap();
 
             let hbit_params = hbit::Params::new(hbit_params, hbit_transient_refund_sk);
-            let alice = WalletAlice {
+            let alice = Alice {
                 alpha_wallet: alice_bitcoin_wallet.clone(),
                 beta_wallet: alice_ethereum_wallet.clone(),
                 db: Arc::clone(&alice_db),
@@ -467,7 +467,7 @@ mod tests {
             bob_db.insert(swap).unwrap();
 
             let hbit_params = hbit::Params::new(hbit_params, hbit_transient_redeem_sk);
-            let bob = WalletBob {
+            let bob = Bob {
                 alpha_wallet: bob_bitcoin_wallet.clone(),
                 beta_wallet: bob_ethereum_wallet.clone(),
                 db: bob_db,
