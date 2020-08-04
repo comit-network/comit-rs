@@ -15,7 +15,6 @@ use std::sync::Arc;
 pub use self::comit::{hbit, herc20};
 pub use db::Database;
 
-// TODO: This is awkward to manipulate
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SwapKind {
     HbitHerc20(SwapParams),
@@ -27,6 +26,10 @@ impl SwapKind {
         match self {
             SwapKind::HbitHerc20(params) | SwapKind::Herc20Hbit(params) => params.clone(),
         }
+    }
+
+    pub fn swap_id(&self) -> SwapId {
+        self.params().swap_id
     }
 
     pub async fn execute(
@@ -148,8 +151,8 @@ where
 }
 
 #[cfg(test)]
-impl Default for SwapParams {
-    fn default() -> Self {
+impl crate::StaticStub for SwapParams {
+    fn static_stub() -> Self {
         use crate::swap::hbit::SecretHash;
         use ::bitcoin::secp256k1;
         use std::str::FromStr;
@@ -195,7 +198,7 @@ impl Default for SwapParams {
             secret_hash: SecretHash::new(comit::Secret::from(*b"hello world, you are beautiful!!")),
             start_of_swap: chrono::Local::now().naive_local(),
             swap_id: Default::default(),
-            taker: Taker::default(),
+            taker: Taker::static_stub(),
         }
     }
 }
@@ -217,7 +220,7 @@ mod tests {
                 identity, Secret, SecretHash, Timestamp,
             },
         },
-        test_harness, Seed, SwapId,
+        test_harness, Seed, StaticStub, SwapId,
     };
     use ::bitcoin::secp256k1;
     use chrono::Utc;
@@ -423,10 +426,10 @@ mod tests {
                 secret_hash,
                 start_of_swap,
                 swap_id,
-                taker: Taker::default(),
+                taker: Taker::static_stub(),
             });
 
-            alice_db.insert(swap).unwrap();
+            alice_db.insert_swap(swap).unwrap();
 
             let hbit_params = hbit::Params::new(hbit_params, hbit_transient_refund_sk);
             let alice = Alice {
@@ -461,10 +464,10 @@ mod tests {
                 secret_hash,
                 start_of_swap,
                 swap_id,
-                taker: Taker::default(),
+                taker: Taker::static_stub(),
             });
 
-            bob_db.insert(swap).unwrap();
+            bob_db.insert_swap(swap).unwrap();
 
             let hbit_params = hbit::Params::new(hbit_params, hbit_transient_redeem_sk);
             let bob = Bob {

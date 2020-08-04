@@ -53,7 +53,7 @@ impl From<hbit::Funded> for HbitFunded {
 #[async_trait::async_trait]
 impl Save<hbit::Funded> for Database {
     async fn save(&self, event: hbit::Funded, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get(&swap_id)?;
+        let stored_swap = self.get_swap(&swap_id)?;
 
         match stored_swap.hbit_funded {
             Some(_) => Err(anyhow!("Hbit Funded event is already stored")),
@@ -85,7 +85,7 @@ impl Save<hbit::Funded> for Database {
 
 impl Load<hbit::Funded> for Database {
     fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<hbit::Funded>> {
-        let swap = self.get(&swap_id)?;
+        let swap = self.get_swap(&swap_id)?;
 
         Ok(swap.hbit_funded.map(Into::into))
     }
@@ -118,7 +118,7 @@ impl From<hbit::Redeemed> for HbitRedeemed {
 #[async_trait::async_trait]
 impl Save<hbit::Redeemed> for Database {
     async fn save(&self, event: hbit::Redeemed, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get(&swap_id)?;
+        let stored_swap = self.get_swap(&swap_id)?;
 
         match stored_swap.hbit_redeemed {
             Some(_) => Err(anyhow!("Hbit Redeemed event is already stored")),
@@ -150,7 +150,7 @@ impl Save<hbit::Redeemed> for Database {
 
 impl Load<hbit::Redeemed> for Database {
     fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<hbit::Redeemed>> {
-        let swap = self.get(&swap_id)?;
+        let swap = self.get_swap(&swap_id)?;
 
         Ok(swap.hbit_redeemed.map(Into::into))
     }
@@ -180,7 +180,7 @@ impl From<hbit::Refunded> for HbitRefunded {
 #[async_trait::async_trait]
 impl Save<hbit::Refunded> for Database {
     async fn save(&self, event: hbit::Refunded, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get(&swap_id)?;
+        let stored_swap = self.get_swap(&swap_id)?;
         match stored_swap.hbit_refunded {
             Some(_) => Err(anyhow!("Hbit Refunded event is already stored")),
             None => {
@@ -211,7 +211,7 @@ impl Save<hbit::Refunded> for Database {
 
 impl Load<hbit::Refunded> for Database {
     fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<hbit::Refunded>> {
-        let swap = self.get(&swap_id)?;
+        let swap = self.get_swap(&swap_id)?;
 
         Ok(swap.hbit_refunded.map(Into::into))
     }
@@ -269,8 +269,8 @@ impl From<hbit::Params> for Params {
 }
 
 #[cfg(test)]
-impl Default for Params {
-    fn default() -> Self {
+impl crate::StaticStub for Params {
+    fn static_stub() -> Self {
         use std::str::FromStr;
 
         Params {
@@ -299,7 +299,13 @@ impl Default for Params {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::swap::db::{Database, Swap};
+    use crate::{
+        swap::{
+            db::{Database, Swap},
+            SwapKind,
+        },
+        StaticStub,
+    };
 
     fn bitcoin_transaction() -> ::bitcoin::Transaction {
         ::bitcoin::Transaction {
@@ -323,10 +329,12 @@ mod tests {
         let db = Database::new_test().unwrap();
         let asset = comit::asset::Bitcoin::from_sat(123456);
         let location = comit::htlc_location::Bitcoin::default();
-        let swap = Swap::default();
+        let swap = Swap::static_stub();
         let swap_id = SwapId::default();
 
-        db._insert(&swap_id, &swap).unwrap();
+        let swap_kind = SwapKind::from((swap, swap_id));
+
+        db.insert_swap(swap_kind).unwrap();
 
         let funded = hbit::Funded { asset, location };
         db.save(funded, swap_id).await.unwrap();
@@ -345,10 +353,12 @@ mod tests {
         let db = Database::new_test().unwrap();
         let transaction = bitcoin_transaction();
         let secret = Secret::from_vec(b"are those thirty-two bytes? Hum.").unwrap();
-        let swap = Swap::default();
+        let swap = Swap::static_stub();
         let swap_id = SwapId::default();
 
-        db._insert(&swap_id, &swap).unwrap();
+        let swap_kind = SwapKind::from((swap, swap_id));
+
+        db.insert_swap(swap_kind).unwrap();
 
         let event = hbit::Redeemed {
             transaction: transaction.clone(),
@@ -369,10 +379,12 @@ mod tests {
     async fn save_and_load_hbit_refunded() {
         let db = Database::new_test().unwrap();
         let transaction = bitcoin_transaction();
-        let swap = Swap::default();
+        let swap = Swap::static_stub();
         let swap_id = SwapId::default();
 
-        db._insert(&swap_id, &swap).unwrap();
+        let swap_kind = SwapKind::from((swap, swap_id));
+
+        db.insert_swap(swap_kind).unwrap();
 
         let event = hbit::Refunded {
             transaction: transaction.clone(),

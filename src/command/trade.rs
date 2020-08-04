@@ -1,32 +1,24 @@
-#![allow(unreachable_code, unused_variables)]
-
 use crate::{
     bitcoin,
+    command::{into_history_trade, FinishedSwap},
     config::Settings,
     ethereum::{self, dai},
-    history::{self, History},
+    history::History,
     maker::{PublishOrders, TakeRequestDecision},
     mid_market_rate::get_btc_dai_mid_market_rate,
-    network::{self, Swarm, Taker},
+    network::{self, Swarm},
     swap::{Database, SwapKind, SwapParams},
     Maker, MidMarketRate, Seed, Spread,
 };
 use anyhow::Context;
-use chrono::{DateTime, Local};
+use chrono::Local;
 use comit::btsieve::bitcoin::BitcoindConnector;
 use comit::btsieve::ethereum::Web3Connector;
-use futures::{
-    channel::mpsc::{Receiver, Sender},
-    Future, FutureExt, SinkExt, StreamExt,
-};
+use futures::channel::mpsc::Sender;
+use futures::{channel::mpsc::Receiver, Future, FutureExt, SinkExt, StreamExt};
 use futures_timer::Delay;
-use libp2p::PeerId;
-use num::BigUint;
-use std::{
-    str::FromStr,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+
+use std::{sync::Arc, time::Duration};
 
 const ENSURED_CONSUME_ZERO_BUFFER: usize = 0;
 
@@ -48,7 +40,12 @@ pub async fn trade(
     .await
     .context("Could not initialise Maker")?;
 
-    let mut swarm = Swarm::new(&seed, &settings, runtime_handle)?;
+    #[cfg(not(test))]
+    let db = Arc::new(Database::new(&settings.data.dir.join("database"))?);
+    #[cfg(test)]
+    let db = Arc::new(Database::new_test()?);
+
+    let mut swarm = Swarm::new(&seed, &settings, runtime_handle, Arc::clone(&db))?;
 
     let initial_sell_order = maker
         .new_sell_order()
@@ -79,14 +76,7 @@ pub async fn trade(
     let (swap_execution_finished_sender, mut swap_execution_finished_receiver) =
         futures::channel::mpsc::channel::<FinishedSwap>(ENSURED_CONSUME_ZERO_BUFFER);
 
-    #[cfg(not(test))]
-    let db = Arc::new(Database::new(&settings.data.dir.join("database"))?);
-    #[cfg(test)]
-    let db = Arc::new(Database::new_test()?);
-
-    let history = Arc::new(Mutex::new(History::new(
-        settings.data.dir.join("history.csv").as_path(),
-    )?));
+    let mut history = History::new(settings.data.dir.join("history.csv").as_path())?;
 
     let bitcoin_connector = Arc::new(BitcoindConnector::new(
         settings.bitcoin.bitcoind.node_url,
@@ -109,7 +99,7 @@ pub async fn trade(
         futures::select! {
             finished_swap = swap_execution_finished_receiver.next().fuse() => {
                 if let Some(finished_swap) = finished_swap {
-                    handle_finished_swap(finished_swap, &mut maker, &db, Arc::clone(&history), &mut swarm);
+                    handle_finished_swap(finished_swap, &mut maker, &db, &mut history, &mut swarm);
                 }
             },
             network_event = swarm.as_inner().next().fuse() => {
@@ -136,8 +126,6 @@ pub async fn trade(
             }
         }
     }
-
-    Ok(())
 }
 
 async fn init_maker(
@@ -273,7 +261,7 @@ async fn execute_swap(
     mut finished_swap_sender: Sender<FinishedSwap>,
     swap: SwapKind,
 ) -> anyhow::Result<()> {
-    db.insert(swap.clone())?;
+    db.insert_swap(swap.clone())?;
 
     swap.execute(
         Arc::clone(&db),
@@ -291,7 +279,7 @@ async fn execute_swap(
             Local::now(),
         ))
         .await
-        .map_err(|e| {
+        .map_err(|_| {
             tracing::trace!("Error when sending execution finished from sender to receiver.")
         });
 
@@ -307,22 +295,16 @@ fn respawn_swaps(
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
     finished_swap_sender: Sender<FinishedSwap>,
 ) -> anyhow::Result<()> {
-    for swap in db.load_all()?.into_iter() {
+    for swap in db.all_swaps()?.into_iter() {
         // Reserve funds
         match swap {
             SwapKind::HbitHerc20(SwapParams {
-                swap_id,
-                ref herc20_params,
-                ..
+                ref herc20_params, ..
             }) => {
                 let fund_amount = herc20_params.asset.clone().into();
                 maker.dai_reserved_funds = maker.dai_reserved_funds.clone() + fund_amount;
             }
-            SwapKind::Herc20Hbit(SwapParams {
-                swap_id,
-                hbit_params,
-                ..
-            }) => {
+            SwapKind::Herc20Hbit(SwapParams { hbit_params, .. }) => {
                 let fund_amount = hbit_params.shared.asset.into();
                 maker.btc_reserved_funds = maker.btc_reserved_funds + fund_amount + maker.btc_fee;
             }
@@ -355,7 +337,7 @@ fn handle_network_event(
     finished_swap_sender: Sender<FinishedSwap>,
 ) {
     match network_event {
-        network::Event::TakeOrderRequest(order) => {
+        network::Event::TakeRequest(order) => {
             let order_ref = &order;
             let result = maker.process_taken_order(order_ref.into());
 
@@ -492,19 +474,17 @@ fn handle_finished_swap(
     finished_swap: FinishedSwap,
     maker: &mut Maker,
     db: &Database,
-    history: Arc<Mutex<History>>,
-    swarm: &mut Swarm,
+    history: &mut History,
+    _swarm: &mut Swarm,
 ) {
     {
-        let trade = into_trade(
+        let trade = into_history_trade(
             finished_swap.taker.peer_id(),
             finished_swap.swap.clone(),
+            #[cfg(not(test))]
             finished_swap.final_timestamp,
         );
 
-        let mut history = history
-            .lock()
-            .expect("No thread panicked while holding the lock");
         let _ = history.write(trade).map_err(|error| {
             tracing::error!(
                 "Unable to register history entry: {}; {:?}",
@@ -525,60 +505,13 @@ fn handle_finished_swap(
 
     maker.free_funds(dai, btc);
 
-    let _ = swarm
-        .remove_from_active_takers(&finished_swap.taker)
+    let _ = db
+        .remove_active_taker(&finished_swap.taker)
         .map_err(|error| tracing::error!("Unable to remove from active takers: {}", error));
 
     let _ = db
-        .remove(&swap_id)
+        .remove_swap(&swap_id)
         .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
-}
-
-fn into_trade(peer_id: PeerId, swap: SwapKind, final_timestamp: DateTime<Local>) -> history::Trade {
-    use history::*;
-
-    let (swap, position) = match swap {
-        SwapKind::HbitHerc20(swap) => (swap, history::Position::Sell),
-        SwapKind::Herc20Hbit(swap) => (swap, history::Position::Buy),
-    };
-
-    #[cfg(not(test))]
-    let final_timestamp = final_timestamp.into();
-
-    #[cfg(test)]
-    let final_timestamp = DateTime::from_str("2020-07-10T17:48:26.123+10:00")
-        .unwrap()
-        .into();
-
-    Trade {
-        start_timestamp: history::LocalDateTime::from_utc_naive(&swap.start_of_swap),
-        final_timestamp,
-        base_symbol: Symbol::Btc,
-        quote_symbol: Symbol::Dai,
-        position,
-        base_precise_amount: swap.hbit_params.shared.asset.as_sat().into(),
-        quote_precise_amount: BigUint::from_str(&swap.herc20_params.asset.quantity.to_wei_dec())
-            .expect("number to number conversion")
-            .into(),
-        peer: peer_id.into(),
-    }
-}
-
-#[derive(Debug, Clone)]
-struct FinishedSwap {
-    pub swap: SwapKind,
-    pub taker: Taker,
-    pub final_timestamp: DateTime<Local>,
-}
-
-impl FinishedSwap {
-    pub fn new(swap: SwapKind, taker: Taker, final_timestamp: DateTime<Local>) -> Self {
-        Self {
-            swap,
-            taker,
-            final_timestamp,
-        }
-    }
 }
 
 #[cfg(all(test, feature = "test-docker"))]

@@ -1,7 +1,7 @@
 use crate::{
     bitcoin,
     ethereum::{self, dai},
-    MidMarketRate, Rate, Spread,
+    Rate, Spread,
 };
 use std::fmt::{Display, Formatter};
 use std::{cmp::min, convert::TryFrom, fmt};
@@ -116,7 +116,7 @@ impl BtcDaiOrder {
         })
     }
 
-    pub fn is_as_good_as(&self, mid_market_rate: MidMarketRate) -> anyhow::Result<bool> {
+    pub fn is_as_profitable_as(&self, profitable_rate: Rate) -> anyhow::Result<bool> {
         let order_rate = Rate::try_from(self.clone())?;
         match self.position {
             Position::Buy => {
@@ -125,7 +125,7 @@ impl BtcDaiOrder {
                 // It is NOT profitable to buy, if the current rate is greater than the order rate.
                 // 1:8800 -> We give less DAI for getting BTC -> Good.
                 // 1:9200 -> We have to give more DAI for getting BTC -> Sucks.
-                Ok(order_rate <= mid_market_rate.into())
+                Ok(order_rate <= profitable_rate)
             }
             Position::Sell => {
                 // We are selling BTC for DAI
@@ -133,7 +133,7 @@ impl BtcDaiOrder {
                 // It is NOT profitable to sell, if the current rate is smaller than the order rate.
                 // 1:8800 -> We get less DAI for our BTC -> Sucks.
                 // 1:9200 -> We get more DAI for our BTC -> Good.
-                Ok(order_rate >= mid_market_rate.into())
+                Ok(order_rate >= profitable_rate)
             }
         }
     }
@@ -198,8 +198,8 @@ impl From<comit::network::Position> for Position {
 }
 
 #[cfg(test)]
-impl Default for BtcDaiOrder {
-    fn default() -> Self {
+impl crate::StaticStub for BtcDaiOrder {
+    fn static_stub() -> Self {
         Self {
             position: Position::Buy,
             base: bitcoin::Asset {
@@ -208,7 +208,7 @@ impl Default for BtcDaiOrder {
             },
             quote: dai::Asset {
                 amount: dai::Amount::from_atto(num::BigUint::from(1u8)),
-                chain: ethereum::Chain::default(),
+                chain: ethereum::Chain::static_stub(),
             },
         }
     }
@@ -217,7 +217,7 @@ impl Default for BtcDaiOrder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Rate;
+    use crate::{MidMarketRate, Rate, StaticStub};
     use num::BigUint;
     use proptest::prelude::*;
     use std::convert::TryFrom;
@@ -241,7 +241,7 @@ mod tests {
     fn dai_asset(dai: f64) -> dai::Asset {
         dai::Asset {
             amount: dai_amount(dai),
-            chain: ethereum::Chain::default(),
+            chain: ethereum::Chain::static_stub(),
         }
     }
 
@@ -527,7 +527,7 @@ mod tests {
 
         let rate = MidMarketRate::new(Rate::try_from(1.0).unwrap());
 
-        let is_profitable = order.is_as_good_as(rate).unwrap();
+        let is_profitable = order.is_as_profitable_as(rate.into()).unwrap();
         assert!(is_profitable)
     }
 
@@ -541,7 +541,7 @@ mod tests {
 
         let rate = MidMarketRate::new(Rate::try_from(0.9).unwrap());
 
-        let is_profitable = order.is_as_good_as(rate).unwrap();
+        let is_profitable = order.is_as_profitable_as(rate.into()).unwrap();
         assert!(is_profitable)
     }
 
@@ -555,7 +555,7 @@ mod tests {
 
         let rate = MidMarketRate::new(Rate::try_from(1.1).unwrap());
 
-        let is_profitable = order.is_as_good_as(rate).unwrap();
+        let is_profitable = order.is_as_profitable_as(rate.into()).unwrap();
         assert!(!is_profitable)
     }
 
@@ -569,7 +569,7 @@ mod tests {
 
         let rate = MidMarketRate::new(Rate::try_from(1.0).unwrap());
 
-        let is_profitable = order.is_as_good_as(rate).unwrap();
+        let is_profitable = order.is_as_profitable_as(rate.into()).unwrap();
         assert!(is_profitable)
     }
 
@@ -583,7 +583,7 @@ mod tests {
 
         let rate = MidMarketRate::new(Rate::try_from(1.1).unwrap());
 
-        let is_profitable = order.is_as_good_as(rate).unwrap();
+        let is_profitable = order.is_as_profitable_as(rate.into()).unwrap();
         assert!(is_profitable)
     }
 
@@ -597,7 +597,7 @@ mod tests {
 
         let rate = MidMarketRate::new(Rate::try_from(0.9).unwrap());
 
-        let is_profitable = order.is_as_good_as(rate).unwrap();
+        let is_profitable = order.is_as_profitable_as(rate.into()).unwrap();
         assert!(!is_profitable)
     }
 

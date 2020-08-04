@@ -1,5 +1,3 @@
-mod active_takers;
-
 use crate::{
     bitcoin,
     ethereum::{self, dai},
@@ -33,7 +31,8 @@ use std::{
     task::{Context, Poll},
 };
 
-pub use active_takers::ActiveTakers;
+use crate::swap::Database;
+use std::sync::Arc;
 
 #[derive(derivative::Derivative)]
 #[derivative(Debug)]
@@ -48,6 +47,7 @@ impl Swarm {
         seed: &Seed,
         settings: &crate::config::Settings,
         task_executor: tokio::runtime::Handle,
+        database: Arc<Database>,
     ) -> anyhow::Result<Self> {
         use anyhow::Context as _;
 
@@ -56,12 +56,7 @@ impl Swarm {
 
         let transport = transport::build_transport(local_key_pair)?;
 
-        #[cfg(not(test))]
-        let active_takers = ActiveTakers::new(&settings.data.dir.join("active_takers"))?;
-        #[cfg(test)]
-        let active_takers = ActiveTakers::new_test()?;
-
-        let behaviour = Nectar::new(local_peer_id.clone(), active_takers);
+        let behaviour = Nectar::new(local_peer_id.clone(), database);
 
         let mut swarm =
             libp2p::swarm::SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
@@ -107,16 +102,12 @@ impl Swarm {
         self.inner
             .set_swap_identities(swap_metadata, bitcoin_transient_sk, ethereum_identity)
     }
-
-    pub fn remove_from_active_takers(&mut self, taker: &Taker) -> anyhow::Result<()> {
-        self.inner.remove_from_active_takers(&taker)
-    }
 }
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Event {
-    TakeOrderRequest(TakenOrder),
+    TakeRequest(TakenOrder),
     SetSwapIdentities(SwapMetadata),
     SpawnSwap(SwapKind),
 }
@@ -168,7 +159,7 @@ pub struct Nectar {
     #[behaviour(ignore)]
     takers: HashMap<OrderId, PeerId>,
     #[behaviour(ignore)]
-    active_takers: ActiveTakers,
+    database: Arc<Database>,
     #[behaviour(ignore)]
     order_ids: HashMap<SharedSwapId, OrderId>,
     #[behaviour(ignore)]
@@ -176,14 +167,14 @@ pub struct Nectar {
 }
 
 impl Nectar {
-    fn new(local_peer_id: PeerId, active_takers: ActiveTakers) -> Self {
+    fn new(local_peer_id: PeerId, database: Arc<Database>) -> Self {
         Self {
             comit: Comit::default(),
             orderbook: Orderbook::new(local_peer_id.clone()),
             events: VecDeque::new(),
             local_peer_id,
             takers: HashMap::new(),
-            active_takers,
+            database,
             order_ids: HashMap::new(),
             local_identities: HashMap::new(),
         }
@@ -198,7 +189,7 @@ impl Nectar {
     }
 
     fn confirm(&mut self, order: TakenOrder) -> anyhow::Result<()> {
-        self.active_takers.insert(order.taker.clone())?;
+        self.database.insert_active_taker(order.taker.clone())?;
 
         self.orderbook
             .confirm(order.id, order.confirmation_channel, order.taker.peer_id());
@@ -240,10 +231,6 @@ impl Nectar {
             .communicate(taker_peer_id, swap_id.shared, local_data);
     }
 
-    pub fn remove_from_active_takers(&mut self, taker: &Taker) -> anyhow::Result<()> {
-        self.active_takers.remove(taker)
-    }
-
     fn poll<BIE>(
         &mut self,
         _cx: &mut Context<'_>,
@@ -278,7 +265,10 @@ impl NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> for Nectar {
                 order_id,
             } => {
                 let taker = Taker::new(taker_peer_id);
-                let ongoing_trade_with_taker_exists = match self.active_takers.contains(&taker) {
+                let ongoing_trade_with_taker_exists = match self
+                    .database
+                    .contains_active_taker(&taker)
+                {
                     Ok(res) => res,
                     Err(e) => {
                         tracing::error!(
@@ -315,7 +305,7 @@ impl NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> for Nectar {
                 self.takers.insert(order_id, taker.peer_id.clone());
 
                 let taken_order = TakenOrder::new(order, taker, response_channel);
-                self.events.push_back(Event::TakeOrderRequest(taken_order))
+                self.events.push_back(Event::TakeRequest(taken_order))
             }
             orderbook::BehaviourOutEvent::TakeOrderConfirmation {
                 order_id,
@@ -511,8 +501,8 @@ impl From<TakenOrder> for BtcDaiOrder {
 }
 
 #[cfg(test)]
-impl Default for Taker {
-    fn default() -> Self {
+impl crate::StaticStub for Taker {
+    fn static_stub() -> Self {
         Self {
             peer_id: PeerId::random(),
         }

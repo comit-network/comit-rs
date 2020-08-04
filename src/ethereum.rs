@@ -64,8 +64,8 @@ impl Chain {
 }
 
 #[cfg(test)]
-impl Default for Chain {
-    fn default() -> Self {
+impl crate::StaticStub for Chain {
+    fn static_stub() -> Self {
         Chain::Mainnet
     }
 }
