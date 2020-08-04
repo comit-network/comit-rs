@@ -191,9 +191,9 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
             title: None,
         };
 
-        let ethereum_amount = siren::Field {
+        let bitcoin_quantity = siren::Field {
             name: "bitcoin_amount".to_string(),
-            class: vec!["ethereum".to_string(), "address".to_string()],
+            class: vec!["bitcoin".to_string(), "quantity".to_string()],
             _type: None,
             value: None,
             title: None,
@@ -206,7 +206,7 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
             href: format!("/orders/{}/take", order.id),
             title: None,
             _type: Some("application/json".to_string()),
-            fields: vec![bitcoin_field, ethereum_field, ethereum_amount],
+            fields: vec![bitcoin_field, ethereum_field, bitcoin_quantity],
         };
 
         match siren::Entity::default()
@@ -227,7 +227,7 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
 struct MakeOrderBody {
     position: Position,
     rate: Rate,
-    #[serde(with = "asset::bitcoin::sats_as_string")]
+    #[serde(with = "asset::bitcoin::bitcoin_as_decimal_string")]
     bitcoin_amount: asset::Bitcoin,
     bitcoin_ledger: ledger::Bitcoin,
     bitcoin_absolute_expiry: u32,
@@ -257,7 +257,7 @@ impl From<MakeOrderBody> for NewOrder {
 struct TakeOrderBody {
     ethereum_identity: identity::Ethereum,
     bitcoin_identity: bitcoin::Address,
-    #[serde(with = "asset::bitcoin::sats_as_string")]
+    #[serde(with = "asset::bitcoin::bitcoin_as_decimal_string")]
     bitcoin_amount: asset::Bitcoin,
 }
 
@@ -266,10 +266,10 @@ struct OrderResponse {
     id: OrderId,
     maker: MakerId,
     position: Position,
-    rate: u64,
+    rate: Rate,
     bitcoin_ledger: ledger::Bitcoin,
     bitcoin_absolute_expiry: u32,
-    #[serde(with = "asset::bitcoin::sats_as_string")]
+    #[serde(with = "asset::bitcoin::bitcoin_as_decimal_string")]
     bitcoin_amount: asset::Bitcoin,
     token_contract: ethereum::Address,
     ethereum_ledger: ledger::Ethereum,
@@ -282,10 +282,10 @@ impl From<Order> for OrderResponse {
             id: order.id,
             maker: order.maker,
             position: order.position,
-            rate: order.rate,
+            rate: order.price,
             bitcoin_ledger: order.bitcoin_ledger,
             bitcoin_absolute_expiry: order.bitcoin_absolute_expiry,
-            bitcoin_amount: order.bitcoin_amount,
+            bitcoin_amount: order.bitcoin_quantity,
             token_contract: order.token_contract,
             ethereum_ledger: order.ethereum_ledger,
             ethereum_absolute_expiry: order.ethereum_absolute_expiry,
@@ -302,10 +302,10 @@ mod tests {
         let json = r#"
         {
             "position": "sell",
-            "bitcoin_amount": "200",
+            "bitcoin_amount": "200.12",
             "bitcoin_ledger": "regtest",
             "bitcoin_absolute_expiry": 600,
-            "rate": 9000,
+            "rate": "9000.35",
             "token_contract": "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280",
             "ethereum_ledger": {"chain_id":2},
             "ethereum_absolute_expiry": 600,
@@ -320,7 +320,7 @@ mod tests {
     fn test_take_order_deserialization() {
         let json = r#"
         {
-            "bitcoin_amount": "300",
+            "bitcoin_amount": "300.12",
             "bitcoin_identity": "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX",
             "ethereum_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72"
         }"#;

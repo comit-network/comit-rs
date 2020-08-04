@@ -13,7 +13,7 @@ export interface BtcDaiOrder {
     position: string;
     bitcoin_amount: string;
     bitcoin_ledger: string;
-    rate: number;
+    rate: string;
     token_contract: string;
     ethereum_ledger: Ethereum;
     bitcoin_absolute_expiry: number;
@@ -26,8 +26,35 @@ interface Ethereum {
     chain_id: number;
 }
 
-export function ethereumAmount(order: BtcDaiOrder): string {
-    return String(Number(order.bitcoin_amount) * order.rate);
+export function ethereumAmountInWei(order: BtcDaiOrder): bigint {
+    return rate(order) * bitcoinAmountInSatoshi(order.bitcoin_amount);
+}
+
+export function rate(order: BtcDaiOrder): bigint {
+    const precision = 10;
+    if (order.rate.split(".").length !== 2) {
+        throw new Error("rate contains more than 1 decimal point");
+    }
+    const integer = order.rate.split(".")[0];
+    const decimals = order.rate.split(".")[1];
+    const trailingZeroes = "0".repeat(precision - decimals.length);
+
+    const result = integer.concat(decimals).concat(trailingZeroes);
+    return BigInt(result);
+}
+
+export function bitcoinAmountInSatoshi(bitcoinAmount: string): bigint {
+    const precision = 8;
+    const parts = bitcoinAmount.split(".");
+    if (parts.length !== 2) {
+        throw new Error("rate contains more than 1 decimal point");
+    }
+    const integer = parts[0];
+    const decimals = parts[1];
+    const trailingZeroes = "0".repeat(precision - decimals.length);
+
+    const result = integer.concat(decimals).concat(trailingZeroes);
+    return BigInt(result);
 }
 
 export default class OrderbookFactory {
@@ -35,7 +62,7 @@ export default class OrderbookFactory {
         alice: Actor,
         bob: Actor,
         position: string,
-        rate: number,
+        rate: string,
         amount: string
     ): Promise<BtcDaiOrder> {
         await alice.wallets.initializeForLedger(

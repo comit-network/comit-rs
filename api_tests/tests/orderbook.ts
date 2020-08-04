@@ -4,35 +4,34 @@
  */
 
 import { twoActorTest } from "../src/actor_test";
-import OrderFactory from "../src/actors/order_factory";
 import { sleep } from "../src/utils";
+import OrderbookFactory from "../src/actors/order_factory";
 
 describe("orderbook", () => {
-    // direct quote
     // pair: "BTC/DAI"
     // position: buy
-    // rate: 100 (1000 wei for 1 satoshi)
-    // amount: 900,000 satoshi BTC
+    // price: 11003.46 (1 BTC = 11003.46 DAI)
+    // quantity: 11.4 BTC
     //
-    // Bob wants BTC for DAI
-    // Alice only has 20,000 satoshi
-    // Alice submits a take request specifying 20,000 satoshi as the the quantity
-    // The take request becomes a swap where Bob receives 20,000 satoshi for 2,000,000 wei
+    // Bob is buying BTC for DAI
+    // Alice only has 2.1 BTC
+    // Alice submits a take request specifying 2.1 BTC as the the quantity
+    // The take request becomes a HbitHerc20 swap where Bob receives for 2.1 BTC for 23,107.266 DAI
     it(
         "btc_dai_buy_order",
         twoActorTest(async ({ alice, bob }) => {
             await alice.connect(bob);
-            const order = await OrderFactory.newBtcDaiOrder(
+            const order = await OrderbookFactory.newBtcDaiOrder(
                 alice,
                 bob,
                 "buy",
-                100,
-                "900000"
+                "9000.35",
+                "0.4"
             );
 
             const orderUrl = await bob.makeOrder(order);
 
-            await alice.takeOrder("20000");
+            await alice.takeOrder("0.1");
 
             await bob.assertSwapCreatedFromOrder(orderUrl);
 
@@ -51,37 +50,36 @@ describe("orderbook", () => {
             await bob.assertBalancesAfterSwap();
         })
     );
-    // direct quote
     // pair: "BTC/DAI"
     // position: sell
-    // rate: 100 (1000 wei for 1 satoshi)
-    // amount: 900,000 satoshi BTC
+    // price: 11003.46 (1 BTC = 11003.46 DAI)
+    // quantity: 11.4 BTC
     //
-    // Bob wants DAI for BTC
-    // Alice only has 20,000 satoshi
-    // Alice submits a take request specifying 20,000 satoshi as the the quantity
-    // The take request becomes a swap where Bob receives for 2,000,000 wei for  20,000 satoshi
+    // Bob is selling BTC for DAI
+    // Alice only has 2.1 BTC
+    // Alice submits a take request specifying 2.1 BTC as the the quantity
+    // The take request becomes a Herc20Hbit swap where Bob receives 23,107.266 DAI for 2.1 BTC
     it(
         "btc_dai_sell_order",
         twoActorTest(async ({ alice, bob }) => {
             await alice.connect(bob);
-            const order = await OrderFactory.newBtcDaiOrder(
+            const order = await OrderbookFactory.newBtcDaiOrder(
                 alice,
                 bob,
-                "buy",
-                100,
-                "900000"
+                "sell",
+                "9000.35",
+                "0.01"
             );
 
             const orderUrl = await bob.makeOrder(order);
 
-            await alice.takeOrder("20000");
+            await alice.takeOrder("0.005");
 
             await bob.assertSwapCreatedFromOrder(orderUrl);
 
+            await alice.assertAndExecuteNextAction("deploy");
             await alice.assertAndExecuteNextAction("fund");
 
-            await bob.assertAndExecuteNextAction("deploy");
             await bob.assertAndExecuteNextAction("fund");
 
             await alice.assertAndExecuteNextAction("redeem");

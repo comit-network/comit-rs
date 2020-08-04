@@ -137,7 +137,9 @@ impl Orderbook {
 
     /// Get the bitcoin amount in this order.
     fn order_amount(&self, order_id: OrderId) -> Option<asset::Bitcoin> {
-        self.orders.get(&order_id).map(|order| order.bitcoin_amount)
+        self.orders
+            .get(&order_id)
+            .map(|order| order.bitcoin_quantity)
     }
 
     /// Confirm a take order request, called by Bob i.e., the maker.

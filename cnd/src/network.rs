@@ -387,10 +387,10 @@ impl ComitNode {
             id: OrderId::random(),
             maker: MakerId::from(self.peer_id.clone()),
             position: new_order.position,
-            rate: new_order.rate,
+            price: new_order.rate,
             bitcoin_ledger: new_order.bitcoin_ledger,
             bitcoin_absolute_expiry: new_order.bitcoin_absolute_expiry,
-            bitcoin_amount: new_order.bitcoin_amount,
+            bitcoin_quantity: new_order.bitcoin_amount,
             token_contract: new_order.token_contract,
             ethereum_ledger: new_order.ethereum_ledger,
             ethereum_absolute_expiry: new_order.ethereum_absolute_expiry,
@@ -584,13 +584,13 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                     .get_order(&order_id)
                     .expect("orderbook only bubbles up existing orders");
 
-                if order.bitcoin_amount < amount {
+                if order.bitcoin_quantity < amount {
                     self.orderbook.deny(peer_id, order_id, response_channel);
                     tracing::info!(
                         "denied take request for {} because partial take amount: {} is greater than order amount: {}",
                         order_id,
                         amount,
-                        order.bitcoin_amount
+                        order.bitcoin_quantity
                     );
                     return;
                 }

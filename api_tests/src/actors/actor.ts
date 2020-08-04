@@ -33,7 +33,11 @@ import { Wallets } from "../wallets";
 import { defaultLedgerDescriptionForLedger, getIdentities } from "./defaults";
 import pTimeout from "p-timeout";
 import { Entity, Link } from "comit-sdk/dist/src/cnd/siren";
-import { BtcDaiOrder, ethereumAmount } from "./order_factory";
+import {
+    bitcoinAmountInSatoshi,
+    BtcDaiOrder,
+    ethereumAmountInWei,
+} from "./order_factory";
 
 export type ActorName = "alice" | "bob" | "carol";
 
@@ -278,12 +282,12 @@ export class Actor {
             };
             this.alphaAsset = {
                 name: AssetKind.Bitcoin,
-                quantity: order.bitcoin_amount,
+                quantity: String(bitcoinAmountInSatoshi(order.bitcoin_amount)),
                 ledger: LedgerKind.Bitcoin,
             };
             this.betaAsset = {
                 name: AssetKind.Erc20,
-                quantity: ethereumAmount(order),
+                quantity: String(ethereumAmountInWei(order)),
                 ledger: LedgerKind.Ethereum,
                 tokenContract: order.token_contract,
             };
@@ -298,13 +302,13 @@ export class Actor {
             };
             this.alphaAsset = {
                 name: AssetKind.Erc20,
-                quantity: ethereumAmount(order),
+                quantity: String(ethereumAmountInWei(order)),
                 ledger: LedgerKind.Ethereum,
                 tokenContract: order.token_contract,
             };
             this.betaAsset = {
                 name: AssetKind.Bitcoin,
-                quantity: order.bitcoin_amount,
+                quantity: String(bitcoinAmountInSatoshi(order.bitcoin_amount)),
                 ledger: LedgerKind.Bitcoin,
             };
         } else {
@@ -394,10 +398,10 @@ export class Actor {
                 })
             );
             await this.actors.alice.setStartingBalancesForPartialTake(
-                partialTakeAmount
+                bitcoinAmountInSatoshi(partialTakeAmount)
             );
             await this.actors.bob.setStartingBalancesForPartialTake(
-                partialTakeAmount
+                bitcoinAmountInSatoshi(partialTakeAmount)
             );
         } else {
             throw new Error(
@@ -494,10 +498,9 @@ export class Actor {
         );
     }
 
-    public async setStartingBalancesForPartialTake(partialTakeAmount: string) {
+    public async setStartingBalancesForPartialTake(partialTakeAmount: bigint) {
         switch (this.name) {
             case "alice": {
-                // Alice purchases beta asset with alpha asset
                 await this.setStartingBalance([
                     this.alphaAsset,
                     {
@@ -507,7 +510,7 @@ export class Actor {
                 ]);
                 this.expectedBalanceChanges.set(
                     toKey(this.betaAsset),
-                    BigInt(Number(this.order.rate) * Number(partialTakeAmount))
+                    partialTakeAmount
                 );
                 break;
             }
@@ -522,7 +525,7 @@ export class Actor {
                 ]);
                 this.expectedBalanceChanges.set(
                     toKey(this.alphaAsset),
-                    BigInt(partialTakeAmount)
+                    partialTakeAmount
                 );
                 break;
             }
