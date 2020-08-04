@@ -32,7 +32,7 @@ mod swap;
 mod swap_id;
 mod trace;
 
-#[cfg(all(test, feature = "test-docker"))]
+#[cfg(test)]
 mod test_harness;
 
 use crate::{
@@ -48,6 +48,9 @@ pub use mid_market_rate::MidMarketRate;
 pub use rate::{Rate, Spread};
 pub use seed::Seed;
 pub use swap_id::SwapId;
+
+#[cfg(test)]
+pub use test_harness::StaticStub;
 
 pub static SECP: Lazy<::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All>> =
     Lazy::new(::bitcoin::secp256k1::Secp256k1::new);

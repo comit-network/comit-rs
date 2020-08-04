@@ -198,8 +198,8 @@ impl From<comit::network::Position> for Position {
 }
 
 #[cfg(test)]
-impl Default for BtcDaiOrder {
-    fn default() -> Self {
+impl crate::StaticStub for BtcDaiOrder {
+    fn static_stub() -> Self {
         Self {
             position: Position::Buy,
             base: bitcoin::Asset {
@@ -208,7 +208,7 @@ impl Default for BtcDaiOrder {
             },
             quote: dai::Asset {
                 amount: dai::Amount::from_atto(num::BigUint::from(1u8)),
-                chain: ethereum::Chain::default(),
+                chain: ethereum::Chain::static_stub(),
             },
         }
     }
@@ -217,7 +217,7 @@ impl Default for BtcDaiOrder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{MidMarketRate, Rate};
+    use crate::{MidMarketRate, Rate, StaticStub};
     use num::BigUint;
     use proptest::prelude::*;
     use std::convert::TryFrom;
@@ -241,7 +241,7 @@ mod tests {
     fn dai_asset(dai: f64) -> dai::Asset {
         dai::Asset {
             amount: dai_amount(dai),
-            chain: ethereum::Chain::default(),
+            chain: ethereum::Chain::static_stub(),
         }
     }
 

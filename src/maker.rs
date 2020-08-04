@@ -264,15 +264,15 @@ impl From<&network::TakenOrder> for TakenOrder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::network::Taker;
     use crate::{
+        network::Taker,
         order::{BtcDaiOrder, Position},
-        MidMarketRate, Rate,
+        MidMarketRate, Rate, StaticStub,
     };
     use std::convert::TryFrom;
 
-    impl Default for Maker {
-        fn default() -> Self {
+    impl StaticStub for Maker {
+        fn static_stub() -> Self {
             Self {
                 btc_balance: Some(bitcoin::Amount::default()),
                 dai_balance: Some(dai::Amount::default()),
@@ -281,19 +281,19 @@ mod tests {
                 dai_reserved_funds: dai::Amount::default(),
                 btc_max_sell_amount: None,
                 dai_max_sell_amount: None,
-                mid_market_rate: Some(MidMarketRate::default()),
+                mid_market_rate: Some(MidMarketRate::static_stub()),
                 spread: Spread::default(),
                 bitcoin_network: bitcoin::Network::Bitcoin,
-                ethereum_chain: ethereum::Chain::default(),
+                ethereum_chain: ethereum::Chain::static_stub(),
             }
         }
     }
 
-    impl Default for TakenOrder {
-        fn default() -> Self {
+    impl StaticStub for TakenOrder {
+        fn static_stub() -> Self {
             Self {
-                inner: BtcDaiOrder::default(),
-                taker: Taker::default(),
+                inner: BtcDaiOrder::static_stub(),
+                taker: Taker::static_stub(),
             }
         }
     }
@@ -332,7 +332,7 @@ mod tests {
     fn dai_asset(amount: dai::Amount) -> dai::Asset {
         dai::Asset {
             amount,
-            chain: ethereum::Chain::default(),
+            chain: ethereum::Chain::static_stub(),
         }
     }
 
@@ -341,7 +341,7 @@ mod tests {
         let mut maker = Maker {
             btc_balance: some_btc(3.0),
             btc_fee: bitcoin::Amount::ZERO,
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let taken_order = TakenOrder {
@@ -350,7 +350,7 @@ mod tests {
                 base: btc_asset(1.5),
                 quote: dai_asset(dai::Amount::zero()),
             },
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let event = maker.process_taken_order(taken_order).unwrap();
@@ -364,7 +364,7 @@ mod tests {
         let mut maker = Maker {
             btc_balance: some_btc(3.0),
             btc_fee: btc(1.0),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let taken_order = TakenOrder {
@@ -373,7 +373,7 @@ mod tests {
                 base: btc_asset(1.5),
                 quote: dai_asset(dai::Amount::zero()),
             },
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let event = maker.process_taken_order(taken_order).unwrap();
@@ -387,7 +387,7 @@ mod tests {
         let mut maker = Maker {
             dai_balance: some_dai(10000.0),
             mid_market_rate: some_rate(1.5),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let taken_order = TakenOrder {
@@ -396,7 +396,7 @@ mod tests {
                 base: btc_asset(1.0),
                 quote: dai_asset(dai_amount(1.5)),
             },
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let result = maker.process_taken_order(taken_order).unwrap();
@@ -410,7 +410,7 @@ mod tests {
         let mut maker = Maker {
             dai_balance: some_dai(10000.0),
             mid_market_rate: some_rate(1.5),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let taken_order = TakenOrder {
@@ -419,7 +419,7 @@ mod tests {
                 base: btc_asset(1.0),
                 quote: dai_asset(dai_amount(1.5)),
             },
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let result = maker.process_taken_order(taken_order).unwrap();
@@ -432,7 +432,7 @@ mod tests {
     fn not_enough_btc_funds_to_reserve_for_a_sell_order() {
         let mut maker = Maker {
             btc_balance: Some(bitcoin::Amount::ZERO),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let taken_order = TakenOrder {
@@ -441,7 +441,7 @@ mod tests {
                 base: btc_asset(1.5),
                 quote: dai_asset(dai::Amount::zero()),
             },
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let result = maker.process_taken_order(taken_order).unwrap();
@@ -454,7 +454,7 @@ mod tests {
         let mut maker = Maker {
             dai_balance: Some(dai::Amount::zero()),
             mid_market_rate: some_rate(1.5),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let taken_order = TakenOrder {
@@ -463,7 +463,7 @@ mod tests {
                 base: btc_asset(1.0),
                 quote: dai_asset(dai_amount(1.5)),
             },
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let result = maker.process_taken_order(taken_order).unwrap();
@@ -476,7 +476,7 @@ mod tests {
         let mut maker = Maker {
             btc_balance: some_btc(2.0),
             btc_reserved_funds: btc(1.5),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let taken_order = TakenOrder {
@@ -485,7 +485,7 @@ mod tests {
                 base: btc_asset(1.0),
                 quote: dai_asset(dai::Amount::zero()),
             },
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let result = maker.process_taken_order(taken_order).unwrap();
@@ -497,11 +497,11 @@ mod tests {
     fn yield_error_if_rate_is_not_available() {
         let mut maker = Maker {
             mid_market_rate: None,
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let taken_order = TakenOrder {
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let result = maker.process_taken_order(taken_order);
@@ -518,7 +518,7 @@ mod tests {
     fn fail_to_confirm_sell_order_if_sell_rate_is_not_good_enough() {
         let mut maker = Maker {
             mid_market_rate: some_rate(10000.0),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let taken_order = TakenOrder {
@@ -527,7 +527,7 @@ mod tests {
                 base: btc_asset(1.0),
                 quote: dai_asset(dai_amount(9000.0)),
             },
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let result = maker.process_taken_order(taken_order).unwrap();
@@ -539,7 +539,7 @@ mod tests {
     fn fail_to_confirm_buy_order_if_buy_rate_is_not_good_enough() {
         let mut maker = Maker {
             mid_market_rate: some_rate(10000.0),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let taken_order = TakenOrder {
@@ -548,7 +548,7 @@ mod tests {
                 base: btc_asset(1.0),
                 quote: dai_asset(dai_amount(11000.0)),
             },
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let result = maker.process_taken_order(taken_order).unwrap();
@@ -561,7 +561,7 @@ mod tests {
         let init_rate = some_rate(1.0);
         let mut maker = Maker {
             mid_market_rate: init_rate,
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let new_mid_market_rate = MidMarketRate::new(Rate::try_from(1.0).unwrap());
@@ -577,7 +577,7 @@ mod tests {
             btc_balance: some_btc(10.0),
             dai_balance: some_dai(10.0),
             mid_market_rate: some_rate(1.0),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let new_mid_market_rate = MidMarketRate::new(Rate::try_from(2.0).unwrap());
@@ -593,7 +593,7 @@ mod tests {
             btc_reserved_funds: btc(1.1),
             dai_reserved_funds: dai_amount(1.0),
             btc_fee: btc(0.1),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let free_btc = Some(btc(0.5));
@@ -609,7 +609,7 @@ mod tests {
     fn no_new_sell_order_if_no_btc_balance_change() {
         let mut maker = Maker {
             btc_balance: some_btc(1.0),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let result = maker.update_bitcoin_balance(btc(1.0)).unwrap();
@@ -620,7 +620,7 @@ mod tests {
     fn no_new_buy_order_if_no_dai_balance_change() {
         let mut maker = Maker {
             dai_balance: some_dai(1.0),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let result = maker.update_dai_balance(dai_amount(1.0)).unwrap();
@@ -635,7 +635,7 @@ mod tests {
             btc_fee: bitcoin::Amount::ZERO,
             mid_market_rate: some_rate(1.0),
             spread: spread(0),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
         let new_balance = btc(0.5);
 
@@ -651,7 +651,7 @@ mod tests {
             dai_max_sell_amount: None,
             mid_market_rate: some_rate(1.0),
             spread: spread(0),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
         let new_balance = dai_amount(0.5);
 
@@ -670,13 +670,13 @@ mod tests {
             btc_fee: bitcoin::Amount::ZERO,
             btc_max_sell_amount: some_btc(1.0),
             mid_market_rate: some_rate(1.0),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let new_sell_order = maker.new_sell_order().unwrap();
         assert_eq!(new_sell_order.base, btc_asset(1.0));
 
-        let taker = Taker::default();
+        let taker = Taker::static_stub();
         let result = maker
             .process_taken_order(TakenOrder {
                 inner: new_sell_order,
@@ -694,13 +694,13 @@ mod tests {
             dai_balance: some_dai(3.0),
             dai_max_sell_amount: some_dai(1.0),
             mid_market_rate: some_rate(1.0),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let new_buy_order = maker.new_buy_order().unwrap();
         assert_eq!(new_buy_order.quote, dai_asset(dai_amount(1.0)));
 
-        let taker = Taker::default();
+        let taker = Taker::static_stub();
         let result = maker
             .process_taken_order(TakenOrder {
                 inner: new_buy_order,
@@ -719,7 +719,7 @@ mod tests {
             dai_max_sell_amount: some_dai(18.0),
             mid_market_rate: some_rate(9000.0),
             btc_balance: some_btc(1.0),
-            ..Default::default()
+            ..StaticStub::static_stub()
         };
 
         let new_buy_order = maker.new_buy_order().unwrap();

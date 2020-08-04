@@ -282,8 +282,8 @@ pub struct SwapParams {
 }
 
 #[cfg(test)]
-impl Default for SwapParams {
-    fn default() -> Self {
+impl crate::StaticStub for SwapParams {
+    fn static_stub() -> Self {
         use crate::swap::hbit::SecretHash;
         use ::bitcoin::secp256k1;
         use std::str::FromStr;
@@ -328,7 +328,7 @@ impl Default for SwapParams {
             secret_hash: SecretHash::new(Secret::from(*b"hello world, you are beautiful!!")),
             start_of_swap: chrono::Local::now().naive_local(),
             swap_id: Default::default(),
-            taker: Taker::default(),
+            taker: Taker::static_stub(),
         }
     }
 }
@@ -338,7 +338,7 @@ mod tests {
     use super::*;
     use crate::{
         swap::{alice::wallet_actor::WalletAlice, bitcoin, bob::watch_only_actor::WatchOnlyBob},
-        test_harness, Seed, SwapId,
+        test_harness, Seed, StaticStub, SwapId,
     };
     use ::bitcoin::secp256k1;
     use chrono::Utc;
@@ -556,7 +556,7 @@ mod tests {
                 secret_hash,
                 start_of_swap,
                 swap_id,
-                taker: Taker::default(),
+                taker: Taker::static_stub(),
             });
 
             alice_db.insert_swap(swap).unwrap();
@@ -597,7 +597,7 @@ mod tests {
                 secret_hash,
                 start_of_swap,
                 swap_id,
-                taker: Taker::default(),
+                taker: Taker::static_stub(),
             });
 
             bob_db.insert_swap(swap).unwrap();

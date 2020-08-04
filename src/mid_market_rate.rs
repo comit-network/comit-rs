@@ -19,8 +19,8 @@ impl MidMarketRate {
 }
 
 #[cfg(test)]
-impl Default for MidMarketRate {
-    fn default() -> Self {
+impl crate::StaticStub for MidMarketRate {
+    fn static_stub() -> Self {
         Self { 0: Rate::default() }
     }
 }

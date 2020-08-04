@@ -501,8 +501,8 @@ impl From<TakenOrder> for BtcDaiOrder {
 }
 
 #[cfg(test)]
-impl Default for Taker {
-    fn default() -> Self {
+impl crate::StaticStub for Taker {
+    fn static_stub() -> Self {
         Self {
             peer_id: PeerId::random(),
         }

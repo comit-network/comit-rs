@@ -9,6 +9,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
+#[cfg(test)]
+use crate::StaticStub;
+
 mod hbit;
 mod herc20;
 
@@ -195,21 +198,21 @@ enum Kind {
 }
 
 #[cfg(test)]
-impl Default for Swap {
-    fn default() -> Self {
+impl StaticStub for Swap {
+    fn static_stub() -> Self {
         use std::str::FromStr;
 
         Swap {
             kind: Kind::HbitHerc20,
-            hbit_params: Default::default(),
-            herc20_params: Default::default(),
+            hbit_params: StaticStub::static_stub(),
+            herc20_params: StaticStub::static_stub(),
             secret_hash: comit::SecretHash::new(
                 comit::Secret::from_str(
                     "aa68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4c",
                 )
                 .unwrap(),
             ),
-            taker: network::Taker::default(),
+            taker: network::Taker::static_stub(),
             start_of_swap: chrono::Local::now().naive_local(),
             hbit_funded: None,
             hbit_redeemed: None,
@@ -285,8 +288,8 @@ mod tests {
     fn save_and_retrieve_swaps() {
         let db = Database::new_test().unwrap();
 
-        let swap_1 = SwapKind::HbitHerc20(swap::SwapParams::default());
-        let swap_2 = SwapKind::Herc20Hbit(swap::SwapParams::default());
+        let swap_1 = SwapKind::HbitHerc20(swap::SwapParams::static_stub());
+        let swap_2 = SwapKind::Herc20Hbit(swap::SwapParams::static_stub());
 
         db.insert_swap(swap_1.clone()).unwrap();
         db.insert_swap(swap_2.clone()).unwrap();
@@ -301,11 +304,11 @@ mod tests {
     #[test]
     fn save_and_delete_correct_swap() {
         let db = Database::new_test().unwrap();
-        let swap_1 = swap::SwapParams::default();
+        let swap_1 = swap::SwapParams::static_stub();
         let swap_id_1 = swap_1.swap_id;
 
         let swap_1 = SwapKind::HbitHerc20(swap_1);
-        let swap_2 = SwapKind::Herc20Hbit(swap::SwapParams::default());
+        let swap_2 = SwapKind::Herc20Hbit(swap::SwapParams::static_stub());
 
         db.insert_swap(swap_1).unwrap();
         db.insert_swap(swap_2.clone()).unwrap();
@@ -320,7 +323,7 @@ mod tests {
     #[test]
     fn taker_no_longer_has_ongoing_trade_after_removal() {
         let db = Database::new_test().unwrap();
-        let taker = Taker::default();
+        let taker = Taker::static_stub();
 
         let _ = db.insert_active_taker(taker.clone()).unwrap();
 
