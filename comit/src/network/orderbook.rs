@@ -1,5 +1,5 @@
 mod order;
-pub mod take_order;
+mod take_order;
 
 use crate::{
     network::orderbook::take_order::{Response, TakeOrderCodec, TakeOrderProtocol},
@@ -28,7 +28,8 @@ use std::{
     time::Duration,
 };
 
-pub use self::order::*;
+pub use order::*;
+pub use take_order::Response as TakeOrderResponse;
 
 lazy_static::lazy_static! {
     /// The Topic used to publish BTC/DAI orders.
