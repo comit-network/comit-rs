@@ -2,10 +2,8 @@ use crate::{
     swap::db::{Load, Save},
     SwapId,
 };
-use futures::{
-    future::{self, Either},
-    pin_mut, Future,
-};
+use anyhow::Context;
+use futures::{future::FutureExt, Future};
 
 /// Try to do an action resulting in the event `E`.
 ///
@@ -36,13 +34,13 @@ where
         return Ok(event);
     }
 
-    pin_mut!(action);
-    pin_mut!(poll_abortion_condition);
-
-    let event = match future::select(action, poll_abortion_condition).await {
-        Either::Left((Ok(event), _)) => event,
-        Either::Right(_) => anyhow::bail!(AbortConditionMet),
-        _ => anyhow::bail!("A future has failed"),
+    let event = futures::select! {
+        event = action.fuse() => event.context("failed to execute action")?,
+        abort = poll_abortion_condition.fuse() => {
+            anyhow::bail!(abort
+                          .map(|_| AbortConditionMet)
+                          .context("error when polling abort condition")?)
+        }
     };
 
     db.save(event.clone(), swap_id).await?;

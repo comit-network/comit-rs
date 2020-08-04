@@ -121,7 +121,7 @@ pub async fn trade(
                     Arc::clone(&bitcoin_wallet),
                     Arc::clone(&ethereum_wallet),
                     Arc::clone(&bitcoin_connector),
-        Arc::clone(&ethereum_connector),
+                    Arc::clone(&ethereum_connector),
                     swap_execution_finished_sender.clone(),
                 );
             },
