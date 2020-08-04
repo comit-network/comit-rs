@@ -1,6 +1,6 @@
 use crate::{
     swap::{
-        db::{Database, Load, Save},
+        db::{serialize, Database, Load, Save},
         herc20,
     },
     SwapId,
@@ -47,15 +47,14 @@ impl Save<herc20::Deployed> for Database {
         match stored_swap.herc20_deployed {
             Some(_) => Err(anyhow!("Herc20 Deployed event is already stored")),
             None => {
-                let key = serde_json::to_vec(&swap_id)?;
+                let key = serialize(&swap_id)?;
 
                 let mut swap = stored_swap.clone();
                 swap.herc20_deployed = Some(event.into());
 
-                let old_value = serde_json::to_vec(&stored_swap)
-                    .context("Could not serialize old swap value")?;
-                let new_value =
-                    serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
+                let old_value =
+                    serialize(&stored_swap).context("Could not serialize old swap value")?;
+                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
 
                 self.db
                     .compare_and_swap(key, Some(old_value), Some(new_value))
@@ -112,15 +111,14 @@ impl Save<herc20::Funded> for Database {
         match stored_swap.herc20_funded {
             Some(_) => Err(anyhow!("Herc20 Funded event is already stored")),
             None => {
-                let key = serde_json::to_vec(&swap_id)?;
+                let key = serialize(&swap_id)?;
 
                 let mut swap = stored_swap.clone();
                 swap.herc20_funded = Some(event.into());
 
-                let old_value = serde_json::to_vec(&stored_swap)
-                    .context("Could not serialize old swap value")?;
-                let new_value =
-                    serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
+                let old_value =
+                    serialize(&stored_swap).context("Could not serialize old swap value")?;
+                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
 
                 self.db
                     .compare_and_swap(key, Some(old_value), Some(new_value))
@@ -177,15 +175,14 @@ impl Save<herc20::Redeemed> for Database {
         match stored_swap.herc20_redeemed {
             Some(_) => Err(anyhow!("Herc20 Redeemed event is already stored")),
             None => {
-                let key = serde_json::to_vec(&swap_id)?;
+                let key = serialize(&swap_id)?;
 
                 let mut swap = stored_swap.clone();
                 swap.herc20_redeemed = Some(event.into());
 
-                let old_value = serde_json::to_vec(&stored_swap)
-                    .context("Could not serialize old swap value")?;
-                let new_value =
-                    serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
+                let old_value =
+                    serialize(&stored_swap).context("Could not serialize old swap value")?;
+                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
 
                 self.db
                     .compare_and_swap(key, Some(old_value), Some(new_value))
@@ -239,15 +236,14 @@ impl Save<herc20::Refunded> for Database {
         match stored_swap.herc20_refunded {
             Some(_) => Err(anyhow!("Herc20 Refunded event is already stored")),
             None => {
-                let key = serde_json::to_vec(&swap_id)?;
+                let key = serialize(&swap_id)?;
 
                 let mut swap = stored_swap.clone();
                 swap.herc20_refunded = Some(event.into());
 
-                let old_value = serde_json::to_vec(&stored_swap)
-                    .context("Could not serialize old swap value")?;
-                let new_value =
-                    serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
+                let old_value =
+                    serialize(&stored_swap).context("Could not serialize old swap value")?;
+                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
 
                 self.db
                     .compare_and_swap(key, Some(old_value), Some(new_value))
@@ -410,7 +406,7 @@ mod tests {
 
         let swap_kind = SwapKind::from((swap, swap_id));
 
-        db.insert_swap(swap_kind).unwrap();
+        db.insert_swap(swap_kind).await.unwrap();
 
         let event = herc20::Deployed {
             transaction: transaction.clone(),
@@ -440,7 +436,7 @@ mod tests {
 
         let swap_kind = SwapKind::from((swap, swap_id));
 
-        db.insert_swap(swap_kind).unwrap();
+        db.insert_swap(swap_kind).await.unwrap();
 
         let event = herc20::Funded {
             transaction: transaction.clone(),
@@ -467,7 +463,7 @@ mod tests {
 
         let swap_kind = SwapKind::from((swap, swap_id));
 
-        db.insert_swap(swap_kind).unwrap();
+        db.insert_swap(swap_kind).await.unwrap();
 
         let event = herc20::Redeemed {
             transaction: transaction.clone(),
@@ -493,7 +489,7 @@ mod tests {
 
         let swap_kind = SwapKind::from((swap, swap_id));
 
-        db.insert_swap(swap_kind).unwrap();
+        db.insert_swap(swap_kind).await.unwrap();
 
         let event = herc20::Refunded {
             transaction: transaction.clone(),

@@ -98,7 +98,7 @@ pub async fn trade(
         futures::select! {
             finished_swap = swap_execution_finished_receiver.next().fuse() => {
                 if let Some(finished_swap) = finished_swap {
-                    handle_finished_swap(finished_swap, &mut maker, &db, &mut history, &mut swarm);
+                    handle_finished_swap(finished_swap, &mut maker, &db, &mut history, &mut swarm).await;
                 }
             },
             network_event = swarm.as_inner().next().fuse() => {
@@ -112,7 +112,7 @@ pub async fn trade(
                     Arc::clone(&bitcoin_connector),
                     Arc::clone(&ethereum_connector),
                     swap_execution_finished_sender.clone(),
-                );
+                ).await;
             },
             rate_update = rate_update_receiver.next().fuse() => {
                 handle_rate_update(rate_update.unwrap(), &mut maker, &mut swarm);
@@ -260,7 +260,7 @@ async fn execute_swap(
     mut finished_swap_sender: Sender<FinishedSwap>,
     swap: SwapKind,
 ) -> anyhow::Result<()> {
-    db.insert_swap(swap.clone())?;
+    db.insert_swap(swap.clone()).await?;
 
     swap.execute(
         Arc::clone(&db),
@@ -324,7 +324,7 @@ fn respawn_swaps(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn handle_network_event(
+async fn handle_network_event(
     network_event: network::Event,
     maker: &mut Maker,
     swarm: &mut Swarm,
@@ -345,6 +345,7 @@ fn handle_network_event(
                     let position = order_ref.inner.position;
                     let _ = swarm
                         .confirm(order)
+                        .await
                         .map_err(|e| tracing::error!("Failed to confirm order: {}", e));
 
                     match maker.new_order(position) {
@@ -469,7 +470,7 @@ fn handle_dai_balance_update(
     }
 }
 
-fn handle_finished_swap(
+async fn handle_finished_swap(
     finished_swap: FinishedSwap,
     maker: &mut Maker,
     db: &Database,
@@ -506,10 +507,12 @@ fn handle_finished_swap(
 
     let _ = db
         .remove_active_taker(&finished_swap.taker)
+        .await
         .map_err(|error| tracing::error!("Unable to remove from active takers: {}", error));
 
     let _ = db
         .remove_swap(&swap_id)
+        .await
         .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
 }
 

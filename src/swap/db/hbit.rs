@@ -1,6 +1,6 @@
 use crate::{
     swap::{
-        db::{Database, Load, Save},
+        db::{serialize, Database, Load, Save},
         hbit,
     },
     SwapId,
@@ -58,15 +58,14 @@ impl Save<hbit::Funded> for Database {
         match stored_swap.hbit_funded {
             Some(_) => Err(anyhow!("Hbit Funded event is already stored")),
             None => {
-                let key = serde_json::to_vec(&swap_id)?;
+                let key = serialize(&swap_id)?;
 
                 let mut swap = stored_swap.clone();
                 swap.hbit_funded = Some(event.into());
 
-                let old_value = serde_json::to_vec(&stored_swap)
-                    .context("Could not serialize old swap value")?;
-                let new_value =
-                    serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
+                let old_value =
+                    serialize(&stored_swap).context("Could not serialize old swap value")?;
+                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
 
                 self.db
                     .compare_and_swap(key, Some(old_value), Some(new_value))
@@ -123,15 +122,14 @@ impl Save<hbit::Redeemed> for Database {
         match stored_swap.hbit_redeemed {
             Some(_) => Err(anyhow!("Hbit Redeemed event is already stored")),
             None => {
-                let key = serde_json::to_vec(&swap_id)?;
+                let key = serialize(&swap_id)?;
 
                 let mut swap = stored_swap.clone();
                 swap.hbit_redeemed = Some(event.into());
 
-                let old_value = serde_json::to_vec(&stored_swap)
-                    .context("Could not serialize old swap value")?;
-                let new_value =
-                    serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
+                let old_value =
+                    serialize(&stored_swap).context("Could not serialize old swap value")?;
+                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
 
                 self.db
                     .compare_and_swap(key, Some(old_value), Some(new_value))
@@ -184,15 +182,14 @@ impl Save<hbit::Refunded> for Database {
         match stored_swap.hbit_refunded {
             Some(_) => Err(anyhow!("Hbit Refunded event is already stored")),
             None => {
-                let key = serde_json::to_vec(&swap_id)?;
+                let key = serialize(&swap_id)?;
 
                 let mut swap = stored_swap.clone();
                 swap.hbit_refunded = Some(event.into());
 
-                let old_value = serde_json::to_vec(&stored_swap)
-                    .context("Could not serialize old swap value")?;
-                let new_value =
-                    serde_json::to_vec(&swap).context("Could not serialize new swap value")?;
+                let old_value =
+                    serialize(&stored_swap).context("Could not serialize old swap value")?;
+                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
 
                 self.db
                     .compare_and_swap(key, Some(old_value), Some(new_value))
@@ -334,7 +331,7 @@ mod tests {
 
         let swap_kind = SwapKind::from((swap, swap_id));
 
-        db.insert_swap(swap_kind).unwrap();
+        db.insert_swap(swap_kind).await.unwrap();
 
         let funded = hbit::Funded { asset, location };
         db.save(funded, swap_id).await.unwrap();
@@ -358,7 +355,7 @@ mod tests {
 
         let swap_kind = SwapKind::from((swap, swap_id));
 
-        db.insert_swap(swap_kind).unwrap();
+        db.insert_swap(swap_kind).await.unwrap();
 
         let event = hbit::Redeemed {
             transaction: transaction.clone(),
@@ -384,7 +381,7 @@ mod tests {
 
         let swap_kind = SwapKind::from((swap, swap_id));
 
-        db.insert_swap(swap_kind).unwrap();
+        db.insert_swap(swap_kind).await.unwrap();
 
         let event = hbit::Refunded {
             transaction: transaction.clone(),
