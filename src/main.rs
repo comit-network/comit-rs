@@ -46,6 +46,7 @@ use crate::{
 };
 use conquer_once::Lazy;
 
+use crate::fs::default_config_path;
 pub use maker::Maker;
 pub use mid_market_rate::MidMarketRate;
 pub use rate::{Rate, Spread};
@@ -62,7 +63,7 @@ pub static SECP: Lazy<::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All>
 async fn main() {
     let options = Options::from_args();
 
-    let settings = read_config(&options.config_file)
+    let settings = read_config(&options.config_file, default_config_path)
         .and_then(Settings::from_config_file_and_defaults)
         .expect("Could not initialize configuration");
 
