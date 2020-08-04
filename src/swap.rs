@@ -1,170 +1,19 @@
 //! Execute a swap.
 
 mod action;
+#[cfg(test)]
 mod alice;
 pub mod bitcoin;
 mod bob;
+mod comit;
 mod db;
 pub mod ethereum;
-pub mod hbit;
-pub mod herc20;
 
-use crate::{network::Taker, SwapId};
-use comit::Secret;
-use futures::future::{self, Either};
+use crate::{network::Taker, swap::bob::Bob, SwapId};
 use std::sync::Arc;
 
-pub use action::{AsSwapId, BetaExpiry, BetaLedgerTime, DoItOnce, Execute, TryDoItOnce};
-pub use alice::WatchOnlyAlice;
-pub use bob::WalletBob;
-pub use db::{Database, Save};
-
-/// Execute a Hbit<->Herc20 swap.
-pub async fn hbit_herc20<A, B>(alice: A, bob: B) -> anyhow::Result<()>
-where
-    A: TryDoItOnce<hbit::Funded>
-        + Execute<hbit::Funded, Args = ()>
-        + TryDoItOnce<herc20::Redeemed>
-        + Execute<herc20::Redeemed, Args = herc20::Deployed>
-        + DoItOnce<hbit::Refunded>
-        + Execute<hbit::Refunded, Args = hbit::Funded>
-        + Sync,
-    B: TryDoItOnce<herc20::Deployed>
-        + Execute<herc20::Deployed, Args = ()>
-        + TryDoItOnce<herc20::Funded>
-        + Execute<herc20::Funded, Args = herc20::Deployed>
-        + DoItOnce<hbit::Redeemed>
-        + Execute<hbit::Redeemed, Args = (hbit::Funded, Secret)>
-        + DoItOnce<herc20::Refunded>
-        + Execute<herc20::Refunded, Args = herc20::Deployed>
-        + Sync,
-{
-    let hbit_funded: hbit::Funded = match alice.try_do_it_once(()).await {
-        Ok(hbit_funded) => hbit_funded,
-        Err(_) => return Ok(()),
-    };
-
-    let herc20_deployed: herc20::Deployed = match bob.try_do_it_once(()).await {
-        Ok(herc20_deployed) => herc20_deployed,
-        Err(_) => {
-            DoItOnce::<hbit::Refunded>::do_it_once(&alice, hbit_funded).await?;
-
-            return Ok(());
-        }
-    };
-
-    let _herc20_funded: herc20::Funded = match bob.try_do_it_once(herc20_deployed.clone()).await {
-        Ok(herc20_funded) => herc20_funded,
-        Err(_) => {
-            DoItOnce::<hbit::Refunded>::do_it_once(&alice, hbit_funded).await?;
-
-            return Ok(());
-        }
-    };
-
-    let herc20_redeemed: herc20::Redeemed =
-        match alice.try_do_it_once(herc20_deployed.clone()).await {
-            Ok(herc20_redeemed) => herc20_redeemed,
-            Err(_) => {
-                DoItOnce::<hbit::Refunded>::do_it_once(&alice, hbit_funded).await?;
-                DoItOnce::<herc20::Refunded>::do_it_once(&bob, herc20_deployed.clone()).await?;
-
-                return Ok(());
-            }
-        };
-
-    let hbit_redeem =
-        DoItOnce::<hbit::Redeemed>::do_it_once(&bob, (hbit_funded, herc20_redeemed.secret));
-    let hbit_refund = DoItOnce::<hbit::Refunded>::do_it_once(&alice, hbit_funded);
-
-    match future::select(hbit_redeem, hbit_refund).await {
-        Either::Left((Ok(_hbit_redeemed), _)) => Ok(()),
-        Either::Right((Ok(_hbit_refunded), _)) => Ok(()),
-        Either::Left((Err(_), hbit_refund)) => {
-            hbit_refund.await?;
-            Ok(())
-        }
-        Either::Right((Err(_), hbit_redeem)) => {
-            hbit_redeem.await?;
-            Ok(())
-        }
-    }
-}
-
-/// Execute a Herc20<->Hbit swap.
-pub async fn herc20_hbit<A, B>(alice: A, bob: B) -> anyhow::Result<()>
-where
-    A: TryDoItOnce<herc20::Deployed>
-        + Execute<herc20::Deployed, Args = ()>
-        + TryDoItOnce<herc20::Funded>
-        + Execute<herc20::Funded, Args = herc20::Deployed>
-        + TryDoItOnce<hbit::Redeemed>
-        + Execute<hbit::Redeemed, Args = hbit::Funded>
-        + DoItOnce<herc20::Refunded>
-        + Execute<herc20::Refunded, Args = herc20::Deployed>
-        + Sync,
-    B: TryDoItOnce<hbit::Funded>
-        + Execute<hbit::Funded, Args = ()>
-        + DoItOnce<herc20::Redeemed>
-        + Execute<herc20::Redeemed, Args = (herc20::Deployed, Secret)>
-        + DoItOnce<hbit::Refunded>
-        + Execute<hbit::Refunded, Args = hbit::Funded>
-        + Sync,
-{
-    let herc20_deployed: herc20::Deployed = match alice.try_do_it_once(()).await {
-        Ok(herc20_deployed) => herc20_deployed,
-        Err(_) => {
-            return Ok(());
-        }
-    };
-
-    let _herc20_funded: herc20::Funded = match alice.try_do_it_once(herc20_deployed.clone()).await {
-        Ok(herc20_funded) => herc20_funded,
-        Err(_) => {
-            return Ok(());
-        }
-    };
-
-    let hbit_funded: hbit::Funded = match bob.try_do_it_once(()).await {
-        Ok(hbit_funded) => hbit_funded,
-        Err(_) => {
-            DoItOnce::<herc20::Refunded>::do_it_once(&alice, herc20_deployed.clone()).await?;
-
-            return Ok(());
-        }
-    };
-
-    let hbit_redeemed: hbit::Redeemed = match alice.try_do_it_once(hbit_funded).await {
-        Ok(hbit_redeemed) => hbit_redeemed,
-        Err(_) => {
-            let herc20_refund =
-                DoItOnce::<herc20::Refunded>::do_it_once(&alice, herc20_deployed.clone());
-            let hbit_refund = DoItOnce::<hbit::Refunded>::do_it_once(&bob, hbit_funded);
-            future::try_join(herc20_refund, hbit_refund).await?;
-
-            return Ok(());
-        }
-    };
-
-    let herc20_redeem = DoItOnce::<herc20::Redeemed>::do_it_once(
-        &bob,
-        (herc20_deployed.clone(), hbit_redeemed.secret),
-    );
-    let herc20_refund = DoItOnce::<herc20::Refunded>::do_it_once(&alice, herc20_deployed.clone());
-
-    match future::select(herc20_redeem, herc20_refund).await {
-        Either::Left((Ok(_herc20_redeemed), _)) => Ok(()),
-        Either::Right((Ok(_herc20_refunded), _)) => Ok(()),
-        Either::Left((Err(_), herc20_refund)) => {
-            herc20_refund.await?;
-            Ok(())
-        }
-        Either::Right((Err(_), herc20_redeem)) => {
-            herc20_redeem.await?;
-            Ok(())
-        }
-    }
-}
+pub use self::comit::{hbit, herc20};
+pub use db::Database;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SwapKind {
@@ -209,29 +58,25 @@ impl SwapKind {
                 swap_id,
                 ..
             }) => {
-                let alice = WatchOnlyAlice {
-                    alpha_connector: Arc::clone(&bitcoin_connector),
-                    beta_connector: Arc::clone(&ethereum_connector),
-                    db: Arc::clone(&db),
-                    alpha_params: hbit_params.shared,
-                    beta_params: herc20_params.clone(),
-                    secret_hash: *secret_hash,
-                    start_of_swap: *start_of_swap,
-                    swap_id: *swap_id,
-                };
-
-                let bob = WalletBob {
+                let bob = Bob {
                     alpha_wallet: bitcoin_wallet,
                     beta_wallet: ethereum_wallet,
                     db,
-                    alpha_params: *hbit_params,
-                    beta_params: herc20_params.clone(),
+                    swap_id: *swap_id,
                     secret_hash: *secret_hash,
                     start_of_swap: *start_of_swap,
-                    swap_id: *swap_id,
+                    beta_expiry: herc20_params.expiry,
                 };
 
-                hbit_herc20(alice, bob).await?
+                comit::hbit_herc20_bob(
+                    bob,
+                    bitcoin_connector.as_ref(),
+                    ethereum_connector.as_ref(),
+                    *hbit_params,
+                    herc20_params.clone(),
+                    *start_of_swap,
+                )
+                .await?
             }
             SwapKind::Herc20Hbit(SwapParams {
                 hbit_params,
@@ -241,28 +86,25 @@ impl SwapKind {
                 swap_id,
                 ..
             }) => {
-                let alice = WatchOnlyAlice {
-                    alpha_connector: Arc::clone(&ethereum_connector),
-                    beta_connector: Arc::clone(&bitcoin_connector),
-                    db: Arc::clone(&db),
-                    alpha_params: herc20_params.clone(),
-                    beta_params: hbit_params.shared,
-                    secret_hash: *secret_hash,
-                    start_of_swap: *start_of_swap,
-                    swap_id: *swap_id,
-                };
-                let bob = WalletBob {
+                let bob = Bob {
                     alpha_wallet: ethereum_wallet,
                     beta_wallet: bitcoin_wallet,
                     db,
-                    alpha_params: herc20_params.clone(),
-                    beta_params: *hbit_params,
+                    swap_id: *swap_id,
                     secret_hash: *secret_hash,
                     start_of_swap: *start_of_swap,
-                    swap_id: *swap_id,
+                    beta_expiry: herc20_params.expiry,
                 };
 
-                herc20_hbit(alice, bob).await?
+                comit::herc20_hbit_bob(
+                    bob,
+                    ethereum_connector.as_ref(),
+                    bitcoin_connector.as_ref(),
+                    herc20_params.clone(),
+                    *hbit_params,
+                    *start_of_swap,
+                )
+                .await?
             }
         };
 
@@ -281,6 +123,33 @@ pub struct SwapParams {
     pub taker: Taker,
 }
 
+/// Fetch the current network time for a ledger.
+///
+/// It returns a `anyhow::Result<comit::Timestamp>` so that it can be
+/// used to determine whether a COMIT HTLC has expired.
+#[async_trait::async_trait]
+pub trait LedgerTime {
+    async fn ledger_time(&self) -> anyhow::Result<comit::Timestamp>;
+}
+
+async fn poll_beta_has_expired<BC>(
+    beta_connector: &BC,
+    beta_expiry: comit::Timestamp,
+) -> anyhow::Result<()>
+where
+    BC: LedgerTime,
+{
+    loop {
+        let beta_ledger_time = beta_connector.ledger_time().await?;
+
+        if beta_expiry <= beta_ledger_time {
+            return Ok(());
+        }
+
+        tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
+    }
+}
+
 #[cfg(test)]
 impl crate::StaticStub for SwapParams {
     fn static_stub() -> Self {
@@ -288,11 +157,12 @@ impl crate::StaticStub for SwapParams {
         use ::bitcoin::secp256k1;
         use std::str::FromStr;
 
-        let secret_hash = SecretHash::new(Secret::from(*b"hello world, you are beautiful!!"));
+        let secret_hash =
+            SecretHash::new(comit::Secret::from(*b"hello world, you are beautiful!!"));
 
         SwapParams {
             hbit_params: hbit::Params {
-                shared: comit::hbit::Params {
+                shared: hbit::SharedParams {
                     network: ::bitcoin::Network::Regtest,
                     asset: comit::asset::Bitcoin::from_sat(12_345_678),
                     redeem_identity: comit::bitcoin::PublicKey::from_str(
@@ -325,7 +195,7 @@ impl crate::StaticStub for SwapParams {
                 secret_hash,
                 chain_id: 42.into(),
             },
-            secret_hash: SecretHash::new(Secret::from(*b"hello world, you are beautiful!!")),
+            secret_hash: SecretHash::new(comit::Secret::from(*b"hello world, you are beautiful!!")),
             start_of_swap: chrono::Local::now().naive_local(),
             swap_id: Default::default(),
             taker: Taker::static_stub(),
@@ -336,10 +206,12 @@ impl crate::StaticStub for SwapParams {
 #[cfg(test)]
 mod arbitrary {
     use super::*;
-    use crate::arbitrary::*;
-    use comit::{
-        asset::{ethereum::TryFromWei, Erc20, Erc20Quantity},
-        ethereum::ChainId,
+    use crate::{
+        arbitrary::*,
+        swap::comit::{
+            asset::{ethereum::TryFromWei, Erc20, Erc20Quantity},
+            ethereum::ChainId,
+        },
     };
     use quickcheck::{Arbitrary, Gen};
 
@@ -401,20 +273,23 @@ mod arbitrary {
 mod tests {
     use super::*;
     use crate::{
-        swap::{alice::wallet_actor::WalletAlice, bitcoin, bob::watch_only_actor::WatchOnlyBob},
+        swap::{
+            alice::Alice,
+            bitcoin,
+            comit::{
+                asset::{
+                    self,
+                    ethereum::{Erc20Quantity, FromWei},
+                },
+                btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
+                ethereum::ChainId,
+                identity, Secret, SecretHash, Timestamp,
+            },
+        },
         test_harness, Seed, StaticStub, SwapId,
     };
     use ::bitcoin::secp256k1;
     use chrono::Utc;
-    use comit::{
-        asset::{
-            self,
-            ethereum::{Erc20Quantity, FromWei},
-        },
-        btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
-        ethereum::ChainId,
-        identity, Secret, SecretHash, Timestamp,
-    };
     use std::{str::FromStr, sync::Arc};
     use testcontainers::clients;
 
@@ -464,15 +339,12 @@ mod tests {
         Secret::from(*bytes)
     }
 
-    #[derive(Clone, Copy)]
-    struct Database;
-
     #[tokio::test]
     async fn execute_alice_hbit_herc20_swap() -> anyhow::Result<()> {
         let client = clients::Cli::default();
 
-        let alice_db = Arc::new(db::Database::new_test().unwrap());
-        let bob_db = Arc::new(db::Database::new_test().unwrap());
+        let alice_db = Arc::new(Database::new_test().unwrap());
+        let bob_db = Arc::new(Database::new_test().unwrap());
 
         let bitcoin_network = ::bitcoin::Network::Regtest;
         let (bitcoin_connector, bitcoind_url, bitcoin_blockchain) = {
@@ -625,28 +497,25 @@ mod tests {
 
             alice_db.insert_swap(swap).await.unwrap();
 
-            let alice = WalletAlice {
+            let hbit_params = hbit::Params::new(hbit_params, hbit_transient_refund_sk);
+            let alice = Alice {
                 alpha_wallet: alice_bitcoin_wallet.clone(),
                 beta_wallet: alice_ethereum_wallet.clone(),
                 db: Arc::clone(&alice_db),
-                alpha_params: hbit::Params::new(hbit_params, hbit_transient_refund_sk),
-                beta_params: herc20_params.clone(),
+                swap_id,
                 secret,
                 start_of_swap,
-                swap_id,
-            };
-            let bob = WatchOnlyBob {
-                alpha_connector: Arc::clone(&bitcoin_connector),
-                beta_connector: Arc::clone(&ethereum_connector),
-                db: alice_db,
-                alpha_params: hbit_params,
-                beta_params: herc20_params.clone(),
-                secret_hash,
-                start_of_swap,
-                swap_id,
+                beta_expiry: herc20_params.expiry,
             };
 
-            hbit_herc20(alice, bob)
+            comit::hbit_herc20_alice(
+                alice,
+                ethereum_connector.as_ref(),
+                hbit_params,
+                herc20_params.clone(),
+                secret,
+                start_of_swap,
+            )
         };
 
         let bob_swap = {
@@ -666,28 +535,25 @@ mod tests {
 
             bob_db.insert_swap(swap).await.unwrap();
 
-            let alice = WatchOnlyAlice {
-                alpha_connector: Arc::clone(&bitcoin_connector),
-                beta_connector: Arc::clone(&ethereum_connector),
-                db: Arc::clone(&bob_db),
-                alpha_params: hbit_params,
-                beta_params: herc20_params.clone(),
-                secret_hash,
-                start_of_swap,
-                swap_id,
-            };
-            let bob = WalletBob {
+            let hbit_params = hbit::Params::new(hbit_params, hbit_transient_redeem_sk);
+            let bob = Bob {
                 alpha_wallet: bob_bitcoin_wallet.clone(),
                 beta_wallet: bob_ethereum_wallet.clone(),
                 db: bob_db,
-                alpha_params: hbit::Params::new(hbit_params, hbit_transient_redeem_sk),
-                beta_params: herc20_params.clone(),
+                swap_id,
                 secret_hash,
                 start_of_swap,
-                swap_id,
+                beta_expiry: herc20_params.expiry,
             };
 
-            hbit_herc20(alice, bob)
+            comit::hbit_herc20_bob(
+                bob,
+                bitcoin_connector.as_ref(),
+                ethereum_connector.as_ref(),
+                hbit_params,
+                herc20_params.clone(),
+                start_of_swap,
+            )
         };
 
         let alice_bitcoin_starting_balance = alice_bitcoin_wallet.inner.balance().await?;
@@ -703,6 +569,9 @@ mod tests {
             .await?;
 
         futures::future::try_join(alice_swap, bob_swap).await?;
+
+        // Sleep so that wallets have caught up with the balance changes caused by the swap
+        std::thread::sleep(std::time::Duration::from_millis(2000));
 
         let alice_bitcoin_final_balance = alice_bitcoin_wallet.inner.balance().await?;
         let bob_bitcoin_final_balance = bob_bitcoin_wallet.inner.balance().await?;

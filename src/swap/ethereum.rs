@@ -1,4 +1,4 @@
-use crate::swap::{herc20, BetaLedgerTime};
+use crate::swap::{herc20, LedgerTime};
 use chrono::NaiveDateTime;
 use comit::{
     btsieve::{ethereum::Web3Connector, LatestBlock},
@@ -21,7 +21,7 @@ pub struct Wallet {
 impl herc20::ExecuteDeploy for Wallet {
     async fn execute_deploy(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {
         let action = params.build_deploy_action();
-        let deployed_contract = self.inner.deploy_contract(dbg!(action)).await?;
+        let deployed_contract = self.inner.deploy_contract(action).await?;
 
         Ok(deployed_contract.into())
     }
@@ -78,7 +78,7 @@ impl herc20::ExecuteRefund for Wallet {
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<herc20::Refunded> {
         loop {
-            if self.beta_ledger_time().await? >= params.expiry {
+            if self.ledger_time().await? >= params.expiry {
                 break;
             }
 
@@ -97,16 +97,16 @@ impl herc20::ExecuteRefund for Wallet {
 }
 
 #[async_trait::async_trait]
-impl BetaLedgerTime for Web3Connector {
-    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
+impl LedgerTime for Web3Connector {
+    async fn ledger_time(&self) -> anyhow::Result<Timestamp> {
         ethereum_latest_time(self).await
     }
 }
 
 #[async_trait::async_trait]
-impl BetaLedgerTime for Wallet {
-    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
-        self.connector.as_ref().beta_ledger_time().await
+impl LedgerTime for Wallet {
+    async fn ledger_time(&self) -> anyhow::Result<Timestamp> {
+        self.connector.as_ref().ledger_time().await
     }
 }
 

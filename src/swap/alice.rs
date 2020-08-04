@@ -1,381 +1,92 @@
-//! Alice's perspective of the swap.
-//!
-//! In Nectar we always take the role of Bob in the swap, so our local
-//! representation of the other party, Alice, is a component that
-//! watches the two blockchains involved in the swap.
+//! This module is only useful for integration tests, given that
+//! Nectar never executes a swap as Alice.
 
 use crate::{
-    swap::{bitcoin, db, ethereum, hbit, herc20, AsSwapId, BetaExpiry, BetaLedgerTime, Execute},
+    swap::{
+        action::try_do_it_once, bitcoin, ethereum, hbit, herc20, poll_beta_has_expired, Database,
+        LedgerTime,
+    },
     SwapId,
 };
 use chrono::NaiveDateTime;
-use comit::{
-    btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
-    SecretHash, Timestamp,
-};
+use comit::{Secret, Timestamp};
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
-pub struct WatchOnlyAlice<AC, BC, DB, AP, BP> {
-    pub alpha_connector: Arc<AC>,
-    pub beta_connector: Arc<BC>,
-    pub db: Arc<DB>,
-    pub alpha_params: AP,
-    pub beta_params: BP,
-    pub secret_hash: SecretHash,
-    pub start_of_swap: NaiveDateTime,
+pub struct Alice<AW, BW> {
+    pub alpha_wallet: AW,
+    pub beta_wallet: BW,
+    pub db: Arc<Database>,
     pub swap_id: SwapId,
+    pub secret: Secret,
+    pub start_of_swap: NaiveDateTime,
+    pub beta_expiry: Timestamp,
 }
 
-#[allow(clippy::unit_arg)]
 #[async_trait::async_trait]
-impl<AC, BC, DB, BP> Execute<herc20::Deployed> for WatchOnlyAlice<AC, BC, DB, herc20::Params, BP>
+impl<BW> hbit::ExecuteFund for Alice<bitcoin::Wallet, BW>
 where
-    AC: LatestBlock<Block = ethereum::Block>
-        + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-        + ReceiptByHash,
-    BC: Send + Sync,
-    DB: Send + Sync,
-    BP: Send + Sync,
+    BW: LedgerTime + Send + Sync,
 {
-    type Args = ();
+    async fn execute_fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::Funded> {
+        let action = self.alpha_wallet.execute_fund(params);
+        let poll_beta_has_expired = poll_beta_has_expired(&self.beta_wallet, self.beta_expiry);
 
-    async fn execute(&self, (): Self::Args) -> anyhow::Result<herc20::Deployed> {
-        herc20::watch_for_deployed(
-            self.alpha_connector.as_ref(),
-            self.alpha_params.clone(),
-            self.start_of_swap,
+        try_do_it_once(
+            self.db.as_ref(),
+            self.swap_id,
+            action,
+            poll_beta_has_expired,
         )
         .await
     }
 }
 
 #[async_trait::async_trait]
-impl<AC, BC, DB, BP> Execute<herc20::Funded> for WatchOnlyAlice<AC, BC, DB, herc20::Params, BP>
+impl<AW> herc20::ExecuteRedeem for Alice<AW, ethereum::Wallet>
 where
-    AC: LatestBlock<Block = ethereum::Block>
-        + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-        + ReceiptByHash,
-    BC: Send + Sync,
-    DB: Send + Sync,
-    BP: Send + Sync,
+    AW: Send + Sync,
 {
-    type Args = herc20::Deployed;
+    async fn execute_redeem(
+        &self,
+        params: herc20::Params,
+        secret: Secret,
+        deploy_event: herc20::Deployed,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<herc20::Redeemed> {
+        let action = self
+            .beta_wallet
+            .execute_redeem(params, secret, deploy_event, start_of_swap);
+        let poll_beta_has_expired = poll_beta_has_expired(&self.beta_wallet, self.beta_expiry);
 
-    async fn execute(&self, deploy_event: herc20::Deployed) -> anyhow::Result<herc20::Funded> {
-        herc20::watch_for_funded(
-            self.alpha_connector.as_ref(),
-            self.alpha_params.clone(),
-            self.start_of_swap,
-            deploy_event,
+        try_do_it_once(
+            self.db.as_ref(),
+            self.swap_id,
+            action,
+            poll_beta_has_expired,
         )
         .await
     }
 }
 
 #[async_trait::async_trait]
-impl<AC, BC, DB, AP> Execute<herc20::Redeemed> for WatchOnlyAlice<AC, BC, DB, AP, herc20::Params>
+impl<BW> hbit::ExecuteRefund for Alice<bitcoin::Wallet, BW>
 where
-    AC: Send + Sync,
-    BC: LatestBlock<Block = ethereum::Block>
-        + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-        + ReceiptByHash,
-    DB: Send + Sync,
-    AP: Send + Sync,
+    BW: Send + Sync,
 {
-    type Args = herc20::Deployed;
+    async fn execute_refund(
+        &self,
+        params: hbit::Params,
+        fund_event: hbit::Funded,
+    ) -> anyhow::Result<comit::hbit::Refunded> {
+        let action = self.alpha_wallet.execute_refund(params, fund_event);
 
-    async fn execute(&self, deploy_event: herc20::Deployed) -> anyhow::Result<herc20::Redeemed> {
-        herc20::watch_for_redeemed(
-            self.beta_connector.as_ref(),
-            self.start_of_swap,
-            deploy_event,
+        try_do_it_once(
+            self.db.as_ref(),
+            self.swap_id,
+            action,
+            futures::future::pending(),
         )
         .await
-    }
-}
-
-#[async_trait::async_trait]
-impl<AC, BC, DB, BP> Execute<herc20::Refunded> for WatchOnlyAlice<AC, BC, DB, herc20::Params, BP>
-where
-    AC: LatestBlock<Block = ethereum::Block>
-        + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-        + ReceiptByHash,
-    BC: Send + Sync,
-    DB: Send + Sync,
-    BP: Send + Sync,
-{
-    type Args = herc20::Deployed;
-
-    async fn execute(&self, deploy_event: herc20::Deployed) -> anyhow::Result<herc20::Refunded> {
-        herc20::watch_for_refunded(
-            self.alpha_connector.as_ref(),
-            self.start_of_swap,
-            deploy_event,
-        )
-        .await
-    }
-}
-
-#[allow(clippy::unit_arg)]
-#[async_trait::async_trait]
-impl<AC, BC, DB, BP> Execute<hbit::Funded> for WatchOnlyAlice<AC, BC, DB, hbit::SharedParams, BP>
-where
-    AC: LatestBlock<Block = bitcoin::Block>
-        + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
-    BC: Send + Sync,
-    DB: Send + Sync,
-    BP: Send + Sync,
-{
-    type Args = ();
-
-    async fn execute(&self, (): Self::Args) -> anyhow::Result<hbit::Funded> {
-        hbit::watch_for_funded(
-            self.alpha_connector.as_ref(),
-            &self.alpha_params,
-            self.start_of_swap,
-        )
-        .await
-    }
-}
-
-#[async_trait::async_trait]
-impl<AC, BC, DB, AP> Execute<hbit::Redeemed> for WatchOnlyAlice<AC, BC, DB, AP, hbit::SharedParams>
-where
-    AC: Send + Sync,
-    BC: LatestBlock<Block = bitcoin::Block>
-        + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
-    DB: Send + Sync,
-    AP: Send + Sync,
-{
-    type Args = hbit::Funded;
-
-    async fn execute(&self, fund_event: hbit::Funded) -> anyhow::Result<hbit::Redeemed> {
-        hbit::watch_for_redeemed(
-            self.beta_connector.as_ref(),
-            &self.beta_params,
-            fund_event.location,
-            self.start_of_swap,
-        )
-        .await
-    }
-}
-
-#[async_trait::async_trait]
-impl<AC, BC, DB, BP> Execute<hbit::Refunded> for WatchOnlyAlice<AC, BC, DB, hbit::SharedParams, BP>
-where
-    AC: LatestBlock<Block = bitcoin::Block>
-        + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
-    BC: Send + Sync,
-    DB: Send + Sync,
-    BP: Send + Sync,
-{
-    type Args = hbit::Funded;
-
-    async fn execute(&self, fund_event: hbit::Funded) -> anyhow::Result<hbit::Refunded> {
-        hbit::watch_for_refunded(
-            self.alpha_connector.as_ref(),
-            &self.alpha_params,
-            fund_event.location,
-            self.start_of_swap,
-        )
-        .await
-    }
-}
-
-#[async_trait::async_trait]
-impl<AC, BC, DB, AP> BetaExpiry for WatchOnlyAlice<AC, BC, DB, AP, herc20::Params> {
-    fn beta_expiry(&self) -> Timestamp {
-        self.beta_params.expiry
-    }
-}
-
-#[async_trait::async_trait]
-impl<AC, BC, DB, AP> BetaExpiry for WatchOnlyAlice<AC, BC, DB, AP, hbit::SharedParams> {
-    fn beta_expiry(&self) -> Timestamp {
-        self.beta_params.expiry
-    }
-}
-
-#[async_trait::async_trait]
-impl<AC, BC, DB, AP, BP> BetaLedgerTime for WatchOnlyAlice<AC, BC, DB, AP, BP>
-where
-    AC: Send + Sync,
-    BC: BetaLedgerTime + Send + Sync,
-    DB: Send + Sync,
-    AP: Send + Sync,
-    BP: Send + Sync,
-{
-    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
-        self.beta_connector.beta_ledger_time().await
-    }
-}
-
-impl<E, AC, BC, DB, AP, BP> db::Load<E> for WatchOnlyAlice<AC, BC, DB, AP, BP>
-where
-    E: 'static,
-    AC: Send + Sync + 'static,
-    BC: Send + Sync + 'static,
-    DB: db::Load<E>,
-    AP: Send + Sync + 'static,
-    BP: Send + Sync + 'static,
-{
-    fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<E>> {
-        self.db.load(swap_id)
-    }
-}
-
-#[async_trait::async_trait]
-impl<E, AC, BC, DB, AP, BP> db::Save<E> for WatchOnlyAlice<AC, BC, DB, AP, BP>
-where
-    E: Send + 'static,
-    AC: Send + Sync + 'static,
-    BC: Send + Sync + 'static,
-    DB: db::Save<E>,
-    AP: Send + Sync + 'static,
-    BP: Send + Sync + 'static,
-{
-    async fn save(&self, event: E, swap_id: SwapId) -> anyhow::Result<()> {
-        self.db.save(event, swap_id).await
-    }
-}
-
-impl<AC, BC, DB, AP, BP> AsSwapId for WatchOnlyAlice<AC, BC, DB, AP, BP> {
-    fn as_swap_id(&self) -> SwapId {
-        self.swap_id
-    }
-}
-
-#[cfg(test)]
-pub mod wallet_actor {
-    //! This module is only useful for integration tests, given that
-    //! Nectar never executes a swap as Alice.
-
-    use super::*;
-    use comit::Secret;
-
-    #[derive(Clone, Debug)]
-    pub struct WalletAlice<AW, BW, DB, AP, BP> {
-        pub alpha_wallet: AW,
-        pub beta_wallet: BW,
-        pub db: Arc<DB>,
-        pub alpha_params: AP,
-        pub beta_params: BP,
-        pub secret: Secret,
-        pub start_of_swap: NaiveDateTime,
-        pub swap_id: SwapId,
-    }
-
-    #[allow(clippy::unit_arg)]
-    #[async_trait::async_trait]
-    impl<AW, BW, DB, BP> Execute<hbit::Funded> for WalletAlice<AW, BW, DB, hbit::Params, BP>
-    where
-        AW: hbit::ExecuteFund + Send + Sync,
-        BW: Send + Sync,
-        DB: Send + Sync,
-        BP: Send + Sync,
-    {
-        type Args = ();
-
-        async fn execute(&self, (): Self::Args) -> anyhow::Result<hbit::Funded> {
-            self.alpha_wallet.execute_fund(&self.alpha_params).await
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl<AW, BW, DB, AP> Execute<herc20::Redeemed> for WalletAlice<AW, BW, DB, AP, herc20::Params>
-    where
-        AW: Send + Sync,
-        BW: herc20::ExecuteRedeem + Send + Sync,
-        DB: Send + Sync,
-        AP: Send + Sync,
-    {
-        type Args = herc20::Deployed;
-
-        async fn execute(
-            &self,
-            deploy_event: herc20::Deployed,
-        ) -> anyhow::Result<herc20::Redeemed> {
-            self.beta_wallet
-                .execute_redeem(
-                    self.beta_params.clone(),
-                    self.secret,
-                    deploy_event,
-                    self.start_of_swap,
-                )
-                .await
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl<AW, BW, DB, BP> Execute<hbit::Refunded> for WalletAlice<AW, BW, DB, hbit::Params, BP>
-    where
-        AW: hbit::ExecuteRefund + Send + Sync,
-        BW: Send + Sync,
-        DB: Send + Sync,
-        BP: Send + Sync,
-    {
-        type Args = hbit::Funded;
-
-        async fn execute(&self, fund_event: hbit::Funded) -> anyhow::Result<hbit::Refunded> {
-            self.alpha_wallet
-                .execute_refund(self.alpha_params, fund_event)
-                .await
-        }
-    }
-
-    impl<AW, BW, DB, AP> BetaExpiry for WalletAlice<AW, BW, DB, AP, herc20::Params> {
-        fn beta_expiry(&self) -> Timestamp {
-            self.beta_params.expiry
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl<AW, BW, DB, AP, BP> BetaLedgerTime for WalletAlice<AW, BW, DB, AP, BP>
-    where
-        AW: Send + Sync,
-        BW: BetaLedgerTime + Send + Sync,
-        DB: Send + Sync,
-        AP: Send + Sync,
-        BP: Send + Sync,
-    {
-        async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
-            self.beta_wallet.beta_ledger_time().await
-        }
-    }
-
-    impl<E, AW, BW, DB, AP, BP> db::Load<E> for WalletAlice<AW, BW, DB, AP, BP>
-    where
-        E: 'static,
-        AW: Send + Sync + 'static,
-        BW: Send + Sync + 'static,
-        DB: db::Load<E>,
-        AP: Send + Sync + 'static,
-        BP: Send + Sync + 'static,
-    {
-        fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<E>> {
-            self.db.load(swap_id)
-        }
-    }
-
-    #[async_trait::async_trait]
-    impl<E, AW, BW, DB, AP, BP> db::Save<E> for WalletAlice<AW, BW, DB, AP, BP>
-    where
-        E: Send + 'static,
-        AW: Send + Sync + 'static,
-        BW: Send + Sync + 'static,
-        DB: db::Save<E>,
-        AP: Send + Sync + 'static,
-        BP: Send + Sync + 'static,
-    {
-        async fn save(&self, event: E, swap_id: SwapId) -> anyhow::Result<()> {
-            self.db.save(event, swap_id).await
-        }
-    }
-
-    impl<AW, BW, DB, AP, BP> AsSwapId for WalletAlice<AW, BW, DB, AP, BP> {
-        fn as_swap_id(&self) -> SwapId {
-            self.swap_id
-        }
     }
 }

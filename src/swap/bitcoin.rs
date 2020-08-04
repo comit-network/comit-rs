@@ -1,6 +1,9 @@
-use crate::swap::{hbit, BetaLedgerTime};
+use crate::swap::{hbit, LedgerTime};
 use comit::{
-    asset, bitcoin::median_time_past, btsieve::bitcoin::BitcoindConnector, Secret, Timestamp,
+    asset,
+    bitcoin::median_time_past,
+    btsieve::{bitcoin::BitcoindConnector, BlockByHash, LatestBlock},
+    Secret, Timestamp,
 };
 use std::{sync::Arc, time::Duration};
 
@@ -128,15 +131,32 @@ impl Wallet {
 }
 
 #[async_trait::async_trait]
-impl BetaLedgerTime for BitcoindConnector {
-    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
+impl LatestBlock for Wallet {
+    type Block = bitcoin::Block;
+    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
+        self.connector.as_ref().latest_block().await
+    }
+}
+
+#[async_trait::async_trait]
+impl BlockByHash for Wallet {
+    type Block = bitcoin::Block;
+    type BlockHash = bitcoin::BlockHash;
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
+        self.connector.as_ref().block_by_hash(block_hash).await
+    }
+}
+
+#[async_trait::async_trait]
+impl LedgerTime for BitcoindConnector {
+    async fn ledger_time(&self) -> anyhow::Result<Timestamp> {
         median_time_past(self).await
     }
 }
 
 #[async_trait::async_trait]
-impl BetaLedgerTime for Wallet {
-    async fn beta_ledger_time(&self) -> anyhow::Result<Timestamp> {
-        self.connector.as_ref().beta_ledger_time().await
+impl LedgerTime for Wallet {
+    async fn ledger_time(&self) -> anyhow::Result<Timestamp> {
+        self.connector.as_ref().ledger_time().await
     }
 }
