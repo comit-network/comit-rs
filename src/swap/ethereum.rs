@@ -21,7 +21,7 @@ pub struct Wallet {
 impl herc20::ExecuteDeploy for Wallet {
     async fn execute_deploy(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {
         let action = params.build_deploy_action();
-        let deployed_contract = self.inner.deploy_contract(dbg!(action)).await?;
+        let deployed_contract = self.inner.deploy_contract(action).await?;
 
         Ok(deployed_contract.into())
     }

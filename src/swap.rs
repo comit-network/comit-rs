@@ -441,7 +441,6 @@ mod tests {
 
             comit::hbit_herc20_alice(
                 alice,
-                bitcoin_connector.as_ref(),
                 ethereum_connector.as_ref(),
                 hbit_params,
                 herc20_params.clone(),
@@ -501,6 +500,9 @@ mod tests {
             .await?;
 
         futures::future::try_join(alice_swap, bob_swap).await?;
+
+        // Sleep so that wallets have caught up with the balance changes caused by the swap
+        std::thread::sleep(std::time::Duration::from_millis(2000));
 
         let alice_bitcoin_final_balance = alice_bitcoin_wallet.inner.balance().await?;
         let bob_bitcoin_final_balance = bob_bitcoin_wallet.inner.balance().await?;
