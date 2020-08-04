@@ -88,19 +88,14 @@ async fn main() {
     .await;
 
     match options.cmd {
-        Command::Trade => {
-            let runtime = tokio::runtime::Runtime::new().expect("Create runtime");
-
-            trade(
-                runtime.handle().clone(),
-                &seed,
-                settings,
-                bitcoin_wallet.expect("could not initialise bitcoin wallet"),
-                ethereum_wallet.expect("could not initialise ethereum wallet"),
-            )
-            .await
-            .expect("Start trading")
-        }
+        Command::Trade => trade(
+            &seed,
+            settings,
+            bitcoin_wallet.expect("could not initialise bitcoin wallet"),
+            ethereum_wallet.expect("could not initialise ethereum wallet"),
+        )
+        .await
+        .expect("Start trading"),
         Command::WalletInfo => {
             let wallet_info = wallet_info(
                 ethereum_wallet.ok(),

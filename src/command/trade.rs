@@ -23,7 +23,6 @@ use std::{sync::Arc, time::Duration};
 const ENSURED_CONSUME_ZERO_BUFFER: usize = 0;
 
 pub async fn trade(
-    runtime_handle: tokio::runtime::Handle,
     seed: &Seed,
     settings: Settings,
     bitcoin_wallet: bitcoin::Wallet,
@@ -45,7 +44,7 @@ pub async fn trade(
     #[cfg(test)]
     let db = Arc::new(Database::new_test()?);
 
-    let mut swarm = Swarm::new(&seed, &settings, runtime_handle, Arc::clone(&db))?;
+    let mut swarm = Swarm::new(&seed, &settings, Arc::clone(&db))?;
 
     let initial_sell_order = maker
         .new_sell_order()
@@ -530,8 +529,6 @@ mod tests {
     #[ignore]
     #[tokio::test]
     async fn trade_command() {
-        let runtime = tokio::runtime::Runtime::new().unwrap();
-
         let client = testcontainers::clients::Cli::default();
         let seed = Seed::random().unwrap();
 
@@ -615,14 +612,8 @@ mod tests {
             .await
             .unwrap();
 
-        let _ = trade(
-            runtime.handle().clone(),
-            &seed,
-            settings,
-            bitcoin_wallet,
-            ethereum_wallet,
-        )
-        .await
-        .unwrap();
+        let _ = trade(&seed, settings, bitcoin_wallet, ethereum_wallet)
+            .await
+            .unwrap();
     }
 }
