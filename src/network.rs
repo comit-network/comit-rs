@@ -46,7 +46,6 @@ impl Swarm {
     pub fn new(
         seed: &Seed,
         settings: &crate::config::Settings,
-        task_executor: tokio::runtime::Handle,
         database: Arc<Database>,
     ) -> anyhow::Result<Self> {
         use anyhow::Context as _;
@@ -61,7 +60,7 @@ impl Swarm {
         let mut swarm =
             libp2p::swarm::SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
                 .executor(Box::new(TokioExecutor {
-                    handle: task_executor,
+                    handle: tokio::runtime::Handle::current(),
                 }))
                 .build();
         for addr in settings.network.listen.clone() {
