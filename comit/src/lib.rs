@@ -29,6 +29,7 @@ pub mod lnd;
 pub mod network;
 #[cfg(test)]
 pub mod proptest;
+pub mod rsa;
 mod secret;
 mod secret_hash;
 mod timestamp;

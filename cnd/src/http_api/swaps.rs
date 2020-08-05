@@ -22,6 +22,7 @@ use crate::{
     storage::Load,
     DeployAction, Facade, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role,
 };
+use comit::rsa::SwapTime;
 use serde::Serialize;
 use warp::{http, Rejection, Reply};
 
@@ -164,15 +165,24 @@ where
         + BetaAbsoluteExpiry,
 {
     if swap.init_action().is_ok() {
-        return Ok(Some(ActionName::Init));
+        if is_safe_to_init(swap) {
+            return Ok(Some(ActionName::Init));
+        }
+        return Ok(None);
     }
 
     if swap.deploy_action().is_ok() {
-        return Ok(Some(ActionName::Deploy));
+        if is_safe_to_deploy(swap) {
+            return Ok(Some(ActionName::Deploy));
+        }
+        return Ok(None);
     }
 
     if swap.fund_action().is_ok() {
-        return Ok(Some(ActionName::Fund));
+        if is_safe_to_fund(swap) {
+            return Ok(Some(ActionName::Fund));
+        }
+        return Ok(None);
     }
 
     if swap.refund_action().is_ok() {
@@ -203,10 +213,92 @@ where
     }
 
     if swap.redeem_action().is_ok() {
-        return Ok(Some(ActionName::Redeem));
+        if is_safe_to_redeem(swap) {
+            return Ok(Some(ActionName::Redeem));
+        }
+        return Ok(Some(ActionName::Refund));
     }
 
     Ok(None)
+}
+
+fn is_safe_to_init<S>(swap: &S) -> bool
+where
+    S: GetRole + AlphaLedger + BetaLedger + AlphaAbsoluteExpiry + BetaAbsoluteExpiry,
+{
+    let rsa = match swap_time(swap) {
+        Some(rsa) => rsa,
+        None => return false,
+    };
+    match swap.get_role() {
+        Role::Alice => rsa.is_safe_for_alice_to_init(),
+        Role::Bob => rsa.is_safe_for_bob_to_init(),
+    }
+}
+
+fn is_safe_to_deploy<S>(swap: &S) -> bool
+where
+    S: GetRole + AlphaLedger + BetaLedger + AlphaAbsoluteExpiry + BetaAbsoluteExpiry,
+{
+    let rsa = match swap_time(swap) {
+        Some(rsa) => rsa,
+        None => return false,
+    };
+    match swap.get_role() {
+        Role::Alice => rsa.is_safe_for_alice_to_deploy(),
+        Role::Bob => rsa.is_safe_for_bob_to_deploy(),
+    }
+}
+
+fn is_safe_to_fund<S>(swap: &S) -> bool
+where
+    S: GetRole + AlphaLedger + BetaLedger + AlphaAbsoluteExpiry + BetaAbsoluteExpiry,
+{
+    let rsa = match swap_time(swap) {
+        Some(rsa) => rsa,
+        None => return false,
+    };
+    match swap.get_role() {
+        Role::Alice => rsa.is_safe_for_alice_to_fund(),
+        Role::Bob => rsa.is_safe_for_bob_to_fund(),
+    }
+}
+
+fn is_safe_to_redeem<S>(swap: &S) -> bool
+where
+    S: GetRole + AlphaLedger + BetaLedger + AlphaAbsoluteExpiry + BetaAbsoluteExpiry,
+{
+    let rsa = match swap_time(swap) {
+        Some(rsa) => rsa,
+        None => return false,
+    };
+    match swap.get_role() {
+        Role::Alice => rsa.is_safe_for_alice_to_redeem(),
+        Role::Bob => rsa.is_safe_for_bob_to_redeem(),
+    }
+}
+
+fn swap_time<S>(swap: &S) -> Option<SwapTime>
+where
+    S: GetRole + AlphaLedger + BetaLedger + AlphaAbsoluteExpiry + BetaAbsoluteExpiry,
+{
+    let alpha_ledger = swap.alpha_ledger();
+    let beta_ledger = swap.beta_ledger();
+    let (alpha_expiry, beta_expiry) = {
+        match (swap.alpha_absolute_expiry(), swap.beta_absolute_expiry()) {
+            (Some(alpha), Some(beta)) => (alpha, beta),
+            _ => return None,
+        }
+    };
+
+    let rsa = SwapTime::new(
+        alpha_ledger.into(),
+        beta_ledger.into(),
+        alpha_expiry,
+        beta_expiry,
+    );
+
+    Some(rsa)
 }
 
 fn make_siren_action(id: LocalSwapId, action_name: ActionName) -> siren::Action {

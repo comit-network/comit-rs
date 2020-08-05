@@ -1,4 +1,5 @@
 use crate::{halbit, hbit, herc20, Role, Secret, SecretHash, Timestamp};
+use comit::rsa::{self};
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -76,6 +77,15 @@ pub trait BetaAbsoluteExpiry {
 pub enum Ledger {
     Bitcoin,
     Ethereum,
+}
+
+impl From<Ledger> for rsa::Ledger {
+    fn from(ledger: Ledger) -> Self {
+        match ledger {
+            Ledger::Bitcoin => rsa::Ledger::Bitcoin,
+            Ledger::Ethereum => rsa::Ledger::Ethereum,
+        }
+    }
 }
 
 pub trait GetRole {
