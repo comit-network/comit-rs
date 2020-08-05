@@ -39,30 +39,35 @@ pub struct MaxSell {
     pub dai: Option<dai::Amount>,
 }
 
-pub fn read_config(config_file: &Option<PathBuf>) -> anyhow::Result<File> {
+pub fn read_config<T>(config_file: &Option<PathBuf>, default_config_path: T) -> anyhow::Result<File>
+where
+    T: FnOnce() -> anyhow::Result<PathBuf>,
+{
     let path = config_file
         .as_ref()
         .map(|path| {
             eprintln!("Using config file {}", path.display());
             path
         })
-        .ok_or_else(|| {
-            // try to load default config
-            let default_path = crate::fs::default_config_path()?;
+        .map_or_else(
+            || {
+                // try to load default config
+                let default_path = default_config_path()?;
 
-            if default_path.exists() {
-                eprintln!(
-                    "Using config file at default path: {}",
-                    default_path.display()
-                );
-                Ok(default_path)
-            } else {
-                eprintln!("Config file default path is {}", default_path.display());
-                Err(anyhow!("internal error (unreachable)"))
-            }
-        })
+                if default_path.exists() {
+                    eprintln!(
+                        "Using config file at default path: {}",
+                        default_path.display()
+                    );
+                    Ok(default_path)
+                } else {
+                    eprintln!("Config file default path is {}", default_path.display());
+                    Err(anyhow!("internal error (unreachable)"))
+                }
+            },
+            |path| Ok(path.to_path_buf()),
+        )
         .ok();
-
     match path {
         Some(path) => File::read(&path)
             .with_context(|| format!("failed to read config file {}", path.display())),
@@ -74,6 +79,8 @@ pub fn read_config(config_file: &Option<PathBuf>) -> anyhow::Result<File> {
 mod tests {
     use super::*;
     use crate::{bitcoin, config::file::Level, ethereum::ChainId, Spread};
+    use std::fs;
+    use std::io::Write;
 
     #[test]
     fn network_deserializes_correctly() {
@@ -144,8 +151,59 @@ mod tests {
             }),
         };
 
-        let config = read_config(&Some(PathBuf::from("sample-config.toml"))).unwrap();
+        let config = read_config(
+            &Some(PathBuf::from("sample-config.toml")),
+            || unreachable!(),
+        )
+        .unwrap();
 
         assert_eq!(config, expected);
+    }
+
+    #[test]
+    fn read_config_uses_default_path() {
+        let tmp_dir = tempdir::TempDir::new("nectar_test").unwrap();
+        let default_path = tmp_dir.path().join("config.toml");
+
+        let mut file = fs::File::create(default_path.clone()).unwrap();
+        file.write_all(b"[data]\ndir = \"/not/a/default/location/\"")
+            .unwrap();
+
+        let default_path_fn = || Ok(default_path);
+
+        let config = read_config(&None, default_path_fn).unwrap();
+        assert_eq!(
+            config.data.unwrap().dir,
+            PathBuf::from("/not/a/default/location/")
+        )
+    }
+
+    #[test]
+    fn read_config_returns_default_config_if_default_path_errors() {
+        let default_path_fn = || Err(anyhow!("Some error"));
+
+        let config = read_config(&None, default_path_fn).unwrap();
+        assert_eq!(
+            config,
+            File {
+                maker: None,
+                network: None,
+                data: None,
+                logging: None,
+                bitcoin: None,
+                ethereum: None,
+            },
+        )
+    }
+
+    #[test]
+    fn read_config_errors_if_passed_path_doesnt_exist() {
+        let default_path_fn = || unreachable!();
+
+        let config = read_config(
+            &Some(PathBuf::from("/this/path/doesnt/exist")),
+            default_path_fn,
+        );
+        assert!(config.is_err())
     }
 }
