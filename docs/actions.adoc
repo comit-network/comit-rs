@@ -1,0 +1,173 @@
+= COMIT Protocol Actions
+Tobin C. Harding <tobin@coblox.tech>;
+:toc:
+:revdate: 2020-08-07
++ Created on: {revdate} +
+
+== Introduction
+
+In order for two parties to exchange assets (swap) using the COMIT protocol each party must take certain pre-defined actions at certain times. A swap is guaranteed to be atomic if, and only if, the correct sequence of actions is followed. It is therefore paramount that a user knows what stage the swap is up to and what step they should take next. Additionally, at any stage, each party should be able to answer the following question: "If I do the next step is there time, for myself and the counterparty, to do all subsequent steps?".
+
+== Swap State Machine
+
+A successful COMIT atomic swap (happy path) may be expressed as a series of state transitions:
+
+        Created --> Alpha Funded --> Beta Funded --> Beta Redeemed --> Alpha Redeemed --> Done
+
+Each transition is associated with a specific action named accordingly e.g., 'fund alpha' transitions from created to alpha funded.
+
+For each state transition there is a time requirement, henceforth called the transition period. The total time requirement for a swap is the sum of the transition periods. A transition period is effected by the state we are transitioning from and the state we are transitioning to, each transition period therefore is calculated differently.
+
+== Transition Period
+
+There exist a number of factors, that when combined, represent the transition period.
+
+.Considerations
+* Time to Act (`TTA`)
+* Time to Inclusion (`TTI`)
+* Time to Final (`TTF`)
+* HTLC Expiry time
+
+=== Time to Act
+
+For each actor there is a time frame within which they can be expected to act.
+
+Different users will have different response times e.g., a long running daemon is likely to respond to swap transitions more quickly than a user who is manually checking an application before doing each action. We define Time To Act (`TTA`) as the window of time within which the counterparty can expected to take the next action.
+
+=== Time To Inclusion
+
+For each blockchain there exists a time for a transaction to be included in a block.
+
+The likelihood of a transaction being included in a block is dependant on the transaction fee coupled with the current load on the blockchain network i.e., the number of current unconfirmed transactions. An increase in the transaction fee leads to an increase in the probability that the transaction will be included. Inclusion is not guaranteed, therefore the probability is defined to be the percentage chance of a transaction being included in a block within the next `N` blocks.
+
+With a given fee and a given probability tolerance we define Time To Inclusion for a given blockchain as:
+
+----
+TTI = N * <average block time>
+----
+
+=== Time To Final
+
+For each blockchain there exists a time, after a transaction has been included in a block, that the transaction is considered to be final.
+
+Confirmations represent the number of blocks in the block chain that have been accepted by the network since the block that includes the transaction. The number of confirmations a transaction has determines the probability that a blockchain fork will invalidate the transaction. With a given blockchain we define Time To Final as:
+
+----
+TTF = <number of required confirmations> * <average block time>
+----
+
+=== HTLC Expiry Time
+
+COMIT swaps are atomic due to the functionality provide by Hash Time Locked Contracts. Mapped to COMIT swap parlance, a user may not refund until after the expiry time has elapsed.
+
+The atomic guarantees of the COMIT protocols rely on the beta expiry time being _before_ the alpha expiry time, these expiry times are absolute (as opposed to relative) i.e., seconds since epoch.
+
+In order for a swap to be guaranteed atomic the redeem transaction must be included in the blockchain _before_ the expiry time elapses. Therefore the redeem action is subject to some `TTI` calculated for the given blockchain. Repeating because this is important; the expiry time represents a hard limit, the redeem transaction must be included in a block before the expiry elapses for the swap to be atomic.
+
+Therefore, there exists a time `T` after which attempting the redeem action is considered 'unsafe' i.e., the probability of the transaction being included in a block is less than some predefined tolerance:
+
+----
+T = <expiry time> - TTI
+----
+
+Please note, that the `TTI` need not be the same for the redeem transaction as for the fund transaction since different fees can be used for each transaction as required.
+
+== Functionality
+
+The system is expected to provide the following functionality:
+
+.Requirements
+1. Given two blockchains, create a pair of useful expiries.
+2. Given a pair of expiries and their respective blockchains, determine if the expiries are useful.
+3. Given the current swap state, determine what the user should do.
+
+A pair of expiries is 'useful' if, at this moment, both parties are able to execute all steps to complete the swap.
+
+== Solution
+
+Here we describe solutions to each of the listed requirements above.
+
+1. To create a pair of useful expiries we calculate the expected time required for completion of the swap. That is the sum of the transition periods for each transition. We then add a Time To Live (`TTL`) value, this ensures the calculated expiries remain useful for `TTL`.
+
+2. A pair of expiries is useful if there is time to take each action required to complete the swap i.e., the expiry pair is useful if there is time to transition to the first action AND there is time for each subsequent action.
+
+3. Semantically the next possible action is either the next happy path action or cancel. Cancel is either refund or abort.
+
+.Semantic actions
+* *next*: The next happy path action (deterministic from the state diagram).
+* *refund*: Send a refund transaction to the blockchain (cancel after fund).
+* *wait_for_refund*: Refund is not yet available but should be taken when available.
+* *abort*: Take no further action (cancel before fund).
+
+The recommended next action can be fully determined from the following algorithm:
+
+----
+1. IF refund is available RETURN refund
+2. IF there is time to transition to next AND there is time for the subsequent action RETURN next
+3. IF have funded RETURN wait_for_refund
+4. RETURN abort
+----
+
+Note that step 2 is recursive, the base case being the final stage of the annotated state diagram - done (see below).
+
+=== Explanation
+
+Various events must occur in order to transition from one state to the next. We can identify these events and annotate the state diagram accordingly. If we are able to calculate the time of each of these events we are able to fully determine the period of each transition.
+
+We define the Time To Final to be a part of the transition to a state e.g., the alpha funded state is not reached until the alpha fund transaction has become final.
+
+There exists a transition diagram for each actor. Each actor progresses along their own state diagram but must be able to predict the state progression of the counterparty in order to determine whether progression is possible for the counterparty.
+
+.Annotated state diagram for Alice:
+----
+(Create) TTA_A TTI_AF TTF_A (alpha funded) TTA_B TTI_BF TTF_B (beta funded) TTA_A TTI_BR TTC_B (beta redeemed) (done)
+----
+
+.Annotated state diagram for Bob:
+----
+(Create) TTA_A TTI_AF TTF_A (alpha funded) TTA_B TTI_BF TTF_B (beta funded) TTA_A TTI_BR (beta redeemed) TTA_B TTI_AR TTC_A (alpha redeemed) (done)
+----
+
+For a swap to continue, at all times, each actor must be able to transition to 'done' before the expiry time governing their redeem action elapses.
+
+.Key:
+* (state): states are shown inside parenthesis
+* `TTA_A`: `TTA` for Alice
+* `TTA_B`: `TTA` for Bob
+* `TTI_AF`: `TTI` for Alpha Fund transaction
+* `TTI_BF`: `TTI` for Beta Fund transaction
+* `TTI_AR`: `TTI` for Alpha Redeem transaction
+* `TTI_BR`: `TTI` for Beta Redeem transaction
+* `TTF_A`: `TTF` for Alpha ledger
+* `TTF_B`: `TTF` for Beta ledger
+
+.Note
+* `TTI_AR` is not actually essential for Bob, we assume Bob waits for Alice's redeem transaction to be included in a block, technically by monitoring unconfirmed transactions (e.g. watching the Bitcoin mempool) `TTI_AR` could be removed. This in no way effects the security of the protocol.
+
+
+== Calculating Events
+
+=== Time to Act
+
+Time To Act should allow for network congestion and expected response of the user.
+
+* `TTA_B` is defined to be 15 minutes
+* `TTA_A` is defined to be 60 minutes
+
+=== Time To Include
+
+(TODO: This section is incomplete)
+
+This is a common task within the ecosystem of each blockchain, as such we will do as is typical for each. We dynamically determine the suggested fee after defining `P` and N.
+
+.Values (Bitcoin/Ethereum)
+* P: probability ???
+* N: number of blocks ???
+
+=== Time To Final
+
+We consider a transaction final once `X` number of blocks have been accepted by the network since the transaction was included.
+
+.We define `X` to be
+* Bitcoin: 6
+* Ethereum: 12
