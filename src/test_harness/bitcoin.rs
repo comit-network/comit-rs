@@ -40,6 +40,8 @@ impl<'c> Blockchain<'c> {
             .create_wallet(&self.wallet_name, None, None, None, None)
             .await?;
 
+        bitcoind_client.rescan(&self.wallet_name).await?;
+
         let reward_address = bitcoind_client
             .get_new_address(&self.wallet_name, None, None)
             .await?;
