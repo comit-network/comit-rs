@@ -417,14 +417,24 @@ impl NetworkBehaviourEventProcess<network::comit::BehaviourOutEvent> for Nectar 
                     chain_id: order.ethereum_ledger.chain_id,
                 };
 
-                let swap = SwapKind::HbitHerc20(SwapParams {
-                    hbit_params,
-                    herc20_params,
-                    secret_hash,
-                    start_of_swap: Utc::now().naive_local(),
-                    swap_id: crate::SwapId::default(),
-                    taker,
-                });
+                let swap = match order.position {
+                    comit::network::Position::Buy => SwapKind::Herc20Hbit(SwapParams {
+                        hbit_params,
+                        herc20_params,
+                        secret_hash,
+                        start_of_swap: Utc::now().naive_local(),
+                        swap_id: crate::SwapId::default(),
+                        taker,
+                    }),
+                    comit::network::Position::Sell => SwapKind::HbitHerc20(SwapParams {
+                        hbit_params,
+                        herc20_params,
+                        secret_hash,
+                        start_of_swap: Utc::now().naive_local(),
+                        swap_id: crate::SwapId::default(),
+                        taker,
+                    }),
+                };
 
                 self.events.push_back(Event::SpawnSwap(swap));
             }
