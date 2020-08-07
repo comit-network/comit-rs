@@ -52,26 +52,29 @@ impl Wallet {
                     .create_wallet(&self.name, None, Some(true), None, None)
                     .await?;
 
-                self.bitcoind_client.rescan(&self.name).await?;
-
                 let wif = self.seed_as_wif();
 
                 self.bitcoind_client
                     .set_hd_seed(&self.name, Some(true), Some(wif))
-                    .await
+                    .await?;
+
+                self.bitcoind_client.rescan(&self.name).await?;
+
+                Ok(())
             }
             Ok(WalletInfoResponse {
                 hd_seed_id: None, ..
             }) => {
-                // Rescan wallet to ensure funding is picked up
-                self.bitcoind_client.rescan(&self.name).await?;
-
                 // The wallet may have been previously created, but the `sethdseed` call may have failed
                 let wif = self.seed_as_wif();
 
                 self.bitcoind_client
                     .set_hd_seed(&self.name, Some(true), Some(wif))
-                    .await
+                    .await?;
+
+                // Rescan wallet to ensure funding is picked up
+                self.bitcoind_client.rescan(&self.name).await?;
+                Ok(())
             }
             _ => {
                 // Rescan wallet to ensure funding is picked up
