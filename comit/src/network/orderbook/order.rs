@@ -1,4 +1,9 @@
-use crate::{asset, asset::Erc20Quantity, identity, ledger, network::orderbook::MakerId};
+use crate::{
+    asset,
+    asset::{ethereum::TryFromWei, Erc20Quantity},
+    identity, ledger,
+    network::orderbook::MakerId,
+};
 use num::BigUint;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt::Display, str::FromStr};
@@ -23,8 +28,9 @@ pub struct Order {
 
 // We explicitly only support BTC/DAI.
 impl Order {
-    pub fn ethereum_amount(&self, amount: asset::Bitcoin) -> Erc20Quantity {
-        Erc20Quantity::from(BigUint::from(amount.as_sat()) * (BigUint::from(self.price.0)))
+    pub fn ethereum_amount(&self, amount: asset::Bitcoin) -> anyhow::Result<Erc20Quantity> {
+        let wei = BigUint::from(amount.as_sat()) * BigUint::from(self.price.0);
+        Ok(Erc20Quantity::try_from_wei(wei)?)
     }
 }
 
