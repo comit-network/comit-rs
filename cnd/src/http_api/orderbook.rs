@@ -10,7 +10,7 @@ use crate::{
 use chrono::Utc;
 use comit::{
     ethereum,
-    network::{MakerId, Order, OrderId, Position, Rate},
+    network::{MakerId, Order, OrderId, OrderNotFound, Position, Rate},
 };
 use serde::{Deserialize, Serialize};
 use warp::{http, http::StatusCode, Rejection, Reply};
@@ -33,7 +33,12 @@ pub async fn post_take_order(
     let order_id = order_id;
     let order = match facade.get_order(order_id).await {
         Some(order) => order,
-        None => panic!("order not found"),
+        None => {
+            return Err(OrderNotFound(order_id))
+                .map_err(anyhow::Error::new)
+                .map_err(problem::from_anyhow)
+                .map_err(warp::reject::custom)
+        }
     };
 
     // TODO: Consider putting the save in the network layer to be uniform with make?
@@ -46,10 +51,15 @@ pub async fn post_take_order(
         absolute_expiry: order.bitcoin_absolute_expiry,
     };
 
+    let ethereum_amount = order
+        .ethereum_amount(body.bitcoin_amount)
+        .map_err(problem::from_anyhow)
+        .map_err(warp::reject::custom)?;
+
     let herc20 = herc20::CreatedSwap {
         asset: Erc20 {
             token_contract: order.token_contract,
-            quantity: order.ethereum_amount(body.bitcoin_amount),
+            quantity: ethereum_amount,
         },
         identity: body.ethereum_identity,
         chain_id: order.ethereum_ledger.chain_id,

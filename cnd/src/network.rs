@@ -647,10 +647,22 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                     network: order.bitcoin_ledger,
                     absolute_expiry: order.bitcoin_absolute_expiry,
                 };
+
+                let ethereum_amount = match order.ethereum_amount(amount) {
+                    Ok(amount) => amount,
+                    Err(e) => {
+                        tracing::error!(
+                            "Partial take quantity corresponds to invalid ethereum amount: {}",
+                            e
+                        );
+                        return;
+                    }
+                };
+
                 let herc20 = herc20::CreatedSwap {
                     asset: asset::Erc20 {
                         token_contract: order.token_contract,
-                        quantity: order.ethereum_amount(amount),
+                        quantity: ethereum_amount,
                     },
                     identity: ethereum_identity,
                     chain_id: order.ethereum_ledger.chain_id,

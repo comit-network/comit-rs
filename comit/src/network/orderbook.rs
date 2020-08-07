@@ -115,7 +115,7 @@ impl Orderbook {
             .order_amount(order_id)
             .ok_or_else(|| OrderNotFound(order_id))?;
         if partial_take_amount > order_amount {
-            Err(anyhow::Error::from(PartialTakeAmountToLarge(
+            Err(anyhow::Error::from(PartialTakeAmountTooLarge(
                 partial_take_amount,
                 order_amount,
                 order_id,
@@ -208,11 +208,11 @@ impl Orderbook {
 
 #[derive(PartialEq, Clone, Copy, Debug, thiserror::Error)]
 #[error("order {0} not found in orderbook")]
-pub struct OrderNotFound(OrderId);
+pub struct OrderNotFound(pub OrderId);
 
 #[derive(PartialEq, Clone, Copy, Debug, thiserror::Error)]
 #[error("partial take amount {0}, is greater than amount {1} specified in order {2}")]
-pub struct PartialTakeAmountToLarge(asset::Bitcoin, asset::Bitcoin, OrderId);
+pub struct PartialTakeAmountTooLarge(asset::Bitcoin, asset::Bitcoin, OrderId);
 
 /// MakerId is a PeerId wrapper so we control serialization/deserialization.
 #[derive(Debug, Clone, PartialEq)]
