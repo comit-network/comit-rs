@@ -44,15 +44,17 @@ pub async fn post_take_order(
     // TODO: Consider putting the save in the network layer to be uniform with make?
     let start_of_swap = Utc::now().naive_local();
 
+    let take_amount = body.bitcoin_amount.unwrap_or(order.bitcoin_quantity);
+
     let hbit = hbit::CreatedSwap {
-        amount: body.bitcoin_amount,
+        amount: take_amount,
         final_identity: body.bitcoin_identity.clone(),
         network: order.bitcoin_ledger,
         absolute_expiry: order.bitcoin_absolute_expiry,
     };
 
     let ethereum_amount = order
-        .ethereum_amount(body.bitcoin_amount)
+        .ethereum_amount(take_amount)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
 
@@ -237,7 +239,6 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
 struct MakeOrderBody {
     position: Position,
     rate: Rate,
-    #[serde(with = "asset::bitcoin::bitcoin_as_decimal_string")]
     bitcoin_amount: asset::Bitcoin,
     bitcoin_ledger: ledger::Bitcoin,
     bitcoin_absolute_expiry: u32,
@@ -267,8 +268,7 @@ impl From<MakeOrderBody> for NewOrder {
 struct TakeOrderBody {
     ethereum_identity: identity::Ethereum,
     bitcoin_identity: bitcoin::Address,
-    #[serde(with = "asset::bitcoin::bitcoin_as_decimal_string")]
-    bitcoin_amount: asset::Bitcoin,
+    bitcoin_amount: Option<asset::Bitcoin>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -279,7 +279,6 @@ struct OrderResponse {
     rate: Rate,
     bitcoin_ledger: ledger::Bitcoin,
     bitcoin_absolute_expiry: u32,
-    #[serde(with = "asset::bitcoin::bitcoin_as_decimal_string")]
     bitcoin_amount: asset::Bitcoin,
     token_contract: ethereum::Address,
     ethereum_ledger: ledger::Ethereum,

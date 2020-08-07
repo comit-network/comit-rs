@@ -1,5 +1,6 @@
 use bitcoin::{util::amount::Denomination, Amount};
-use std::fmt;
+use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
+use std::{fmt, str::FromStr};
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Bitcoin(Amount);
@@ -33,6 +34,54 @@ impl fmt::Display for Bitcoin {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let bitcoin = self.0.to_string_in(Denomination::Bitcoin);
         write!(f, "{} BTC", bitcoin)
+    }
+}
+
+impl Serialize for Bitcoin {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let precision = 8;
+        let base: u64 = 10;
+        let remainder = self.0 % base.pow(precision);
+        let integer = (self.0 - remainder) / base.pow(precision);
+        let string = format!("{}.{}", integer, remainder);
+
+        serializer.serialize_str(&string)
+    }
+}
+
+impl<'de> Deserialize<'de> for Bitcoin {
+    /// Decimal precision of 8 is selected because it is the largest possible
+    /// precision for BTC
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let precision = 8;
+        let string = String::deserialize(deserializer)?;
+        let v: Vec<&str> = string.as_str().split('.').collect();
+
+        let integer = *v.first().unwrap();
+        let decimals = *v.last().unwrap();
+        if decimals.len() > precision {
+            return Err(Error::custom(format!(
+                "Bitcoin does not support a decimal precision of {}, expected {}",
+                decimals.len(),
+                precision
+            )));
+        }
+        let trailing_zeros = precision - decimals.len();
+
+        let zero_vec = vec!['0'; trailing_zeros];
+        let zeros: String = zero_vec.into_iter().collect();
+
+        let result = format!("{}{}{}", integer, decimals, &zeros);
+
+        let sat = u64::from_str(&result).unwrap();
+
+        Ok(Bitcoin::from_sat(sat))
     }
 }
 
@@ -78,48 +127,6 @@ pub mod sats_as_string {
         let amount = Bitcoin::from_sat(value);
 
         Ok(amount)
-    }
-}
-
-pub mod bitcoin_as_decimal_string {
-    use super::*;
-    use serde::{de::Error, Deserialize, Deserializer, Serializer};
-    use std::str::FromStr;
-
-    pub fn serialize<S>(value: &Bitcoin, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&format!("{}", value))
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Bitcoin, <D as Deserializer<'de>>::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let precision = 8;
-        let string = String::deserialize(deserializer)?;
-        let v: Vec<&str> = string.as_str().split('.').collect();
-
-        let integer = *v.first().unwrap();
-        let decimals = *v.last().unwrap();
-        if decimals.len() > precision {
-            return Err(Error::custom(format!(
-                "Bitcoin does not support a decimal precision of {}, expected {}",
-                decimals.len(),
-                precision
-            )));
-        }
-        let trailing_zeros = precision - decimals.len();
-
-        let zero_vec = vec!['0'; trailing_zeros];
-        let zeros: String = zero_vec.into_iter().collect();
-
-        let result = format!("{}{}{}", integer, decimals, &zeros);
-
-        let sat = u64::from_str(&result).unwrap();
-
-        Ok(Bitcoin::from_sat(sat))
     }
 }
 

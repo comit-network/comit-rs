@@ -121,7 +121,7 @@ impl Swarm {
         swap_id: LocalSwapId,
         bitcoin_identity: bitcoin::Address,
         ethereum_identity: identity::Ethereum,
-        amount: asset::Bitcoin,
+        amount: Option<asset::Bitcoin>,
     ) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
         guard.take_order(
@@ -319,7 +319,7 @@ impl ComitNode {
         swap_id: LocalSwapId,
         bitcoin_identity: bitcoin::Address,
         ethereum_identity: identity::Ethereum,
-        amount: asset::Bitcoin,
+        amount: Option<asset::Bitcoin>,
     ) -> anyhow::Result<()> {
         let order = self
             .orderbook

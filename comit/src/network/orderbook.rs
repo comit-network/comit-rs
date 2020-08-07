@@ -106,7 +106,7 @@ impl Orderbook {
     pub fn take(
         &mut self,
         order_id: OrderId,
-        partial_take_amount: asset::Bitcoin,
+        partial_take_amount: Option<asset::Bitcoin>,
     ) -> anyhow::Result<()> {
         let maker_id = self
             .maker_id(order_id)
@@ -114,16 +114,17 @@ impl Orderbook {
         let order_amount = self
             .order_amount(order_id)
             .ok_or_else(|| OrderNotFound(order_id))?;
-        if partial_take_amount > order_amount {
+        let take_amount = partial_take_amount.unwrap_or(order_amount);
+        if take_amount > order_amount {
             Err(anyhow::Error::from(PartialTakeAmountTooLarge(
-                partial_take_amount,
+                take_amount,
                 order_amount,
                 order_id,
             )))
         } else {
             self.take_order.send_request(&maker_id.into(), Request {
                 order_id,
-                amount: partial_take_amount,
+                amount: take_amount,
             });
 
             Ok(())
@@ -439,7 +440,7 @@ mod tests {
 
         alice
             .swarm
-            .take(alice_order.id, asset::Bitcoin::from_sat(900))
+            .take(alice_order.id, None)
             .expect("failed to take order");
 
         // Trigger request/response messages.

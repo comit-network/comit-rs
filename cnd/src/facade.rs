@@ -65,7 +65,7 @@ impl Facade {
         swap_id: LocalSwapId,
         bitcoin_identity: bitcoin::Address,
         ethereum_identity: identity::Ethereum,
-        amount: asset::Bitcoin,
+        amount: Option<asset::Bitcoin>,
     ) -> anyhow::Result<()> {
         self.storage
             .associate_swap_with_order(order_id, swap_id)
