@@ -44,8 +44,8 @@ impl Serialize for Bitcoin {
     {
         let precision = 8;
         let base: u64 = 10;
-        let remainder = self.0 % base.pow(precision);
-        let integer = (self.0 - remainder) / base.pow(precision);
+        let remainder = self.as_sat() % base.pow(precision);
+        let integer = (self.as_sat() - remainder) / base.pow(precision);
         let string = format!("{}.{}", integer, remainder);
 
         serializer.serialize_str(&string)
@@ -133,6 +133,7 @@ pub mod sats_as_string {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use spectral::*;
 
     #[test]
     fn display_bitcoin() {
@@ -140,5 +141,22 @@ mod tests {
             Bitcoin::from_sat(900_000_000_000).to_string(),
             "9000.00000000 BTC"
         );
+    }
+    #[test]
+    fn btc_serialization_success() {
+        let expected = "\"0.12345678\"".to_string();
+        let bitcoin = Bitcoin::from_sat(12345678);
+        let actual = serde_json::to_string(&bitcoin).expect("failed to serialise bitcoin");
+        assert_that(&actual).is_equal_to(expected);
+    }
+    #[test]
+    fn btc_deserialization_fail_too_many_decimals() {
+        let expected = "\"0.123456789\"".to_string();
+        assert!(serde_json::from_str::<Bitcoin>(&expected).is_err());
+    }
+    #[test]
+    fn btc_deserialization_success() {
+        let expected = "\"0.12345678\"".to_string();
+        assert!(serde_json::from_str::<Bitcoin>(&expected).is_ok());
     }
 }

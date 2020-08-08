@@ -144,8 +144,34 @@ impl<'de> Deserialize<'de> for BtcDaiRate {
 
         let result = format!("{}{}{}", integer, decimals, &zeros);
 
-        let rate = u64::from_str(&result).unwrap();
+        let rate =
+            u64::from_str(result.as_str()).map_err(<D as Deserializer<'de>>::Error::custom)?;
 
         Ok(BtcDaiRate(rate))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use spectral::*;
+
+    #[test]
+    fn btc_dai_rate_serialization_success() {
+        let expected = "\"0.1234567891\"".to_string();
+        let rate = BtcDaiRate(1234567891);
+        let actual = serde_json::to_string(&rate).expect("failed to serialise rate");
+        assert_that(&actual).is_equal_to(expected);
+    }
+
+    #[test]
+    fn btc_dai_rate_deserialization_fail_too_many_decimals() {
+        let expected = "\"0.12345678912\"".to_string();
+        assert!(serde_json::from_str::<BtcDaiRate>(&expected).is_err());
+    }
+    #[test]
+    fn btc_dai_rate_deserialization_success() {
+        let expected = "\"0.1234567891\"".to_string();
+        assert!(serde_json::from_str::<BtcDaiRate>(&expected).is_ok());
     }
 }
