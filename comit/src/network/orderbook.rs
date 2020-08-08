@@ -22,7 +22,9 @@ use std::{
 use makerbook::Makerbook;
 pub use order::*;
 use order_source::*;
-use take_order::{Confirmation, Request, TakeOrderCodec, TakeOrderProtocol};
+use take_order::{
+    Confirmation, TakeBtcDaiOrderCodec, TakeBtcDaiOrderProtocol, TakeBtcDaiOrderRequest,
+};
 
 pub use self::{order::*, orders::*};
 
@@ -36,7 +38,7 @@ const REQUEST_TIMEOUT_SECS: u64 = 10;
 pub struct Orderbook {
     makerbook: Makerbook,
     order_source: OrderSource,
-    take_order: RequestResponse<TakeOrderCodec>,
+    take_order: RequestResponse<TakeBtcDaiOrderCodec>,
 
     #[behaviour(ignore)]
     events: VecDeque<BehaviourOutEvent>,
@@ -50,8 +52,8 @@ impl Orderbook {
         let mut config = RequestResponseConfig::default();
         config.set_request_timeout(Duration::from_secs(REQUEST_TIMEOUT_SECS));
         let behaviour = RequestResponse::new(
-            TakeOrderCodec::default(),
-            vec![(TakeOrderProtocol, ProtocolSupport::Full)],
+            TakeBtcDaiOrderCodec::default(),
+            vec![(TakeBtcDaiOrderProtocol, ProtocolSupport::Full)],
             config,
         );
 
@@ -112,7 +114,7 @@ impl Orderbook {
             )))
         } else {
             tracing::info!("attempting to take order {} from maker {}", order_id, maker);
-            self.take_order.send_request(maker, Request {
+            self.take_order.send_request(maker, TakeBtcDaiOrderRequest {
                 order_id,
                 quantity: take_amount,
             });
@@ -252,8 +254,10 @@ impl NetworkBehaviourEventProcess<order_source::BehaviourOutEvent> for Orderbook
     }
 }
 
-impl NetworkBehaviourEventProcess<RequestResponseEvent<Request, Confirmation>> for Orderbook {
-    fn inject_event(&mut self, event: RequestResponseEvent<Request, Confirmation>) {
+impl NetworkBehaviourEventProcess<RequestResponseEvent<TakeBtcDaiOrderRequest, Confirmation>>
+    for Orderbook
+{
+    fn inject_event(&mut self, event: RequestResponseEvent<TakeBtcDaiOrderRequest, Confirmation>) {
         match event {
             RequestResponseEvent::Message {
                 peer: peer_id,
