@@ -418,7 +418,8 @@ impl NetworkBehaviourEventProcess<network::comit::BehaviourOutEvent> for Nectar 
                 };
 
                 let swap = match order.position {
-                    comit::network::Position::Buy => SwapKind::Herc20Hbit(SwapParams {
+                    // Bob is buying (=redeeming) bitcoin (redeeming alpha)
+                    comit::network::Position::Buy => SwapKind::HbitHerc20(SwapParams {
                         hbit_params,
                         herc20_params,
                         secret_hash,
@@ -426,7 +427,8 @@ impl NetworkBehaviourEventProcess<network::comit::BehaviourOutEvent> for Nectar 
                         swap_id: crate::SwapId::default(),
                         taker,
                     }),
-                    comit::network::Position::Sell => SwapKind::HbitHerc20(SwapParams {
+                    // Bob is selling (=funding) bitcoin (funding beta)
+                    comit::network::Position::Sell => SwapKind::Herc20Hbit(SwapParams {
                         hbit_params,
                         herc20_params,
                         secret_hash,
