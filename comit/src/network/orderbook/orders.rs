@@ -40,7 +40,7 @@ impl Orders {
             id,
             maker: self.me.clone(),
             position: form.position,
-            bitcoin_amount: form.bitcoin_amount,
+            quantity: form.quantity,
             bitcoin_ledger: form.bitcoin_ledger,
             bitcoin_absolute_expiry: form.bitcoin_absolute_expiry,
             price: form.price,

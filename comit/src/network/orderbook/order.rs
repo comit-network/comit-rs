@@ -12,18 +12,23 @@ pub struct Order {
     pub id: OrderId,
     pub maker: PeerId,
     pub position: Position,
-    pub price: Rate,
+    pub price: BtcDaiRate,
     pub bitcoin_ledger: ledger::Bitcoin,
     pub bitcoin_absolute_expiry: u32,
-    pub bitcoin_amount: asset::Bitcoin,
+    pub quantity: asset::Bitcoin,
     pub token_contract: identity::Ethereum,
     pub ethereum_ledger: ledger::Ethereum,
     pub ethereum_absolute_expiry: u32,
 }
 
 impl Order {
-    pub fn ethereum_amount(&self, amount: asset::Bitcoin) -> anyhow::Result<asset::Erc20Quantity> {
-        let wei = BigUint::from(amount.as_sat()) * BigUint::from(self.price.0);
+    /// Calculates the ethereum quantity that corresponds to a partial take
+    /// quantity in bitcoin
+    pub fn ethereum_quantity(
+        &self,
+        bitcoin_quantity: asset::Bitcoin,
+    ) -> anyhow::Result<asset::Erc20Quantity> {
+        let wei = BigUint::from(bitcoin_quantity.as_sat()) * BigUint::from(self.price.0);
         Ok(asset::Erc20Quantity::try_from_wei(wei)?)
     }
 }
@@ -56,10 +61,10 @@ impl FromStr for OrderId {
 #[derive(Copy, Clone, Debug)]
 pub struct NewOrder {
     pub position: Position,
-    pub bitcoin_amount: asset::Bitcoin,
+    pub quantity: asset::Bitcoin,
     pub bitcoin_ledger: ledger::Bitcoin,
     pub bitcoin_absolute_expiry: u32,
-    pub price: Rate,
+    pub price: BtcDaiRate,
     pub token_contract: identity::Ethereum,
     pub ethereum_ledger: ledger::Ethereum,
     pub ethereum_absolute_expiry: u32,
@@ -84,22 +89,17 @@ impl NewOrder {
 /// means that the maker buys the base currency (in this case BTC) in
 /// return for DAI. A sell order means that the maker sells BTC and
 /// receives DAI.
-///
-/// Please note: we do not set the base currency to 1 and use rate
-/// (i.e., quote currency) and amount as is commonly done in Forex
-/// trading. We use the amounts of each currency to determine the
-/// rate.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum Position {
     Buy,
     Sell,
 }
-/// The amount of DAI in wei for one satoshi of BTC
+/// BTC to DAI conversion rate
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Rate(pub u64);
+pub struct BtcDaiRate(pub u64);
 
-impl Serialize for Rate {
+impl Serialize for BtcDaiRate {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -114,7 +114,7 @@ impl Serialize for Rate {
     }
 }
 
-impl<'de> Deserialize<'de> for Rate {
+impl<'de> Deserialize<'de> for BtcDaiRate {
     /// Decimal precision of 10 is selected because it is the largest possible
     /// precision for BTC to DAI conversion rate.
     /// Ethereum supports a precision of 18 and Bitcoin supports a precision of
@@ -146,6 +146,6 @@ impl<'de> Deserialize<'de> for Rate {
 
         let rate = u64::from_str(&result).unwrap();
 
-        Ok(Rate(rate))
+        Ok(BtcDaiRate(rate))
     }
 }

@@ -376,7 +376,7 @@ impl RequestResponseCodec for GetBtcDaiOrdersCodec {
 mod wire {
     use crate::{
         asset, identity, ledger,
-        network::{orderbook::Position, OrderId, Rate},
+        network::{orderbook::Position, BtcDaiRate, OrderId},
     };
     use serde::{Deserialize, Serialize};
 
@@ -387,10 +387,10 @@ mod wire {
         pub id: OrderId,
         pub position: Position,
         #[serde(with = "asset::bitcoin::sats_as_string")]
-        pub bitcoin_amount: asset::Bitcoin,
+        pub bitcoin_quantity: asset::Bitcoin,
         pub bitcoin_ledger: ledger::Bitcoin,
         pub bitcoin_absolute_expiry: u32,
-        pub price: Rate,
+        pub price: BtcDaiRate,
         pub token_contract: identity::Ethereum,
         pub ethereum_ledger: ledger::Ethereum,
         pub ethereum_absolute_expiry: u32,
@@ -402,7 +402,7 @@ impl wire::Order {
         let wire::Order {
             id,
             position,
-            bitcoin_amount,
+            bitcoin_quantity: bitcoin_amount,
             bitcoin_ledger,
             bitcoin_absolute_expiry,
             price,
@@ -416,7 +416,7 @@ impl wire::Order {
             id,
             maker,
             position,
-            bitcoin_amount,
+            quantity: bitcoin_amount,
             bitcoin_ledger,
             bitcoin_absolute_expiry,
             price,
@@ -430,7 +430,7 @@ impl wire::Order {
         let Order {
             id,
             position,
-            bitcoin_amount,
+            quantity: bitcoin_amount,
             bitcoin_ledger,
             bitcoin_absolute_expiry,
             price,
@@ -444,7 +444,7 @@ impl wire::Order {
         Self {
             id,
             position,
-            bitcoin_amount,
+            bitcoin_quantity: bitcoin_amount,
             bitcoin_ledger,
             bitcoin_absolute_expiry,
             price,

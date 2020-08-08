@@ -23,7 +23,7 @@ pub struct TakeOrderCodec;
 pub struct Request {
     pub(crate) order_id: OrderId,
     #[serde(with = "asset::bitcoin::sats_as_string")]
-    pub(crate) amount: asset::Bitcoin,
+    pub(crate) quantity: asset::Bitcoin,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Copy)]

@@ -91,7 +91,7 @@ impl Orderbook {
     pub fn take(
         &mut self,
         order_id: OrderId,
-        partial_take_amount: Option<asset::Bitcoin>,
+        partial_take_quantity: Option<asset::Bitcoin>,
     ) -> anyhow::Result<Order> {
         let order = self
             .orders
@@ -99,8 +99,8 @@ impl Orderbook {
             .find(|order| order.id == order_id)
             .ok_or_else(|| OrderNotFound(order_id))?;
 
-        let order_amount = order.bitcoin_amount;
-        let take_amount = partial_take_amount.unwrap_or(order_amount);
+        let order_amount = order.quantity;
+        let take_amount = partial_take_quantity.unwrap_or(order_amount);
 
         let maker = &order.maker;
 
@@ -114,7 +114,7 @@ impl Orderbook {
             tracing::info!("attempting to take order {} from maker {}", order_id, maker);
             self.take_order.send_request(maker, Request {
                 order_id,
-                amount: take_amount,
+                quantity: take_amount,
             });
 
             Ok(order.clone())
@@ -196,7 +196,7 @@ pub enum BehaviourOutEvent {
         /// The peer from whom request originated.
         peer_id: PeerId,
         /// The amount of the order the taker wishes to fill
-        amount: asset::Bitcoin,
+        quantity: asset::Bitcoin,
         /// Channel to send a confirm/deny response on.
         response_channel: ResponseChannel<Confirmation>,
         /// The ID of the order peer wants to take.
@@ -267,7 +267,7 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<Request, Confirmation>> f
                     tracing::info!("received take order request for order {}", request.order_id);
                     self.events.push_back(BehaviourOutEvent::TakeOrderRequest {
                         peer_id,
-                        amount: request.amount,
+                        quantity: request.quantity,
                         response_channel,
                         order_id: request.order_id,
                     });
@@ -326,11 +326,11 @@ mod tests {
 
         NewOrder {
             position: Position::Buy,
-            bitcoin_amount: asset::Bitcoin::meaningless_test_value(),
+            quantity: asset::Bitcoin::meaningless_test_value(),
             bitcoin_ledger: ledger::Bitcoin::Regtest,
             // TODO: Add test function helper to return expiry value.
             bitcoin_absolute_expiry: 100,
-            price: Rate(100),
+            price: BtcDaiRate(100),
             token_contract,
             ethereum_ledger: ledger::Ethereum::default(),
             ethereum_absolute_expiry: 100,

@@ -4,16 +4,11 @@ import { defaultExpiries, getIdentities } from "./defaults";
 
 declare var global: HarnessGlobal;
 
-export interface Identities {
-    refund_identity: string;
-    redeem_identity: string;
-}
-
 export interface BtcDaiOrder {
     position: string;
-    bitcoin_amount: string;
+    quantity: string;
     bitcoin_ledger: string;
-    rate: string;
+    price: string;
     token_contract: string;
     ethereum_ledger: Ethereum;
     bitcoin_absolute_expiry: number;
@@ -27,16 +22,16 @@ interface Ethereum {
 }
 
 export function ethereumAmountInWei(order: BtcDaiOrder): bigint {
-    return rate(order) * bitcoinAmountInSatoshi(order.bitcoin_amount);
+    return price(order) * bitcoinAmountInSatoshi(order.quantity);
 }
 
-export function rate(order: BtcDaiOrder): bigint {
+export function price(order: BtcDaiOrder): bigint {
     const precision = 10;
-    if (order.rate.split(".").length !== 2) {
+    if (order.price.split(".").length !== 2) {
         throw new Error("rate contains more than 1 decimal point");
     }
-    const integer = order.rate.split(".")[0];
-    const decimals = order.rate.split(".")[1];
+    const integer = order.price.split(".")[0];
+    const decimals = order.price.split(".")[1];
     const trailingZeroes = "0".repeat(precision - decimals.length);
 
     const result = integer.concat(decimals).concat(trailingZeroes);
@@ -62,8 +57,8 @@ export default class OrderbookFactory {
         alice: Actor,
         bob: Actor,
         position: string,
-        rate: string,
-        amount: string
+        price: string,
+        quantity: string
     ): Promise<BtcDaiOrder> {
         await alice.wallets.initializeForLedger(
             "bitcoin",
@@ -107,10 +102,10 @@ export default class OrderbookFactory {
 
         const order = {
             position,
-            bitcoin_amount: amount,
+            quantity,
             bitcoin_ledger: "regtest",
             token_contract: daiTokenContract,
-            rate,
+            price,
             ethereum_ledger: {
                 chain_id: 1337,
             },

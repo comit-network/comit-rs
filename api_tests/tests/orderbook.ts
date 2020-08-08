@@ -10,13 +10,13 @@ import OrderbookFactory from "../src/actors/order_factory";
 describe("orderbook", () => {
     // pair: "BTC/DAI"
     // position: buy
-    // price: 11003.46 (1 BTC = 11003.46 DAI)
-    // quantity: 11.4 BTC
+    // price: 9000.35 (1 BTC = 9000.35 DAI)
+    // quantity: 0.4 BTC
     //
-    // Bob is buying BTC for DAI
-    // Alice only has 2.1 BTC
-    // Alice submits a take request specifying 2.1 BTC as the the quantity
-    // The take request becomes a HbitHerc20 swap where Bob receives for 2.1 BTC for 23,107.266 DAI
+    // Bob is buying BTC with DAI
+    // Alice only wants ~900 DAI
+    // Alice submits a take request specifying 0.1 BTC as the partial take quantity
+    // The take request becomes a HbitHerc20 swap where Bob receives for 0.1 BTC for 900.035 DAI
     it(
         "btc_dai_buy_order",
         twoActorTest(async ({ alice, bob }) => {
@@ -52,13 +52,13 @@ describe("orderbook", () => {
     );
     // pair: "BTC/DAI"
     // position: sell
-    // price: 11003.46 (1 BTC = 11003.46 DAI)
-    // quantity: 11.4 BTC
+    // price: 9000.35 (1 BTC = 9000.35 DAI)
+    // quantity: 0.4 BTC
     //
     // Bob is selling BTC for DAI
-    // Alice only has 2.1 BTC
-    // Alice submits a take request specifying 2.1 BTC as the the quantity
-    // The take request becomes a Herc20Hbit swap where Bob receives 23,107.266 DAI for 2.1 BTC
+    // Alice only wants 0.1 BTC
+    // Alice submits a take request specifying 0.1 BTC as the the quantity
+    // The take request becomes a Herc20Hbit swap where Bob receives 900.035 DAI for 0.1 BTC
     it(
         "btc_dai_sell_order",
         twoActorTest(async ({ alice, bob }) => {
@@ -68,12 +68,12 @@ describe("orderbook", () => {
                 bob,
                 "sell",
                 "9000.35",
-                "0.01"
+                "0.4"
             );
 
             const orderUrl = await bob.makeOrder(order);
 
-            await alice.takeOrder("0.005");
+            await alice.takeOrder("0.1");
 
             await bob.assertSwapCreatedFromOrder(orderUrl);
 

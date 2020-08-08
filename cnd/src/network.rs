@@ -534,7 +534,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
         match event {
             orderbook::BehaviourOutEvent::TakeOrderRequest {
                 peer_id,
-                amount,
+                quantity: amount,
                 response_channel,
                 order_id,
             } => {
@@ -544,13 +544,13 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                         return;
                     }
                 };
-                if order.bitcoin_amount < amount {
+                if order.quantity < amount {
                     self.orderbook.deny(peer_id, order_id, response_channel);
                     tracing::info!(
                         "denied take request for {} because partial take amount: {} is greater than order amount: {}",
                         order_id,
                         amount,
-                        order.bitcoin_amount
+                        order.quantity
                     );
                     return;
                 }
@@ -607,7 +607,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                     absolute_expiry: order.bitcoin_absolute_expiry,
                 };
 
-                let ethereum_amount = match order.ethereum_amount(amount) {
+                let ethereum_amount = match order.ethereum_quantity(amount) {
                     Ok(amount) => amount,
                     Err(e) => {
                         tracing::error!(

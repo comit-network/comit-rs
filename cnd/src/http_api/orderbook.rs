@@ -10,7 +10,7 @@ use crate::{
 use chrono::Utc;
 use comit::{
     ethereum,
-    network::{Order, OrderId, OrderNotFound, Position, Rate},
+    network::{BtcDaiRate, Order, OrderId, OrderNotFound, Position},
 };
 use libp2p::PeerId;
 use serde::{Deserialize, Serialize};
@@ -43,7 +43,7 @@ pub async fn post_take_order(
     // TODO: Consider putting the save in the network layer to be uniform with make?
     let start_of_swap = Utc::now().naive_local();
 
-    let take_amount = body.bitcoin_amount.unwrap_or(order.bitcoin_amount);
+    let take_amount = body.quantity.unwrap_or(order.quantity);
 
     let hbit = hbit::CreatedSwap {
         amount: take_amount,
@@ -53,7 +53,7 @@ pub async fn post_take_order(
     };
 
     let ethereum_amount = order
-        .ethereum_amount(take_amount)
+        .ethereum_quantity(take_amount)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
 
@@ -110,7 +110,7 @@ pub async fn post_take_order(
             swap_id,
             body.bitcoin_identity.into(),
             body.ethereum_identity,
-            body.bitcoin_amount,
+            body.quantity,
         )
         .await
         .map(|_| {
@@ -202,7 +202,7 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
         };
 
         let bitcoin_quantity = siren::Field {
-            name: "bitcoin_amount".to_string(),
+            name: "quantity".to_string(),
             class: vec!["bitcoin".to_string(), "quantity".to_string()],
             _type: None,
             value: None,
@@ -236,8 +236,8 @@ pub async fn get_orders(facade: Facade) -> Result<impl Reply, Rejection> {
 #[derive(Clone, Debug, Deserialize)]
 struct MakeOrderBody {
     position: Position,
-    rate: Rate,
-    bitcoin_amount: asset::Bitcoin,
+    price: BtcDaiRate,
+    quantity: asset::Bitcoin,
     bitcoin_ledger: ledger::Bitcoin,
     bitcoin_absolute_expiry: u32,
     token_contract: identity::Ethereum,
@@ -251,10 +251,10 @@ impl From<MakeOrderBody> for NewOrder {
     fn from(body: MakeOrderBody) -> Self {
         NewOrder {
             position: body.position,
-            price: body.rate,
+            price: body.price,
             bitcoin_ledger: body.bitcoin_ledger,
             bitcoin_absolute_expiry: body.bitcoin_absolute_expiry,
-            bitcoin_amount: body.bitcoin_amount,
+            quantity: body.quantity,
             token_contract: body.token_contract,
             ethereum_ledger: body.ethereum_ledger,
             ethereum_absolute_expiry: body.ethereum_absolute_expiry,
@@ -266,7 +266,7 @@ impl From<MakeOrderBody> for NewOrder {
 struct TakeOrderBody {
     ethereum_identity: identity::Ethereum,
     bitcoin_identity: bitcoin::Address,
-    bitcoin_amount: Option<asset::Bitcoin>,
+    quantity: Option<asset::Bitcoin>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -275,10 +275,10 @@ struct OrderResponse {
     #[serde(with = "serde_peer_id")]
     maker: PeerId,
     position: Position,
-    rate: Rate,
+    price: BtcDaiRate,
     bitcoin_ledger: ledger::Bitcoin,
     bitcoin_absolute_expiry: u32,
-    bitcoin_amount: asset::Bitcoin,
+    quantity: asset::Bitcoin,
     token_contract: ethereum::Address,
     ethereum_ledger: ledger::Ethereum,
     ethereum_absolute_expiry: u32,
@@ -290,10 +290,10 @@ impl From<Order> for OrderResponse {
             id: order.id,
             maker: order.maker,
             position: order.position,
-            rate: order.price,
+            price: order.price,
             bitcoin_ledger: order.bitcoin_ledger,
             bitcoin_absolute_expiry: order.bitcoin_absolute_expiry,
-            bitcoin_amount: order.bitcoin_amount,
+            quantity: order.quantity,
             token_contract: order.token_contract,
             ethereum_ledger: order.ethereum_ledger,
             ethereum_absolute_expiry: order.ethereum_absolute_expiry,
@@ -310,10 +310,10 @@ mod tests {
         let json = r#"
         {
             "position": "sell",
-            "bitcoin_amount": "200.12",
+            "quantity": "200.12",
             "bitcoin_ledger": "regtest",
             "bitcoin_absolute_expiry": 600,
-            "rate": "9000.35",
+            "price": "9000.35",
             "token_contract": "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280",
             "ethereum_ledger": {"chain_id":2},
             "ethereum_absolute_expiry": 600,
@@ -328,7 +328,7 @@ mod tests {
     fn test_take_order_deserialization() {
         let json = r#"
         {
-            "bitcoin_amount": "300.12",
+            "quantity": "300.12",
             "bitcoin_identity": "1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX",
             "ethereum_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72"
         }"#;

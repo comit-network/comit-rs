@@ -282,7 +282,7 @@ export class Actor {
             };
             this.alphaAsset = {
                 name: AssetKind.Bitcoin,
-                quantity: String(bitcoinAmountInSatoshi(order.bitcoin_amount)),
+                quantity: String(bitcoinAmountInSatoshi(order.quantity)),
                 ledger: LedgerKind.Bitcoin,
             };
             this.betaAsset = {
@@ -308,7 +308,7 @@ export class Actor {
             };
             this.betaAsset = {
                 name: AssetKind.Bitcoin,
-                quantity: String(bitcoinAmountInSatoshi(order.bitcoin_amount)),
+                quantity: String(bitcoinAmountInSatoshi(order.quantity)),
                 ledger: LedgerKind.Bitcoin,
             };
         } else {
@@ -342,7 +342,7 @@ export class Actor {
     /**
      * Takes a BtcDai sell order (herc20-hbit Swap)
      */
-    public async takeOrder(partialTakeAmount: string) {
+    public async takeOrder(partialTakeQuantity: string) {
         if (this.name === "alice") {
             const {
                 ethereum: ethereumIdentity,
@@ -367,9 +367,9 @@ export class Actor {
             const aliceTakeOrderResponse = await this.cnd.executeSirenAction(
                 aliceOrderTakeAction,
                 async (field) => {
-                    if (field.name === "bitcoin_amount") {
+                    if (field.name === "quantity") {
                         // @ts-ignore
-                        return Promise.resolve(partialTakeAmount);
+                        return Promise.resolve(partialTakeQuantity);
                     }
                     if (field.name === "bitcoin_identity") {
                         return Promise.resolve(bitcoinIdentity);
@@ -398,10 +398,10 @@ export class Actor {
                 })
             );
             await this.actors.alice.setStartingBalancesForPartialTake(
-                bitcoinAmountInSatoshi(partialTakeAmount)
+                bitcoinAmountInSatoshi(partialTakeQuantity)
             );
             await this.actors.bob.setStartingBalancesForPartialTake(
-                bitcoinAmountInSatoshi(partialTakeAmount)
+                bitcoinAmountInSatoshi(partialTakeQuantity)
             );
         } else {
             throw new Error(
