@@ -8,6 +8,7 @@ mod herc20_hbit;
 mod info;
 mod orderbook;
 mod route_factory;
+mod serde_peer_id;
 #[macro_use]
 mod impl_serialize_http;
 mod action;
@@ -44,7 +45,7 @@ use std::{
 };
 
 /// Object representing the data of a POST request for creating a swap.
-#[derive(serde::Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct PostBody<A, B> {
     pub alpha: A,
     pub beta: B,

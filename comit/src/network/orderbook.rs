@@ -1,73 +1,52 @@
+mod makerbook;
 mod order;
+mod order_source;
+mod orders;
 pub mod take_order;
 
-use crate::{
-    asset,
-    network::orderbook::take_order::{Request, Response, TakeOrderCodec, TakeOrderProtocol},
-    SharedSwapId,
-};
-
+use crate::{asset, SharedSwapId};
 use libp2p::{
-    core::either::EitherOutput,
-    gossipsub,
-    gossipsub::{Gossipsub, GossipsubEvent, GossipsubRpc, Topic},
     request_response::{
-        handler::RequestProtocol, ProtocolSupport, RequestResponse, RequestResponseConfig,
-        RequestResponseEvent, RequestResponseMessage, ResponseChannel,
+        ProtocolSupport, RequestResponse, RequestResponseConfig, RequestResponseEvent,
+        RequestResponseMessage, ResponseChannel,
     },
     swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
     NetworkBehaviour, PeerId,
 };
-use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
-    collections::{hash_map::DefaultHasher, HashMap, VecDeque},
-    fmt,
-    fmt::Display,
-    hash::{Hash, Hasher},
-    str::FromStr,
+    collections::VecDeque,
     task::{Context, Poll},
     time::Duration,
 };
 
-pub use self::order::*;
+use makerbook::Makerbook;
+pub use order::*;
+use order_source::*;
+use take_order::{Confirmation, Request, TakeOrderCodec, TakeOrderProtocol};
 
-lazy_static::lazy_static! {
-    /// The Topic used to publish BTC/DAI orders.
-    static ref BTC_DAI_TOPIC: Topic = Topic::new("BTC/DAI".to_string());
-}
+pub use self::{order::*, orders::*};
 
 /// The time we wait for a take order request to be confirmed or denied.
 const REQUEST_TIMEOUT_SECS: u64 = 10;
 
 /// The Orderbook libp2p network behaviour.
 #[derive(NetworkBehaviour)]
-#[behaviour(out_event = "BehaviourOutEvent", poll_method = "poll")]
+#[behaviour(out_event = "BehaviourOutEvent", poll_method = "my_poll")]
+#[allow(missing_debug_implementations)]
 pub struct Orderbook {
-    gossipsub: Gossipsub,
+    makerbook: Makerbook,
+    order_source: OrderSource,
     take_order: RequestResponse<TakeOrderCodec>,
+
     #[behaviour(ignore)]
     events: VecDeque<BehaviourOutEvent>,
     #[behaviour(ignore)]
-    orders: HashMap<OrderId, Order>,
-    #[behaviour(ignore)]
-    pub peer_id: PeerId,
+    orders: Orders,
 }
 
 impl Orderbook {
     /// Construct a new orderbook for this node using the node's peer ID.
-    pub fn new(peer_id: PeerId) -> Orderbook {
-        let message_id_fn = |message: &gossipsub::GossipsubMessage| {
-            let mut s = DefaultHasher::new();
-            message.data.hash(&mut s);
-            gossipsub::MessageId(s.finish().to_string())
-        };
-
-        let config = gossipsub::GossipsubConfigBuilder::new()
-            .heartbeat_interval(Duration::from_secs(1))
-            .message_id_fn(message_id_fn) // No two messages of the same content will be propagated.
-            .build();
-        let gossipsub = Gossipsub::new(peer_id.clone(), config);
-
+    pub fn new(me: PeerId) -> Orderbook {
         let mut config = RequestResponseConfig::default();
         config.set_request_timeout(Duration::from_secs(REQUEST_TIMEOUT_SECS));
         let behaviour = RequestResponse::new(
@@ -76,45 +55,55 @@ impl Orderbook {
             config,
         );
 
-        let mut orderbook = Orderbook {
-            peer_id,
-            gossipsub,
+        Orderbook {
+            makerbook: Makerbook::new(me.clone()),
+            order_source: OrderSource::default(),
             take_order: behaviour,
-            orders: HashMap::new(),
             events: VecDeque::new(),
-        };
-
-        // Since we only support a single trading pair topic just subscribe to it now.
-        orderbook.gossipsub.subscribe(BTC_DAI_TOPIC.clone());
-
-        orderbook
+            orders: Orders::new(me),
+        }
     }
 
-    /// Create and publish a new 'make' order. Called by Bob i.e. the maker.
-    pub fn make(&mut self, order: Order) -> anyhow::Result<OrderId> {
-        let ser = bincode::serialize(&Message::CreateOrder(order.clone()))?;
-        self.gossipsub.publish(&BTC_DAI_TOPIC, ser);
+    /// Declare oneself to the network as a maker.
+    pub fn declare_as_maker(&mut self) {
+        self.makerbook.login();
+    }
 
-        let id = order.id;
-        self.orders.insert(id, order);
+    /// Announce retraction of oneself as a maker, undoes `declare_as_maker()`.
+    pub fn retract(&mut self) {
+        self.makerbook.logout();
+        self.orders.clear_own_orders();
+    }
 
-        Ok(id)
+    /// Make a new order.
+    ///
+    /// The resulting order will eventually be visible to other peers.
+    pub fn make(&mut self, new_order: NewOrder) -> OrderId {
+        self.orders.new_order(new_order)
+    }
+
+    /// Cancel an order we previously made.
+    pub fn cancel(&mut self, id: OrderId) {
+        self.orders.cancel(id);
     }
 
     /// Take an order, called by Alice i.e., the taker.
-    /// Does _not_ remove the order from the order book.
     pub fn take(
         &mut self,
         order_id: OrderId,
         partial_take_amount: Option<asset::Bitcoin>,
-    ) -> anyhow::Result<()> {
-        let maker_id = self
-            .maker_id(order_id)
+    ) -> anyhow::Result<Order> {
+        let order = self
+            .orders
+            .theirs()
+            .find(|order| order.id == order_id)
             .ok_or_else(|| OrderNotFound(order_id))?;
-        let order_amount = self
-            .order_amount(order_id)
-            .ok_or_else(|| OrderNotFound(order_id))?;
+
+        let order_amount = order.bitcoin_amount;
         let take_amount = partial_take_amount.unwrap_or(order_amount);
+
+        let maker = &order.maker;
+
         if take_amount > order_amount {
             Err(anyhow::Error::from(PartialTakeAmountTooLarge(
                 take_amount,
@@ -122,33 +111,21 @@ impl Orderbook {
                 order_id,
             )))
         } else {
-            self.take_order.send_request(&maker_id.into(), Request {
+            tracing::info!("attempting to take order {} from maker {}", order_id, maker);
+            self.take_order.send_request(maker, Request {
                 order_id,
                 amount: take_amount,
             });
 
-            Ok(())
+            Ok(order.clone())
         }
     }
 
-    /// Get the ID of the node that published this order.
-    fn maker_id(&self, order_id: OrderId) -> Option<MakerId> {
-        self.orders.get(&order_id).map(|order| order.maker.clone())
-    }
-
-    /// Get the bitcoin amount in this order.
-    fn order_amount(&self, order_id: OrderId) -> Option<asset::Bitcoin> {
-        self.orders
-            .get(&order_id)
-            .map(|order| order.bitcoin_quantity)
-    }
-
     /// Confirm a take order request, called by Bob i.e., the maker.
-    /// Does _not_ remove the order from the order book.
     pub fn confirm(
         &mut self,
         order_id: OrderId,
-        channel: ResponseChannel<Response>,
+        channel: ResponseChannel<Confirmation>,
         peer_id: PeerId,
     ) {
         let shared_swap_id = SharedSwapId::default();
@@ -157,11 +134,10 @@ impl Orderbook {
             shared_swap_id
         );
 
-        self.take_order
-            .send_response(channel, Response::Confirmation {
-                order_id,
-                shared_swap_id,
-            });
+        self.take_order.send_response(channel, Confirmation {
+            shared_swap_id,
+            order_id,
+        });
 
         self.events
             .push_back(BehaviourOutEvent::TakeOrderConfirmation {
@@ -172,33 +148,30 @@ impl Orderbook {
     }
 
     /// Deny a take order request, called by Bob i.e., the maker.
-    pub fn deny(&mut self, peer_id: PeerId, order_id: OrderId, channel: ResponseChannel<Response>) {
+    pub fn deny(
+        &mut self,
+        peer_id: PeerId,
+        order_id: OrderId,
+        channel: ResponseChannel<Confirmation>,
+    ) {
         self.events
             .push_back(BehaviourOutEvent::Failed { peer_id, order_id });
-        self.take_order.send_response(channel, Response::Error);
+        std::mem::drop(channel); // triggers an error on the other end
     }
 
-    /// Get a list of all orders known to this node.
-    pub fn get_orders(&self) -> Vec<Order> {
-        self.orders.values().cloned().collect()
+    pub fn orders(&self) -> &Orders {
+        &self.orders
     }
 
-    /// Get the order matching `id` if known to this node.
-    /// todo: check error handling in usages of this function
-    pub fn get_order(&self, id: &OrderId) -> Option<Order> {
-        self.orders.get(id).cloned()
+    pub fn orders_mut(&mut self) -> &mut Orders {
+        &mut self.orders
     }
 
-    fn poll(
+    fn my_poll<BIE>(
         &mut self,
         _: &mut Context<'_>,
         _: &mut impl PollParameters,
-    ) -> Poll<
-        NetworkBehaviourAction<
-            EitherOutput<GossipsubRpc, RequestProtocol<TakeOrderCodec>>,
-            BehaviourOutEvent,
-        >,
-    > {
+    ) -> Poll<NetworkBehaviourAction<BIE, BehaviourOutEvent>> {
         if let Some(event) = self.events.pop_front() {
             return Poll::Ready(NetworkBehaviourAction::GenerateEvent(event));
         }
@@ -215,65 +188,6 @@ pub struct OrderNotFound(pub OrderId);
 #[error("partial take amount {0}, is greater than amount {1} specified in order {2}")]
 pub struct PartialTakeAmountTooLarge(asset::Bitcoin, asset::Bitcoin, OrderId);
 
-/// MakerId is a PeerId wrapper so we control serialization/deserialization.
-#[derive(Debug, Clone, PartialEq)]
-pub struct MakerId(PeerId);
-
-impl From<PeerId> for MakerId {
-    fn from(id: PeerId) -> Self {
-        MakerId(id)
-    }
-}
-
-impl From<MakerId> for PeerId {
-    fn from(id: MakerId) -> Self {
-        id.0
-    }
-}
-
-impl Display for MakerId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.to_string())
-    }
-}
-
-impl Serialize for MakerId {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let string = self.0.to_string();
-        serializer.serialize_str(&string)
-    }
-}
-
-impl<'de> Deserialize<'de> for MakerId {
-    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let string = String::deserialize(deserializer)?;
-        let peer_id = PeerId::from_str(&string).map_err(D::Error::custom)?;
-
-        Ok(MakerId(peer_id))
-    }
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub enum Message {
-    CreateOrder(Order),
-    DeleteOrder(OrderId),
-}
-
-impl fmt::Debug for Orderbook {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BasicOrderbook")
-            .field("peer_id", &self.peer_id)
-            .field("orders", &self.orders)
-            .finish()
-    }
-}
-
 /// Event emitted  by the `Orderbook` behaviour.
 #[derive(Debug)]
 pub enum BehaviourOutEvent {
@@ -284,7 +198,7 @@ pub enum BehaviourOutEvent {
         /// The amount of the order the taker wishes to fill
         amount: asset::Bitcoin,
         /// Channel to send a confirm/deny response on.
-        response_channel: ResponseChannel<Response>,
+        response_channel: ResponseChannel<Confirmation>,
         /// The ID of the order peer wants to take.
         order_id: OrderId,
     },
@@ -308,40 +222,38 @@ pub enum BehaviourOutEvent {
     },
 }
 
-impl NetworkBehaviourEventProcess<GossipsubEvent> for Orderbook {
-    fn inject_event(&mut self, event: GossipsubEvent) {
-        if let GossipsubEvent::Message(_peer_id, message_id, message) = event {
-            let decoded: Message = match bincode::deserialize(&message.data[..]) {
-                Ok(msg) => msg,
-                Err(e) => {
-                    tracing::warn!("deserialization of gossipsub message failed: {}", e);
-                    return;
-                }
-            };
-
-            match decoded {
-                Message::CreateOrder(order) => {
-                    tracing::debug!("received create order message: {}", message_id);
-                    // This implies new orders remove old orders from
-                    // the orderbook. This means nodes can spoof the
-                    // network using previously seen order ids in
-                    // order to override orders.
-                    self.orders.insert(order.id, order);
-                }
-                Message::DeleteOrder(order_id) => {
-                    tracing::debug!("received delete order message: {}", message_id);
-                    // Same consideration here, nodes can cause orders
-                    // they did not create to be removed by spoofing
-                    // the network with a previously seen order id.
-                    self.orders.remove(&order_id);
-                }
+impl NetworkBehaviourEventProcess<makerbook::BehaviourOutEvent> for Orderbook {
+    fn inject_event(&mut self, event: makerbook::BehaviourOutEvent) {
+        match event {
+            makerbook::BehaviourOutEvent::Logout { peer } => {
+                self.order_source.stop_getting_orders_from(&peer);
+                self.orders.remove_all_from(&peer)
             }
         }
     }
 }
 
-impl NetworkBehaviourEventProcess<RequestResponseEvent<Request, Response>> for Orderbook {
-    fn inject_event(&mut self, event: RequestResponseEvent<Request, Response>) {
+impl NetworkBehaviourEventProcess<order_source::BehaviourOutEvent> for Orderbook {
+    fn inject_event(&mut self, event: order_source::BehaviourOutEvent) {
+        match event {
+            order_source::BehaviourOutEvent::GetOrdersRequest { response_handle } => {
+                self.order_source
+                    .send_orders(response_handle, self.orders.ours().cloned().collect());
+            }
+            order_source::BehaviourOutEvent::RetrievedOrders { maker, orders } => {
+                if !orders.is_empty() {
+                    self.orders.replace(maker, orders);
+                }
+            }
+            order_source::BehaviourOutEvent::MakerIsGone { maker } => {
+                self.orders.remove_all_from(&maker);
+            }
+        }
+    }
+}
+
+impl NetworkBehaviourEventProcess<RequestResponseEvent<Request, Confirmation>> for Orderbook {
+    fn inject_event(&mut self, event: RequestResponseEvent<Request, Confirmation>) {
         match event {
             RequestResponseEvent::Message {
                 peer: peer_id,
@@ -350,27 +262,31 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<Request, Response>> for O
                         request,
                         channel: response_channel,
                     },
-            } => match self.get_order(&request.order_id) {
-                Some(_) => {
-                    tracing::info!("received take order request");
+            } => {
+                if self.orders.is_ours(request.order_id) {
+                    tracing::info!("received take order request for order {}", request.order_id);
                     self.events.push_back(BehaviourOutEvent::TakeOrderRequest {
                         peer_id,
+                        amount: request.amount,
                         response_channel,
                         order_id: request.order_id,
-                        amount: request.amount,
                     });
+                } else {
+                    tracing::info!(
+                        "received take order request for order {} we never published",
+                        request.order_id
+                    );
                 }
-                None => tracing::info!("received take order request for non-existent order"),
-            },
+            }
             RequestResponseEvent::Message {
                 peer: peer_id,
                 message:
                     RequestResponseMessage::Response {
                         request_id: _,
                         response:
-                            Response::Confirmation {
-                                order_id,
+                            Confirmation {
                                 shared_swap_id,
+                                order_id,
                             },
                     },
             } => {
@@ -380,17 +296,6 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<Request, Response>> for O
                         order_id,
                         shared_swap_id,
                     });
-            }
-            RequestResponseEvent::Message {
-                peer: peer_id,
-                message:
-                    RequestResponseMessage::Response {
-                        request_id: _,
-                        response: Response::Error,
-                    },
-            } => {
-                // This should be unreachable because we close the channel on error.
-                tracing::error!("received take order response error from peer: {}", peer_id);
             }
             RequestResponseEvent::OutboundFailure { error, .. } => {
                 tracing::warn!("outbound failure: {:?}", error);
@@ -405,36 +310,52 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<Request, Response>> for O
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::network::test::{await_events_or_timeout, new_connected_swarm_pair};
+    use crate::{
+        asset, identity, ledger,
+        network::{
+            orderbook::BehaviourOutEvent,
+            test::{await_events_or_timeout, new_connected_swarm_pair},
+        },
+    };
     use libp2p::Swarm;
-    use spectral::prelude::*;
+    use std::str::FromStr;
+
+    fn new_order() -> NewOrder {
+        let token_contract =
+            identity::Ethereum::from_str("0xc5549e335b2786520f4c5d706c76c9ee69d0a028").unwrap();
+
+        NewOrder {
+            position: Position::Buy,
+            bitcoin_amount: asset::Bitcoin::meaningless_test_value(),
+            bitcoin_ledger: ledger::Bitcoin::Regtest,
+            // TODO: Add test function helper to return expiry value.
+            bitcoin_absolute_expiry: 100,
+            price: Rate(100),
+            token_contract,
+            ethereum_ledger: ledger::Ethereum::default(),
+            ethereum_absolute_expiry: 100,
+        }
+    }
 
     #[tokio::test]
     async fn take_order_request_confirmation() {
-        // arrange
-
         let (mut alice, mut bob) = new_connected_swarm_pair(Orderbook::new).await;
-        let bob_order = order::meaningless_test_order(MakerId::from(bob.peer_id.clone()));
 
-        // act
-
-        // Trigger subscription to BCT/DAI topic.
-        poll_no_event(&mut alice.swarm).await;
+        // Poll to trigger the initial get_orders request/response (done on dial).
         poll_no_event(&mut bob.swarm).await;
+        poll_no_event(&mut alice.swarm).await;
 
-        let _ = bob
-            .swarm
-            .make(bob_order.clone())
-            .expect("order id should exist");
+        let _order_id = bob.swarm.make(new_order());
 
-        // Trigger publish and receipt of order.
+        // Poll to trigger get_orders request/response messages
         poll_no_event(&mut bob.swarm).await;
         poll_no_event(&mut alice.swarm).await;
 
         let alice_order = alice
             .swarm
-            .get_orders()
-            .first()
+            .orders()
+            .all()
+            .next()
             .cloned()
             .expect("Alice has no orders");
 
@@ -443,7 +364,7 @@ mod tests {
             .take(alice_order.id, None)
             .expect("failed to take order");
 
-        // Trigger request/response messages.
+        // Poll to trigger take_order request/response messages.
         poll_no_event(&mut alice.swarm).await;
         let bob_event = tokio::time::timeout(Duration::from_secs(2), bob.swarm.next())
             .await
@@ -494,29 +415,5 @@ mod tests {
         while let Ok(event) = tokio::time::timeout(delay, swarm.next()).await {
             panic!("unexpected event emitted: {:?}", event)
         }
-    }
-
-    #[test]
-    fn maker_id_serializes_as_expected() {
-        let given = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY".to_string();
-        let peer_id = PeerId::from_str(&given).expect("failed to parse peer id");
-        let maker_id = MakerId(peer_id);
-
-        let want = format!("\"{}\"", given);
-        let got = serde_json::to_string(&maker_id).expect("failed to serialize peer id");
-
-        assert_that(&got).is_equal_to(want);
-    }
-
-    #[test]
-    fn maker_id_serialization_roundtrip_test() {
-        let s = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY".to_string();
-        let peer_id = PeerId::from_str(&s).expect("failed to parse peer id");
-        let maker_id = MakerId::from(peer_id);
-
-        let json = serde_json::to_string(&maker_id).expect("failed to serialize peer id");
-        let rinsed: MakerId = serde_json::from_str(&json).expect("failed to deserialize peer id");
-
-        assert_that(&maker_id).is_equal_to(rinsed);
     }
 }

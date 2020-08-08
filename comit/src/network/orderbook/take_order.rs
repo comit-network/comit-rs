@@ -1,19 +1,18 @@
 use crate::{asset, network::OrderId, SharedSwapId};
-use futures::{prelude::*, AsyncWriteExt};
+use futures::prelude::*;
 use libp2p::{
     core::upgrade,
     request_response::{ProtocolName, RequestResponseCodec},
 };
 use serde::{Deserialize, Serialize};
 use std::io;
-use tracing::debug;
 
 #[derive(Debug, Clone, Copy)]
 pub struct TakeOrderProtocol;
 
 impl ProtocolName for TakeOrderProtocol {
     fn protocol_name(&self) -> &[u8] {
-        b"/comit/orderbook/take/1.0.0"
+        b"/comit/take-order/1.0.0"
     }
 }
 
@@ -27,24 +26,20 @@ pub struct Request {
     pub(crate) amount: asset::Bitcoin,
 }
 
-/// The different responses we can send back as part of an announcement.
-///
-/// For now, this only includes a generic error variant in addition to the
-/// confirmation because we simply close the connection in case of an error.
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-pub enum Response {
-    Confirmation {
-        order_id: OrderId,
-        shared_swap_id: SharedSwapId,
-    },
-    Error,
+#[derive(Clone, Debug, Serialize, Deserialize, Copy)]
+pub struct Confirmation {
+    pub shared_swap_id: SharedSwapId,
+    // TODO: We should store this locally, the context of the substream should be good enough to
+    // know which order was confirmed, no need to send this across the wire again. See "context" in
+    // announce protocol.
+    pub order_id: OrderId,
 }
 
 #[async_trait::async_trait]
 impl RequestResponseCodec for TakeOrderCodec {
     type Protocol = TakeOrderProtocol;
     type Request = Request;
-    type Response = Response;
+    type Response = Confirmation;
 
     /// Reads a take order request from the given I/O stream.
     async fn read_request<T>(&mut self, _: &Self::Protocol, io: &mut T) -> io::Result<Self::Request>
@@ -56,7 +51,6 @@ impl RequestResponseCodec for TakeOrderCodec {
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         let mut de = serde_json::Deserializer::from_slice(&message);
         let req = Request::deserialize(&mut de)?;
-        debug!("read request order id: {}", req.order_id);
 
         Ok(req)
     }
@@ -74,7 +68,7 @@ impl RequestResponseCodec for TakeOrderCodec {
             .await
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         let mut de = serde_json::Deserializer::from_slice(&message);
-        let res = Response::deserialize(&mut de)?;
+        let res = Confirmation::deserialize(&mut de)?;
 
         Ok(res)
     }
@@ -89,7 +83,6 @@ impl RequestResponseCodec for TakeOrderCodec {
     where
         T: AsyncWrite + Unpin + Send,
     {
-        debug!("writing request order id: {}", req.order_id);
         let bytes = serde_json::to_vec(&req)?;
         upgrade::write_one(io, &bytes).await?;
 
@@ -106,19 +99,8 @@ impl RequestResponseCodec for TakeOrderCodec {
     where
         T: AsyncWrite + Unpin + Send,
     {
-        match res {
-            Response::Confirmation { .. } => {
-                let bytes = serde_json::to_vec(&res)?;
-                upgrade::write_one(io, &bytes).await?;
-            }
-            Response::Error => {
-                debug!("closing write response channel");
-                // For now, errors just close the substream. We can
-                // send actual error responses at a later point. A
-                // denied take order request is defined as an error.
-                let _ = io.close().await;
-            }
-        }
+        let bytes = serde_json::to_vec(&res)?;
+        upgrade::write_one(io, &bytes).await?;
 
         Ok(())
     }
