@@ -61,6 +61,7 @@ jobs:
           override: true
 
       - name: Cache target directory
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/cache@v1
         with:
           path: target
