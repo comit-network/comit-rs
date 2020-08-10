@@ -76,11 +76,7 @@ impl Wallet {
                 self.bitcoind_client.rescan(&self.name).await?;
                 Ok(())
             }
-            _ => {
-                // Rescan wallet to ensure funding is picked up
-                self.bitcoind_client.rescan(&self.name).await?;
-                Ok(())
-            }
+            _ => Ok(()),
         }
     }
 
