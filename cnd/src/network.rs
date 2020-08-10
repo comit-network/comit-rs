@@ -534,7 +534,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
         match event {
             orderbook::BehaviourOutEvent::TakeOrderRequest {
                 peer_id,
-                quantity: amount,
+                quantity: partial_take_quantity,
                 response_channel,
                 order_id,
             } => {
@@ -544,12 +544,12 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                         return;
                     }
                 };
-                if order.quantity < amount {
+                if order.quantity < partial_take_quantity {
                     self.orderbook.deny(peer_id, order_id, response_channel);
                     tracing::info!(
-                        "denied take request for {} because partial take amount: {} is greater than order amount: {}",
+                        "denied take request for {} because partial take quantity: {} is greater than order quantity: {}",
                         order_id,
-                        amount,
+                        partial_take_quantity,
                         order.quantity
                     );
                     return;
@@ -601,17 +601,17 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                 let order_id = order.id;
 
                 let hbit = hbit::CreatedSwap {
-                    amount,
+                    amount: partial_take_quantity,
                     final_identity: final_identity.into(),
                     network: order.bitcoin_ledger,
                     absolute_expiry: order.bitcoin_absolute_expiry,
                 };
 
-                let ethereum_amount = match order.ethereum_quantity(amount) {
-                    Ok(amount) => amount,
+                let ethereum_quantity = match order.ethereum_quantity(partial_take_quantity) {
+                    Ok(ethereum_quantity) => ethereum_quantity,
                     Err(e) => {
                         tracing::error!(
-                            "Partial take quantity corresponds to invalid ethereum amount: {}",
+                            "Partial take quantity corresponds to invalid ethereum quantity: {}",
                             e
                         );
                         return;
@@ -621,7 +621,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> f
                 let herc20 = herc20::CreatedSwap {
                     asset: asset::Erc20 {
                         token_contract: order.token_contract,
-                        quantity: ethereum_amount,
+                        quantity: ethereum_quantity,
                     },
                     identity: ethereum_identity,
                     chain_id: order.ethereum_ledger.chain_id,
