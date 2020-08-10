@@ -15,7 +15,7 @@ bitcoin = { version = "0.23", features = ["use-serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 comit = { path = "../comit" }
 config = { version = "0.10", features = ["toml"], default-features = false }
-data-encoding = "2.2"
+data-encoding = "2.3"
 derivative = "2"
 diesel = { version = "1.4", features = ["sqlite", "chrono"] }
 diesel_migrations = "1.4.0"
