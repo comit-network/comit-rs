@@ -47,7 +47,7 @@ impl BitcoindConnector {
             .await
             .context("failed to deserialize JSON response as chaininfo")?;
 
-        tracing::debug!("Fetched chain info: {:?} from bitcoind", chain_info);
+        tracing::trace!("Fetched chain info: {:?} from bitcoind", chain_info);
 
         Ok(chain_info)
     }
@@ -82,7 +82,7 @@ impl BlockByHash for BitcoindConnector {
             .map_ok(decode_response)
             .await??;
 
-        tracing::debug!(
+        tracing::trace!(
             "Fetched block {} with {} transactions from bitcoind",
             block_hash,
             block.txdata.len()

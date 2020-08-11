@@ -34,10 +34,11 @@ impl PreviousBlockHash for Block {
     }
 }
 
+#[tracing::instrument(level = "debug", skip(blockchain_connector, start_of_swap, identity), fields(%outpoint))]
 pub async fn watch_for_spent_outpoint<C>(
     blockchain_connector: &C,
     start_of_swap: NaiveDateTime,
-    from_outpoint: OutPoint,
+    outpoint: OutPoint,
     identity: identity::Bitcoin,
 ) -> anyhow::Result<(bitcoin::Transaction, bitcoin::TxIn)>
 where
@@ -47,7 +48,7 @@ where
         transaction
             .input
             .iter()
-            .filter(|txin| txin.previous_output == from_outpoint)
+            .filter(|txin| txin.previous_output == outpoint)
             .find(|txin| txin.witness.contains(&identity.to_bytes()))
             .cloned()
     })
@@ -56,11 +57,11 @@ where
     Ok((transaction, txin))
 }
 
-#[tracing::instrument(level = "trace", skip(blockchain_connector, start_of_swap))]
+#[tracing::instrument(level = "debug", skip(blockchain_connector, start_of_swap))]
 pub async fn watch_for_created_outpoint<C>(
     blockchain_connector: &C,
     start_of_swap: NaiveDateTime,
-    compute_address: bitcoin::Address,
+    address: bitcoin::Address,
 ) -> anyhow::Result<(bitcoin::Transaction, bitcoin::OutPoint)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
@@ -78,7 +79,7 @@ where
                 #[allow(clippy::cast_possible_truncation)]
                 (index as u32, txout)
             })
-            .find(|(_, txout)| txout.script_pubkey == compute_address.script_pubkey())
+            .find(|(_, txout)| txout.script_pubkey == address.script_pubkey())
             .map(|(vout, _txout)| OutPoint { txid, vout })
     })
     .await?;

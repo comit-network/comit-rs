@@ -162,10 +162,7 @@ where
 
     let (transaction, location) =
         watch_for_contract_creation(connector, start_of_swap, &expected_bytecode)
-            .instrument(tracing::trace_span!(
-                "watch_deploy",
-                expected_bytecode = %hex::encode(&expected_bytecode)
-            ))
+            .instrument(tracing::info_span!("", action = "deploy"))
             .await?;
 
     Ok(Deployed {
@@ -195,7 +192,7 @@ where
     };
 
     let (transaction, log) = watch_for_event(connector, start_of_swap, event)
-        .instrument(tracing::trace_span!("watch_fund"))
+        .instrument(tracing::info_span!("", action = "fund"))
         .await?;
 
     let expected_asset = &params.asset;
@@ -227,7 +224,7 @@ where
     };
 
     let (transaction, log) = watch_for_event(connector, start_of_swap, event)
-        .instrument(tracing::info_span!("watch_redeem"))
+        .instrument(tracing::info_span!("", action = "redeem"))
         .await?;
 
     let secret =
@@ -255,7 +252,7 @@ where
     };
 
     let (transaction, _) = watch_for_event(connector, start_of_swap, event)
-        .instrument(tracing::info_span!("watch_refund"))
+        .instrument(tracing::info_span!("", action = "refund"))
         .await?;
 
     Ok(Refunded { transaction })
