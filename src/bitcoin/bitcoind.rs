@@ -207,29 +207,6 @@ impl Client {
         Ok(txid)
     }
 
-    pub async fn get_raw_transaction(
-        &self,
-        wallet_name: &str,
-        txid: Txid,
-    ) -> anyhow::Result<Transaction> {
-        let hex: String = self
-            .rpc_client
-            .send_with_path(
-                format!("/wallet/{}", wallet_name),
-                jsonrpc::Request::new(
-                    "getrawtransaction",
-                    vec![jsonrpc::serialize(txid)?],
-                    JSONRPC_VERSION.into(),
-                ),
-            )
-            .await
-            .context("failed to get raw transaction")?;
-        let bytes: Vec<u8> = FromHex::from_hex(&hex)?;
-        let transaction = bitcoin::consensus::encode::deserialize(&bytes)?;
-
-        Ok(transaction)
-    }
-
     #[cfg(test)]
     pub async fn dump_wallet(
         &self,

@@ -226,17 +226,6 @@ impl Wallet {
         Ok(txid)
     }
 
-    pub async fn get_raw_transaction(&self, txid: Txid) -> anyhow::Result<Transaction> {
-        self.assert_network(self.network).await?;
-
-        let transaction = self
-            .bitcoind_client
-            .get_raw_transaction(&self.name, txid)
-            .await?;
-
-        Ok(transaction)
-    }
-
     #[cfg(test)]
     pub async fn dump(&self, filename: &std::path::Path) -> anyhow::Result<()> {
         self.bitcoind_client.dump_wallet(&self.name, filename).await
