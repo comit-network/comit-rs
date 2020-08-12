@@ -153,7 +153,7 @@ where
 
     let (transaction, location) =
         watch_for_created_outpoint(connector, start_of_swap, params.compute_address())
-            .instrument(tracing::info_span!("watch_fund"))
+            .instrument(tracing::info_span!("", action = "fund"))
             .await?;
 
     let asset = asset::Bitcoin::from_sat(transaction.output[location.vout as usize].value);
@@ -185,7 +185,7 @@ where
 {
     let (transaction, _) =
         watch_for_spent_outpoint(connector, start_of_swap, location, params.redeem_identity)
-            .instrument(tracing::info_span!("watch_redeem"))
+            .instrument(tracing::info_span!("", action = "redeem"))
             .await?;
 
     let secret = extract_secret(&transaction, &params.secret_hash)
@@ -208,7 +208,7 @@ where
 {
     let (transaction, _) =
         watch_for_spent_outpoint(connector, start_of_swap, location, params.refund_identity)
-            .instrument(tracing::info_span!("watch_refund"))
+            .instrument(tracing::info_span!("", action = "refund"))
             .await?;
 
     Ok(Refunded { transaction })

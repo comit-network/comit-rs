@@ -22,7 +22,7 @@ impl Web3Connector {
             .send::<Vec<()>, String>(jsonrpc::Request::new("net_version", vec![]))
             .await?;
 
-        tracing::debug!("Fetched net_version from web3: {:?}", version);
+        tracing::trace!("Fetched net_version from web3: {:?}", version);
 
         Ok(ChainId::from(version.parse::<u32>()?))
     }

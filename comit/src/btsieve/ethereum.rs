@@ -33,10 +33,13 @@ impl PreviousBlockHash for Block {
     }
 }
 
+// This tracing context is useful because it conveys information through its
+// name although we skip all fields because they would add too much noise.
+#[tracing::instrument(level = "debug", skip(connector, start_of_swap, expected_bytecode))]
 pub async fn watch_for_contract_creation<C>(
     connector: &C,
     start_of_swap: NaiveDateTime,
-    bytecode: &[u8],
+    expected_bytecode: &[u8],
 ) -> anyhow::Result<(Transaction, Address)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
@@ -47,7 +50,7 @@ where
             // creates a contract.
 
             let is_contract_creation = transaction.to.is_none();
-            let is_expected_contract = transaction.input.as_slice() == bytecode;
+            let is_expected_contract = transaction.input.as_slice() == expected_bytecode;
 
             if !is_contract_creation {
                 tracing::trace!("rejected because transaction doesn't create a contract");
@@ -59,7 +62,7 @@ where
                 // only compute levenshtein distance if we are on trace level, converting to hex is expensive at this scale
                 if tracing::level_enabled!(tracing::level_filters::LevelFilter::TRACE) {
                     let actual = hex::encode(&transaction.input);
-                    let expected = hex::encode(bytecode);
+                    let expected = hex::encode(expected_bytecode);
 
                     let distance = levenshtein::levenshtein(&actual, &expected);
 
@@ -80,17 +83,23 @@ where
     }
 }
 
+// This tracing context is useful because it conveys information through its
+// name although we skip all fields because they would add too much noise.
+#[tracing::instrument(level = "debug", skip(connector, start_of_swap, expected_event))]
 pub async fn watch_for_event<C>(
     connector: &C,
     start_of_swap: NaiveDateTime,
-    event: Event,
+    expected_event: Event,
 ) -> anyhow::Result<(Transaction, Log)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
-    matching_transaction_and_log(connector, start_of_swap, event.topics.clone(), |receipt| {
-        find_log_for_event_in_receipt(&event, receipt)
-    })
+    matching_transaction_and_log(
+        connector,
+        start_of_swap,
+        expected_event.topics.clone(),
+        |receipt| find_log_for_event_in_receipt(&expected_event, receipt),
+    )
     .await
 }
 
