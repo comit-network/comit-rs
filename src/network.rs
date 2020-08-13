@@ -394,37 +394,81 @@ impl NetworkBehaviourEventProcess<network::comit::BehaviourOutEvent> for Nectar 
                     }
                 };
 
-                let redeem_identity =
-                    identity::Bitcoin::from_secret_key(&crate::SECP, &maker_bitcoin_transient_sk);
-                let hbit_params = hbit::Params::new(
-                    hbit::SharedParams {
-                        asset: order.bitcoin_amount,
-                        redeem_identity,
-                        refund_identity: taker_bitcoin_identity,
-                        expiry: order.bitcoin_absolute_expiry.into(),
-                        secret_hash,
-                        network: order.bitcoin_ledger.into(),
-                    },
-                    maker_bitcoin_transient_sk,
-                );
+                let swap = match order.position {
+                    // Bob is buying (=redeeming) bitcoin (funding DAI on beta, redeeming bitcoin on alpha)
+                    comit::network::Position::Buy => {
+                        let redeem_identity = identity::Bitcoin::from_secret_key(
+                            &crate::SECP,
+                            &maker_bitcoin_transient_sk,
+                        );
+                        let hbit_params = hbit::Params::new(
+                            hbit::SharedParams {
+                                asset: order.bitcoin_amount,
+                                redeem_identity,
+                                refund_identity: taker_bitcoin_identity,
+                                expiry: order.bitcoin_absolute_expiry.into(),
+                                secret_hash,
+                                network: order.bitcoin_ledger.into(),
+                            },
+                            maker_bitcoin_transient_sk,
+                        );
 
-                let herc20_params = herc20::Params {
-                    asset: asset::Erc20::new(order.token_contract, order.ethereum_amount),
-                    redeem_identity: taker_ethereum_identity,
-                    refund_identity: maker_ethereum_identity,
-                    expiry: order.ethereum_absolute_expiry.into(),
-                    secret_hash,
-                    chain_id: order.ethereum_ledger.chain_id,
+                        let herc20_params = herc20::Params {
+                            asset: asset::Erc20::new(order.token_contract, order.ethereum_amount),
+                            redeem_identity: taker_ethereum_identity,
+                            refund_identity: maker_ethereum_identity,
+                            expiry: order.ethereum_absolute_expiry.into(),
+                            secret_hash,
+                            chain_id: order.ethereum_ledger.chain_id,
+                        };
+
+                        SwapKind::HbitHerc20(SwapParams {
+                            hbit_params,
+                            herc20_params,
+                            secret_hash,
+                            start_of_swap: Utc::now().naive_local(),
+                            swap_id: crate::SwapId::default(),
+                            taker,
+                        })
+                    }
+                    // Bob is selling (=funding) bitcoin (funding bitcoin on beta, redeeming DAI on alpha)
+                    comit::network::Position::Sell => {
+                        let refund_identity = identity::Bitcoin::from_secret_key(
+                            &crate::SECP,
+                            &maker_bitcoin_transient_sk,
+                        );
+
+                        let hbit_params = hbit::Params::new(
+                            hbit::SharedParams {
+                                asset: order.bitcoin_amount,
+                                redeem_identity: taker_bitcoin_identity,
+                                refund_identity,
+                                expiry: order.bitcoin_absolute_expiry.into(),
+                                secret_hash,
+                                network: order.bitcoin_ledger.into(),
+                            },
+                            maker_bitcoin_transient_sk,
+                        );
+
+                        let herc20_params = herc20::Params {
+                            asset: asset::Erc20::new(order.token_contract, order.ethereum_amount),
+                            redeem_identity: maker_ethereum_identity,
+                            refund_identity: taker_ethereum_identity,
+                            expiry: order.ethereum_absolute_expiry.into(),
+                            secret_hash,
+                            chain_id: order.ethereum_ledger.chain_id,
+                        };
+
+                        SwapKind::Herc20Hbit(SwapParams {
+                            hbit_params,
+                            herc20_params,
+                            secret_hash,
+                            start_of_swap: Utc::now().naive_local(),
+                            swap_id: crate::SwapId::default(),
+                            taker,
+                        })
+                    }
                 };
-
-                let swap = SwapKind::HbitHerc20(SwapParams {
-                    hbit_params,
-                    herc20_params,
-                    secret_hash,
-                    start_of_swap: Utc::now().naive_local(),
-                    swap_id: crate::SwapId::default(),
-                    taker,
-                });
 
                 self.events.push_back(Event::SpawnSwap(swap));
             }
