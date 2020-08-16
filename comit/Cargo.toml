@@ -46,7 +46,7 @@ atty = "0.2"
 bitcoincore-rpc = "0.11.0"
 libp2p = { version = "0.23", default-features = false, features = ["secio", "yamux"] }
 log = { version = "0.4", features = ["serde"] }
-proptest = "0.10.0"
+proptest = "0.10.1"
 spectral = { version = "0.6", default-features = false }
 testcontainers = "0.9"
 tokio = { version = "0.2.22", features = ["macros"] }
