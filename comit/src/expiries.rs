@@ -4,8 +4,15 @@
 //! atomic. One expiry for the alpha ledger and one for the beta ledger. The
 //! beta ledger expiry time must elapse before the alpha ledger expiry time.
 
-use crate::timestamp::{self, Timestamp};
-use time::{prelude::*, Duration};
+mod config;
+
+use crate::{
+    asset,
+    timestamp::{self, Timestamp},
+};
+use time::Duration;
+
+use self::config::{Config, Protocol};
 
 // TODO: Currently we ignore deploy for Erc20.
 
@@ -20,6 +27,10 @@ use time::{prelude::*, Duration};
 /// always refers to the time used by the op codes used in the COMIT contracts.
 pub trait CurrentTime {
     fn current_time(&self) -> Timestamp; // TODO: This will need to be async.
+}
+
+pub trait GasPrice {
+    fn gas_price(&self) -> asset::Ether;
 }
 
 /// Data that defines and manipulates expiry times.
@@ -226,7 +237,9 @@ where
 
 /// Duration for a complete happy path swap for Alice.
 fn happy_path_swap_period_for_alice(config: &Config) -> Duration {
-    period_for_alice_to_complete(&config, AliceState::None)
+    let p = period_for_alice_to_complete(&config, AliceState::None);
+    println!("period for alice to complete: {}", p.whole_seconds());
+    p
 }
 
 /// Duration for a complete happy path swap for Bob.
@@ -246,6 +259,8 @@ fn period_for_alice_to_complete(config: &Config, current_state: AliceState) -> D
         let (_action, next_state) = state.next();
         let transition_period = state.transition_period(config);
 
+        let d = acc + transition_period;
+        println!("acc {}", d.whole_seconds());
         period_to_complete(config, next_state, acc + transition_period)
     }
 
@@ -521,94 +536,6 @@ impl From<BobState> for AliceState {
             }
         }
     }
-}
-
-// TODO: Add support for lightning.
-#[derive(Clone, Copy, Debug)]
-pub enum Protocol {
-    Herc20Hbit,
-    HbitHerc20,
-}
-
-impl Protocol {
-    fn config(&self) -> Config {
-        match self {
-            Protocol::Herc20Hbit => Config {
-                alpha_required_confirmations: ethereum_required_confirmations(),
-                beta_required_confirmations: bitcoin_required_confirmations(),
-            },
-            Protocol::HbitHerc20 => Config {
-                alpha_required_confirmations: bitcoin_required_confirmations(),
-                beta_required_confirmations: ethereum_required_confirmations(),
-            },
-        }
-    }
-}
-
-/// Configuration values used during transition period calculations.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Config {
-    alpha_required_confirmations: usize,
-    beta_required_confirmations: usize,
-}
-
-// TODO: Calculate _real_ values instead of just returning 1 hour.
-impl Config {
-    /// The duration of time it takes for Alice to act.
-    pub fn alice_to_act(&self) -> Duration {
-        1.hours()
-    }
-
-    /// The duration of time it takes for Bob to act.
-    pub fn bob_to_act(&self) -> Duration {
-        1.hours()
-    }
-
-    /// The duration of time it takes for the alpha fund transaction to be
-    /// mined into the blockchain.
-    pub fn mine_alpha_fund_transaction(&self) -> Duration {
-        1.hours()
-    }
-
-    /// The duration of time it takes for the beta fund transaction to be
-    /// mined into the blockchain.
-    pub fn mine_beta_fund_transaction(&self) -> Duration {
-        1.hours()
-    }
-
-    /// The duration of time it takes for the alpha redeem transaction to be
-    /// mined into the blockchain.
-    pub fn mine_alpha_redeem_transaction(&self) -> Duration {
-        1.hours()
-    }
-
-    /// The duration of time it takes for the beta redeem transaction to be
-    /// mined into the blockchain.
-    pub fn mine_beta_redeem_transaction(&self) -> Duration {
-        1.hours()
-    }
-
-    /// The duration of time it takes for a transaction to reach finality on the
-    /// alpha ledger.
-    pub fn finality_alpha(&self) -> Duration {
-        1.hours()
-    }
-
-    /// The duration of time it takes for a transaction to reach finality on the
-    /// beta ledger.
-    pub fn finality_beta(&self) -> Duration {
-        1.hours()
-    }
-}
-
-fn bitcoin_required_confirmations() -> usize {
-    // TODO: Add documentation on _why_ we picked this value.
-    6
-}
-
-fn ethereum_required_confirmations() -> usize {
-    // TODO: Add documentation on _why_ we picked this value.
-    12
 }
 
 #[cfg(test)]
