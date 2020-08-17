@@ -5,7 +5,7 @@ use crate::{
     storage::{Load, LoadAll, Save, Storage},
     LocalSwapId, Role, Timestamp,
 };
-use comit::{bitcoin, identity, NewOrder, Order, OrderId};
+use comit::{bitcoin, BtcDaiOrder};
 use libp2p::{Multiaddr, PeerId};
 
 /// This is a facade that implements all the required traits and forwards them
@@ -47,39 +47,7 @@ impl Facade {
         Ok(timestamp)
     }
 
-    pub async fn take_order(
-        &mut self,
-        order_id: OrderId,
-        swap_id: LocalSwapId,
-        bitcoin_identity: crate::bitcoin::Address,
-        ethereum_identity: identity::Ethereum,
-    ) -> anyhow::Result<()> {
-        self.storage
-            .associate_swap_with_order(order_id, swap_id)
-            .await;
-
-        self.swarm
-            .take_order(order_id, swap_id, bitcoin_identity, ethereum_identity)
-            .await
-    }
-
-    pub async fn make_order(
-        &self,
-        order: NewOrder,
-        swap_id: LocalSwapId,
-        ethereum_identity: identity::Ethereum,
-        bitcoin_identity: crate::bitcoin::Address,
-    ) -> anyhow::Result<OrderId> {
-        self.swarm
-            .make_order(order, swap_id, ethereum_identity, bitcoin_identity)
-            .await
-    }
-
-    pub async fn get_order(&self, order_id: OrderId) -> Option<Order> {
-        self.swarm.get_order(order_id).await
-    }
-
-    pub async fn get_orders(&self) -> Vec<Order> {
+    pub async fn get_orders(&self) -> Vec<(PeerId, BtcDaiOrder)> {
         self.swarm.get_orders().await
     }
 

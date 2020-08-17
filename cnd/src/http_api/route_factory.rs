@@ -7,7 +7,6 @@ use crate::{
     },
     Facade, LocalSwapId,
 };
-use comit::OrderId;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 pub fn swap_path(id: LocalSwapId) -> String {
@@ -83,6 +82,11 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .and(facade.clone())
         .and_then(swaps::get_swap);
 
+    let get_swaps = warp::get()
+        .and(swaps)
+        .and(facade.clone())
+        .and_then(swaps::get_swaps);
+
     let action_init = swaps
         .and(warp::get())
         .and(warp::path::param::<LocalSwapId>())
@@ -123,34 +127,18 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .and(facade.clone())
         .and_then(swaps::action_refund);
 
-    let get_order = warp::get()
-        .and(warp::path("orders"))
-        .and(warp::path::param::<OrderId>())
-        .and(warp::path::end())
-        .and(facade.clone())
-        .and_then(orderbook::get_order);
-
     let get_orders = warp::get()
         .and(warp::path("orders"))
         .and(warp::path::end())
         .and(facade.clone())
         .and_then(orderbook::get_orders);
 
-    let take_order = warp::post()
-        .and(warp::path("orders"))
-        .and(warp::path::param::<OrderId>())
-        .and(warp::path("take"))
+    let make_btc_dai_order = warp::post()
+        .and(warp::path!("orders" / "btc" / "dai"))
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade.clone())
-        .and_then(orderbook::post_take_order);
-
-    let make_order = warp::post()
-        .and(warp::path!("orders"))
-        .and(warp::path::end())
-        .and(warp::body::json())
-        .and(facade.clone())
-        .and_then(orderbook::post_make_order);
+        .and_then(orderbook::post_make_btc_dai_order);
 
     let post_dial_addr = warp::post()
         .and(warp::path!("dial"))
@@ -166,6 +154,7 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .or(herc20_halbit)
         .or(halbit_herc20)
         .or(get_swap)
+        .or(get_swaps)
         .or(action_init)
         .or(action_fund)
         .or(action_deploy)
@@ -173,10 +162,8 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .or(action_refund)
         .or(hbit_herc20)
         .or(herc20_hbit)
-        .or(take_order)
-        .or(make_order)
+        .or(make_btc_dai_order)
         .or(get_orders)
-        .or(get_order)
         .or(post_dial_addr)
         //.or(get_makers)
         //.or(subscribe)

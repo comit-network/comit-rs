@@ -1,15 +1,17 @@
 use crate::{
     config::Settings,
     local_swap_id::LocalSwapId,
-    network::{comit_node::ComitNode, transport},
+    network::{
+        comit_node::{BtcDaiOrderAddresses, ComitNode},
+        transport,
+    },
     protocol_spawner::ProtocolSpawner,
     storage::{RootSeed, Storage},
 };
 use anyhow::Context as _;
 use comit::{
-    ethereum,
     network::{swap_digest::SwapDigest, Identities},
-    NewOrder, Order, OrderId, Role,
+    BtcDaiOrder, BtcDaiOrderForm, OrderId, Role,
 };
 use futures::stream::StreamExt;
 use libp2p::{
@@ -56,6 +58,7 @@ impl Swarm {
             storage,
             protocol_spawner,
             local_peer_id.clone(),
+            &settings,
         );
 
         let mut swarm = SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
@@ -111,45 +114,23 @@ impl Swarm {
         guard.initiate_communication(id, peer, role, digest, identities)
     }
 
-    /// The taker plays the role of Alice.
-    pub async fn take_order(
-        &self,
-        order_id: OrderId,
-        swap_id: LocalSwapId,
-        bitcoin_identity: crate::bitcoin::Address,
-        ethereum_identity: ethereum::Address,
-    ) -> anyhow::Result<()> {
-        let mut guard = self.inner.lock().await;
-        guard.take_order(order_id, swap_id, bitcoin_identity, ethereum_identity)
-    }
-
-    /// The maker plays the role of Bob.
-    pub async fn make_order(
-        &self,
-        order: NewOrder,
-        swap_id: LocalSwapId,
-        ethereum_identity: ethereum::Address,
-        bitcoin_identity: crate::bitcoin::Address,
-    ) -> anyhow::Result<OrderId> {
-        let mut guard = self.inner.lock().await;
-        guard.make_order(order, swap_id, ethereum_identity, bitcoin_identity)
-    }
-
-    pub async fn get_orders(&self) -> Vec<Order> {
+    pub async fn get_orders(&self) -> Vec<(PeerId, BtcDaiOrder)> {
         let guard = self.inner.lock().await;
 
-        guard.orderbook.orders().all().cloned().collect()
+        guard
+            .orderbook
+            .orderpool()
+            .all()
+            .map(|(maker, order)| (maker.clone(), *order))
+            .collect()
     }
 
-    pub async fn get_order(&self, order_id: OrderId) -> Option<Order> {
-        self.inner
-            .lock()
-            .await
-            .orderbook
-            .orders()
-            .all()
-            .find(|order| order.id == order_id)
-            .cloned()
+    pub async fn publish_order(
+        &self,
+        form: BtcDaiOrderForm,
+        addresses: BtcDaiOrderAddresses,
+    ) -> OrderId {
+        self.inner.lock().await.publish_order(form, addresses)
     }
 
     pub async fn dial_addr(&mut self, addr: Multiaddr) -> anyhow::Result<()> {

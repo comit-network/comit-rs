@@ -11,10 +11,8 @@ use anyhow::Context;
 use async_trait::async_trait;
 use bitcoin::Network;
 use diesel::{BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
-use std::{collections::HashMap, sync::Arc};
-use tokio::sync::Mutex;
+use std::sync::Arc;
 
-use comit::OrderId;
 pub use db::*;
 pub use seed::*;
 
@@ -49,7 +47,6 @@ pub struct ForSwap<T> {
 pub struct Storage {
     db: Sqlite,
     seed: RootSeed,
-    order_states: Arc<Mutex<HashMap<OrderId, LocalSwapId>>>,
     herc20_states: Arc<herc20::States>,
     halbit_states: Arc<halbit::States>,
     hbit_states: Arc<hbit::States>,
@@ -69,7 +66,6 @@ impl Storage {
             herc20_states,
             halbit_states,
             hbit_states,
-            order_states: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -91,18 +87,6 @@ impl Storage {
         };
 
         identity::Bitcoin::from_secret_key(&*crate::SECP, &sk)
-    }
-
-    pub async fn get_swap_associated_with_order(&self, order_id: &OrderId) -> Option<LocalSwapId> {
-        if let Some(swap_id) = self.order_states.lock().await.get(order_id) {
-            Some(*swap_id)
-        } else {
-            None
-        }
-    }
-
-    pub async fn associate_swap_with_order(&self, order_id: OrderId, swap_id: LocalSwapId) {
-        self.order_states.lock().await.insert(order_id, swap_id);
     }
 }
 

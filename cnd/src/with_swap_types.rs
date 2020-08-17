@@ -151,7 +151,7 @@ macro_rules! within_swap_context {
 
                 $fn
             }
-            _ => unimplemented!("protocol combination not supported: {:?}", swap_context),
+            _ => unimplemented!("LockProtocol combination not supported: {:?}", swap_context),
         }
     }};
 }
