@@ -1,6 +1,6 @@
 use crate::{
-    btsieve::LatestBlock,
     connectors::Connectors,
+    ethereum,
     network::{Identities, SwapDigest, Swarm},
     storage::{Load, LoadAll, Save, Storage},
     LocalSwapId, Role, Timestamp,
@@ -42,13 +42,7 @@ impl Facade {
 
     /// Returns the timestamp of the latest Ethereum block.
     pub async fn ethereum_latest_time(&self) -> anyhow::Result<Timestamp> {
-        let timestamp = self
-            .connectors
-            .ethereum
-            .latest_block()
-            .await?
-            .timestamp
-            .into();
+        let timestamp = ethereum::latest_time(self.connectors.ethereum.as_ref()).await?;
 
         Ok(timestamp)
     }

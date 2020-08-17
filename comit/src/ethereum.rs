@@ -1,3 +1,4 @@
+use crate::{btsieve::LatestBlock, Timestamp};
 pub use ethbloom::{Bloom as H2048, Input};
 pub use primitive_types::U256;
 use serde::{Deserialize, Serialize};
@@ -7,6 +8,15 @@ use std::{
     fmt::{Display, Formatter},
     str::FromStr,
 };
+
+pub async fn latest_time<C>(connector: &C) -> anyhow::Result<Timestamp>
+where
+    C: LatestBlock<Block = Block>,
+{
+    let timestamp = connector.latest_block().await?.timestamp.into();
+
+    Ok(timestamp)
+}
 
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
