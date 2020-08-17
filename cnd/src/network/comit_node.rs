@@ -18,7 +18,7 @@ use comit::{
         swap_digest::SwapDigest,
         Identities, SharedSwapId, WhatAliceLearnedFromBob, WhatBobLearnedFromAlice,
     },
-    Never, NewOrder, Order, OrderId, Position, Protocol, Role, SecretHash, Side,
+    LockProtocol, Never, NewOrder, Order, OrderId, Position, Role, SecretHash, Side,
 };
 use futures::TryFutureExt;
 use libp2p::{core::Multiaddr, NetworkBehaviour, PeerId};
@@ -493,8 +493,8 @@ async fn save_swap_remote_data(
     match (&swap, data) {
         (
             SwapContext {
-                alpha: Protocol::Herc20,
-                beta: Protocol::Halbit,
+                alpha: LockProtocol::Herc20,
+                beta: LockProtocol::Halbit,
                 role: Role::Alice,
                 ..
             },
@@ -516,8 +516,8 @@ async fn save_swap_remote_data(
         }
         (
             SwapContext {
-                alpha: Protocol::Herc20,
-                beta: Protocol::Halbit,
+                alpha: LockProtocol::Herc20,
+                beta: LockProtocol::Halbit,
                 role: Role::Bob,
                 ..
             },
@@ -541,8 +541,8 @@ async fn save_swap_remote_data(
         }
         (
             SwapContext {
-                alpha: Protocol::Halbit,
-                beta: Protocol::Herc20,
+                alpha: LockProtocol::Halbit,
+                beta: LockProtocol::Herc20,
                 role: Role::Alice,
                 ..
             },
@@ -564,8 +564,8 @@ async fn save_swap_remote_data(
         }
         (
             SwapContext {
-                alpha: Protocol::Halbit,
-                beta: Protocol::Herc20,
+                alpha: LockProtocol::Halbit,
+                beta: LockProtocol::Herc20,
                 role: Role::Bob,
                 ..
             },
@@ -589,8 +589,8 @@ async fn save_swap_remote_data(
         }
         (
             SwapContext {
-                alpha: Protocol::Herc20,
-                beta: Protocol::Hbit,
+                alpha: LockProtocol::Herc20,
+                beta: LockProtocol::Hbit,
                 role: Role::Alice,
                 ..
             },
@@ -612,8 +612,8 @@ async fn save_swap_remote_data(
         }
         (
             SwapContext {
-                alpha: Protocol::Herc20,
-                beta: Protocol::Hbit,
+                alpha: LockProtocol::Herc20,
+                beta: LockProtocol::Hbit,
                 role: Role::Bob,
                 ..
             },
@@ -637,8 +637,8 @@ async fn save_swap_remote_data(
         }
         (
             SwapContext {
-                alpha: Protocol::Hbit,
-                beta: Protocol::Herc20,
+                alpha: LockProtocol::Hbit,
+                beta: LockProtocol::Herc20,
                 role: Role::Alice,
                 ..
             },
@@ -660,8 +660,8 @@ async fn save_swap_remote_data(
         }
         (
             SwapContext {
-                alpha: Protocol::Hbit,
-                beta: Protocol::Herc20,
+                alpha: LockProtocol::Hbit,
+                beta: LockProtocol::Herc20,
                 role: Role::Bob,
                 ..
             },

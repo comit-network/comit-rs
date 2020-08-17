@@ -5,7 +5,7 @@ use crate::{
     htlc_location, identity, state,
     state::Update,
     tracing_ext::InstrumentProtocol,
-    transaction, LocalSwapId, Protocol, Role, Secret, Side,
+    transaction, LocalSwapId, LockProtocol, Role, Secret, Side,
 };
 use chrono::NaiveDateTime;
 use futures::TryStreamExt;
@@ -35,7 +35,7 @@ pub async fn new<C>(
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
     let mut events = comit::herc20::new(connector.as_ref(), params, start_of_swap)
-        .instrument_protocol(id, role, side, Protocol::Herc20)
+        .instrument_protocol(id, role, side, LockProtocol::Herc20)
         .inspect_ok(|event| tracing::info!("yielded event {}", event))
         .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
 

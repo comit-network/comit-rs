@@ -6,7 +6,7 @@
 use crate::{
     identity,
     storage::db::wrapper_types::{Erc20Amount, Ether, Satoshis},
-    Protocol, SecretHash,
+    LockProtocol, SecretHash,
 };
 use std::{fmt, str::FromStr};
 
@@ -53,10 +53,10 @@ fn secrethash() {
 
 #[test]
 fn protocol() {
-    roundtrip_test::<Protocol>("halbit");
-    roundtrip_test::<Protocol>("hbit");
-    roundtrip_test::<Protocol>("herc20");
-    assert_num_variants::<Protocol>(3)
+    roundtrip_test::<LockProtocol>("halbit");
+    roundtrip_test::<LockProtocol>("hbit");
+    roundtrip_test::<LockProtocol>("herc20");
+    assert_num_variants::<LockProtocol>(3)
 }
 
 /// Given a string representation of a value T, this function will assert

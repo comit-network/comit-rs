@@ -5,7 +5,7 @@ mod seed;
 use crate::{
     asset, halbit, hbit, herc20, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
-    spawn, LocalSwapId, Protocol, Role, Side,
+    spawn, LocalSwapId, LockProtocol, Role, Side,
 };
 use anyhow::Context;
 use async_trait::async_trait;
@@ -337,8 +337,8 @@ impl IntoParams for hbit::Params {
 pub struct SwapContext {
     pub id: LocalSwapId,
     pub role: Role,
-    pub alpha: Protocol,
-    pub beta: Protocol,
+    pub alpha: LockProtocol,
+    pub beta: LockProtocol,
 }
 
 impl From<tables::SwapContext> for SwapContext {

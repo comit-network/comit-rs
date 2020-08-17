@@ -86,8 +86,8 @@ use self::{
 };
 use anyhow::Context;
 use comit::{
-    ledger, lnd::LndConnectorParams, Never, Protocol, RelativeTime, Role, Secret, SecretHash, Side,
-    Timestamp,
+    ledger, lnd::LndConnectorParams, LockProtocol, Never, RelativeTime, Role, Secret, SecretHash,
+    Side, Timestamp,
 };
 use rand::rngs::OsRng;
 use std::{

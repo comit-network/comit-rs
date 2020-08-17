@@ -8,7 +8,7 @@ use crate::{
         },
         Sqlite,
     },
-    LocalSwapId, Protocol, Role, Side,
+    LocalSwapId, LockProtocol, Role, Side,
 };
 use anyhow::Context;
 use chrono::NaiveDateTime;
@@ -67,8 +67,8 @@ pub struct SwapContext {
     id: i32,
     pub local_swap_id: Text<LocalSwapId>,
     pub role: Text<Role>,
-    pub alpha: Text<Protocol>,
-    pub beta: Text<Protocol>,
+    pub alpha: Text<LockProtocol>,
+    pub beta: Text<LockProtocol>,
 }
 
 #[derive(Associations, Clone, Copy, Debug, Identifiable, Queryable, PartialEq)]

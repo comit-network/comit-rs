@@ -1,5 +1,5 @@
 use crate::LocalSwapId;
-use comit::{Protocol, Role, Side};
+use comit::{LockProtocol, Role, Side};
 use tracing_futures::{Instrument, Instrumented};
 
 /// Extension trait for easily applying a consistent span across all protocol
@@ -10,7 +10,7 @@ pub trait InstrumentProtocol: Sized {
         id: LocalSwapId,
         role: Role,
         side: Side,
-        protocol: Protocol,
+        protocol: LockProtocol,
     ) -> Instrumented<Self> {
         self.instrument(tracing::error_span!("", swap_id = %id, role = %role, side = %side, protocol = %protocol))
     }

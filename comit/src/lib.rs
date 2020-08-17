@@ -66,6 +66,11 @@ pub use self::{
 
 use digest::ToDigestInput;
 
+/// Defines the set of locking protocol available in COMIT.
+///
+/// A locking protocol represents a particular way of locking an asset on a
+/// certain ledger. Hence, a locking protocol does not only imply the ledger but
+/// also the asset that can be locked.
 #[derive(
     Debug,
     Clone,
@@ -78,9 +83,12 @@ use digest::ToDigestInput;
     strum_macros::EnumIter,
 )]
 #[strum(serialize_all = "lowercase")]
-pub enum Protocol {
+pub enum LockProtocol {
+    /// The [`hbit`](crate::hbit) locking protocol.
     Hbit,
+    /// The [`halbit`](crate::halbit) locking protocol.
     Halbit,
+    /// The [`herc20`](crate::herc20) locking protocol.
     Herc20,
 }
 
