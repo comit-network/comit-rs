@@ -2,7 +2,6 @@ use crate::{
     config::{Bitcoind, Data, Geth, Network},
     ethereum::ChainId,
 };
-use config as config_rs;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -65,14 +64,14 @@ impl File {
         }
     }
 
-    pub fn read<D>(config_file: D) -> Result<Self, config_rs::ConfigError>
+    pub fn read<D>(config_file: D) -> Result<Self, ::config::ConfigError>
     where
         D: AsRef<OsStr>,
     {
         let config_file = Path::new(&config_file);
 
-        let mut config = config_rs::Config::new();
-        config.merge(config_rs::File::from(config_file))?;
+        let mut config = ::config::Config::new();
+        config.merge(::config::File::from(config_file))?;
         config.try_into()
     }
 }
