@@ -18,6 +18,7 @@ pub mod asset;
 pub mod bitcoin;
 pub mod btsieve;
 pub mod ethereum;
+pub mod expiries;
 pub mod halbit;
 pub mod hbit;
 pub mod herc20;
