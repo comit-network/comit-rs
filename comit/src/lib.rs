@@ -28,6 +28,7 @@ pub mod ledger;
 pub mod lightning;
 pub mod lnd;
 pub mod network;
+mod order;
 #[cfg(test)]
 pub mod proptest;
 mod secret;
@@ -57,6 +58,7 @@ pub mod export {
 
 pub use self::{
     network::SharedSwapId,
+    order::{NewOrder, Order, OrderId, Position},
     secret::Secret,
     secret_hash::SecretHash,
     timestamp::{RelativeTime, Timestamp},

@@ -1,10 +1,9 @@
 mod makerbook;
-mod order;
 mod order_source;
 mod orders;
 pub mod take_order;
 
-use crate::SharedSwapId;
+use crate::{order::*, SharedSwapId};
 use libp2p::{
     request_response::{
         ProtocolSupport, RequestResponse, RequestResponseConfig, RequestResponseEvent,
@@ -13,18 +12,16 @@ use libp2p::{
     swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
     NetworkBehaviour, PeerId,
 };
+use makerbook::Makerbook;
+use order_source::*;
 use std::{
     collections::VecDeque,
     task::{Context, Poll},
     time::Duration,
 };
-
-use makerbook::Makerbook;
-pub use order::*;
-use order_source::*;
 use take_order::{Confirmation, TakeOrderCodec, TakeOrderProtocol};
 
-pub use self::{order::*, orders::*};
+pub use self::orders::*;
 
 /// The time we wait for a take order request to be confirmed or denied.
 const REQUEST_TIMEOUT_SECS: u64 = 10;

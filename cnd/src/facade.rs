@@ -1,14 +1,11 @@
 use crate::{
     btsieve::LatestBlock,
     connectors::Connectors,
-    network::{Identities, NewOrder, SwapDigest, Swarm},
+    network::{Identities, SwapDigest, Swarm},
     storage::{Load, LoadAll, Save, Storage},
     LocalSwapId, Role, Timestamp,
 };
-use comit::{
-    bitcoin, identity,
-    network::{Order, OrderId},
-};
+use comit::{bitcoin, identity, NewOrder, Order, OrderId};
 use libp2p::{Multiaddr, PeerId};
 
 /// This is a facade that implements all the required traits and forwards them

@@ -3,15 +3,11 @@ use crate::{
     hbit, herc20,
     http_api::{problem, serde_peer_id},
     identity, ledger,
-    network::NewOrder,
     storage::{CreatedSwap, Save},
     Facade, LocalSwapId, Role,
 };
 use chrono::Utc;
-use comit::{
-    ethereum,
-    network::{Order, OrderId, Position},
-};
+use comit::{ethereum, NewOrder, Order, OrderId, Position};
 use libp2p::PeerId;
 use serde::{Deserialize, Serialize};
 use warp::{http, http::StatusCode, Rejection, Reply};

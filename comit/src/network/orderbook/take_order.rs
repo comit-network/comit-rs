@@ -1,4 +1,4 @@
-use crate::{network::OrderId, SharedSwapId};
+use crate::{OrderId, SharedSwapId};
 use futures::prelude::*;
 use libp2p::{
     core::upgrade,

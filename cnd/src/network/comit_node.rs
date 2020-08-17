@@ -1,7 +1,7 @@
 use crate::{
     hbit, herc20,
     local_swap_id::LocalSwapId,
-    network::{peer_tracker::PeerTracker, NewOrder, Order, OrderId, Position},
+    network::peer_tracker::PeerTracker,
     spawn,
     storage::{CreatedSwap, ForSwap, Load, RootSeed, Save, Storage, SwapContext},
     ProtocolSpawner,
@@ -18,7 +18,7 @@ use comit::{
         swap_digest::SwapDigest,
         Identities, SharedSwapId, WhatAliceLearnedFromBob, WhatBobLearnedFromAlice,
     },
-    Never, Protocol, Role, SecretHash, Side,
+    Never, NewOrder, Order, OrderId, Position, Protocol, Role, SecretHash, Side,
 };
 use futures::TryFutureExt;
 use libp2p::{core::Multiaddr, NetworkBehaviour, PeerId};

@@ -1,7 +1,7 @@
 use crate::{
     config::Settings,
     local_swap_id::LocalSwapId,
-    network::{comit_node::ComitNode, transport, NewOrder, Order, OrderId},
+    network::{comit_node::ComitNode, transport},
     protocol_spawner::ProtocolSpawner,
     storage::{RootSeed, Storage},
 };
@@ -9,7 +9,7 @@ use anyhow::Context as _;
 use comit::{
     ethereum,
     network::{swap_digest::SwapDigest, Identities},
-    Role,
+    NewOrder, Order, OrderId, Role,
 };
 use futures::stream::StreamExt;
 use libp2p::{

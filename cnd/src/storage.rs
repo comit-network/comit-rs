@@ -10,11 +10,11 @@ use crate::{
 use anyhow::Context;
 use async_trait::async_trait;
 use bitcoin::Network;
-use comit::network::OrderId;
 use diesel::{BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 
+use comit::OrderId;
 pub use db::*;
 pub use seed::*;
 

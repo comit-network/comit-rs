@@ -1,7 +1,4 @@
-use crate::network::{
-    orderbook::{Order, OrderId},
-    NewOrder,
-};
+use crate::{order::NewOrder, Order, OrderId};
 use libp2p::PeerId;
 use std::collections::HashMap;
 
