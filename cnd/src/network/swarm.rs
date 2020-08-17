@@ -89,7 +89,10 @@ impl Swarm {
         let mut guard = self.inner.lock().await;
 
         if let Some(address_hint) = address_hint {
-            if let Some(addr) = guard.add_address_hint(peer.clone(), address_hint.clone()) {
+            if let Some(addr) = guard
+                .peer_tracker
+                .add_address_hint(peer.clone(), address_hint.clone())
+            {
                 tracing::warn!(
                     "clobbered old address hint, old: {}, new: {}",
                     addr,
@@ -134,12 +137,19 @@ impl Swarm {
 
     pub async fn get_orders(&self) -> Vec<Order> {
         let guard = self.inner.lock().await;
-        guard.get_orders()
+
+        guard.orderbook.orders().all().cloned().collect()
     }
 
     pub async fn get_order(&self, order_id: OrderId) -> Option<Order> {
-        let guard = self.inner.lock().await;
-        guard.get_order(order_id)
+        self.inner
+            .lock()
+            .await
+            .orderbook
+            .orders()
+            .all()
+            .find(|order| order.id == order_id)
+            .cloned()
     }
 
     pub async fn dial_addr(&mut self, addr: Multiaddr) -> anyhow::Result<()> {
@@ -154,7 +164,7 @@ impl Swarm {
 
     pub async fn connected_peers(&self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
         let swarm = self.inner.lock().await;
-        Box::new(swarm.connected_peers())
+        Box::new(swarm.peer_tracker.connected_peers())
     }
 
     pub async fn listen_addresses(&self) -> Vec<Multiaddr> {

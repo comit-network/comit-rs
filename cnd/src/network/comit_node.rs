@@ -18,10 +18,10 @@ use comit::{
         swap_digest::SwapDigest,
         Identities, SharedSwapId, WhatAliceLearnedFromBob, WhatBobLearnedFromAlice,
     },
-    LockProtocol, Never, NewOrder, Order, OrderId, Position, Role, SecretHash, Side,
+    LockProtocol, Never, NewOrder, OrderId, Position, Role, SecretHash, Side,
 };
 use futures::TryFutureExt;
-use libp2p::{core::Multiaddr, NetworkBehaviour, PeerId};
+use libp2p::{NetworkBehaviour, PeerId};
 use std::collections::HashMap;
 use tokio::runtime::Handle;
 
@@ -30,9 +30,9 @@ use tokio::runtime::Handle;
 #[allow(missing_debug_implementations)]
 pub struct ComitNode {
     announce: Announce<LocalSwapId>,
-    orderbook: Orderbook,
+    pub orderbook: Orderbook,
     comit: Comit,
-    peer_tracker: PeerTracker,
+    pub peer_tracker: PeerTracker,
 
     #[behaviour(ignore)]
     seed: RootSeed,
@@ -200,26 +200,6 @@ impl ComitNode {
         self.order_swap_ids.insert(order_id, swap_id);
 
         Ok(order_id)
-    }
-
-    pub fn get_order(&self, order_id: OrderId) -> Option<Order> {
-        self.orderbook
-            .orders()
-            .all()
-            .find(|order| order.id == order_id)
-            .cloned()
-    }
-
-    pub fn get_orders(&self) -> Vec<Order> {
-        self.orderbook.orders().all().cloned().collect()
-    }
-
-    pub fn connected_peers(&self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
-        self.peer_tracker.connected_peers()
-    }
-
-    pub fn add_address_hint(&mut self, id: PeerId, addr: Multiaddr) -> Option<Multiaddr> {
-        self.peer_tracker.add_address_hint(id, addr)
     }
 }
 
