@@ -8,15 +8,12 @@ use crate::{
     storage::Save,
     Facade, LocalSwapId,
 };
-use serde::Deserialize;
 use warp::{http::StatusCode, Rejection, Reply};
 
-pub async fn post_swap(body: serde_json::Value, facade: Facade) -> Result<impl Reply, Rejection> {
-    let body = PostBody::<Herc20, Halbit>::deserialize(&body)
-        .map_err(anyhow::Error::new)
-        .map_err(problem::from_anyhow)
-        .map_err(warp::reject::custom)?;
-
+pub async fn post_swap(
+    body: PostBody<Herc20, Halbit>,
+    facade: Facade,
+) -> Result<impl Reply, Rejection> {
     let swap_id = LocalSwapId::default();
     let reply = warp::reply::reply();
 

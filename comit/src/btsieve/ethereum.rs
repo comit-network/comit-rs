@@ -165,7 +165,7 @@ where
 
                     if matcher(&transaction) {
                         let receipt = fetch_receipt(connector, tx_hash).await?;
-                        if !receipt.is_status_ok() {
+                        if !receipt.successful {
                             // This can be caused by a failed attempt to complete an action,
                             // for example, sending a transaction with low gas.
                             tracing::warn!("transaction matched but status was NOT OK");
@@ -235,9 +235,9 @@ where
                     let _enter = span.enter();
 
                     let receipt = fetch_receipt(connector, tx_hash).await?;
-                    let status_is_ok = receipt.is_status_ok();
+                    let is_successful = receipt.successful;
                     if let Some(log) = matcher(receipt) {
-                        if !status_is_ok {
+                        if !is_successful {
                             // This can be caused by a failed attempt to complete an action,
                             // for example, sending a transaction with low gas.
                             tracing::warn!("transaction matched but status was NOT OK");

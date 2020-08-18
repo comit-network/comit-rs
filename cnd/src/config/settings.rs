@@ -156,7 +156,7 @@ impl Settings {
 mod tests {
     use super::*;
     use crate::{
-        config::{file, Bitcoind, Geth, Lnd},
+        config::{file, Bitcoind, Geth, Lnd, Tokens, DAI_MAINNET},
         ethereum::ChainId,
     };
     use spectral::prelude::*;
@@ -298,6 +298,7 @@ mod tests {
                 geth: Geth {
                     node_url: "http://localhost:8545".parse().unwrap(),
                 },
+                tokens: Tokens { dai: *DAI_MAINNET },
             })
     }
 

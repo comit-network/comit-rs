@@ -65,10 +65,8 @@ export class E2ETestActorConfig {
         };
     }
 
-    private createLedgerConnectors(
-        ledgerConfig: LedgerConfig
-    ): LedgerConnectors {
-        const config: LedgerConnectors = {};
+    private createLedgerConnectors(ledgerConfig: LedgerConfig): LedgerConfigs {
+        const config: LedgerConfigs = {};
 
         if (ledgerConfig.bitcoin) {
             config.bitcoin = bitcoinConnector(ledgerConfig.bitcoin);
@@ -106,26 +104,31 @@ export class E2ETestActorConfig {
     }
 }
 
-interface LedgerConnectors {
-    bitcoin?: BitcoinConnector;
-    ethereum?: EthereumConnector;
-    lightning?: LightningConnector;
+interface LedgerConfigs {
+    bitcoin?: BitcoinConfig;
+    ethereum?: EthereumConfig;
+    lightning?: LightningConfig;
 }
 
 interface Geth {
     node_url: string;
 }
 
-interface EthereumConnector {
+interface EthereumConfig {
     chain_id: number;
     geth: Geth;
+    tokens: Tokens;
+}
+
+interface Tokens {
+    dai: string;
 }
 
 interface Bitcoind {
     node_url: string;
 }
 
-interface BitcoinConnector {
+interface BitcoinConfig {
     network: string;
     bitcoind: Bitcoind;
 }
@@ -135,12 +138,12 @@ interface Lnd {
     dir: string;
 }
 
-interface LightningConnector {
+interface LightningConfig {
     network: string;
     lnd: Lnd;
 }
 
-function bitcoinConnector(nodeConfig: BitcoinNodeConfig): BitcoinConnector {
+function bitcoinConnector(nodeConfig: BitcoinNodeConfig): BitcoinConfig {
     return {
         bitcoind: {
             node_url: nodeConfig.rpcUrl,
@@ -149,18 +152,19 @@ function bitcoinConnector(nodeConfig: BitcoinNodeConfig): BitcoinConnector {
     };
 }
 
-function ethereumConnector(nodeConfig: EthereumNodeConfig): EthereumConnector {
+function ethereumConnector(nodeConfig: EthereumNodeConfig): EthereumConfig {
     return {
         chain_id: nodeConfig.chain_id,
         geth: {
             node_url: nodeConfig.rpc_url,
         },
+        tokens: {
+            dai: nodeConfig.tokenContract,
+        },
     };
 }
 
-function lightningConnector(
-    nodeConfig: LightningNodeConfig
-): LightningConnector {
+function lightningConnector(nodeConfig: LightningNodeConfig): LightningConfig {
     return {
         network: "regtest",
         lnd: {

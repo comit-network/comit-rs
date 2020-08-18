@@ -1,5 +1,6 @@
 use crate::{
     config::{Bitcoind, Data, Geth, Network},
+    ethereum,
     ethereum::ChainId,
 };
 use log::LevelFilter;
@@ -37,6 +38,12 @@ pub struct Bitcoin {
 pub struct Ethereum {
     pub chain_id: ChainId,
     pub geth: Option<Geth>,
+    pub tokens: Option<Tokens>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Tokens {
+    pub dai: Option<ethereum::Address>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -230,6 +237,9 @@ chain_id = 1337
 [ethereum.geth]
 node_url = "http://localhost:8545/"
 
+[ethereum.tokens]
+dai = "0x6b175474e89094c44da98b954eedeac495271d0f"
+
 [lightning]
 network = "regtest"
 
@@ -263,6 +273,13 @@ dir = "/foo/bar"
                 chain_id: ChainId::REGTEST,
                 geth: Some(Geth {
                     node_url: "http://localhost:8545".parse().unwrap(),
+                }),
+                tokens: Some(Tokens {
+                    dai: Some(
+                        "0x6b175474e89094c44da98b954eedeac495271d0f"
+                            .parse()
+                            .unwrap(),
+                    ),
                 }),
             }),
             lightning: Some(Lightning {
@@ -349,27 +366,40 @@ dir = "/foo/bar"
     fn ethereum_deserializes_correctly() {
         let file_contents = vec![
             r#"
-            chain_id = 1337
+            chain_id = 42
             [geth]
             node_url = "http://example.com:8545"
+            [tokens]
+            dai = "0xc4375b7de8af5a38a93548eb8453a498222c4ff2"
             "#,
             r#"
             chain_id = 3
             [geth]
             node_url = "http://example.com:8545"
+            [tokens]
+            dai = "0xaD6D458402F60fD3Bd25163575031ACDce07538D"
             "#,
             r#"
             chain_id = 1
             [geth]
             node_url = "http://example.com:8545"
+            [tokens]
+            dai = "0x6b175474e89094c44da98b954eedeac495271d0f"
             "#,
         ];
 
         let expected = vec![
             Ethereum {
-                chain_id: ChainId::REGTEST,
+                chain_id: ChainId::KOVAN,
                 geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
+                }),
+                tokens: Some(Tokens {
+                    dai: Some(
+                        "0xc4375b7de8af5a38a93548eb8453a498222c4ff2"
+                            .parse()
+                            .unwrap(),
+                    ),
                 }),
             },
             Ethereum {
@@ -377,11 +407,25 @@ dir = "/foo/bar"
                 geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
                 }),
+                tokens: Some(Tokens {
+                    dai: Some(
+                        "0xaD6D458402F60fD3Bd25163575031ACDce07538D"
+                            .parse()
+                            .unwrap(),
+                    ),
+                }),
             },
             Ethereum {
                 chain_id: ChainId::MAINNET,
                 geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
+                }),
+                tokens: Some(Tokens {
+                    dai: Some(
+                        "0x6b175474e89094c44da98b954eedeac495271d0f"
+                            .parse()
+                            .unwrap(),
+                    ),
                 }),
             },
         ];

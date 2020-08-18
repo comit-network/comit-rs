@@ -9,6 +9,7 @@ pub struct Message {
     pub swap_id: SharedSwapId,
     /// A compressed Bitcoin public key, serialized as hex without a `0x` prefix
     /// as per convention in the Bitcoin ecosystem.
+    // TODO: Replace with #[serde(with = "hex")] on Rust 1.47 and remove serde-hex from dependencies
     #[serde(with = "SerHex::<Strict>")]
     pub pubkey: [u8; 33],
 }

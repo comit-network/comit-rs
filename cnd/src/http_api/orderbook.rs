@@ -14,14 +14,9 @@ use warp::{http, http::StatusCode, Rejection, Reply};
 
 pub async fn post_take_order(
     order_id: OrderId,
-    body: serde_json::Value,
+    body: TakeOrderBody,
     mut facade: Facade,
 ) -> Result<impl Reply, Rejection> {
-    let body = TakeOrderBody::deserialize(&body)
-        .map_err(anyhow::Error::new)
-        .map_err(problem::from_anyhow)
-        .map_err(warp::reject::custom)?;
-
     let reply = warp::reply::reply();
 
     let swap_id = LocalSwapId::default();
@@ -116,15 +111,7 @@ pub async fn post_take_order(
         .map_err(warp::reject::custom)
 }
 
-pub async fn post_make_order(
-    body: serde_json::Value,
-    facade: Facade,
-) -> Result<impl Reply, Rejection> {
-    let body = MakeOrderBody::deserialize(&body)
-        .map_err(anyhow::Error::new)
-        .map_err(problem::from_anyhow)
-        .map_err(warp::reject::custom)?;
-
+pub async fn post_make_order(body: MakeOrderBody, facade: Facade) -> Result<impl Reply, Rejection> {
     let reply = warp::reply::reply();
     let order = NewOrder::from(body.clone());
 
