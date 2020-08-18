@@ -332,9 +332,9 @@ mod tests {
             .is_ok()
             .map(|settings| &settings.bitcoin)
             .is_equal_to(Bitcoin {
-                network: bitcoin::Network::Regtest,
+                network: bitcoin::Network::Bitcoin,
                 bitcoind: Bitcoind {
-                    node_url: "http://localhost:18443".parse().unwrap(),
+                    node_url: "http://localhost:8332".parse().unwrap(),
                 },
             })
     }
@@ -380,7 +380,7 @@ mod tests {
             .is_ok()
             .map(|settings| &settings.ethereum)
             .is_equal_to(Ethereum {
-                chain_id: ChainId::regtest(),
+                chain_id: ChainId::mainnet(),
                 geth: Geth {
                     node_url: "http://localhost:8545".parse().unwrap(),
                 },

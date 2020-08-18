@@ -44,9 +44,9 @@ pub struct Bitcoind {
 impl Default for Bitcoin {
     fn default() -> Self {
         Self {
-            network: bitcoin::Network::Regtest,
+            network: bitcoin::Network::Bitcoin,
             bitcoind: Bitcoind {
-                node_url: Url::parse("http://localhost:18443")
+                node_url: Url::parse("http://localhost:8332")
                     .expect("static string to be a valid url"),
             },
         }
@@ -80,7 +80,7 @@ impl From<Ethereum> for file::Ethereum {
 impl Default for Ethereum {
     fn default() -> Self {
         Self {
-            chain_id: ChainId::regtest(),
+            chain_id: ChainId::mainnet(),
             geth: Geth {
                 node_url: Url::parse("http://localhost:8545")
                     .expect("static string to be a valid url"),
@@ -103,7 +103,7 @@ pub struct Lightning {
 impl Default for Lightning {
     fn default() -> Self {
         Self {
-            network: bitcoin::Network::Regtest,
+            network: bitcoin::Network::Bitcoin,
             lnd: Lnd::default(),
         }
     }
@@ -131,7 +131,7 @@ pub struct Lnd {
 
 impl Default for Lnd {
     fn default() -> Self {
-        Self::new(bitcoin::Network::Regtest)
+        Self::new(bitcoin::Network::Bitcoin)
     }
 }
 
