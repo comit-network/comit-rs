@@ -225,17 +225,9 @@ pub struct Block {
 pub struct ChainId(u32);
 
 impl ChainId {
-    pub fn mainnet() -> ChainId {
-        ChainId(1)
-    }
-
-    pub fn ropsten() -> ChainId {
-        ChainId(3)
-    }
-
-    pub fn regtest() -> ChainId {
-        ChainId(1337)
-    }
+    pub const MAINNET: Self = ChainId(1);
+    pub const ROPSTEN: Self = ChainId(3);
+    pub const REGTEST: Self = ChainId(1337);
 }
 
 impl From<ChainId> for u32 {

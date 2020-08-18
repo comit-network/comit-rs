@@ -475,6 +475,7 @@ dependencies = [
  "chrono",
  "comit",
  "config",
+ "conquer-once",
  "data-encoding",
  "derivative 2.1.1",
  "diesel",
@@ -488,7 +489,6 @@ dependencies = [
  "hex 0.4.2",
  "http-api-problem",
  "ipnet",
- "lazy_static",
  "libp2p 0.23.0",
  "libp2p-tokio-socks5",
  "libsqlite3-sys",
@@ -3215,7 +3215,7 @@ dependencies = [
  "quote 1.0.7",
  "serde",
  "serde_derive",
- "syn 1.0.37",
+ "syn 1.0.38",
 ]
 
 [[package]]
@@ -3231,7 +3231,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "sha1",
- "syn 1.0.37",
+ "syn 1.0.38",
 ]
 
 [[package]]
@@ -3467,7 +3467,7 @@ dependencies = [
  "proc-macro2 1.0.19",
  "quote 1.0.7",
  "standback",
- "syn 1.0.37",
+ "syn 1.0.38",
 ]
 
 [[package]]

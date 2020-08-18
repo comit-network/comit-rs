@@ -260,7 +260,7 @@ dir = "/foo/bar"
                 }),
             }),
             ethereum: Some(Ethereum {
-                chain_id: ChainId::regtest(),
+                chain_id: ChainId::REGTEST,
                 geth: Some(Geth {
                     node_url: "http://localhost:8545".parse().unwrap(),
                 }),
@@ -367,19 +367,19 @@ dir = "/foo/bar"
 
         let expected = vec![
             Ethereum {
-                chain_id: ChainId::regtest(),
+                chain_id: ChainId::REGTEST,
                 geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
                 }),
             },
             Ethereum {
-                chain_id: ChainId::ropsten(),
+                chain_id: ChainId::ROPSTEN,
                 geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
                 }),
             },
             Ethereum {
-                chain_id: ChainId::mainnet(),
+                chain_id: ChainId::MAINNET,
                 geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
                 }),

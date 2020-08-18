@@ -4,29 +4,54 @@ mod settings;
 mod validation;
 
 use crate::ethereum::ChainId;
+use anyhow::{Context, Result};
+use conquer_once::Lazy;
 use libp2p::Multiaddr;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::{fmt::Debug, path::PathBuf, str::FromStr};
 
 pub use self::{
     file::File,
     settings::{AllowedOrigins, Settings},
     validation::validate_connection_to_network,
 };
+use crate::data_dir;
 
-lazy_static::lazy_static! {
-    pub static ref LND_URL: Url = Url::parse("https://localhost:8080").expect("static string to be a valid url");
-}
+static BITCOIND_RPC_MAINNET: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:8332"));
+static BITCOIND_RPC_TESTNET: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:18332"));
+static BITCOIND_RPC_REGTEST: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:18443"));
+
+static LND_URL: Lazy<Url> = Lazy::new(|| parse_unchecked("https://localhost:8080"));
+
+static WEB3_URL: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:8545"));
+
+static COMIT_SOCKET: Lazy<Multiaddr> = Lazy::new(|| parse_unchecked("/ip4/0.0.0.0/tcp/9939"));
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Data {
     pub dir: PathBuf,
 }
 
+impl Data {
+    pub fn default() -> Result<Self> {
+        Ok(Self {
+            dir: data_dir().context("unable to determine default data path")?,
+        })
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Network {
     pub listen: Vec<Multiaddr>,
+}
+
+impl Default for Network {
+    fn default() -> Self {
+        Self {
+            listen: vec![COMIT_SOCKET.clone()],
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -46,8 +71,7 @@ impl Default for Bitcoin {
         Self {
             network: bitcoin::Network::Bitcoin,
             bitcoind: Bitcoind {
-                node_url: Url::parse("http://localhost:8332")
-                    .expect("static string to be a valid url"),
+                node_url: BITCOIND_RPC_MAINNET.clone(),
             },
         }
     }
@@ -62,10 +86,40 @@ impl From<Bitcoin> for file::Bitcoin {
     }
 }
 
+impl From<file::Bitcoin> for Bitcoin {
+    fn from(bitcoin: file::Bitcoin) -> Self {
+        let network = bitcoin.network;
+        let node_url = bitcoin.bitcoind.map_or_else(
+            || match network {
+                bitcoin::Network::Bitcoin => BITCOIND_RPC_MAINNET.clone(),
+                bitcoin::Network::Testnet => BITCOIND_RPC_TESTNET.clone(),
+                bitcoin::Network::Regtest => BITCOIND_RPC_REGTEST.clone(),
+            },
+            |bitcoind| bitcoind.node_url,
+        );
+
+        Bitcoin {
+            network,
+            bitcoind: Bitcoind { node_url },
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Ethereum {
     pub chain_id: ChainId,
     pub geth: Geth,
+}
+
+impl Ethereum {
+    fn from_file(ethereum: file::Ethereum) -> Result<Self> {
+        let chain_id = ethereum.chain_id;
+        let geth = ethereum.geth.unwrap_or_else(|| Geth {
+            node_url: WEB3_URL.clone(),
+        });
+
+        Ok(Ethereum { chain_id, geth })
+    }
 }
 
 impl From<Ethereum> for file::Ethereum {
@@ -80,10 +134,9 @@ impl From<Ethereum> for file::Ethereum {
 impl Default for Ethereum {
     fn default() -> Self {
         Self {
-            chain_id: ChainId::mainnet(),
+            chain_id: ChainId::MAINNET,
             geth: Geth {
-                node_url: Url::parse("http://localhost:8545")
-                    .expect("static string to be a valid url"),
+                node_url: WEB3_URL.clone(),
             },
         }
     }
@@ -98,6 +151,18 @@ pub struct Geth {
 pub struct Lightning {
     pub network: bitcoin::Network,
     pub lnd: Lnd,
+}
+
+impl Lightning {
+    fn from_file(lightning: file::Lightning) -> Result<Self> {
+        let network = lightning.network;
+        let lnd = lightning.lnd.map_or_else::<Result<Lnd>, _, _>(
+            || Ok(Lnd::default()),
+            |file| Lnd::from_file(file, network),
+        )?;
+
+        Ok(Lightning { network, lnd })
+    }
 }
 
 impl Default for Lightning {
@@ -137,12 +202,38 @@ impl Default for Lnd {
 
 impl Lnd {
     fn new(network: bitcoin::Network) -> Self {
-        Self {
-            rest_api_url: LND_URL.clone(),
-            dir: default_lnd_dir(),
-            cert_path: default_lnd_cert_path(default_lnd_dir()),
-            readonly_macaroon_path: default_lnd_readonly_macaroon_path(default_lnd_dir(), network),
+        Self::from_url_dir_and_network(LND_URL.clone(), default_lnd_dir(), network)
+    }
+
+    fn from_file(file: file::Lnd, network: bitcoin::Network) -> Result<Self> {
+        let rest_api_url = assert_lnd_url_https(file.rest_api_url)?;
+
+        Ok(Self::from_url_dir_and_network(
+            rest_api_url,
+            file.dir,
+            network,
+        ))
+    }
+
+    fn from_url_dir_and_network(
+        rest_api_url: Url,
+        dir: PathBuf,
+        network: bitcoin::Network,
+    ) -> Self {
+        Lnd {
+            rest_api_url,
+            dir: dir.clone(),
+            cert_path: default_lnd_cert_path(dir.clone()),
+            readonly_macaroon_path: default_lnd_readonly_macaroon_path(dir, network),
         }
+    }
+}
+
+fn assert_lnd_url_https(lnd_url: Url) -> Result<Url> {
+    if lnd_url.scheme() == "https" {
+        Ok(lnd_url)
+    } else {
+        Err(anyhow::anyhow!("HTTPS scheme is expected for lnd url."))
     }
 }
 
@@ -166,6 +257,16 @@ fn default_lnd_readonly_macaroon_path(lnd_dir: PathBuf, network: bitcoin::Networ
         .join("bitcoin")
         .join(network_dir)
         .join("readonly.macaroon")
+}
+
+fn parse_unchecked<T>(str: &'static str) -> T
+where
+    T: FromStr + Debug,
+    <T as FromStr>::Err: Send + Sync + 'static + std::error::Error,
+{
+    str.parse()
+        .with_context(|| format!("failed to parse static string '{}' into T", str))
+        .unwrap()
 }
 
 #[cfg(test)]

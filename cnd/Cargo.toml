@@ -14,6 +14,7 @@ bitcoin = { version = "0.23", features = ["use-serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 comit = { path = "../comit" }
 config = { version = "0.10", features = ["toml"], default-features = false }
+conquer-once = "0.2.1"
 data-encoding = "2.3"
 derivative = "2"
 diesel = { version = "1.4", features = ["sqlite", "chrono"] }
@@ -27,7 +28,6 @@ get_if_addrs = "0.5"
 hex = "0.4"
 http-api-problem = { version = "0.15", features = ["with_warp"] }
 ipnet = "2.3"
-lazy_static = "1"
 libp2p = { version = "0.23", default-features = false, features = ["tcp-tokio", "secio", "yamux", "mplex", "dns"] }
 libp2p-tokio-socks5 = "0.1"
 libsqlite3-sys = { version = ">=0.8.0, <0.13.0", features = ["bundled"] }
