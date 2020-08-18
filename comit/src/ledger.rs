@@ -168,7 +168,7 @@ impl From<u32> for Ethereum {
 impl Default for Ethereum {
     fn default() -> Self {
         Ethereum {
-            chain_id: ChainId::regtest(),
+            chain_id: ChainId::REGTEST,
         }
     }
 }
