@@ -1,6 +1,5 @@
-use crate::{identity, network::oneshot_protocol, SharedSwapId};
+use crate::{ethereum, identity, network::oneshot_protocol, SharedSwapId};
 use serde::{Deserialize, Serialize};
-use serde_hex::{SerHex, StrictPfx};
 use serdebug::SerDebug;
 
 /// The message for the Ethereum identity sharing protocol.
@@ -9,7 +8,7 @@ pub struct Message {
     pub swap_id: SharedSwapId,
     /// An Ethereum address, serialized with a `0x` prefix as per convention in
     /// the Ethereum ecosystem.
-    #[serde(with = "SerHex::<StrictPfx>")]
+    #[serde(with = "ethereum::serde_hex_data")]
     pub address: [u8; 20],
 }
 

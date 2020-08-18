@@ -3,7 +3,7 @@ mod serde_bitcoin_network;
 mod settings;
 mod validation;
 
-use crate::{ethereum::ChainId, fs};
+use crate::{ethereum, ethereum::ChainId, fs};
 use anyhow::{Context, Result};
 use conquer_once::Lazy;
 use libp2p::Multiaddr;
@@ -24,6 +24,24 @@ static BITCOIND_RPC_REGTEST: Lazy<Url> = Lazy::new(|| parse_unchecked("http://lo
 static LND_URL: Lazy<Url> = Lazy::new(|| parse_unchecked("https://localhost:8080"));
 
 static WEB3_URL: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:8545"));
+
+/// The DAI token contract on Ethereum mainnet.
+///
+/// Source: https://changelog.makerdao.com/
+static DAI_MAINNET: Lazy<ethereum::Address> =
+    Lazy::new(|| parse_unchecked("0x6B175474E89094C44Da98b954EedeAC495271d0F"));
+
+/// The DAI token contract on the Ethereum testnet "kovan".
+///
+/// Source: https://changelog.makerdao.com/
+static DAI_KOVAN: Lazy<ethereum::Address> =
+    Lazy::new(|| parse_unchecked("0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa"));
+
+/// The DAI token contract on the Ethereum testnet "ropsten".
+///
+/// Source: https://changelog.makerdao.com/
+static DAI_ROPSTEN: Lazy<ethereum::Address> =
+    Lazy::new(|| parse_unchecked("0x31F42841c2db5173425b5223809CF3A38FEde360"));
 
 static COMIT_SOCKET: Lazy<Multiaddr> = Lazy::new(|| parse_unchecked("/ip4/0.0.0.0/tcp/9939"));
 
@@ -118,14 +136,16 @@ impl From<Bitcoin> for file::Bitcoin {
 pub struct Ethereum {
     pub chain_id: ChainId,
     pub geth: Geth,
+    pub tokens: Tokens,
 }
 
 impl Ethereum {
-    fn new(chain_id: ChainId) -> Self {
-        Self {
+    fn new(chain_id: ChainId) -> Result<Ethereum> {
+        Ok(Self {
             chain_id,
             geth: Geth::new(),
-        }
+            tokens: Tokens::new(chain_id)?,
+        })
     }
 
     fn from_file(ethereum: file::Ethereum, comit_network: Option<comit::Network>) -> Result<Self> {
@@ -143,8 +163,16 @@ impl Ethereum {
 
         let chain_id = ethereum.chain_id;
         let geth = ethereum.geth.unwrap_or_else(Geth::new);
+        let tokens = ethereum.tokens.map_or_else(
+            || Tokens::new(chain_id),
+            |file| Tokens::from_file(file, chain_id),
+        )?;
 
-        Ok(Ethereum { chain_id, geth })
+        Ok(Ethereum {
+            chain_id,
+            geth,
+            tokens,
+        })
     }
 }
 
@@ -153,6 +181,15 @@ impl From<Ethereum> for file::Ethereum {
         file::Ethereum {
             chain_id: ethereum.chain_id,
             geth: Some(ethereum.geth),
+            tokens: Some(ethereum.tokens.into()),
+        }
+    }
+}
+
+impl From<Tokens> for file::Tokens {
+    fn from(tokens: Tokens) -> Self {
+        file::Tokens {
+            dai: Some(tokens.dai),
         }
     }
 }
@@ -168,6 +205,37 @@ impl Geth {
             node_url: WEB3_URL.clone(),
         }
     }
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Tokens {
+    pub dai: ethereum::Address,
+}
+
+impl Tokens {
+    fn new(chain_id: ChainId) -> Result<Self> {
+        let dai = dai_address_from_chain_id(chain_id)?;
+
+        Ok(Self { dai })
+    }
+
+    fn from_file(file: file::Tokens, id: ChainId) -> Result<Self> {
+        let dai = file.dai.map_or_else(|| dai_address_from_chain_id(id), Ok)?;
+
+        Ok(Self { dai })
+    }
+}
+
+fn dai_address_from_chain_id(id: ChainId) -> Result<ethereum::Address> {
+    Ok(match id {
+        ChainId::MAINNET => *DAI_MAINNET,
+        ChainId::ROPSTEN => *DAI_ROPSTEN,
+        ChainId::KOVAN => *DAI_KOVAN,
+        id => anyhow::bail!(
+            "unable to infer DAI token contract from chain-ID {}",
+            u32::from(id)
+        ),
+    })
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]

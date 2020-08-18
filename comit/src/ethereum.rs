@@ -1,8 +1,8 @@
 use crate::{btsieve::LatestBlock, Timestamp};
 pub use ethbloom::{Bloom as H2048, Input};
+use hex::FromHexError;
 pub use primitive_types::U256;
-use serde::{Deserialize, Serialize};
-use serde_hex::{CompactPfx, SerHex, SerHexSeq, StrictPfx};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::{
     fmt,
     fmt::{Display, Formatter},
@@ -21,7 +21,7 @@ where
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
 )]
-pub struct Address(#[serde(with = "SerHex::<StrictPfx>")] [u8; 20]);
+pub struct Address(#[serde(with = "serde_hex_data")] [u8; 20]);
 
 impl Address {
     pub fn as_bytes(&self) -> &[u8; 20] {
@@ -53,23 +53,11 @@ impl From<Address> for [u8; 20] {
 }
 
 impl FromStr for Address {
-    type Err = FromHexStrError;
+    type Err = FromHexError;
 
     fn from_str(hex: &str) -> Result<Self, Self::Err> {
-        let bytes = hex::decode(hex.trim_start_matches("0x"))?;
-
-        const EXPECTED_LEN: usize = 20;
-        let len = bytes.len();
-
-        if len != EXPECTED_LEN {
-            return Err(FromHexStrError::InvalidLength {
-                expected: EXPECTED_LEN,
-                got: len,
-            });
-        }
-
-        let mut address = [0u8; EXPECTED_LEN];
-        address.copy_from_slice(&bytes);
+        let mut address = [0u8; 20];
+        hex::decode_to_slice(hex.trim_start_matches("0x"), &mut address)?;
 
         Ok(Address(address))
     }
@@ -96,7 +84,7 @@ impl From<Address> for Hash {
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
 )]
-pub struct Hash(#[serde(with = "SerHex::<StrictPfx>")] [u8; 32]);
+pub struct Hash(#[serde(with = "serde_hex_data")] [u8; 32]);
 
 impl From<[u8; 32]> for Hash {
     fn from(bytes: [u8; 32]) -> Self {
@@ -127,34 +115,14 @@ impl Display for Hash {
 }
 
 impl FromStr for Hash {
-    type Err = FromHexStrError;
+    type Err = FromHexError;
 
     fn from_str(hex: &str) -> Result<Self, Self::Err> {
-        let bytes = hex::decode(hex.trim_start_matches("0x"))?;
-
-        const EXPECTED_LEN: usize = 32;
-        let len = bytes.len();
-
-        if len != EXPECTED_LEN {
-            return Err(FromHexStrError::InvalidLength {
-                expected: EXPECTED_LEN,
-                got: len,
-            });
-        }
-
-        let mut hash = [0u8; EXPECTED_LEN];
-        hash.copy_from_slice(&bytes);
+        let mut hash = [0u8; 32];
+        hex::decode_to_slice(hex.trim_start_matches("0x"), &mut hash)?;
 
         Ok(Hash(hash))
     }
-}
-
-#[derive(Debug, Clone, Copy, thiserror::Error)]
-pub enum FromHexStrError {
-    #[error("unable to decode string as hex")]
-    InvalidHex(#[from] hex::FromHexError),
-    #[error("expected a hex string with {expected} bytes but got {got} bytes")]
-    InvalidLength { expected: usize, got: usize },
 }
 
 /// "Receipt" of an executed transaction: details of its execution.
@@ -165,15 +133,18 @@ pub struct TransactionReceipt {
     pub contract_address: Option<Address>,
     /// Logs generated within this transaction.
     pub logs: Vec<Log>,
-    /// Status: either 1 (success) or 0 (failure).
-    #[serde(with = "SerHex::<CompactPfx>")]
-    pub status: u8,
+    /// Status: Whether or not the transaction executed successfully
+    #[serde(rename = "status", deserialize_with = "deserialize_status")]
+    pub successful: bool,
 }
 
-impl TransactionReceipt {
-    pub fn is_status_ok(&self) -> bool {
-        self.status == 1
-    }
+fn deserialize_status<'de, D>(deserializer: D) -> Result<bool, <D as Deserializer<'de>>::Error>
+where
+    D: Deserializer<'de>,
+{
+    let hex_string = String::deserialize(deserializer)?;
+
+    Ok(&hex_string == "0x1")
 }
 
 /// Description of a Transaction, pending or in the chain.
@@ -186,7 +157,7 @@ pub struct Transaction {
     /// Transfered value
     pub value: U256,
     /// Input data
-    #[serde(with = "SerHexSeq::<StrictPfx>")]
+    #[serde(with = "serde_hex_data")]
     pub input: Vec<u8>,
 }
 
@@ -198,7 +169,7 @@ pub struct Log {
     /// Topics
     pub topics: Vec<Hash>,
     /// Data
-    #[serde(with = "SerHexSeq::<StrictPfx>")]
+    #[serde(with = "serde_hex_data")]
     pub data: Vec<u8>,
 }
 
@@ -227,6 +198,7 @@ pub struct ChainId(u32);
 impl ChainId {
     pub const MAINNET: Self = ChainId(1);
     pub const ROPSTEN: Self = ChainId(3);
+    pub const KOVAN: Self = ChainId(42);
     pub const GETH_DEV: Self = ChainId(1337);
 }
 
@@ -253,6 +225,36 @@ impl From<u32> for ChainId {
     }
 }
 
+/// A serde module for formatting bytes according to Ethereum's convention for
+/// "data".
+///
+/// See https://eth.wiki/json-rpc/API#hex-value-encoding for more details.
+pub mod serde_hex_data {
+    use super::*;
+    use hex::FromHex;
+    use serde::{de::Error, Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S, V>(value: &V, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        V: AsRef<[u8]>,
+    {
+        serializer.serialize_str(&format!("0x{}", hex::encode(value.as_ref())))
+    }
+
+    pub fn deserialize<'de, D, V>(deserializer: D) -> Result<V, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+        V: FromHex,
+        <V as FromHex>::Error: Display,
+    {
+        let string = String::deserialize(deserializer)?;
+        let value = V::from_hex(string.trim_start_matches("0x")).map_err(D::Error::custom)?;
+
+        Ok(value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -264,17 +266,6 @@ mod tests {
         let json =
             serde_json::Value::String("0xc5549e335b2786520f4c5d706c76c9ee69d0a028".to_owned());
         let _: Address = Address::deserialize(&json).unwrap();
-    }
-
-    #[test]
-    fn deserialise_address_when_not_using_reference_to_deserialize_fails() {
-        // This is due to a bug in serde-jex, keep this test until https://github.com/fspmarshall/serde-hex/pull/8
-        // is fixed.
-        let json =
-            serde_json::Value::String("0xc5549e335b2786520f4c5d706c76c9ee69d0a028".to_owned());
-
-        let deserialized = serde_json::from_value::<Address>(json);
-        matches!(deserialized, Err(_));
     }
 
     #[test]
@@ -342,7 +333,7 @@ mod tests {
 
         let receipt = serde_json::from_str::<TransactionReceipt>(json).unwrap();
 
-        assert_eq!(receipt.status, 1);
+        assert_eq!(receipt.successful, true);
     }
 
     #[test]
@@ -357,7 +348,7 @@ mod tests {
 
         let receipt = serde_json::from_str::<TransactionReceipt>(json).unwrap();
 
-        assert_eq!(receipt.status, 0);
+        assert_eq!(receipt.successful, false);
     }
 
     proptest! {
