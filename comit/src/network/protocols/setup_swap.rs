@@ -56,7 +56,7 @@ impl BehaviourOutEvent {
         match swap_protocol {
             SwapProtocol::HbitHerc20 => BehaviourOutEvent::HbitHerc20 {
                 alpha: hbit::Params {
-                    network: Network::Bitcoin,
+                    network: common.bitcoin_network,
                     asset: common.bitcoin_quantity,
                     redeem_identity: bob.bitcoin_identity,
                     refund_identity: alice.bitcoin_identity,
@@ -72,7 +72,7 @@ impl BehaviourOutEvent {
                     refund_identity: bob.ethereum_identity,
                     expiry: Timestamp::from(common.ethereum_absolute_expiry),
                     secret_hash: alice.secret_hash,
-                    chain_id: ChainId::regtest(),
+                    chain_id: common.ethereum_chain_id,
                 },
             },
             SwapProtocol::Herc20Hbit => BehaviourOutEvent::Herc20Hbit {
@@ -85,10 +85,10 @@ impl BehaviourOutEvent {
                     refund_identity: alice.ethereum_identity,
                     expiry: Timestamp::from(common.ethereum_absolute_expiry),
                     secret_hash: alice.secret_hash,
-                    chain_id: ChainId::regtest(),
+                    chain_id: common.ethereum_chain_id,
                 },
                 beta: hbit::Params {
-                    network: Network::Bitcoin,
+                    network: common.bitcoin_network,
                     asset: common.bitcoin_quantity,
                     redeem_identity: alice.bitcoin_identity,
                     refund_identity: bob.bitcoin_identity,
@@ -461,6 +461,8 @@ pub struct CommonParams {
     pub bitcoin_quantity: asset::Bitcoin,
     pub ethereum_absolute_expiry: u32,
     pub bitcoin_absolute_expiry: u32,
+    pub ethereum_chain_id: ChainId,
+    pub bitcoin_network: Network,
 }
 
 impl Display for CommonParams {
@@ -599,6 +601,8 @@ mod tests {
             bitcoin_quantity: asset::Bitcoin::from_sat(0),
             ethereum_absolute_expiry: 0,
             bitcoin_absolute_expiry: 0,
+            ethereum_chain_id: ChainId::regtest(),
+            bitcoin_network: Network::Regtest,
         };
 
         bob_swarm
