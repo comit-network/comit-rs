@@ -9,6 +9,7 @@ import { BitcoinNodeConfig, LedgerInstance } from "./index";
 import findCacheDir from "find-cache-dir";
 import download from "download";
 import { platform } from "os";
+import { crashListener } from "../crash_listener";
 
 export class BitcoindInstance implements LedgerInstance {
     private process: ChildProcess;
@@ -53,14 +54,10 @@ export class BitcoindInstance implements LedgerInstance {
             stdio: "ignore",
         });
 
-        this.process.on("exit", (code: number, signal: number) => {
-            this.logger.info(
-                "bitcoind exited with code",
-                code,
-                "after signal",
-                signal
-            );
-        });
+        this.process.once(
+            "exit",
+            crashListener(this.process.pid, "bitcoind", this.logPath())
+        );
 
         await waitForLogMessage(this.logPath(), "init message: Done loading");
 

@@ -11,6 +11,7 @@ import findCacheDir from "find-cache-dir";
 import download from "download";
 import { platform } from "os";
 import { lock } from "proper-lockfile";
+import { crashListener } from "../crash_listener";
 
 export class LndInstance implements LedgerInstance {
     private process: ChildProcess;
@@ -81,14 +82,10 @@ export class LndInstance implements LedgerInstance {
             stdio: ["ignore", "ignore", "ignore"], // stdin, stdout, stderr.  These are all logged already.
         });
 
-        this.process.on("exit", (code: number, signal: number) => {
-            this.logger.info(
-                "lnd exited with code",
-                code,
-                "after signal",
-                signal
-            );
-        });
+        this.process.once(
+            "exit",
+            crashListener(this.process.pid, "lnd", this.logPath())
+        );
     }
 
     private async initWallet() {

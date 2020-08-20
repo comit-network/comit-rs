@@ -6,6 +6,7 @@ import { openAsync, sleep } from "../utils";
 import waitForLogMessage from "../wait_for_log_message";
 import { Logger } from "log4js";
 import path from "path";
+import { crashListener } from "../crash_listener";
 
 export class CndInstance {
     private process: ChildProcess;
@@ -33,14 +34,20 @@ export class CndInstance {
             "config.toml"
         );
 
+        const logFile = await openAsync(this.logFile, "w");
         this.process = spawn(bin, ["--config", configFile], {
             cwd: this.cargoTargetDirectory,
             stdio: [
                 "ignore", // stdin
-                await openAsync(this.logFile, "w"), // stdout
-                await openAsync(this.logFile, "w"), // stderr
+                logFile, // stdout
+                logFile, // stderr
             ],
         });
+
+        this.process.on(
+            "exit",
+            crashListener(this.process.pid, "cnd", this.logFile)
+        );
 
         await waitForLogMessage(this.logFile, "Starting HTTP server on");
 
