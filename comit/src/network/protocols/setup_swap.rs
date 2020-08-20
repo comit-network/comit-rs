@@ -56,17 +56,14 @@ impl BehaviourOutEvent {
             SwapProtocol::HbitHerc20 => BehaviourOutEvent::HbitHerc20 {
                 alpha: hbit::Params {
                     network: common.bitcoin_network,
-                    asset: common.bitcoin_quantity,
+                    asset: common.bitcoin,
                     redeem_identity: bob.bitcoin_identity,
                     refund_identity: alice.bitcoin_identity,
                     expiry: Timestamp::from(common.bitcoin_absolute_expiry),
                     secret_hash: alice.secret_hash,
                 },
                 beta: herc20::Params {
-                    asset: asset::Erc20 {
-                        token_contract: Default::default(),
-                        quantity: common.ethereum_quantity,
-                    },
+                    asset: common.erc20,
                     redeem_identity: alice.ethereum_identity,
                     refund_identity: bob.ethereum_identity,
                     expiry: Timestamp::from(common.ethereum_absolute_expiry),
@@ -76,10 +73,7 @@ impl BehaviourOutEvent {
             },
             SwapProtocol::Herc20Hbit => BehaviourOutEvent::Herc20Hbit {
                 alpha: herc20::Params {
-                    asset: asset::Erc20 {
-                        token_contract: Default::default(),
-                        quantity: common.ethereum_quantity,
-                    },
+                    asset: common.erc20,
                     redeem_identity: bob.ethereum_identity,
                     refund_identity: alice.ethereum_identity,
                     expiry: Timestamp::from(common.ethereum_absolute_expiry),
@@ -88,7 +82,7 @@ impl BehaviourOutEvent {
                 },
                 beta: hbit::Params {
                     network: common.bitcoin_network,
-                    asset: common.bitcoin_quantity,
+                    asset: common.bitcoin,
                     redeem_identity: alice.bitcoin_identity,
                     refund_identity: bob.bitcoin_identity,
                     expiry: Timestamp::from(common.bitcoin_absolute_expiry),
@@ -455,9 +449,9 @@ pub struct Codec<U: ProtocolName + Send + Clone>(PhantomData<U>);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct CommonParams {
-    pub ethereum_quantity: asset::Erc20Quantity,
+    pub erc20: asset::Erc20,
     #[serde(with = "asset::bitcoin::sats_as_string")]
-    pub bitcoin_quantity: asset::Bitcoin,
+    pub bitcoin: asset::Bitcoin,
     pub ethereum_absolute_expiry: u32,
     pub bitcoin_absolute_expiry: u32,
     pub ethereum_chain_id: ChainId,
@@ -595,8 +589,8 @@ mod tests {
         );
 
         let common = CommonParams {
-            ethereum_quantity: asset::Erc20Quantity::zero(),
-            bitcoin_quantity: asset::Bitcoin::from_sat(0),
+            erc20: asset::Erc20::new(identity::Ethereum::random(), asset::Erc20Quantity::zero()),
+            bitcoin: asset::Bitcoin::from_sat(0),
             ethereum_absolute_expiry: 0,
             bitcoin_absolute_expiry: 0,
             ethereum_chain_id: ChainId::regtest(),
