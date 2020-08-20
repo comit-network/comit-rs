@@ -38,12 +38,8 @@ pub enum BehaviourOutEvent {
 }
 
 #[derive(Clone, Debug, thiserror::Error)]
-#[error("peer {peer} also wants to be {role} for swap {id}")]
-pub struct RoleMistmatch {
-    peer: PeerId,
-    role: Role,
-    id: CommonParams,
-}
+#[error("Already have role dependent parameters for this set of common parameters")]
+pub struct AlreadyHaveRoleParams;
 
 impl BehaviourOutEvent {
     fn new(
@@ -217,11 +213,9 @@ impl SetupSwap {
                     .push_back(BehaviourOutEvent::new(common, &alice, bob, swap_protocol));
                 Ok(())
             }
-            Some(RoleDependentParams::Alice(_)) => Err(anyhow::Error::from(RoleMistmatch {
-                peer: to.clone(),
-                role: Role::Alice,
-                id: common,
-            })),
+            Some(RoleDependentParams::Alice(saved)) => {
+                Err(anyhow::Error::from(AlreadyHaveRoleParams))
+            }
             None => {
                 self.swap_data
                     .insert(common.clone(), RoleDependentParams::Alice(alice));
@@ -260,11 +254,7 @@ impl SetupSwap {
                     .push_back(BehaviourOutEvent::new(common, &alice, &bob, swap_protocol));
                 Ok(())
             }
-            Some(RoleDependentParams::Bob(_)) => Err(anyhow::Error::from(RoleMistmatch {
-                peer: to.clone(),
-                role: Role::Alice,
-                id: common,
-            })),
+            Some(RoleDependentParams::Bob(bob)) => Err(anyhow::Error::from(AlreadyHaveRoleParams)),
             None => {
                 self.swap_data
                     .insert(common.clone(), RoleDependentParams::Bob(bob));
@@ -456,12 +446,6 @@ pub struct CommonParams {
     pub bitcoin_absolute_expiry: u32,
     pub ethereum_chain_id: ChainId,
     pub bitcoin_network: Network,
-}
-
-impl Display for CommonParams {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
