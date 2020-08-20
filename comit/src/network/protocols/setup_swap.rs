@@ -1,5 +1,5 @@
-use crate::{asset, ethereum::ChainId, hbit, herc20, identity, SecretHash, Timestamp};
-use bitcoin::Network;
+use crate::{asset, ethereum::ChainId, hbit, herc20, identity, Role, SecretHash, Timestamp};
+use bitcoin::{hashes::core::fmt::Formatter, Network};
 use futures::prelude::*;
 use libp2p::{
     core::upgrade,
@@ -13,7 +13,7 @@ use libp2p::{
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, VecDeque},
-    fmt::Debug,
+    fmt::{Debug, Display},
     io,
     marker::PhantomData,
     task::{Context, Poll},
@@ -31,7 +31,19 @@ pub enum BehaviourOutEvent {
         alpha: hbit::Params,
         beta: herc20::Params,
     },
-    RoleMismatch,
+    AlreadyHaveRoleParams {
+        peer: PeerId,
+        have: RoleDependentParams,
+        received: RoleDependentParams,
+    },
+}
+
+#[derive(Clone, Debug, thiserror::Error)]
+#[error("peer {peer} also wants to be {role} for swap {id}")]
+pub struct RoleMistmatch {
+    peer: PeerId,
+    role: Role,
+    id: CommonParams,
 }
 
 impl BehaviourOutEvent {
@@ -132,7 +144,7 @@ impl SetupSwap {
         ethereum_identity: identity::Ethereum,
         secret_hash: SecretHash,
         common: CommonParams,
-    ) {
+    ) -> anyhow::Result<()> {
         self.alice_send(
             to,
             bitcoin_identity,
@@ -140,7 +152,7 @@ impl SetupSwap {
             secret_hash,
             common,
             SwapProtocol::HbitHerc20,
-        );
+        )
     }
 
     pub fn alice_send_herc20_hbit(
@@ -150,7 +162,7 @@ impl SetupSwap {
         ethereum_identity: identity::Ethereum,
         secret_hash: SecretHash,
         common: CommonParams,
-    ) {
+    ) -> anyhow::Result<()> {
         self.alice_send(
             to,
             bitcoin_identity,
@@ -158,7 +170,7 @@ impl SetupSwap {
             secret_hash,
             common,
             SwapProtocol::Herc20Hbit,
-        );
+        )
     }
 
     pub fn bob_send_hbit_herc20(
@@ -167,14 +179,14 @@ impl SetupSwap {
         bitcoin_identity: identity::Bitcoin,
         ethereum_identity: identity::Ethereum,
         common: CommonParams,
-    ) {
+    ) -> anyhow::Result<()> {
         self.bob_send(
             to,
             bitcoin_identity,
             ethereum_identity,
             common,
             SwapProtocol::HbitHerc20,
-        );
+        )
     }
 
     pub fn bob_send_herc20_hbit(
@@ -183,14 +195,14 @@ impl SetupSwap {
         bitcoin_identity: identity::Bitcoin,
         ethereum_identity: identity::Ethereum,
         common: CommonParams,
-    ) {
+    ) -> anyhow::Result<()> {
         self.bob_send(
             to,
             bitcoin_identity,
             ethereum_identity,
             common,
             SwapProtocol::Herc20Hbit,
-        );
+        )
     }
     fn alice_send(
         &mut self,
@@ -200,7 +212,7 @@ impl SetupSwap {
         secret_hash: SecretHash,
         common: CommonParams,
         swap_protocol: SwapProtocol,
-    ) {
+    ) -> anyhow::Result<()> {
         let alice = AliceParams {
             ethereum_identity,
             bitcoin_identity,
@@ -209,11 +221,14 @@ impl SetupSwap {
         match self.swap_data.get(&common) {
             Some(RoleDependentParams::Bob(bob)) => {
                 self.events
-                    .push_back(BehaviourOutEvent::new(common, &alice, bob, swap_protocol))
+                    .push_back(BehaviourOutEvent::new(common, &alice, bob, swap_protocol));
+                Ok(())
             }
-            Some(RoleDependentParams::Alice(_)) => {
-                tracing::error!("Peer wants to be alice as well")
-            }
+            Some(RoleDependentParams::Alice(_)) => Err(anyhow::Error::from(RoleMistmatch {
+                peer: to.clone(),
+                role: Role::Alice,
+                id: common,
+            })),
             None => {
                 self.swap_data
                     .insert(common.clone(), RoleDependentParams::Alice(alice));
@@ -229,6 +244,7 @@ impl SetupSwap {
                         common,
                     }),
                 };
+                Ok(())
             }
         }
     }
@@ -240,16 +256,22 @@ impl SetupSwap {
         ethereum_identity: identity::Ethereum,
         common: CommonParams,
         swap_protocol: SwapProtocol,
-    ) {
+    ) -> anyhow::Result<()> {
         let bob = BobParams {
             ethereum_identity,
             bitcoin_identity,
         };
         match self.swap_data.get(&common) {
-            Some(RoleDependentParams::Alice(alice)) => self
-                .events
-                .push_back(BehaviourOutEvent::new(common, &alice, &bob, swap_protocol)),
-            Some(RoleDependentParams::Bob(_)) => tracing::error!("Peer wants to be bob as well"),
+            Some(RoleDependentParams::Alice(alice)) => {
+                self.events
+                    .push_back(BehaviourOutEvent::new(common, &alice, &bob, swap_protocol));
+                Ok(())
+            }
+            Some(RoleDependentParams::Bob(_)) => Err(anyhow::Error::from(RoleMistmatch {
+                peer: to.clone(),
+                role: Role::Alice,
+                id: common,
+            })),
             None => {
                 self.swap_data
                     .insert(common.clone(), RoleDependentParams::Bob(bob));
@@ -265,32 +287,44 @@ impl SetupSwap {
                         common,
                     }),
                 };
+                Ok(())
             }
         }
     }
 
-    fn alice_receive_hbit_herc20(&mut self, common: CommonParams, bob: BobParams) {
-        self.alice_receive(common, bob, SwapProtocol::HbitHerc20);
+    fn alice_receive_hbit_herc20(&mut self, from: PeerId, common: CommonParams, bob: BobParams) {
+        self.alice_receive(from, common, bob, SwapProtocol::HbitHerc20);
     }
 
-    fn alice_receive_herc20_hbit(&mut self, common: CommonParams, bob: BobParams) {
-        self.alice_receive(common, bob, SwapProtocol::Herc20Hbit);
+    fn alice_receive_herc20_hbit(&mut self, from: PeerId, common: CommonParams, bob: BobParams) {
+        self.alice_receive(from, common, bob, SwapProtocol::Herc20Hbit);
     }
 
-    fn bob_receive_hbit_herc20(&mut self, common: CommonParams, alice: AliceParams) {
-        self.bob_receive(common, alice, SwapProtocol::HbitHerc20);
+    fn bob_receive_hbit_herc20(&mut self, from: PeerId, common: CommonParams, alice: AliceParams) {
+        self.bob_receive(from, common, alice, SwapProtocol::HbitHerc20);
     }
 
-    fn bob_receive_herc20_hbit(&mut self, common: CommonParams, alice: AliceParams) {
-        self.bob_receive(common, alice, SwapProtocol::Herc20Hbit);
+    fn bob_receive_herc20_hbit(&mut self, from: PeerId, common: CommonParams, alice: AliceParams) {
+        self.bob_receive(from, common, alice, SwapProtocol::Herc20Hbit);
     }
-    fn alice_receive(&mut self, common: CommonParams, bob: BobParams, swap_protocol: SwapProtocol) {
+    fn alice_receive(
+        &mut self,
+        from: PeerId,
+        common: CommonParams,
+        bob: BobParams,
+        swap_protocol: SwapProtocol,
+    ) {
         match self.swap_data.get(&common) {
             Some(RoleDependentParams::Alice(alice)) => self
                 .events
                 .push_back(BehaviourOutEvent::new(common, alice, &bob, swap_protocol)),
-            Some(RoleDependentParams::Bob(_)) => {
-                self.events.push_back(BehaviourOutEvent::RoleMismatch);
+            Some(RoleDependentParams::Bob(have)) => {
+                self.events
+                    .push_back(BehaviourOutEvent::AlreadyHaveRoleParams {
+                        peer: from,
+                        have: RoleDependentParams::Bob(*have),
+                        received: RoleDependentParams::Bob(bob),
+                    });
             }
             None => {
                 self.swap_data
@@ -301,13 +335,19 @@ impl SetupSwap {
 
     fn bob_receive(
         &mut self,
+        from: PeerId,
         common: CommonParams,
         alice: AliceParams,
         swap_protocol: SwapProtocol,
     ) {
         match self.swap_data.get(&common) {
-            Some(RoleDependentParams::Alice(..)) => {
-                self.events.push_back(BehaviourOutEvent::RoleMismatch);
+            Some(RoleDependentParams::Alice(have)) => {
+                self.events
+                    .push_back(BehaviourOutEvent::AlreadyHaveRoleParams {
+                        peer: from,
+                        have: RoleDependentParams::Alice(*have),
+                        received: RoleDependentParams::Alice(alice),
+                    });
             }
             Some(RoleDependentParams::Bob(bob)) => {
                 self.events
@@ -339,14 +379,18 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<Message<HbitHerc20Protoco
     fn inject_event(&mut self, event: RequestResponseEvent<Message<HbitHerc20Protocol>, ()>) {
         match event {
             RequestResponseEvent::Message {
-                peer: _peer_id,
+                peer,
                 message:
                     RequestResponseMessage::Request {
                         request: message, ..
                     },
             } => match message {
-                Message::Alice { alice, common, .. } => self.bob_receive_hbit_herc20(common, alice),
-                Message::Bob { bob, common, .. } => self.alice_receive_hbit_herc20(common, bob),
+                Message::Alice { alice, common, .. } => {
+                    self.bob_receive_hbit_herc20(peer, common, alice)
+                }
+                Message::Bob { bob, common, .. } => {
+                    self.alice_receive_hbit_herc20(peer, common, bob)
+                }
             },
             RequestResponseEvent::OutboundFailure { error, .. } => {
                 tracing::warn!("outbound failure: {:?}", error);
@@ -365,14 +409,18 @@ impl NetworkBehaviourEventProcess<RequestResponseEvent<Message<Herc20HbitProtoco
     fn inject_event(&mut self, event: RequestResponseEvent<Message<Herc20HbitProtocol>, ()>) {
         match event {
             RequestResponseEvent::Message {
-                peer: _peer_id,
+                peer,
                 message:
                     RequestResponseMessage::Request {
                         request: message, ..
                     },
             } => match message {
-                Message::Alice { alice, common, .. } => self.bob_receive_herc20_hbit(common, alice),
-                Message::Bob { bob, common, .. } => self.alice_receive_herc20_hbit(common, bob),
+                Message::Alice { alice, common, .. } => {
+                    self.bob_receive_herc20_hbit(peer, common, alice)
+                }
+                Message::Bob { bob, common, .. } => {
+                    self.alice_receive_herc20_hbit(peer, common, bob)
+                }
             },
             RequestResponseEvent::OutboundFailure { error, .. } => {
                 tracing::warn!("outbound failure: {:?}", error);
@@ -415,6 +463,12 @@ pub struct CommonParams {
     pub bitcoin_absolute_expiry: u32,
 }
 
+impl Display for CommonParams {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct AliceParams {
     ethereum_identity: identity::Ethereum,
@@ -429,7 +483,7 @@ pub struct BobParams {
 }
 
 #[derive(Debug, Copy, Clone)]
-enum RoleDependentParams {
+pub enum RoleDependentParams {
     Alice(AliceParams),
     Bob(BobParams),
 }
@@ -547,19 +601,23 @@ mod tests {
             bitcoin_absolute_expiry: 0,
         };
 
-        bob_swarm.bob_send_hbit_herc20(
-            &alice_id,
-            bitcoin_identity,
-            ethereum_identity,
-            common.clone(),
-        );
-        alice_swarm.alice_send_hbit_herc20(
-            &bob_id,
-            bitcoin_identity,
-            ethereum_identity,
-            secret_hash,
-            common,
-        );
+        bob_swarm
+            .bob_send_hbit_herc20(
+                &alice_id,
+                bitcoin_identity,
+                ethereum_identity,
+                common.clone(),
+            )
+            .expect("bob failed to send");
+        alice_swarm
+            .alice_send_hbit_herc20(
+                &bob_id,
+                bitcoin_identity,
+                ethereum_identity,
+                secret_hash,
+                common,
+            )
+            .expect("alice failed to send");
 
         assert_both_confirmed(alice_swarm.next(), bob_swarm.next()).await;
     }
