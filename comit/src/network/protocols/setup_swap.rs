@@ -19,7 +19,6 @@ use std::{
     task::{Context, Poll},
 };
 
-/// Event emitted by the `Comit` behaviour.
 #[derive(Clone, Debug)]
 #[allow(clippy::large_enum_variant)]
 pub enum BehaviourOutEvent {
@@ -538,7 +537,6 @@ where
         Ok(())
     }
 
-    /// Writes a take order request to the given I/O stream.
     async fn write_request<T>(
         &mut self,
         _: &Self::Protocol,
