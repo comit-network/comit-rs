@@ -374,10 +374,7 @@ impl RequestResponseCodec for GetBtcDaiOrdersCodec {
 
 /// A dedicated module for the types that represent our messages "on the wire".
 mod wire {
-    use crate::{
-        asset, identity, ledger,
-        network::{orderbook::Position, OrderId},
-    };
+    use crate::{asset, identity, ledger, network::orderbook::Position, OrderId};
     use serde::{Deserialize, Serialize};
 
     /// An order, created by a maker (Bob) and shared with the network via

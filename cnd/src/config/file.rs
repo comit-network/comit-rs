@@ -2,7 +2,6 @@ use crate::{
     config::{Bitcoind, Data, Geth, Network},
     ethereum::ChainId,
 };
-use config as config_rs;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -65,14 +64,14 @@ impl File {
         }
     }
 
-    pub fn read<D>(config_file: D) -> Result<Self, config_rs::ConfigError>
+    pub fn read<D>(config_file: D) -> Result<Self, ::config::ConfigError>
     where
         D: AsRef<OsStr>,
     {
         let config_file = Path::new(&config_file);
 
-        let mut config = config_rs::Config::new();
-        config.merge(config_rs::File::from(config_file))?;
+        let mut config = ::config::Config::new();
+        config.merge(::config::File::from(config_file))?;
         config.try_into()
     }
 }
@@ -261,7 +260,7 @@ dir = "/foo/bar"
                 }),
             }),
             ethereum: Some(Ethereum {
-                chain_id: ChainId::regtest(),
+                chain_id: ChainId::GETH_DEV,
                 geth: Some(Geth {
                     node_url: "http://localhost:8545".parse().unwrap(),
                 }),
@@ -285,7 +284,8 @@ dir = "/foo/bar"
         let default_file = File::default();
 
         // convert to settings, this populates all empty fields with defaults
-        let effective_settings = Settings::from_config_file_and_defaults(default_file).unwrap();
+        let effective_settings =
+            Settings::from_config_file_and_defaults(default_file, None).unwrap();
 
         // write settings back to file
         let file_with_effective_settings = File::from(effective_settings);
@@ -368,19 +368,19 @@ dir = "/foo/bar"
 
         let expected = vec![
             Ethereum {
-                chain_id: ChainId::regtest(),
+                chain_id: ChainId::GETH_DEV,
                 geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
                 }),
             },
             Ethereum {
-                chain_id: ChainId::ropsten(),
+                chain_id: ChainId::ROPSTEN,
                 geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
                 }),
             },
             Ethereum {
-                chain_id: ChainId::mainnet(),
+                chain_id: ChainId::MAINNET,
                 geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
                 }),

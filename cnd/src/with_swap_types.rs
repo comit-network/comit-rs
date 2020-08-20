@@ -5,15 +5,15 @@ macro_rules! within_swap_context {
             asset,
             http_api::{halbit, hbit, herc20, AliceSwap, BobSwap},
             storage::SwapContext,
-            Protocol, Role,
+            LockProtocol, Role,
         };
 
         let swap_context: SwapContext = $swap_context;
 
         match swap_context {
             SwapContext {
-                alpha: Protocol::Herc20,
-                beta: Protocol::Halbit,
+                alpha: LockProtocol::Herc20,
+                beta: LockProtocol::Halbit,
                 role: Role::Alice,
                 ..
             } => {
@@ -27,8 +27,8 @@ macro_rules! within_swap_context {
                 $fn
             }
             SwapContext {
-                alpha: Protocol::Herc20,
-                beta: Protocol::Halbit,
+                alpha: LockProtocol::Herc20,
+                beta: LockProtocol::Halbit,
                 role: Role::Bob,
                 ..
             } => {
@@ -42,8 +42,8 @@ macro_rules! within_swap_context {
                 $fn
             }
             SwapContext {
-                alpha: Protocol::Halbit,
-                beta: Protocol::Herc20,
+                alpha: LockProtocol::Halbit,
+                beta: LockProtocol::Herc20,
                 role: Role::Alice,
                 ..
             } => {
@@ -57,8 +57,8 @@ macro_rules! within_swap_context {
                 $fn
             }
             SwapContext {
-                alpha: Protocol::Halbit,
-                beta: Protocol::Herc20,
+                alpha: LockProtocol::Halbit,
+                beta: LockProtocol::Herc20,
                 role: Role::Bob,
                 ..
             } => {
@@ -72,8 +72,8 @@ macro_rules! within_swap_context {
                 $fn
             }
             SwapContext {
-                alpha: Protocol::Herc20,
-                beta: Protocol::Hbit,
+                alpha: LockProtocol::Herc20,
+                beta: LockProtocol::Hbit,
                 role: Role::Alice,
                 ..
             } => {
@@ -92,8 +92,8 @@ macro_rules! within_swap_context {
                 $fn
             }
             SwapContext {
-                alpha: Protocol::Herc20,
-                beta: Protocol::Hbit,
+                alpha: LockProtocol::Herc20,
+                beta: LockProtocol::Hbit,
                 role: Role::Bob,
                 ..
             } => {
@@ -112,8 +112,8 @@ macro_rules! within_swap_context {
                 $fn
             }
             SwapContext {
-                alpha: Protocol::Hbit,
-                beta: Protocol::Herc20,
+                alpha: LockProtocol::Hbit,
+                beta: LockProtocol::Herc20,
                 role: Role::Alice,
                 ..
             } => {
@@ -132,8 +132,8 @@ macro_rules! within_swap_context {
                 $fn
             }
             SwapContext {
-                alpha: Protocol::Hbit,
-                beta: Protocol::Herc20,
+                alpha: LockProtocol::Hbit,
+                beta: LockProtocol::Herc20,
                 role: Role::Bob,
                 ..
             } => {

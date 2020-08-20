@@ -1,6 +1,5 @@
 use crate::{
     http_api::{problem, Http},
-    network::{ListenAddresses, LocalPeerId},
     Facade,
 };
 use libp2p::{Multiaddr, PeerId};
@@ -9,8 +8,8 @@ use warp::{Rejection, Reply};
 
 /// Basic HTTP GET request on the root endpoint.
 pub async fn get_info(facade: Facade) -> Result<impl Reply, Rejection> {
-    let peer_id = facade.local_peer_id();
-    let listen_addresses = facade.listen_addresses().await.to_vec();
+    let peer_id = facade.swarm.local_peer_id();
+    let listen_addresses = facade.swarm.listen_addresses().await.to_vec();
 
     Ok(warp::reply::json(&InfoResource {
         id: Http(peer_id),
@@ -20,8 +19,8 @@ pub async fn get_info(facade: Facade) -> Result<impl Reply, Rejection> {
 
 /// HTTP GET request, for a siren document, on the root endpoint.
 pub async fn get_info_siren(facade: Facade) -> Result<impl Reply, Rejection> {
-    let peer_id = facade.local_peer_id();
-    let listen_addresses = facade.listen_addresses().await.to_vec();
+    let peer_id = facade.swarm.local_peer_id();
+    let listen_addresses = facade.swarm.listen_addresses().await.to_vec();
 
     Ok(warp::reply::json(
         &siren::Entity::default()

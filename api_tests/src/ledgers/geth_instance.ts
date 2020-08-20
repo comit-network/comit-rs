@@ -10,6 +10,7 @@ import download from "download";
 import { platform } from "os";
 import chmod from "chmod";
 import * as path from "path";
+import { crashListener } from "../crash_listener";
 
 export class GethInstance implements LedgerInstance {
     private process: ChildProcess;
@@ -42,6 +43,7 @@ export class GethInstance implements LedgerInstance {
 
         await this.createConfigurationFiles();
 
+        const logFile = await openAsync(this.logFilePath, "w");
         this.process = spawn(
             bin,
             [
@@ -58,20 +60,16 @@ export class GethInstance implements LedgerInstance {
                 cwd: this.dataDir,
                 stdio: [
                     "ignore", // stdin
-                    await openAsync(this.logFilePath, "w"),
-                    await openAsync(this.logFilePath, "w"),
+                    logFile,
+                    logFile,
                 ],
             }
         );
 
-        this.process.on("exit", (code: number, signal: number) => {
-            this.logger.info(
-                "geth exited with code",
-                code,
-                "after signal",
-                signal
-            );
-        });
+        this.process.once(
+            "exit",
+            crashListener(this.process.pid, "geth", this.logFilePath)
+        );
 
         await waitForLogMessage(this.logFilePath, "mined potential block");
 

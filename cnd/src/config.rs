@@ -4,29 +4,54 @@ mod settings;
 mod validation;
 
 use crate::ethereum::ChainId;
+use anyhow::{Context, Result};
+use conquer_once::Lazy;
 use libp2p::Multiaddr;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::{fmt::Debug, path::PathBuf, str::FromStr};
 
 pub use self::{
     file::File,
     settings::{AllowedOrigins, Settings},
     validation::validate_connection_to_network,
 };
+use crate::data_dir;
 
-lazy_static::lazy_static! {
-    pub static ref LND_URL: Url = Url::parse("https://localhost:8080").expect("static string to be a valid url");
-}
+static BITCOIND_RPC_MAINNET: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:8332"));
+static BITCOIND_RPC_TESTNET: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:18332"));
+static BITCOIND_RPC_REGTEST: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:18443"));
+
+static LND_URL: Lazy<Url> = Lazy::new(|| parse_unchecked("https://localhost:8080"));
+
+static WEB3_URL: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:8545"));
+
+static COMIT_SOCKET: Lazy<Multiaddr> = Lazy::new(|| parse_unchecked("/ip4/0.0.0.0/tcp/9939"));
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Data {
     pub dir: PathBuf,
 }
 
+impl Data {
+    pub fn default() -> Result<Self> {
+        Ok(Self {
+            dir: data_dir().context("unable to determine default data path")?,
+        })
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Network {
     pub listen: Vec<Multiaddr>,
+}
+
+impl Default for Network {
+    fn default() -> Self {
+        Self {
+            listen: vec![COMIT_SOCKET.clone()],
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -41,15 +66,43 @@ pub struct Bitcoind {
     pub node_url: Url,
 }
 
-impl Default for Bitcoin {
-    fn default() -> Self {
+impl Bitcoin {
+    fn new(network: bitcoin::Network) -> Self {
         Self {
-            network: bitcoin::Network::Regtest,
-            bitcoind: Bitcoind {
-                node_url: Url::parse("http://localhost:18443")
-                    .expect("static string to be a valid url"),
-            },
+            network,
+            bitcoind: Bitcoind::new(network),
         }
+    }
+
+    fn from_file(bitcoin: file::Bitcoin, comit_network: Option<comit::Network>) -> Result<Self> {
+        if let Some(comit_network) = comit_network {
+            let inferred = bitcoin::Network::from(comit_network);
+            if inferred != bitcoin.network {
+                anyhow::bail!(
+                    "inferred Bitcoin network {} from CLI argument {} but config file says {}",
+                    inferred,
+                    comit_network,
+                    bitcoin.network
+                );
+            }
+        }
+
+        let network = bitcoin.network;
+        let bitcoind = bitcoin.bitcoind.unwrap_or_else(|| Bitcoind::new(network));
+
+        Ok(Bitcoin { network, bitcoind })
+    }
+}
+
+impl Bitcoind {
+    fn new(network: bitcoin::Network) -> Self {
+        let node_url = match network {
+            bitcoin::Network::Bitcoin => BITCOIND_RPC_MAINNET.clone(),
+            bitcoin::Network::Testnet => BITCOIND_RPC_TESTNET.clone(),
+            bitcoin::Network::Regtest => BITCOIND_RPC_REGTEST.clone(),
+        };
+
+        Bitcoind { node_url }
     }
 }
 
@@ -68,6 +121,34 @@ pub struct Ethereum {
     pub geth: Geth,
 }
 
+impl Ethereum {
+    fn new(chain_id: ChainId) -> Self {
+        Self {
+            chain_id,
+            geth: Geth::new(),
+        }
+    }
+
+    fn from_file(ethereum: file::Ethereum, comit_network: Option<comit::Network>) -> Result<Self> {
+        if let Some(comit_network) = comit_network {
+            let inferred = ChainId::from(comit_network);
+            if inferred != ethereum.chain_id {
+                anyhow::bail!(
+                    "inferred Ethereum chain ID {} from CLI argument {} but config file says {}",
+                    inferred,
+                    comit_network,
+                    ethereum.chain_id
+                );
+            }
+        }
+
+        let chain_id = ethereum.chain_id;
+        let geth = ethereum.geth.unwrap_or_else(Geth::new);
+
+        Ok(Ethereum { chain_id, geth })
+    }
+}
+
 impl From<Ethereum> for file::Ethereum {
     fn from(ethereum: Ethereum) -> Self {
         file::Ethereum {
@@ -77,21 +158,17 @@ impl From<Ethereum> for file::Ethereum {
     }
 }
 
-impl Default for Ethereum {
-    fn default() -> Self {
-        Self {
-            chain_id: ChainId::regtest(),
-            geth: Geth {
-                node_url: Url::parse("http://localhost:8545")
-                    .expect("static string to be a valid url"),
-            },
-        }
-    }
-}
-
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Geth {
     pub node_url: Url,
+}
+
+impl Geth {
+    fn new() -> Self {
+        Self {
+            node_url: WEB3_URL.clone(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -100,12 +177,37 @@ pub struct Lightning {
     pub lnd: Lnd,
 }
 
-impl Default for Lightning {
-    fn default() -> Self {
+impl Lightning {
+    fn new(network: bitcoin::Network) -> Self {
         Self {
-            network: bitcoin::Network::Regtest,
-            lnd: Lnd::default(),
+            network,
+            lnd: Lnd::new(network),
         }
+    }
+
+    fn from_file(
+        lightning: file::Lightning,
+        comit_network: Option<comit::Network>,
+    ) -> Result<Self> {
+        if let Some(comit_network) = comit_network {
+            let inferred = bitcoin::Network::from(comit_network);
+            if inferred != lightning.network {
+                anyhow::bail!(
+                    "inferred Lightning network {} from CLI argument {} but config file says {}",
+                    inferred,
+                    comit_network,
+                    lightning.network
+                );
+            }
+        }
+
+        let network = lightning.network;
+        let lnd = lightning.lnd.map_or_else::<Result<Lnd>, _, _>(
+            || Ok(Lnd::new(network)),
+            |file| Lnd::from_file(file, network),
+        )?;
+
+        Ok(Lightning { network, lnd })
     }
 }
 
@@ -129,20 +231,40 @@ pub struct Lnd {
     pub readonly_macaroon_path: PathBuf,
 }
 
-impl Default for Lnd {
-    fn default() -> Self {
-        Self::new(bitcoin::Network::Regtest)
+impl Lnd {
+    fn new(network: bitcoin::Network) -> Self {
+        Self::from_url_dir_and_network(LND_URL.clone(), default_lnd_dir(), network)
+    }
+
+    fn from_file(file: file::Lnd, network: bitcoin::Network) -> Result<Self> {
+        let rest_api_url = assert_lnd_url_https(file.rest_api_url)?;
+
+        Ok(Self::from_url_dir_and_network(
+            rest_api_url,
+            file.dir,
+            network,
+        ))
+    }
+
+    fn from_url_dir_and_network(
+        rest_api_url: Url,
+        dir: PathBuf,
+        network: bitcoin::Network,
+    ) -> Self {
+        Lnd {
+            rest_api_url,
+            dir: dir.clone(),
+            cert_path: default_lnd_cert_path(dir.clone()),
+            readonly_macaroon_path: default_lnd_readonly_macaroon_path(dir, network),
+        }
     }
 }
 
-impl Lnd {
-    fn new(network: bitcoin::Network) -> Self {
-        Self {
-            rest_api_url: LND_URL.clone(),
-            dir: default_lnd_dir(),
-            cert_path: default_lnd_cert_path(default_lnd_dir()),
-            readonly_macaroon_path: default_lnd_readonly_macaroon_path(default_lnd_dir(), network),
-        }
+fn assert_lnd_url_https(lnd_url: Url) -> Result<Url> {
+    if lnd_url.scheme() == "https" {
+        Ok(lnd_url)
+    } else {
+        Err(anyhow::anyhow!("HTTPS scheme is expected for lnd url."))
     }
 }
 
@@ -168,9 +290,20 @@ fn default_lnd_readonly_macaroon_path(lnd_dir: PathBuf, network: bitcoin::Networ
         .join("readonly.macaroon")
 }
 
+fn parse_unchecked<T>(str: &'static str) -> T
+where
+    T: FromStr + Debug,
+    <T as FromStr>::Err: Send + Sync + 'static + std::error::Error,
+{
+    str.parse()
+        .with_context(|| format!("failed to parse static string '{}' into T", str))
+        .unwrap()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use spectral::prelude::*;
 
     #[test]
     fn network_deserializes_correctly() {
@@ -241,5 +374,46 @@ mod tests {
         };
 
         assert_eq!(actual, Ok(expected));
+    }
+
+    #[test]
+    fn given_network_on_cli_when_config_disagrees_then_error() {
+        let comit_network = comit::Network::Main;
+        let config_file = file::Bitcoin {
+            network: bitcoin::Network::Testnet,
+            bitcoind: None,
+        };
+
+        let result = Bitcoin::from_file(config_file, Some(comit_network));
+
+        assert_that(&result).is_err();
+    }
+
+    #[test]
+    fn given_no_network_on_cli_then_use_config() {
+        let config_file = file::Bitcoin {
+            network: bitcoin::Network::Testnet,
+            bitcoind: None,
+        };
+
+        let result = Bitcoin::from_file(config_file, None);
+
+        assert_that(&result)
+            .is_ok()
+            .map(|b| &b.network)
+            .is_equal_to(bitcoin::Network::Testnet);
+    }
+
+    #[test]
+    fn given_network_on_cli_when_config_specifies_the_same_then_ok() {
+        let comit_network = comit::Network::Main;
+        let config_file = file::Bitcoin {
+            network: bitcoin::Network::Bitcoin,
+            bitcoind: None,
+        };
+
+        let result = Bitcoin::from_file(config_file, Some(comit_network));
+
+        assert_that(&result).is_ok();
     }
 }

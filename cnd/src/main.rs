@@ -84,11 +84,13 @@ use self::{
     spawn::*,
     storage::{RootSeed, Sqlite, Storage},
 };
+use ::bitcoin::secp256k1::{All, Secp256k1};
 use anyhow::Context;
 use comit::{
-    ledger, lnd::LndConnectorParams, Never, Protocol, RelativeTime, Role, Secret, SecretHash,
-    SharedSwapId, Side, Timestamp,
+    ledger, lnd::LndConnectorParams, LockProtocol, Never, RelativeTime, Role, Secret, SecretHash,
+    Side, Timestamp,
 };
+use conquer_once::Lazy;
 use rand::rngs::OsRng;
 use std::{
     env,
@@ -99,10 +101,7 @@ use std::{
 use structopt::StructOpt;
 use tokio::{net::TcpListener, runtime};
 
-lazy_static::lazy_static! {
-    pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =
-        ::bitcoin::secp256k1::Secp256k1::new();
-}
+pub static SECP: Lazy<Secp256k1<All>> = Lazy::new(Secp256k1::new);
 
 fn main() -> anyhow::Result<()> {
     let options = cli::Options::from_args();
@@ -112,7 +111,8 @@ fn main() -> anyhow::Result<()> {
         process::exit(0);
     }
 
-    let settings = read_config(&options).and_then(Settings::from_config_file_and_defaults)?;
+    let file = read_config(&options)?;
+    let settings = Settings::from_config_file_and_defaults(file, options.network)?;
 
     if options.dump_config {
         dump_config(settings)?;
@@ -167,7 +167,7 @@ fn main() -> anyhow::Result<()> {
     };
 
     let ethereum_connector = {
-        let config::Ethereum { geth, chain_id } = &settings.ethereum;
+        let config::Ethereum { geth, chain_id, .. } = &settings.ethereum;
         let connector = Web3Connector::new(geth.node_url.clone());
 
         runtime.block_on(async {

@@ -19,7 +19,11 @@ export default async function waitForLogMessage(logFile: string, line: string) {
 
     const tail = new Tail(logFile, options);
 
-    await pTimeout(findTextInLog(tail, line), 60000);
+    await pTimeout(
+        findTextInLog(tail, line),
+        60000,
+        `failed to find message '${line}' in log file '${logFile}'`
+    );
     tail.unwatch();
 }
 

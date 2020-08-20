@@ -7,7 +7,7 @@ use crate::{
 };
 use bitcoin::{Address, Block, BlockHash};
 use chrono::NaiveDateTime;
-use comit::{asset, htlc_location, transaction, Protocol, Secret};
+use comit::{asset, htlc_location, transaction, LockProtocol, Secret};
 pub use comit::{hbit::*, identity};
 use futures::TryStreamExt;
 use std::{
@@ -33,7 +33,7 @@ pub async fn new<C>(
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
 {
     let mut events = comit::hbit::new(connector.as_ref(), params, start_of_swap)
-        .instrument_protocol(id, role, side, Protocol::Hbit)
+        .instrument_protocol(id, role, side, LockProtocol::Hbit)
         .inspect_ok(|event| tracing::info!("yielded event {}", event))
         .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
 

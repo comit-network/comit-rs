@@ -28,6 +28,7 @@ pub mod ledger;
 pub mod lightning;
 pub mod lnd;
 pub mod network;
+mod order;
 #[cfg(test)]
 pub mod proptest;
 mod secret;
@@ -57,6 +58,7 @@ pub mod export {
 
 pub use self::{
     network::SharedSwapId,
+    order::{NewOrder, Order, OrderId, Position},
     secret::Secret,
     secret_hash::SecretHash,
     timestamp::{RelativeTime, Timestamp},
@@ -64,6 +66,11 @@ pub use self::{
 
 use digest::ToDigestInput;
 
+/// Defines the set of locking protocol available in COMIT.
+///
+/// A locking protocol represents a particular way of locking an asset on a
+/// certain ledger. Hence, a locking protocol does not only imply the ledger but
+/// also the asset that can be locked.
 #[derive(
     Debug,
     Clone,
@@ -76,9 +83,12 @@ use digest::ToDigestInput;
     strum_macros::EnumIter,
 )]
 #[strum(serialize_all = "lowercase")]
-pub enum Protocol {
+pub enum LockProtocol {
+    /// The [`hbit`](crate::hbit) locking protocol.
     Hbit,
+    /// The [`halbit`](crate::halbit) locking protocol.
     Halbit,
+    /// The [`herc20`](crate::herc20) locking protocol.
     Herc20,
 }
 
@@ -109,10 +119,45 @@ pub enum Role {
 /// for both parties. Only the _combination_ of a party's role and the side of a
 /// ledger makes it possible to unambiguously reason about the protocol in
 /// action.
-#[derive(Clone, Copy, Debug, strum_macros::Display, strum_macros::EnumString, PartialEq)]
+#[derive(Clone, Copy, Debug, strum_macros::Display, strum_macros::EnumString, PartialEq, Eq)]
 pub enum Side {
     Alpha,
     Beta,
+}
+
+/// The various networks within COMIT.
+#[derive(Debug, Clone, Copy, strum_macros::Display, strum_macros::EnumString, PartialEq, Eq)]
+#[strum(serialize_all = "lowercase")]
+pub enum Network {
+    Main,
+    Test,
+    Dev,
+}
+
+impl Default for Network {
+    fn default() -> Self {
+        Network::Main
+    }
+}
+
+impl From<Network> for ::bitcoin::Network {
+    fn from(network: Network) -> Self {
+        match network {
+            Network::Main => ::bitcoin::Network::Bitcoin,
+            Network::Test => ::bitcoin::Network::Testnet,
+            Network::Dev => ::bitcoin::Network::Regtest,
+        }
+    }
+}
+
+impl From<Network> for ethereum::ChainId {
+    fn from(network: Network) -> Self {
+        match network {
+            Network::Main => ethereum::ChainId::MAINNET,
+            Network::Test => ethereum::ChainId::ROPSTEN,
+            Network::Dev => ethereum::ChainId::GETH_DEV,
+        }
+    }
 }
 
 pub type Never = std::convert::Infallible;

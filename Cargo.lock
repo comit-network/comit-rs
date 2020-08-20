@@ -59,17 +59,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ambassador"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61874b33258f18ca7923047c12887078ccfe95c2811b03c1a09e309c19b7e50b"
-dependencies = [
- "proc-macro2 1.0.19",
- "quote 1.0.7",
- "syn 1.0.38",
-]
-
-[[package]]
 name = "ansi_term"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -477,7 +466,6 @@ dependencies = [
 name = "cnd"
 version = "0.8.0"
 dependencies = [
- "ambassador",
  "anyhow",
  "async-trait",
  "atty",
@@ -487,6 +475,7 @@ dependencies = [
  "chrono",
  "comit",
  "config",
+ "conquer-once",
  "data-encoding",
  "derivative 2.1.1",
  "diesel",
@@ -500,7 +489,6 @@ dependencies = [
  "hex 0.4.2",
  "http-api-problem",
  "ipnet",
- "lazy_static",
  "libp2p 0.23.0",
  "libp2p-tokio-socks5",
  "libsqlite3-sys",

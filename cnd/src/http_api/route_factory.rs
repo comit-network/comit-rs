@@ -5,9 +5,9 @@ use crate::{
         dial_addr, halbit_herc20, hbit_herc20, herc20_halbit, herc20_hbit, info, orderbook, peers,
         swaps,
     },
-    network::OrderId,
     Facade, LocalSwapId,
 };
+use comit::OrderId;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 pub fn swap_path(id: LocalSwapId) -> String {

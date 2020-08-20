@@ -1,7 +1,7 @@
 use crate::{
     proptest::*,
     storage::{CreatedSwap, Load, Save, SwapContext},
-    Protocol, Storage,
+    LockProtocol, Storage,
 };
 use proptest::prelude::*;
 use tokio::runtime::Runtime;
@@ -26,14 +26,14 @@ proptest! {
         let third_swap_context = runtime.block_on(save_and_load(&storage, &third_swap));
 
         // THEN the swap context matches our expectations
-        assert_eq!(first_swap_context.alpha, Protocol::Hbit);
-        assert_eq!(first_swap_context.beta, Protocol::Herc20);
+        assert_eq!(first_swap_context.alpha, LockProtocol::Hbit);
+        assert_eq!(first_swap_context.beta, LockProtocol::Herc20);
 
-        assert_eq!(second_swap_context.alpha, Protocol::Halbit);
-        assert_eq!(second_swap_context.beta, Protocol::Herc20);
+        assert_eq!(second_swap_context.alpha, LockProtocol::Halbit);
+        assert_eq!(second_swap_context.beta, LockProtocol::Herc20);
 
-        assert_eq!(third_swap_context.alpha, Protocol::Herc20);
-        assert_eq!(third_swap_context.beta, Protocol::Halbit);
+        assert_eq!(third_swap_context.alpha, LockProtocol::Herc20);
+        assert_eq!(third_swap_context.beta, LockProtocol::Halbit);
     }
 }
 

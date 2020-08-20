@@ -1,3 +1,4 @@
+use crate::{btsieve::LatestBlock, Timestamp};
 pub use ethbloom::{Bloom as H2048, Input};
 pub use primitive_types::U256;
 use serde::{Deserialize, Serialize};
@@ -7,6 +8,15 @@ use std::{
     fmt::{Display, Formatter},
     str::FromStr,
 };
+
+pub async fn latest_time<C>(connector: &C) -> anyhow::Result<Timestamp>
+where
+    C: LatestBlock<Block = Block>,
+{
+    let timestamp = connector.latest_block().await?.timestamp.into();
+
+    Ok(timestamp)
+}
 
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
@@ -215,16 +225,19 @@ pub struct Block {
 pub struct ChainId(u32);
 
 impl ChainId {
-    pub fn mainnet() -> ChainId {
-        ChainId(1)
-    }
+    pub const MAINNET: Self = ChainId(1);
+    pub const ROPSTEN: Self = ChainId(3);
+    pub const GETH_DEV: Self = ChainId(1337);
+}
 
-    pub fn ropsten() -> ChainId {
-        ChainId(3)
-    }
-
-    pub fn regtest() -> ChainId {
-        ChainId(1337)
+impl fmt::Display for ChainId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            &Self::MAINNET => write!(f, "MAINNET"),
+            &Self::ROPSTEN => write!(f, "ROPSTEN"),
+            &Self::GETH_DEV => write!(f, "GETH-DEV"),
+            other => write!(f, "UNKNOWN ({})", other.0),
+        }
     }
 }
 

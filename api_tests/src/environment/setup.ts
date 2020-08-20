@@ -17,7 +17,7 @@ export default async (config: any) => {
     await killNodes(locksDir);
     await asyncFs.mkdir(locksDir, { recursive: true });
 
-    process.on("SIGINT", () => {
+    process.once("SIGINT", () => {
         process.stderr.write("SIGINT caught, cleaning up environment ...\n");
 
         // tslint:disable-next-line:no-floating-promises cannot await in a signal listener
