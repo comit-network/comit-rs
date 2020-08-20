@@ -237,9 +237,7 @@ where
 
 /// Duration for a complete happy path swap for Alice.
 fn happy_path_swap_period_for_alice(config: &Config) -> Duration {
-    let p = period_for_alice_to_complete(&config, AliceState::None);
-    println!("period for alice to complete: {}", p.whole_seconds());
-    p
+    period_for_alice_to_complete(&config, AliceState::None)
 }
 
 /// Duration for a complete happy path swap for Bob.
@@ -259,8 +257,6 @@ fn period_for_alice_to_complete(config: &Config, current_state: AliceState) -> D
         let (_action, next_state) = state.next();
         let transition_period = state.transition_period(config);
 
-        let d = acc + transition_period;
-        println!("acc {}", d.whole_seconds());
         period_to_complete(config, next_state, acc + transition_period)
     }
 
