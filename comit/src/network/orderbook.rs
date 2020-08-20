@@ -1,15 +1,15 @@
 mod makerbook;
 mod order_source;
-mod orders;
-pub mod take_order;
 
-use crate::{order::*, SharedSwapId};
+use crate::{
+    asset,
+    asset::Erc20Quantity,
+    order::SwapProtocol,
+    orderpool::{Match, OrderPool},
+    BtcDaiOrder, OrderId, Position,
+};
 use libp2p::{
     identity::Keypair,
-    request_response::{
-        ProtocolSupport, RequestResponse, RequestResponseConfig, RequestResponseEvent,
-        RequestResponseMessage, ResponseChannel,
-    },
     swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
     NetworkBehaviour, PeerId,
 };
@@ -18,14 +18,7 @@ use order_source::*;
 use std::{
     collections::VecDeque,
     task::{Context, Poll},
-    time::Duration,
 };
-use take_order::{Confirmation, TakeOrderCodec, TakeOrderProtocol};
-
-pub use self::orders::*;
-
-/// The time we wait for a take order request to be confirmed or denied.
-const REQUEST_TIMEOUT_SECS: u64 = 10;
 
 /// The Orderbook libp2p network behaviour.
 #[derive(NetworkBehaviour)]
@@ -34,31 +27,30 @@ const REQUEST_TIMEOUT_SECS: u64 = 10;
 pub struct Orderbook {
     makerbook: Makerbook,
     order_source: OrderSource,
-    take_order: RequestResponse<TakeOrderCodec>,
 
     #[behaviour(ignore)]
     events: VecDeque<BehaviourOutEvent>,
     #[behaviour(ignore)]
-    orders: Orders,
+    orderpool: OrderPool,
+}
+
+/// Represents a "form" that contains all data for creating a new order.
+#[derive(Debug, Clone)]
+pub struct BtcDaiOrderForm {
+    pub position: Position,
+    pub quantity: asset::Bitcoin,
+    pub price: Erc20Quantity,
+    pub swap_protocol: SwapProtocol,
 }
 
 impl Orderbook {
     /// Construct a new orderbook for this node using the node's peer ID.
     pub fn new(me: PeerId, key: Keypair) -> Orderbook {
-        let mut config = RequestResponseConfig::default();
-        config.set_request_timeout(Duration::from_secs(REQUEST_TIMEOUT_SECS));
-        let behaviour = RequestResponse::new(
-            TakeOrderCodec::default(),
-            vec![(TakeOrderProtocol, ProtocolSupport::Full)],
-            config,
-        );
-
         Orderbook {
             makerbook: Makerbook::new(key),
             order_source: OrderSource::default(),
-            take_order: behaviour,
             events: VecDeque::new(),
-            orders: Orders::new(me),
+            orderpool: OrderPool::new(me),
         }
     }
 
@@ -70,81 +62,32 @@ impl Orderbook {
     /// Announce retraction of oneself as a maker, undoes `declare_as_maker()`.
     pub fn retract(&mut self) {
         self.makerbook.logout();
-        self.orders.clear_own_orders();
+        self.orderpool.clear_own_orders();
     }
 
     /// Make a new order.
     ///
     /// The resulting order will eventually be visible to other peers.
-    pub fn make(&mut self, new_order: NewOrder) -> OrderId {
-        self.orders.new_order(new_order)
+    pub fn publish(&mut self, form: BtcDaiOrderForm) -> OrderId {
+        let order = BtcDaiOrder::new(form.position, form.quantity, form.price, form.swap_protocol);
+        let id = order.id;
+
+        self.orderpool.publish(order);
+
+        id
     }
 
-    /// Cancel an order we previously made.
+    /// Cancel an order we previously published.
     pub fn cancel(&mut self, id: OrderId) {
-        self.orders.cancel(id);
+        self.orderpool.cancel(id);
     }
 
-    /// Take an order, called by Alice i.e., the taker.
-    pub fn take(&mut self, order_id: OrderId) -> anyhow::Result<Order> {
-        let order = self
-            .orders
-            .theirs()
-            .find(|order| order.id == order_id)
-            .ok_or_else(|| OrderNotFound(order_id))?;
-        let maker = &order.maker;
-
-        tracing::info!("attempting to take order {} from maker {}", order_id, maker);
-
-        self.take_order.send_request(maker, order_id);
-
-        Ok(order.clone())
+    pub fn orderpool(&self) -> &OrderPool {
+        &self.orderpool
     }
 
-    /// Confirm a take order request, called by Bob i.e., the maker.
-    pub fn confirm(
-        &mut self,
-        order_id: OrderId,
-        channel: ResponseChannel<Confirmation>,
-        peer_id: PeerId,
-    ) {
-        let shared_swap_id = SharedSwapId::default();
-        tracing::debug!(
-            "confirming take order request with swap id: {}",
-            shared_swap_id
-        );
-
-        self.take_order.send_response(channel, Confirmation {
-            shared_swap_id,
-            order_id,
-        });
-
-        self.events
-            .push_back(BehaviourOutEvent::TakeOrderConfirmation {
-                peer_id,
-                order_id,
-                shared_swap_id,
-            });
-    }
-
-    /// Deny a take order request, called by Bob i.e., the maker.
-    pub fn deny(
-        &mut self,
-        peer_id: PeerId,
-        order_id: OrderId,
-        channel: ResponseChannel<Confirmation>,
-    ) {
-        self.events
-            .push_back(BehaviourOutEvent::Failed { peer_id, order_id });
-        std::mem::drop(channel); // triggers an error on the other end
-    }
-
-    pub fn orders(&self) -> &Orders {
-        &self.orders
-    }
-
-    pub fn orders_mut(&mut self) -> &mut Orders {
-        &mut self.orders
+    pub fn orderpool_mut(&mut self) -> &mut OrderPool {
+        &mut self.orderpool
     }
 
     fn my_poll<BIE>(
@@ -152,8 +95,15 @@ impl Orderbook {
         _: &mut Context<'_>,
         _: &mut impl PollParameters,
     ) -> Poll<NetworkBehaviourAction<BIE, BehaviourOutEvent>> {
+        // first, emit all events
         if let Some(event) = self.events.pop_front() {
             return Poll::Ready(NetworkBehaviourAction::GenerateEvent(event));
+        }
+
+        // only if we have no events, try to match again
+        for r#match in self.orderpool.matches() {
+            self.events
+                .push_back(BehaviourOutEvent::OrderMatch(r#match));
         }
 
         Poll::Pending
@@ -164,36 +114,10 @@ impl Orderbook {
 #[error("order {0} not found in orderbook")]
 pub struct OrderNotFound(OrderId);
 
-/// Event emitted  by the `Orderbook` behaviour.
+/// Event emitted by the `Orderbook` behaviour.
 #[derive(Debug)]
 pub enum BehaviourOutEvent {
-    /// Event emitted within Bob's node when a take order request is received.
-    TakeOrderRequest {
-        /// The peer from whom request originated.
-        peer_id: PeerId,
-        /// Channel to send a confirm/deny response on.
-        response_channel: ResponseChannel<Confirmation>,
-        /// The ID of the order peer wants to take.
-        order_id: OrderId,
-    },
-    /// Event emitted in both Alice and Bob's node when a take order is
-    /// confirmed.
-    TakeOrderConfirmation {
-        /// The peer from whom request originated.
-        peer_id: PeerId,
-        /// The ID of the order taken.
-        order_id: OrderId,
-        /// Identifier for the swap, used by the COMIT communication protocols.
-        shared_swap_id: SharedSwapId,
-    },
-    /// Event emitted in Bob's node when a take order fails, for Alice we just
-    /// close the channel to signal the error.
-    Failed {
-        /// The peer from whom request originated.
-        peer_id: PeerId,
-        /// The ID of the order peer wanted to take.
-        order_id: OrderId,
-    },
+    OrderMatch(Match),
 }
 
 impl NetworkBehaviourEventProcess<makerbook::BehaviourOutEvent> for Orderbook {
@@ -201,7 +125,7 @@ impl NetworkBehaviourEventProcess<makerbook::BehaviourOutEvent> for Orderbook {
         match event {
             makerbook::BehaviourOutEvent::Logout { peer } => {
                 self.order_source.stop_getting_orders_from(&peer);
-                self.orders.remove_all_from(&peer)
+                self.orderpool.remove_all_from(&peer)
             }
         }
     }
@@ -212,180 +136,16 @@ impl NetworkBehaviourEventProcess<order_source::BehaviourOutEvent> for Orderbook
         match event {
             order_source::BehaviourOutEvent::GetOrdersRequest { response_handle } => {
                 self.order_source
-                    .send_orders(response_handle, self.orders.ours().cloned().collect());
+                    .send_orders(response_handle, self.orderpool.ours().cloned().collect());
             }
             order_source::BehaviourOutEvent::RetrievedOrders { maker, orders } => {
                 if !orders.is_empty() {
-                    self.orders.replace(maker, orders);
+                    self.orderpool.receive(maker, orders);
                 }
             }
             order_source::BehaviourOutEvent::MakerIsGone { maker } => {
-                self.orders.remove_all_from(&maker);
+                self.orderpool.remove_all_from(&maker);
             }
-        }
-    }
-}
-
-impl NetworkBehaviourEventProcess<RequestResponseEvent<OrderId, Confirmation>> for Orderbook {
-    fn inject_event(&mut self, event: RequestResponseEvent<OrderId, Confirmation>) {
-        match event {
-            RequestResponseEvent::Message {
-                peer: peer_id,
-                message:
-                    RequestResponseMessage::Request {
-                        request: order_id,
-                        channel: response_channel,
-                    },
-            } => {
-                if self.orders.is_ours(order_id) {
-                    tracing::info!("received take order request for order {}", order_id);
-                    self.events.push_back(BehaviourOutEvent::TakeOrderRequest {
-                        peer_id,
-                        response_channel,
-                        order_id,
-                    });
-                } else {
-                    tracing::info!(
-                        "received take order request for order {} we never published",
-                        order_id
-                    );
-                }
-            }
-            RequestResponseEvent::Message {
-                peer: peer_id,
-                message:
-                    RequestResponseMessage::Response {
-                        request_id: _,
-                        response:
-                            Confirmation {
-                                shared_swap_id,
-                                order_id,
-                            },
-                    },
-            } => {
-                self.events
-                    .push_back(BehaviourOutEvent::TakeOrderConfirmation {
-                        peer_id,
-                        order_id,
-                        shared_swap_id,
-                    });
-            }
-            RequestResponseEvent::OutboundFailure { error, .. } => {
-                tracing::warn!("outbound failure: {:?}", error);
-            }
-            RequestResponseEvent::InboundFailure { error, .. } => {
-                tracing::warn!("inbound failure: {:?}", error);
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
-        asset, identity, ledger,
-        network::{
-            orderbook::BehaviourOutEvent,
-            test::{await_events_or_timeout, new_connected_swarm_pair},
-        },
-    };
-    use libp2p::Swarm;
-    use std::str::FromStr;
-
-    fn new_order() -> NewOrder {
-        let token_contract =
-            identity::Ethereum::from_str("0xc5549e335b2786520f4c5d706c76c9ee69d0a028").unwrap();
-
-        NewOrder {
-            position: Position::Buy,
-            bitcoin_amount: asset::Bitcoin::meaningless_test_value(),
-            bitcoin_ledger: ledger::Bitcoin::Regtest,
-            // TODO: Add test function helper to return expiry value.
-            bitcoin_absolute_expiry: 100,
-            ethereum_amount: asset::Erc20Quantity::meaningless_test_value(),
-            token_contract,
-            ethereum_ledger: ledger::Ethereum::default(),
-            ethereum_absolute_expiry: 100,
-        }
-    }
-
-    #[tokio::test]
-    async fn take_order_request_confirmation() {
-        let (mut alice, mut bob) = new_connected_swarm_pair(Orderbook::new).await;
-
-        // Poll to trigger the initial get_orders request/response (done on dial).
-        poll_no_event(&mut bob.swarm).await;
-        poll_no_event(&mut alice.swarm).await;
-
-        let _order_id = bob.swarm.make(new_order());
-
-        // Poll to trigger get_orders request/response messages
-        poll_no_event(&mut bob.swarm).await;
-        poll_no_event(&mut alice.swarm).await;
-
-        let alice_order = alice
-            .swarm
-            .orders()
-            .all()
-            .next()
-            .cloned()
-            .expect("Alice has no orders");
-
-        alice
-            .swarm
-            .take(alice_order.id)
-            .expect("failed to take order");
-
-        // Poll to trigger take_order request/response messages.
-        poll_no_event(&mut alice.swarm).await;
-        let bob_event = tokio::time::timeout(Duration::from_secs(2), bob.swarm.next())
-            .await
-            .expect("failed to get TakeOrderRequest event");
-
-        let (alice_peer_id, channel, order_id) = match bob_event {
-            BehaviourOutEvent::TakeOrderRequest {
-                peer_id,
-                response_channel,
-                order_id,
-            } => (peer_id, response_channel, order_id),
-            _ => panic!("unexepected bob event"),
-        };
-        bob.swarm.confirm(order_id, channel, alice_peer_id);
-
-        let (alice_event, bob_event) =
-            await_events_or_timeout(alice.swarm.next(), bob.swarm.next()).await;
-        match (alice_event, bob_event) {
-            (
-                BehaviourOutEvent::TakeOrderConfirmation {
-                    peer_id: alice_got_peer_id,
-                    order_id: alice_got_order_id,
-                    shared_swap_id: alice_got_swap_id,
-                },
-                BehaviourOutEvent::TakeOrderConfirmation {
-                    peer_id: bob_got_peer_id,
-                    order_id: bob_got_order_id,
-                    shared_swap_id: bob_got_swap_id,
-                },
-            ) => {
-                assert_eq!(alice_got_peer_id, bob.peer_id);
-                assert_eq!(bob_got_peer_id, alice.peer_id);
-
-                assert_eq!(alice_got_order_id, alice_order.id);
-                assert_eq!(bob_got_order_id, alice_got_order_id);
-
-                assert_eq!(alice_got_swap_id, bob_got_swap_id);
-            }
-            _ => panic!("failed to get take order confirmation"),
-        }
-    }
-
-    // Poll the swarm for some time, we don't expect any events though.
-    async fn poll_no_event(swarm: &mut Swarm<Orderbook>) {
-        let delay = Duration::from_secs(2);
-
-        while let Ok(event) = tokio::time::timeout(delay, swarm.next()).await {
-            panic!("unexpected event emitted: {:?}", event)
         }
     }
 }

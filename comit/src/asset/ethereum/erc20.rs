@@ -1,11 +1,15 @@
 use crate::{
-    asset::ethereum::{Error, FromWei, TryFromWei},
+    asset::{
+        ethereum::{Error, FromWei, TryFromWei},
+        Bitcoin,
+    },
     ethereum::{Address, U256},
 };
 use num::{pow::Pow, BigUint, Num, Zero};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-use std::{fmt, str::FromStr};
+use std::{fmt, ops::Mul, str::FromStr};
 
+// TODO make this Copy FFS
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Erc20Quantity(BigUint);
 
@@ -40,6 +44,26 @@ impl Erc20Quantity {
     pub fn meaningless_test_value() -> Self {
         Erc20Quantity::from_wei(1_000u32)
     }
+}
+
+impl Mul<Erc20Quantity> for Bitcoin {
+    type Output = Erc20Quantity;
+
+    fn mul(self, rhs: Erc20Quantity) -> Self::Output {
+        let sats = self.as_sat();
+        let value = Erc20Quantity(rhs.0 * sats);
+
+        debug_assert!(value <= Erc20Quantity::max_value());
+
+        value
+    }
+}
+
+#[cfg(test)]
+pub fn dai(dai: u64) -> Erc20Quantity {
+    let factor = BigUint::from(10u32).pow(18u32);
+
+    Erc20Quantity(dai * factor)
 }
 
 impl FromWei<U256> for Erc20Quantity {

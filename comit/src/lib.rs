@@ -28,7 +28,8 @@ pub mod ledger;
 pub mod lightning;
 pub mod lnd;
 pub mod network;
-mod order;
+pub mod order;
+pub mod orderpool;
 #[cfg(test)]
 pub mod proptest;
 mod secret;
@@ -57,14 +58,15 @@ pub mod export {
 }
 
 pub use self::{
-    network::SharedSwapId,
-    order::{NewOrder, Order, OrderId, Position},
+    network::{orderbook::BtcDaiOrderForm, SharedSwapId},
+    order::{BtcDaiOrder, OrderId, Position},
     secret::Secret,
     secret_hash::SecretHash,
     timestamp::{RelativeTime, Timestamp},
 };
 
 use digest::ToDigestInput;
+use serde::{Deserialize, Serialize};
 
 /// Defines the set of locking protocol available in COMIT.
 ///
@@ -92,7 +94,17 @@ pub enum LockProtocol {
     Herc20,
 }
 
-#[derive(Clone, Copy, Debug, strum_macros::Display, strum_macros::EnumString, PartialEq)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    strum_macros::Display,
+    strum_macros::EnumString,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
+#[serde(rename_all = "lowercase")]
 pub enum Role {
     Alice,
     Bob,

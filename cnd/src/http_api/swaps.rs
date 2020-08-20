@@ -19,7 +19,7 @@ use crate::{
         },
         route_factory, Http,
     },
-    storage::Load,
+    storage::{Load, LoadAll},
     DeployAction, Facade, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role,
 };
 use serde::Serialize;
@@ -32,6 +32,29 @@ pub async fn get_swap(id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rej
         .map(|swap_resource| warp::reply::json(&swap_resource))
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)
+}
+
+pub async fn get_swaps(facade: Facade) -> Result<impl Reply, Rejection> {
+    let swaps = async {
+        let mut swaps = siren::Entity::default().with_class_member("swaps");
+
+        for context in facade.storage.load_all().await? {
+            swaps.push_sub_entity(siren::SubEntity::from_link(siren::EntityLink {
+                class: vec![],
+                title: None,
+                rel: vec![String::from("item")],
+                href: format!("/swaps/{}", context.id),
+                _type: None,
+            }));
+        }
+
+        Ok(swaps)
+    }
+    .await
+    .map_err(problem::from_anyhow)
+    .map_err(warp::reject::custom)?;
+
+    Ok(warp::reply::json(&swaps))
 }
 
 async fn handle_get_swap(id: LocalSwapId, facade: Facade) -> anyhow::Result<siren::Entity> {
