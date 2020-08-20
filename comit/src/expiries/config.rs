@@ -41,6 +41,9 @@ const ETHEREUM_MINE_WITHIN_N_BLOCKS: u8 = 3; // Value arbitrarily chosen.
 const BITCOIN_CONFIRMATIONS: u8 = 6; // Standard in the Bitcoin ecosystem.
 const ETHEREUM_CONFIRMATIONS: u8 = 30; // Value used by Kraken.
 
+const ACT_IN_SOFTWARE_MINS: u32 = 15;
+const ACT_WITH_USER_INTERVENTION_MINS: u32 = 60;
+
 // TODO: Add support for lightning.
 #[derive(Clone, Copy, Debug)]
 pub enum Protocol {
@@ -50,14 +53,8 @@ pub enum Protocol {
 
 impl Protocol {
     pub fn config(&self) -> Config {
-        // Since we are targeting Nectar and the App we can set these.
-        let alice = ActorType::Human;
-        let bob = ActorType::Bot;
-
         match self {
             Protocol::Herc20Hbit => Config {
-                alice,
-                bob,
                 alpha_required_confirmations: ethereum_required_confirmations(),
                 beta_required_confirmations: bitcoin_required_confirmations(),
                 alpha_block_time: ETHEREUM_BLOCK_TIME_SECS,
@@ -68,8 +65,6 @@ impl Protocol {
                 beta_mine_redeem_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
             },
             Protocol::HbitHerc20 => Config {
-                alice,
-                bob,
                 alpha_required_confirmations: bitcoin_required_confirmations(),
                 beta_required_confirmations: ethereum_required_confirmations(),
                 alpha_block_time: BITCOIN_BLOCK_TIME_SECS,
@@ -86,8 +81,6 @@ impl Protocol {
 /// Configuration values used during transition period calculations.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Config {
-    alice: ActorType,
-    bob: ActorType,
     alpha_required_confirmations: u8,
     beta_required_confirmations: u8,
     alpha_block_time: u16,
@@ -98,30 +91,30 @@ pub struct Config {
     beta_mine_redeem_within_n_blocks: u8,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum ActorType {
-    Bot,
-    Human,
-}
-
-impl ActorType {
-    fn period_to_act(&self) -> Duration {
-        match self {
-            ActorType::Bot => 15.minutes(),
-            ActorType::Human => 60.minutes(),
-        }
-    }
-}
-
 impl Config {
-    /// The duration of time it takes for Alice to act.
-    pub fn alice_to_act(&self) -> Duration {
-        self.alice.period_to_act()
+    /// The duration of time it takes for Alice to start.
+    pub fn start(&self) -> Duration {
+        period_to_act_with_user_interaction()
     }
 
-    /// The duration of time it takes for Bob to act.
-    pub fn bob_to_act(&self) -> Duration {
-        self.bob.period_to_act()
+    /// The duration of time it takes to create the alpha fund transaction.
+    pub fn create_alpha_fund_transaction(&self) -> Duration {
+        period_to_act_with_user_interaction()
+    }
+
+    /// The duration of time it takes to create the beta fund transaction.
+    pub fn create_beta_fund_transaction(&self) -> Duration {
+        period_to_act_in_software()
+    }
+
+    /// The duration of time it takes to create the alpha redeem transaction.
+    pub fn create_alpha_redeem_transaction(&self) -> Duration {
+        period_to_act_in_software()
+    }
+
+    /// The duration of time it takes to create the beta redeem transaction.
+    pub fn create_beta_redeem_transaction(&self) -> Duration {
+        period_to_act_with_user_interaction()
     }
 
     /// The duration of time it takes for the alpha fund transaction to be
@@ -177,6 +170,18 @@ impl Config {
 
         time_to_mine_n_blocks(n, block_time)
     }
+}
+
+/// If some action requires only software give the counterparty this long to
+/// act. 15 minutes to allow for network congestion etc.
+pub fn period_to_act_in_software() -> Duration {
+    ACT_IN_SOFTWARE_MINS.minutes()
+}
+
+/// If some action requires user input give the counterparty this long to
+/// act.
+pub fn period_to_act_with_user_interaction() -> Duration {
+    ACT_WITH_USER_INTERVENTION_MINS.minutes()
 }
 
 fn bitcoin_required_confirmations() -> u8 {
