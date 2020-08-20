@@ -187,6 +187,11 @@ fn ethereum_required_confirmations() -> u8 {
     ETHEREUM_CONFIRMATIONS
 }
 
+// Time to mine n blocks is governed by a Poisson distribution. As an
+// improvement we could calculate that instead of using this naive
+// implementation. For more details see:
+// - https://en.wikipedia.org/wiki/Poisson_distribution
+// - https://www.reddit.com/r/btc/comments/6v5ee7/block_times_and_probabilities/
 fn time_to_mine_n_blocks(n: u8, average_block_time_secs: u16) -> Duration {
     let t = n as u16 * average_block_time_secs;
     Duration::seconds(t as i64)
