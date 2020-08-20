@@ -119,10 +119,45 @@ pub enum Role {
 /// for both parties. Only the _combination_ of a party's role and the side of a
 /// ledger makes it possible to unambiguously reason about the protocol in
 /// action.
-#[derive(Clone, Copy, Debug, strum_macros::Display, strum_macros::EnumString, PartialEq)]
+#[derive(Clone, Copy, Debug, strum_macros::Display, strum_macros::EnumString, PartialEq, Eq)]
 pub enum Side {
     Alpha,
     Beta,
+}
+
+/// The various networks within COMIT.
+#[derive(Debug, Clone, Copy, strum_macros::Display, strum_macros::EnumString, PartialEq, Eq)]
+#[strum(serialize_all = "lowercase")]
+pub enum Network {
+    Main,
+    Test,
+    Dev,
+}
+
+impl Default for Network {
+    fn default() -> Self {
+        Network::Main
+    }
+}
+
+impl From<Network> for ::bitcoin::Network {
+    fn from(network: Network) -> Self {
+        match network {
+            Network::Main => ::bitcoin::Network::Bitcoin,
+            Network::Test => ::bitcoin::Network::Testnet,
+            Network::Dev => ::bitcoin::Network::Regtest,
+        }
+    }
+}
+
+impl From<Network> for ethereum::ChainId {
+    fn from(network: Network) -> Self {
+        match network {
+            Network::Main => ethereum::ChainId::MAINNET,
+            Network::Test => ethereum::ChainId::ROPSTEN,
+            Network::Dev => ethereum::ChainId::GETH_DEV,
+        }
+    }
 }
 
 pub type Never = std::convert::Infallible;

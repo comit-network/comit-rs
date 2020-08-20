@@ -35,14 +35,18 @@ export class CndInstance {
         );
 
         const logFile = await openAsync(this.logFile, "w");
-        this.process = spawn(bin, ["--config", configFile], {
-            cwd: this.cargoTargetDirectory,
-            stdio: [
-                "ignore", // stdin
-                logFile, // stdout
-                logFile, // stderr
-            ],
-        });
+        this.process = spawn(
+            bin,
+            ["--config", configFile, "--network", "dev"],
+            {
+                cwd: this.cargoTargetDirectory,
+                stdio: [
+                    "ignore", // stdin
+                    logFile, // stdout
+                    logFile, // stderr
+                ],
+            }
+        );
 
         this.process.on(
             "exit",

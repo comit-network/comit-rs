@@ -111,7 +111,8 @@ fn main() -> anyhow::Result<()> {
         process::exit(0);
     }
 
-    let settings = read_config(&options).and_then(Settings::from_config_file_and_defaults)?;
+    let file = read_config(&options)?;
+    let settings = Settings::from_config_file_and_defaults(file, options.network)?;
 
     if options.dump_config {
         dump_config(settings)?;

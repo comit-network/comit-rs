@@ -260,7 +260,7 @@ dir = "/foo/bar"
                 }),
             }),
             ethereum: Some(Ethereum {
-                chain_id: ChainId::REGTEST,
+                chain_id: ChainId::GETH_DEV,
                 geth: Some(Geth {
                     node_url: "http://localhost:8545".parse().unwrap(),
                 }),
@@ -284,7 +284,8 @@ dir = "/foo/bar"
         let default_file = File::default();
 
         // convert to settings, this populates all empty fields with defaults
-        let effective_settings = Settings::from_config_file_and_defaults(default_file).unwrap();
+        let effective_settings =
+            Settings::from_config_file_and_defaults(default_file, None).unwrap();
 
         // write settings back to file
         let file_with_effective_settings = File::from(effective_settings);
@@ -367,7 +368,7 @@ dir = "/foo/bar"
 
         let expected = vec![
             Ethereum {
-                chain_id: ChainId::REGTEST,
+                chain_id: ChainId::GETH_DEV,
                 geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
                 }),

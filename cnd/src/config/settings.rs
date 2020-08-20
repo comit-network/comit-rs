@@ -129,7 +129,10 @@ impl From<file::Logging> for Logging {
 }
 
 impl Settings {
-    pub fn from_config_file_and_defaults(config_file: File) -> anyhow::Result<Self> {
+    pub fn from_config_file_and_defaults(
+        config_file: File,
+        comit_network: Option<comit::Network>,
+    ) -> anyhow::Result<Self> {
         let File {
             network,
             http_api,
@@ -145,9 +148,19 @@ impl Settings {
             http_api: http_api.map_or_else(HttpApi::default, HttpApi::from),
             data: data.map_or_else(Data::default, Ok)?,
             logging: logging.map_or_else(Logging::default, Logging::from),
-            bitcoin: bitcoin.map_or_else(Bitcoin::default, Bitcoin::from),
-            ethereum: ethereum.map_or_else(|| Ok(Ethereum::default()), Ethereum::from_file)?,
-            lightning: lightning.map_or_else(|| Ok(Lightning::default()), Lightning::from_file)?,
+
+            bitcoin: bitcoin.map_or_else(
+                || Ok(Bitcoin::new(comit_network.unwrap_or_default().into())),
+                |file| Bitcoin::from_file(file, comit_network),
+            )?,
+            ethereum: ethereum.map_or_else(
+                || Ok(Ethereum::new(comit_network.unwrap_or_default().into())),
+                |file| Ethereum::from_file(file, comit_network),
+            )?,
+            lightning: lightning.map_or_else(
+                || Ok(Lightning::new(comit_network.unwrap_or_default().into())),
+                |file| Lightning::from_file(file, comit_network),
+            )?,
         })
     }
 }
@@ -169,7 +182,7 @@ mod tests {
             ..File::default()
         };
 
-        let settings = Settings::from_config_file_and_defaults(config_file);
+        let settings = Settings::from_config_file_and_defaults(config_file, None);
 
         assert_that(&settings)
             .is_ok()
@@ -189,7 +202,7 @@ mod tests {
             ..File::default()
         };
 
-        let settings = Settings::from_config_file_and_defaults(config_file);
+        let settings = Settings::from_config_file_and_defaults(config_file, None);
 
         assert_that(&settings)
             .is_ok()
@@ -206,7 +219,7 @@ mod tests {
             ..File::default()
         };
 
-        let settings = Settings::from_config_file_and_defaults(config_file);
+        let settings = Settings::from_config_file_and_defaults(config_file, None);
 
         assert_that(&settings)
             .is_ok()
@@ -226,7 +239,7 @@ mod tests {
             ..File::default()
         };
 
-        let settings = Settings::from_config_file_and_defaults(config_file);
+        let settings = Settings::from_config_file_and_defaults(config_file, None);
 
         assert_that(&settings)
             .is_ok()
@@ -240,7 +253,7 @@ mod tests {
     fn bitcoin_defaults() {
         let config_file = File { ..File::default() };
 
-        let settings = Settings::from_config_file_and_defaults(config_file);
+        let settings = Settings::from_config_file_and_defaults(config_file, None);
 
         assert_that(&settings)
             .is_ok()
@@ -270,7 +283,7 @@ mod tests {
                 ..File::default()
             };
 
-            let settings = Settings::from_config_file_and_defaults(config_file);
+            let settings = Settings::from_config_file_and_defaults(config_file, None);
 
             assert_that(&settings)
                 .is_ok()
@@ -288,7 +301,7 @@ mod tests {
     fn ethereum_defaults() {
         let config_file = File { ..File::default() };
 
-        let settings = Settings::from_config_file_and_defaults(config_file);
+        let settings = Settings::from_config_file_and_defaults(config_file, None);
 
         assert_that(&settings)
             .is_ok()
@@ -308,12 +321,12 @@ mod tests {
             ..File::default()
         };
 
-        let settings = Settings::from_config_file_and_defaults(config_file);
+        let settings = Settings::from_config_file_and_defaults(config_file, None);
 
         assert_that(&settings)
             .is_ok()
             .map(|settings| &settings.lightning)
-            .is_equal_to(Lightning::default())
+            .is_equal_to(Lightning::new(bitcoin::Network::Bitcoin))
     }
 
     #[test]
@@ -326,14 +339,14 @@ mod tests {
             ..File::default()
         };
 
-        let settings = Settings::from_config_file_and_defaults(config_file);
+        let settings = Settings::from_config_file_and_defaults(config_file, None);
 
         assert_that(&settings)
             .is_ok()
             .map(|settings| &settings.lightning)
             .is_equal_to(Lightning {
                 network: bitcoin::Network::Regtest,
-                lnd: Lnd::default(),
+                lnd: Lnd::new(bitcoin::Network::Regtest),
             })
     }
 
@@ -350,7 +363,7 @@ mod tests {
             ..File::default()
         };
 
-        let settings = Settings::from_config_file_and_defaults(config_file);
+        let settings = Settings::from_config_file_and_defaults(config_file, None);
 
         assert_that(&settings).is_err();
     }

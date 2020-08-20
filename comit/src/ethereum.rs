@@ -227,7 +227,18 @@ pub struct ChainId(u32);
 impl ChainId {
     pub const MAINNET: Self = ChainId(1);
     pub const ROPSTEN: Self = ChainId(3);
-    pub const REGTEST: Self = ChainId(1337);
+    pub const GETH_DEV: Self = ChainId(1337);
+}
+
+impl fmt::Display for ChainId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            &Self::MAINNET => write!(f, "MAINNET"),
+            &Self::ROPSTEN => write!(f, "ROPSTEN"),
+            &Self::GETH_DEV => write!(f, "GETH-DEV"),
+            other => write!(f, "UNKNOWN ({})", other.0),
+        }
+    }
 }
 
 impl From<ChainId> for u32 {
