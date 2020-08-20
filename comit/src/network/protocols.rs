@@ -4,6 +4,7 @@ pub mod ethereum_identity;
 pub mod finalize;
 pub mod lightning_identity;
 pub mod secret_hash;
+pub mod setup_swap;
 
 use super::swap_digest::SwapDigest;
 use futures::prelude::*;
