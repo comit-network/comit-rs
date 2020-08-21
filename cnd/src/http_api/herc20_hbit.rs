@@ -9,16 +9,13 @@ use crate::{
     Facade, LocalSwapId, Side,
 };
 use comit::network::swap_digest;
-use serde::Deserialize;
 use warp::{http::StatusCode, Rejection, Reply};
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn post_swap(body: serde_json::Value, facade: Facade) -> Result<impl Reply, Rejection> {
-    let body = PostBody::<Herc20, Hbit>::deserialize(&body)
-        .map_err(anyhow::Error::new)
-        .map_err(problem::from_anyhow)
-        .map_err(warp::reject::custom)?;
-
+pub async fn post_swap(
+    body: PostBody<Herc20, Hbit>,
+    facade: Facade,
+) -> Result<impl Reply, Rejection> {
     let swap_id = LocalSwapId::default();
     let reply = warp::reply::reply();
 

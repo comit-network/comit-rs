@@ -21,7 +21,8 @@ export async function createActors(
                 global.ledgerConfigs,
                 global.cargoTargetDir,
                 cndLogFile,
-                actorLogger
+                actorLogger,
+                global.cndConfigOverrides
             )
         );
     }

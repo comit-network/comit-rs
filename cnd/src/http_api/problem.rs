@@ -1,6 +1,7 @@
 use crate::{http_api::ActionNotFound, storage::NoSwapExists};
 use http_api_problem::HttpApiProblem;
 use warp::{
+    body::BodyDeserializeError,
     http::{self, StatusCode},
     Rejection, Reply,
 };
@@ -22,14 +23,6 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
         return HttpApiProblem::new("Swap not found.").set_status(StatusCode::NOT_FOUND);
     }
 
-    if e.is::<serde_json::Error>() {
-        tracing::error!("deserialization error: {}", e);
-
-        return HttpApiProblem::new("Invalid body.")
-            .set_status(StatusCode::BAD_REQUEST)
-            .set_detail(format!("{:?}", e));
-    }
-
     if e.is::<ActionNotFound>() {
         return HttpApiProblem::new("Action not found.").set_status(StatusCode::NOT_FOUND);
     }
@@ -49,18 +42,29 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
 
 pub async fn unpack_problem(rejection: Rejection) -> Result<impl Reply, Rejection> {
     if let Some(problem) = rejection.find::<HttpApiProblem>() {
-        let code = problem.status.unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+        return Ok(problem_to_reply(problem));
+    }
 
-        let reply = warp::reply::json(problem);
-        let reply = warp::reply::with_status(reply, code);
-        let reply = warp::reply::with_header(
-            reply,
-            http::header::CONTENT_TYPE,
-            http_api_problem::PROBLEM_JSON_MEDIA_TYPE,
-        );
-
-        return Ok(reply);
+    if let Some(invalid_body) = rejection.find::<BodyDeserializeError>() {
+        return Ok(problem_to_reply(
+            &HttpApiProblem::new("Invalid body.")
+                .set_status(StatusCode::BAD_REQUEST)
+                .set_detail(format!("{:?}", invalid_body)),
+        ));
     }
 
     Err(rejection)
+}
+
+fn problem_to_reply(problem: &HttpApiProblem) -> impl Reply {
+    let code = problem.status.unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+
+    let reply = warp::reply::json(problem);
+    let reply = warp::reply::with_status(reply, code);
+
+    warp::reply::with_header(
+        reply,
+        http::header::CONTENT_TYPE,
+        http_api_problem::PROBLEM_JSON_MEDIA_TYPE,
+    )
 }

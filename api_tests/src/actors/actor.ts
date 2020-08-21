@@ -16,7 +16,7 @@ import {
     SwapStatus,
 } from "../payload";
 import { Logger } from "log4js";
-import { E2ETestActorConfig } from "../config";
+import { CndConfigFile, E2ETestActorConfig } from "../config";
 import {
     Asset,
     assetAsKey,
@@ -34,6 +34,7 @@ import { defaultLedgerDescriptionForLedger, getIdentities } from "./defaults";
 import pTimeout from "p-timeout";
 import { Entity, Link } from "comit-sdk/dist/src/cnd/siren";
 import { BtcDaiOrder } from "./order_factory";
+import { merge } from "lodash";
 
 export type ActorName = "alice" | "bob" | "carol";
 
@@ -48,23 +49,25 @@ export class Actor {
         ledgerConfig: LedgerConfig,
         cargoTargetDirectory: string,
         cndLogFile: string,
-        logger: Logger
+        logger: Logger,
+        configOverrides: Partial<CndConfigFile>
     ) {
         const actorConfig = await E2ETestActorConfig.for(name, logger);
-        const cndConfigFile = actorConfig.generateCndConfigFile(ledgerConfig);
+        const generatedConfig = actorConfig.generateCndConfigFile(ledgerConfig);
+        const finalConfig = merge(generatedConfig, configOverrides);
 
         const cndInstance = new CndInstance(
             cargoTargetDirectory,
             cndLogFile,
             logger,
-            cndConfigFile
+            finalConfig
         );
 
         await cndInstance.start();
 
         logger.info(
             "Created new actor with config %s",
-            JSON.stringify(cndConfigFile)
+            JSON.stringify(finalConfig)
         );
 
         return new Actor(logger, cndInstance, name);

@@ -154,7 +154,7 @@ impl Settings {
                 |file| Bitcoin::from_file(file, comit_network),
             )?,
             ethereum: ethereum.map_or_else(
-                || Ok(Ethereum::new(comit_network.unwrap_or_default().into())),
+                || Ethereum::new(comit_network.unwrap_or_default().into()),
                 |file| Ethereum::from_file(file, comit_network),
             )?,
             lightning: lightning.map_or_else(
@@ -169,7 +169,7 @@ impl Settings {
 mod tests {
     use super::*;
     use crate::{
-        config::{file, Bitcoind, Geth, Lnd},
+        config::{file, Bitcoind, Geth, Lnd, Tokens, DAI_MAINNET},
         ethereum::ChainId,
     };
     use spectral::prelude::*;
@@ -311,6 +311,7 @@ mod tests {
                 geth: Geth {
                     node_url: "http://localhost:8545".parse().unwrap(),
                 },
+                tokens: Tokens { dai: *DAI_MAINNET },
             })
     }
 

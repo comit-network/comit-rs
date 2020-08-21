@@ -19,7 +19,7 @@ digest = { path = "../digest" }
 ethbloom = "0.9.1"
 futures = { version = "0.3", default-features = false }
 genawaiter = { version = "0.99", default-features = false, features = ["futures03"] }
-hex = "0.4"
+hex = { version = "0.4", features = ["serde"] }
 levenshtein = "1"
 libp2p = { version = "0.23", default-features = false, features = ["gossipsub", "request-response"] }
 lru = "0.6.0"
