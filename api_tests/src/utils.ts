@@ -11,6 +11,7 @@ import {
     EthereumNodeConfig,
     LightningNodeConfig,
 } from "./ledgers";
+import { CndConfigFile } from "./config";
 
 export interface HarnessGlobal extends Global.Global {
     ledgerConfigs: LedgerConfig;
@@ -21,6 +22,7 @@ export interface HarnessGlobal extends Global.Global {
     tokenContract: string;
     gethLockDir: string;
     cargoTargetDir: string;
+    cndConfigOverrides: Partial<CndConfigFile>;
 
     getDataDir: (program: string) => Promise<string>;
     getLogFile: (pathElements: string[]) => string;

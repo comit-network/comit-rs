@@ -1,3 +1,8 @@
+/**
+ * @cndConfigOverride ethereum.chain_id = 1337
+ * @cndConfigOverride ethereum.tokens.dai = 0x0000000000000000000000000000000000000000
+ */
+
 import { oneActorTest, twoActorTest } from "../src/actor_test";
 import SwapFactory from "../src/actors/swap_factory";
 

@@ -14,6 +14,9 @@ export interface CndConfigFile {
     data?: { dir: string };
     network: { listen: string[] };
     logging: { level: string };
+    bitcoin?: BitcoinConfig;
+    ethereum?: EthereumConfig;
+    lightning?: LightningConfig;
 }
 
 export interface HttpApi {

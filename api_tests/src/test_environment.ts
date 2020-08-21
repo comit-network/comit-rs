@@ -17,6 +17,8 @@ import { LedgerInstance, LightningNodeConfig } from "./ledgers";
 import { GethInstance } from "./ledgers/geth_instance";
 import { LndInstance } from "./ledgers/lnd_instance";
 import BitcoinRpcClient from "bitcoin-core";
+import { CndConfigFile } from "./config";
+import { set } from "lodash";
 
 export default class TestEnvironment extends NodeEnvironment {
     private readonly testSuite: string;
@@ -25,6 +27,7 @@ export default class TestEnvironment extends NodeEnvironment {
     private readonly locksDir: string;
     private readonly nodeModulesBinDir: string;
     private readonly srcDir: string;
+    private readonly cndConfigOverrides: Partial<CndConfigFile>;
 
     public global: HarnessGlobal;
 
@@ -33,9 +36,12 @@ export default class TestEnvironment extends NodeEnvironment {
     constructor(config: Config.ProjectConfig, context: EnvironmentContext) {
         super(config);
 
-        this.ledgers = TestEnvironment.extractLedgersToBeStarted(
+        this.ledgers = extractLedgersToBeStarted(context.docblockPragmas);
+        this.cndConfigOverrides = extractCndConfigOverrides(
             context.docblockPragmas
         );
+        assertNoUnhandledPargmas(context.docblockPragmas);
+
         this.logDir = path.resolve(config.rootDir, "log");
         this.locksDir = path.resolve(config.rootDir, "locks");
         this.nodeModulesBinDir = path.resolve(
@@ -60,6 +66,7 @@ export default class TestEnvironment extends NodeEnvironment {
         this.global.ledgerConfigs = {};
         this.global.lndWallets = {};
         this.global.cargoTargetDir = cargoTargetDir;
+        this.global.cndConfigOverrides = this.cndConfigOverrides;
 
         const log4js = configure({
             appenders: {
@@ -389,20 +396,54 @@ export default class TestEnvironment extends NodeEnvironment {
 
         return dir;
     }
+}
 
-    private static extractLedgersToBeStarted(
-        docblockPragmas: Record<string, string | string[]>
-    ): string[] {
-        const ledgersToStart = docblockPragmas.ledger;
+function extractLedgersToBeStarted(
+    docblockPragmas: Record<string, string | string[]>
+): string[] {
+    const ledgersToStart = docblockPragmas.ledger;
+    delete docblockPragmas.ledger;
 
-        if (!ledgersToStart) {
-            return [];
-        }
+    if (!ledgersToStart) {
+        return [];
+    }
 
-        if (typeof ledgersToStart === "string") {
-            return [ledgersToStart];
-        }
+    if (typeof ledgersToStart === "string") {
+        return [ledgersToStart];
+    }
 
-        return ledgersToStart;
+    return ledgersToStart;
+}
+
+export function extractCndConfigOverrides(
+    docblockPragmas: Record<string, string | string[]>
+): Partial<CndConfigFile> {
+    let configOverrides = docblockPragmas.cndConfigOverride;
+    delete docblockPragmas.cndConfigOverride;
+
+    if (!configOverrides) {
+        return {};
+    }
+
+    // generalize single override to list of overrides
+    if (typeof configOverrides === "string") {
+        configOverrides = [configOverrides];
+    }
+
+    return configOverrides
+        .map((override) => override.split(" = "))
+        .filter(([key, _]) => key !== "")
+        .reduce((config, [key, value]) => {
+            set(config, key, value);
+
+            return config;
+        }, {});
+}
+
+export function assertNoUnhandledPargmas(
+    docblockPragmas: Record<string, string | string[]>
+) {
+    for (const [pragma] of Object.entries(docblockPragmas)) {
+        throw new Error(`Unhandled pragma '${pragma}'! Typo?`);
     }
 }
