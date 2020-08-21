@@ -46,36 +46,44 @@ pub struct Expiries<A, B> {
     beta_offset: BetaOffset,
 }
 
+/// Calculate a pair of useful expiries, 'useful' means a swap can be
+/// successfully completed with these expiries.
+pub fn calculate_expiry_offsets(protocol: Protocol) -> (AlphaOffset, BetaOffset) {
+    let config = protocol.config();
+
+    let alice_needs = happy_path_swap_period_for_alice(&config);
+    let bob_needs = happy_path_swap_period_for_bob(&config);
+
+    // Alice redeems on beta ledger so needs time to act before the beta expiry.
+    let beta_offset = alice_needs;
+
+    // TODO: Now that we have a buffer before beta expiry for Alice to act within
+    // the alpha expiry can be the same as the beta expiry with no loss of
+    // atomicity. However this introduces a new concern - there is no guarantee that
+    // the time is the same on both chains. We should have some buffer between the
+    // expiries based on this possible disparity.
+
+    // Bob redeems on alpha ledger so needs time to act before the alpha expiry.
+    let alpha_offset = cmp::max(bob_needs, beta_offset); // Alpha expiry must not be less than beta expiry.
+
+    (alpha_offset.into(), beta_offset.into())
+}
+
 impl<A, B> Expiries<A, B>
 where
     A: CurrentTime,
     B: CurrentTime,
 {
-    /// Construct a pair of useful expiries.
     pub fn new(protocol: Protocol, alpha: A, beta: B) -> Expiries<A, B> {
         let config = protocol.config();
-
-        let alice_needs = happy_path_swap_period_for_alice(&config);
-        let bob_needs = happy_path_swap_period_for_bob(&config);
-
-        // Alice redeems on beta ledger so needs time to act before the beta expiry.
-        let beta_offset = alice_needs;
-
-        // TODO: Now that we have a buffer before beta expiry for Alice to act within
-        // the alpha expiry can be the same as the beta expiry with no loss of
-        // atomicity. However this introduces a new concern - there is no guarantee that
-        // the time is the same on both chains. We should have some buffer between the
-        // expiries based on this possible disparity.
-
-        // Bob redeems on alpha ledger so needs time to act before the alpha expiry.
-        let alpha_offset = cmp::max(bob_needs, beta_offset); // Alpha expiry must not be less than beta expiry.
+        let (alpha_offset, beta_offset) = calculate_expiry_offsets(protocol);
 
         Expiries {
             config,
             alpha_connector: alpha,
             beta_connector: beta,
-            alpha_offset: alpha_offset.into(),
-            beta_offset: beta_offset.into(),
+            alpha_offset,
+            beta_offset,
         }
     }
 
