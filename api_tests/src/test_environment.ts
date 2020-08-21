@@ -3,8 +3,8 @@ import { execAsync, existsAsync, HarnessGlobal } from "./utils";
 import { promises as asyncFs } from "fs";
 import NodeEnvironment from "jest-environment-node";
 import path from "path";
-import { LightningWallet } from "./wallets/lightning";
-import { BitcoinWallet } from "./wallets/bitcoin";
+import { LndWallet } from "./wallets/lightning";
+import { BitcoindWallet } from "./wallets/bitcoin";
 import { AssetKind } from "./asset";
 import { LedgerKind } from "./ledgers/ledger";
 import { BitcoindInstance } from "./ledgers/bitcoind_instance";
@@ -12,7 +12,7 @@ import { configure, Logger, shutdown as loggerShutdown } from "log4js";
 import { EnvironmentContext } from "@jest/environment";
 import ledgerLock from "./ledgers/ledger_lock";
 import BitcoinMinerInstance from "./ledgers/bitcoin_miner_instance";
-import { EthereumWallet } from "./wallets/ethereum";
+import { Web3EthereumWallet } from "./wallets/ethereum";
 import { LedgerInstance, LightningNodeConfig } from "./ledgers";
 import { GethInstance } from "./ledgers/geth_instance";
 import { LndInstance } from "./ledgers/lnd_instance";
@@ -219,7 +219,7 @@ export default class TestEnvironment extends NodeEnvironment {
         const config = await this.startLedger(lockDir, geth, async (geth) => {
             const rpcUrl = geth.rpcUrl;
             const devAccountKey = geth.devAccountKey();
-            const erc20Wallet = await EthereumWallet.new_instance(
+            const erc20Wallet = await Web3EthereumWallet.new_instance(
                 devAccountKey,
                 rpcUrl,
                 this.logger,
@@ -315,8 +315,8 @@ export default class TestEnvironment extends NodeEnvironment {
     }
 
     private async initLightningWallet(config: LightningNodeConfig) {
-        return LightningWallet.newInstance(
-            await BitcoinWallet.newInstance(
+        return LndWallet.newInstance(
+            await BitcoindWallet.newInstance(
                 this.global.ledgerConfigs.bitcoin,
                 this.logger
             ),

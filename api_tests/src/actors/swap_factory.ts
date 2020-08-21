@@ -8,7 +8,7 @@
  * It is a replacement for a negotiation/order protocol that takes care of this in a real application.
  */
 import { Actor } from "./actor";
-import { AllWallets, Peer } from "comit-sdk";
+import { Peer } from "comit-sdk";
 import {
     HalbitHerc20Payload,
     Herc20HalbitPayload,
@@ -19,12 +19,11 @@ import {
     HbitPayload,
 } from "../payload";
 import { HarnessGlobal } from "../utils";
-import { defaultExpiries, getIdentities, nowExpiries } from "./defaults";
+import { defaultExpiries, nowExpiries } from "./defaults";
 
 declare var global: HarnessGlobal;
 
 interface SwapSettings {
-    ledgers?: { alpha: keyof AllWallets; beta: keyof AllWallets };
     instantRefund?: boolean;
 }
 
@@ -51,18 +50,6 @@ export default class SwapFactory {
             bob: Herc20HbitPayload;
         };
     }> {
-        const ledgerList = settings.ledgers
-            ? Object.values(settings.ledgers)
-            : [];
-        for (const ledger of ledgerList) {
-            await alice.wallets.initializeForLedger(
-                ledger,
-                alice.logger,
-                "alice"
-            );
-            await bob.wallets.initializeForLedger(ledger, bob.logger, "bob");
-        }
-
         const erc20TokenContract = global.tokenContract
             ? global.tokenContract
             : "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280";
@@ -74,121 +61,120 @@ export default class SwapFactory {
             betaCltvExpiry,
         } = settings.instantRefund ? nowExpiries() : defaultExpiries();
 
-        const aliceIdentities = await getIdentities(alice);
-        const bobIdentities = await getIdentities(bob);
+        const aliceEthereumAccount = alice.wallets.ethereum.account();
+        const aliceBitcoinAddress = await alice.wallets.bitcoin.address();
+        const aliceLightningPubkey = await alice.wallets.lightning.pubkey();
+
+        const bobEthereumAccount = bob.wallets.ethereum.account();
+        const bobBitcoinAddress = await bob.wallets.bitcoin.address();
+        const bobLightningPubkey = await bob.wallets.lightning.pubkey();
+
+        const aliceAlphaHerc20 = defaultHerc20Payload(
+            alphaAbsoluteExpiry,
+            aliceEthereumAccount,
+            erc20TokenContract
+        );
+        const aliceBetaHbit = defaultHbitPayload(
+            betaAbsoluteExpiry,
+            aliceBitcoinAddress
+        );
+        const bobAlphaHerc20 = defaultHerc20Payload(
+            alphaAbsoluteExpiry,
+            bobEthereumAccount,
+            erc20TokenContract
+        );
+        const bobBetaHbit = defaultHbitPayload(
+            betaAbsoluteExpiry,
+            bobBitcoinAddress
+        );
+        const aliceAlphaHbit = defaultHbitPayload(
+            alphaAbsoluteExpiry,
+            aliceBitcoinAddress
+        );
+        const aliceBetaHerc20 = defaultHerc20Payload(
+            betaAbsoluteExpiry,
+            aliceEthereumAccount,
+            erc20TokenContract
+        );
+        const bobAlphaHbit = defaultHbitPayload(
+            alphaAbsoluteExpiry,
+            bobBitcoinAddress
+        );
+        const bobBetaHerc20 = defaultHerc20Payload(
+            betaAbsoluteExpiry,
+            bobEthereumAccount,
+            erc20TokenContract
+        );
+        const aliceBetaHalbit = defaultHalbitPayload(
+            betaCltvExpiry,
+            aliceLightningPubkey
+        );
+        const bobBetaHalbit = defaultHalbitPayload(
+            betaCltvExpiry,
+            bobLightningPubkey
+        );
+        const aliceAlphaHalbit = defaultHalbitPayload(
+            alphaCltvExpiry,
+            aliceLightningPubkey
+        );
+        const bobAlphaHalbit = defaultHalbitPayload(
+            alphaCltvExpiry,
+            bobLightningPubkey
+        );
 
         const herc20Hbit = {
             alice: {
-                alpha: defaultHerc20Payload(
-                    alphaAbsoluteExpiry,
-                    aliceIdentities.ethereum,
-                    erc20TokenContract
-                ),
-                beta: defaultHbitPayload(
-                    betaAbsoluteExpiry,
-                    aliceIdentities.bitcoin
-                ),
+                alpha: aliceAlphaHerc20,
+                beta: aliceBetaHbit,
                 role: "Alice" as "Alice" | "Bob",
                 peer: await makePeer(bob),
             },
             bob: {
-                alpha: defaultHerc20Payload(
-                    alphaAbsoluteExpiry,
-                    bobIdentities.ethereum,
-                    erc20TokenContract
-                ),
-                beta: defaultHbitPayload(
-                    betaAbsoluteExpiry,
-                    bobIdentities.bitcoin
-                ),
+                alpha: bobAlphaHerc20,
+                beta: bobBetaHbit,
                 role: "Bob" as "Alice" | "Bob",
                 peer: await makePeer(alice),
             },
         };
-
         const hbitHerc20 = {
             alice: {
-                alpha: defaultHbitPayload(
-                    alphaAbsoluteExpiry,
-                    aliceIdentities.bitcoin
-                ),
-                beta: defaultHerc20Payload(
-                    betaAbsoluteExpiry,
-                    aliceIdentities.ethereum,
-                    erc20TokenContract
-                ),
+                alpha: aliceAlphaHbit,
+                beta: aliceBetaHerc20,
                 role: "Alice" as "Alice" | "Bob",
                 peer: await makePeer(bob),
             },
             bob: {
-                alpha: defaultHbitPayload(
-                    alphaAbsoluteExpiry,
-                    bobIdentities.bitcoin
-                ),
-                beta: defaultHerc20Payload(
-                    betaAbsoluteExpiry,
-                    bobIdentities.ethereum,
-                    erc20TokenContract
-                ),
+                alpha: bobAlphaHbit,
+                beta: bobBetaHerc20,
                 role: "Bob" as "Alice" | "Bob",
                 peer: await makePeer(alice),
             },
         };
-
         const herc20Halbit = {
             alice: {
-                alpha: defaultHerc20Payload(
-                    alphaAbsoluteExpiry,
-                    aliceIdentities.ethereum,
-                    erc20TokenContract
-                ),
-                beta: defaultHalbitPayload(
-                    betaCltvExpiry,
-                    aliceIdentities.lightning
-                ),
+                alpha: aliceAlphaHerc20,
+                beta: aliceBetaHalbit,
                 role: "Alice" as "Alice" | "Bob",
                 peer: await makePeer(bob),
             },
             bob: {
-                alpha: defaultHerc20Payload(
-                    alphaAbsoluteExpiry,
-                    bobIdentities.ethereum,
-                    erc20TokenContract
-                ),
-                beta: defaultHalbitPayload(
-                    betaCltvExpiry,
-                    bobIdentities.lightning
-                ),
+                alpha: bobAlphaHerc20,
+                beta: bobBetaHalbit,
                 role: "Bob" as "Alice" | "Bob",
                 peer: await makePeer(alice),
             },
         };
-
         const halbitHerc20 = {
             alice: {
-                alpha: defaultHalbitPayload(
-                    alphaCltvExpiry,
-                    aliceIdentities.lightning
-                ),
-                beta: defaultHerc20Payload(
-                    alphaAbsoluteExpiry,
-                    aliceIdentities.ethereum,
-                    erc20TokenContract
-                ),
+                alpha: aliceAlphaHalbit,
+                beta: aliceBetaHerc20,
 
                 role: "Alice" as "Alice" | "Bob",
                 peer: await makePeer(bob),
             },
             bob: {
-                alpha: defaultHalbitPayload(
-                    alphaCltvExpiry,
-                    bobIdentities.lightning
-                ),
-                beta: defaultHerc20Payload(
-                    alphaAbsoluteExpiry,
-                    bobIdentities.ethereum,
-                    erc20TokenContract
-                ),
+                alpha: bobAlphaHalbit,
+                beta: bobBetaHerc20,
 
                 role: "Bob" as "Alice" | "Bob",
                 peer: await makePeer(alice),

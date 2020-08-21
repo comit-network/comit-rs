@@ -11,14 +11,7 @@ describe("herc20-halbit", () => {
     it(
         "herc20-halbit-alice-redeems-bob-redeems",
         twoActorTest(async ({ alice, bob }) => {
-            const bodies = (
-                await SwapFactory.newSwap(alice, bob, {
-                    ledgers: {
-                        alpha: "ethereum",
-                        beta: "lightning",
-                    },
-                })
-            ).herc20Halbit;
+            const bodies = (await SwapFactory.newSwap(alice, bob)).herc20Halbit;
 
             await alice.createHerc20HalbitSwap(bodies.alice);
             await bob.createHerc20HalbitSwap(bodies.bob);
@@ -46,10 +39,6 @@ describe("herc20-halbit", () => {
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (
                 await SwapFactory.newSwap(alice, bob, {
-                    ledgers: {
-                        alpha: "ethereum",
-                        beta: "lightning",
-                    },
                     instantRefund: true,
                 })
             ).herc20Halbit;

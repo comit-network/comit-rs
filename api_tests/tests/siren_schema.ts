@@ -49,14 +49,7 @@ describe("Siren Schema", () => {
     it(
         "get-single-swap-is-valid-siren",
         twoActorTest(async ({ alice, bob }) => {
-            const bodies = (
-                await SwapFactory.newSwap(alice, bob, {
-                    ledgers: {
-                        alpha: "bitcoin",
-                        beta: "ethereum",
-                    },
-                })
-            ).hbitHerc20;
+            const bodies = (await SwapFactory.newSwap(alice, bob)).hbitHerc20;
 
             await alice.createHbitHerc20Swap(bodies.alice);
             await bob.createHbitHerc20Swap(bodies.bob);
