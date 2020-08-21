@@ -3,7 +3,7 @@ mod serde_bitcoin_network;
 mod settings;
 mod validation;
 
-use crate::ethereum::ChainId;
+use crate::{ethereum::ChainId, fs};
 use anyhow::{Context, Result};
 use conquer_once::Lazy;
 use libp2p::Multiaddr;
@@ -16,7 +16,6 @@ pub use self::{
     settings::{AllowedOrigins, Settings},
     validation::validate_connection_to_network,
 };
-use crate::data_dir;
 
 static BITCOIND_RPC_MAINNET: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:8332"));
 static BITCOIND_RPC_TESTNET: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:18332"));
@@ -36,7 +35,7 @@ pub struct Data {
 impl Data {
     pub fn default() -> Result<Self> {
         Ok(Self {
-            dir: data_dir().context("unable to determine default data path")?,
+            dir: fs::data_dir().context("unable to determine default data path")?,
         })
     }
 }
@@ -269,7 +268,7 @@ fn assert_lnd_url_https(lnd_url: Url) -> Result<Url> {
 }
 
 fn default_lnd_dir() -> PathBuf {
-    crate::lnd_dir().expect("no home directory")
+    fs::lnd_dir().expect("no home directory")
 }
 
 fn default_lnd_cert_path(lnd_dir: PathBuf) -> PathBuf {
