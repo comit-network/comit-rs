@@ -48,7 +48,7 @@ impl Swarm {
         let local_peer_id = PeerId::from(local_key_pair.public());
         tracing::info!("Starting with peer_id: {}", local_peer_id);
 
-        let transport = transport::build(local_key_pair, settings.network.listen.clone())?;
+        let transport = transport::build(local_key_pair.clone(), settings.network.listen.clone())?;
 
         let behaviour = ComitNode::new(
             seed,
@@ -56,6 +56,7 @@ impl Swarm {
             storage,
             protocol_spawner,
             local_peer_id.clone(),
+            local_key_pair,
         );
 
         let mut swarm = SwarmBuilder::new(transport, behaviour, local_peer_id.clone())

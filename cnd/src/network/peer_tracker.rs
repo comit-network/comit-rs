@@ -110,8 +110,8 @@ mod tests {
 
     #[tokio::test]
     async fn tracks_dialer_connections() {
-        let (mut alice_swarm, ..) = new_swarm(|_| PeerTracker::default());
-        let (mut bob_swarm, bob_address, bob_id) = new_swarm(|_| PeerTracker::default());
+        let (mut alice_swarm, ..) = new_swarm(|_, _| PeerTracker::default());
+        let (mut bob_swarm, bob_address, bob_id) = new_swarm(|_, _| PeerTracker::default());
 
         assert!(alice_swarm.connected_peers.is_empty());
         assert!(bob_swarm.connected_peers.is_empty());
