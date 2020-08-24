@@ -690,14 +690,27 @@ mod tests {
 
     #[test]
     fn can_calculate_useful_expiries_for_all_supported_protocols() {
-        let no_scale = 100;
+        let scale = 100;
+        let future = Timestamp::now().plus(10);
+        let (alpha, beta) = mock_connectors();
+
+        let exp = Expiries::new(Protocol::Herc20Hbit, alpha, beta, scale);
+        assert!(exp.is_useful(future));
+
+        let exp = Expiries::new(Protocol::HbitHerc20, alpha, beta, scale);
+        assert!(exp.is_useful(future));
+    }
+
+    #[test]
+    fn can_calculate_useful_expiries_for_all_supported_protocols_with_scale() {
+        let scale = 120;
         let now = Timestamp::now();
         let (alpha, beta) = mock_connectors();
 
-        let exp = Expiries::new(Protocol::Herc20Hbit, alpha, beta, no_scale);
+        let exp = Expiries::new(Protocol::Herc20Hbit, alpha, beta, scale);
         assert!(exp.is_useful(now));
 
-        let exp = Expiries::new(Protocol::HbitHerc20, alpha, beta, no_scale);
+        let exp = Expiries::new(Protocol::HbitHerc20, alpha, beta, scale);
         assert!(exp.is_useful(now));
     }
 
