@@ -1,6 +1,7 @@
 //! This module provides functionality for calculating the duration of actions
 //! required to determine the transition period from one swap state to the next.
 
+use std::fmt;
 use time::{prelude::*, Duration};
 
 // TODO: From somewhere within the system we need to return to the
@@ -200,6 +201,33 @@ fn ethereum_required_confirmations() -> u8 {
 fn time_to_mine_n_blocks(n: u8, average_block_time_secs: u16) -> Duration {
     let t = n as u16 * average_block_time_secs;
     Duration::seconds(t as i64)
+}
+
+impl fmt::Display for Config {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let pretty = format!(
+            r#"
+    alpha_required_confirmations: {}
+    beta_required_confirmations: {}
+    alpha_block_time: {}
+    beta_block_time: {}
+    alpha_mine_fund_within_n_blocks {}
+    beta_mine_fund_within_n_blocks {}
+    alpha_mine_redeem_within_n_blocks {}
+    beta_mine_redeem_within_n_blocks {}
+"#,
+            self.alpha_required_confirmations,
+            self.beta_required_confirmations,
+            self.alpha_block_time,
+            self.beta_block_time,
+            self.alpha_mine_fund_within_n_blocks,
+            self.beta_mine_fund_within_n_blocks,
+            self.alpha_mine_redeem_within_n_blocks,
+            self.beta_mine_redeem_within_n_blocks,
+        );
+
+        write!(f, "{}", pretty)
+    }
 }
 
 #[cfg(test)]

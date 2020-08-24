@@ -7,7 +7,7 @@
 mod config;
 
 use crate::timestamp::{self, Timestamp};
-use std::cmp;
+use std::{cmp, fmt};
 use time::Duration;
 
 use self::config::{Config, Protocol};
@@ -262,6 +262,14 @@ where
         let now = self.beta_connector.current_time();
         now > expiry.0
     }
+
+    /// Generate a report from the expiries.
+    pub fn report(&self) -> String {
+        format!(
+            "config: {}\n    alpha_offset: {}\n    beta_offset: {}",
+            self.config, self.alpha_offset, self.beta_offset
+        )
+    }
 }
 
 /// Duration for a complete happy path swap for Alice.
@@ -358,6 +366,40 @@ impl_from_nested!(Duration, AlphaOffset);
 impl_from_nested!(Duration, BetaOffset);
 impl_from_nested!(Timestamp, AlphaExpiry);
 impl_from_nested!(Timestamp, BetaExpiry);
+
+impl fmt::Display for AlphaOffset {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let secs = self.0.whole_seconds();
+        write!(f, "{}", human_readable(secs))
+    }
+}
+
+impl fmt::Display for BetaOffset {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let secs = self.0.whole_seconds();
+        write!(f, "{}", human_readable(secs))
+    }
+}
+
+fn human_readable(seconds: i64) -> String {
+    const SECONDS_IN_A_MINUTE: i64 = 60;
+    const SECONDS_IN_AN_HOUR: i64 = SECONDS_IN_A_MINUTE * 60;
+    const SECONDS_IN_A_DAY: i64 = SECONDS_IN_AN_HOUR * 24;
+
+    let days = seconds / SECONDS_IN_A_DAY;
+    let rem = seconds % SECONDS_IN_A_DAY;
+
+    let hours = rem / SECONDS_IN_AN_HOUR;
+    let rem = rem % SECONDS_IN_AN_HOUR;
+
+    let mins = rem / SECONDS_IN_A_MINUTE;
+    let secs = rem % SECONDS_IN_A_MINUTE;
+
+    format!(
+        "({} total seconds) {} days {} hours {} minutes {} seconds",
+        seconds, days, hours, mins, secs
+    )
+}
 
 /// Happy path states for Alice.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -673,5 +715,17 @@ mod tests {
         let want = 2_i32.minutes();
 
         assert_that!(got).is_equal_to(want)
+    }
+
+    #[test]
+    fn report() {
+        let no_scale = 150;
+        let (alpha, beta) = mock_connectors();
+
+        let exp = Expiries::new(Protocol::Herc20Hbit, alpha, beta, no_scale);
+        println!("\n herc20-hbit swap:\n {}", exp.report());
+
+        let exp = Expiries::new(Protocol::HbitHerc20, alpha, beta, no_scale);
+        println!("\n hbit-herc20 swap:\n {}", exp.report());
     }
 }
