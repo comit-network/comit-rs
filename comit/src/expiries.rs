@@ -48,7 +48,12 @@ pub struct Expiries<A, B> {
 
 /// Calculate a pair of useful expiries, 'useful' means a swap can be
 /// successfully completed with these expiries.
-pub fn calculate_expiry_offsets(protocol: Protocol) -> (AlphaOffset, BetaOffset) {
+/// Multiply the resulting offsets by `scale_factor` percentage to give the
+/// counterparty more time to act ( <100 shrinks offsets, >100 expands offsets).
+pub fn calculate_expiry_offsets(
+    protocol: Protocol,
+    scale_factor: u32,
+) -> (AlphaOffset, BetaOffset) {
     let config = protocol.config();
 
     let alice_needs = happy_path_swap_period_for_alice(&config);
@@ -66,6 +71,9 @@ pub fn calculate_expiry_offsets(protocol: Protocol) -> (AlphaOffset, BetaOffset)
     // Bob redeems on alpha ledger so needs time to act before the alpha expiry.
     let alpha_offset = cmp::max(bob_needs, beta_offset); // Alpha expiry must not be less than beta expiry.
 
+    let alpha_offset = scale_by_factor(alpha_offset, scale_factor);
+    let beta_offset = scale_by_factor(beta_offset, scale_factor);
+
     (alpha_offset.into(), beta_offset.into())
 }
 
@@ -74,9 +82,9 @@ where
     A: CurrentTime,
     B: CurrentTime,
 {
-    pub fn new(protocol: Protocol, alpha: A, beta: B) -> Expiries<A, B> {
+    pub fn new(protocol: Protocol, alpha: A, beta: B, scale_factor: u32) -> Expiries<A, B> {
         let config = protocol.config();
-        let (alpha_offset, beta_offset) = calculate_expiry_offsets(protocol);
+        let (alpha_offset, beta_offset) = calculate_expiry_offsets(protocol, scale_factor);
 
         Expiries {
             config,
@@ -300,6 +308,17 @@ fn period_for_bob_to_complete(config: &Config, current_state: BobState) -> Durat
     }
 
     period_to_complete(config, current_state, Duration::zero())
+}
+
+// Scale the duration by factor / 100 i.e., scale the duration by a
+// percentage.
+#[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+fn scale_by_factor(d: Duration, factor: u32) -> Duration {
+    let secs = d.whole_seconds();
+    let scaled = secs * factor as i64;
+    let reduced = (scaled as f64 / 100.0).floor();
+
+    Duration::seconds(reduced as i64)
 }
 
 // Its super easy to mix these up, add types so the compiler saves us.
@@ -611,6 +630,8 @@ impl From<BobState> for AliceState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use spectral::prelude::*;
+    use time::{prelude::*, Duration};
 
     #[derive(Clone, Copy, Debug)]
     struct MockConnector;
@@ -627,13 +648,30 @@ mod tests {
 
     #[test]
     fn can_calculate_useful_expiries_for_all_supported_protocols() {
+        let no_scale = 100;
         let now = Timestamp::now();
         let (alpha, beta) = mock_connectors();
 
-        let exp = Expiries::new(Protocol::Herc20Hbit, alpha, beta);
+        let exp = Expiries::new(Protocol::Herc20Hbit, alpha, beta, no_scale);
         assert!(exp.is_useful(now));
 
-        let exp = Expiries::new(Protocol::HbitHerc20, alpha, beta);
+        let exp = Expiries::new(Protocol::HbitHerc20, alpha, beta, no_scale);
         assert!(exp.is_useful(now));
+    }
+
+    #[test]
+    fn scale_by_factor_100_works() {
+        let d = Duration::minute();
+        let scaled = scale_by_factor(d, 100);
+        assert_eq!(d, scaled)
+    }
+
+    #[test]
+    fn scale_by_factor_200_works() {
+        let d = Duration::minute();
+        let got = scale_by_factor(d, 200);
+        let want = 2_i32.minutes();
+
+        assert_that!(got).is_equal_to(want)
     }
 }
