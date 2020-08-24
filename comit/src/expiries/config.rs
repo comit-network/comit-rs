@@ -2,7 +2,7 @@
 //! required to determine the transition period from one swap state to the next.
 
 use std::fmt;
-use time::{prelude::*, Duration};
+use time::Duration;
 
 // TODO: From somewhere within the system we need to return to the
 // user a transaction fee to use for each of the transactions (deploy,
@@ -94,33 +94,33 @@ pub struct Config {
 
 impl Config {
     /// The duration of time it takes for Alice to start.
-    pub fn start(&self) -> Duration {
+    pub const fn start(&self) -> Duration {
         period_to_act_with_user_interaction()
     }
 
     /// The duration of time it takes to create the alpha fund transaction.
-    pub fn create_alpha_fund_transaction(&self) -> Duration {
+    pub const fn create_alpha_fund_transaction(&self) -> Duration {
         period_to_act_with_user_interaction()
     }
 
     /// The duration of time it takes to create the beta fund transaction.
-    pub fn create_beta_fund_transaction(&self) -> Duration {
+    pub const fn create_beta_fund_transaction(&self) -> Duration {
         period_to_act_in_software()
     }
 
     /// The duration of time it takes to create the alpha redeem transaction.
-    pub fn create_alpha_redeem_transaction(&self) -> Duration {
+    pub const fn create_alpha_redeem_transaction(&self) -> Duration {
         period_to_act_in_software()
     }
 
     /// The duration of time it takes to create the beta redeem transaction.
-    pub fn create_beta_redeem_transaction(&self) -> Duration {
+    pub const fn create_beta_redeem_transaction(&self) -> Duration {
         period_to_act_with_user_interaction()
     }
 
     /// The duration of time it takes for the alpha fund transaction to be
     /// mined into the blockchain.
-    pub fn mine_alpha_fund_transaction(&self) -> Duration {
+    pub const fn mine_alpha_fund_transaction(&self) -> Duration {
         let n = self.alpha_mine_fund_within_n_blocks;
         let block_time = self.alpha_block_time;
 
@@ -129,7 +129,7 @@ impl Config {
 
     /// The duration of time it takes for the beta fund transaction to be
     /// mined into the blockchain.
-    pub fn mine_beta_fund_transaction(&self) -> Duration {
+    pub const fn mine_beta_fund_transaction(&self) -> Duration {
         let n = self.beta_mine_fund_within_n_blocks;
         let block_time = self.beta_block_time;
 
@@ -138,7 +138,7 @@ impl Config {
 
     /// The duration of time it takes for the alpha redeem transaction to be
     /// mined into the blockchain.
-    pub fn mine_alpha_redeem_transaction(&self) -> Duration {
+    pub const fn mine_alpha_redeem_transaction(&self) -> Duration {
         let n = self.alpha_mine_redeem_within_n_blocks;
         let block_time = self.alpha_block_time;
 
@@ -147,7 +147,7 @@ impl Config {
 
     /// The duration of time it takes for the beta redeem transaction to be
     /// mined into the blockchain.
-    pub fn mine_beta_redeem_transaction(&self) -> Duration {
+    pub const fn mine_beta_redeem_transaction(&self) -> Duration {
         let n = self.beta_mine_redeem_within_n_blocks;
         let block_time = self.beta_block_time;
 
@@ -156,7 +156,7 @@ impl Config {
 
     /// The duration of time it takes for a transaction to reach finality on the
     /// alpha ledger.
-    pub fn finality_alpha(&self) -> Duration {
+    pub const fn finality_alpha(&self) -> Duration {
         let n = self.alpha_required_confirmations;
         let block_time = self.alpha_block_time;
 
@@ -165,7 +165,7 @@ impl Config {
 
     /// The duration of time it takes for a transaction to reach finality on the
     /// beta ledger.
-    pub fn finality_beta(&self) -> Duration {
+    pub const fn finality_beta(&self) -> Duration {
         let n = self.beta_required_confirmations;
         let block_time = self.beta_block_time;
 
@@ -175,21 +175,21 @@ impl Config {
 
 /// If some action requires only software give the counterparty this long to
 /// act. 15 minutes to allow for network congestion etc.
-pub fn period_to_act_in_software() -> Duration {
-    ACT_IN_SOFTWARE_MINS.minutes()
+pub const fn period_to_act_in_software() -> Duration {
+    Duration::minutes(ACT_IN_SOFTWARE_MINS as i64)
 }
 
 /// If some action requires user input give the counterparty this long to
 /// act.
-pub fn period_to_act_with_user_interaction() -> Duration {
-    ACT_WITH_USER_INTERVENTION_MINS.minutes()
+pub const fn period_to_act_with_user_interaction() -> Duration {
+    Duration::minutes(ACT_WITH_USER_INTERVENTION_MINS as i64)
 }
 
-fn bitcoin_required_confirmations() -> u8 {
+const fn bitcoin_required_confirmations() -> u8 {
     BITCOIN_CONFIRMATIONS
 }
 
-fn ethereum_required_confirmations() -> u8 {
+const fn ethereum_required_confirmations() -> u8 {
     ETHEREUM_CONFIRMATIONS
 }
 
@@ -198,7 +198,7 @@ fn ethereum_required_confirmations() -> u8 {
 // implementation. For more details see:
 // - https://en.wikipedia.org/wiki/Poisson_distribution
 // - https://www.reddit.com/r/btc/comments/6v5ee7/block_times_and_probabilities/
-fn time_to_mine_n_blocks(n: u8, average_block_time_secs: u16) -> Duration {
+const fn time_to_mine_n_blocks(n: u8, average_block_time_secs: u16) -> Duration {
     let t = n as u16 * average_block_time_secs;
     Duration::seconds(t as i64)
 }
@@ -240,7 +240,7 @@ mod tests {
         let n = bitcoin_required_confirmations();
         let block_time = BITCOIN_BLOCK_TIME_SECS;
 
-        let max = 5.hours(); // Arbitrarily chosen ceiling.
+        let max = Duration::hours(5); // Arbitrarily chosen ceiling.
         let time = time_to_mine_n_blocks(n, block_time);
 
         assert_that!(time).is_less_than(max)
