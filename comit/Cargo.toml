@@ -12,6 +12,7 @@ base64 = "0.12.3"
 bincode = "1.2.1"
 bitcoin = { version = "0.23.0", features = ["rand", "use-serde"] }
 blockchain_contracts = "0.3.2"
+byteorder = "1.3"
 chrono = { version = "0.4", features = ["serde"] }
 conquer-once = "0.2.1"
 derivative = "2"
@@ -21,7 +22,7 @@ futures = { version = "0.3", default-features = false }
 genawaiter = { version = "0.99", default-features = false, features = ["futures03"] }
 hex = { version = "0.4", features = ["serde"] }
 levenshtein = "1"
-libp2p = { version = "0.23", default-features = false, features = ["gossipsub", "request-response"] }
+libp2p = { version = "0.24", default-features = false, features = ["gossipsub", "request-response"] }
 lru = "0.6.0"
 num = "0.3"
 primitive-types = { version = "0.7.2", features = ["serde"] }
@@ -45,7 +46,7 @@ uuid = { version = "0.8", features = ["serde", "v4"] }
 [dev-dependencies]
 atty = "0.2"
 bitcoincore-rpc = "0.11.0"
-libp2p = { version = "0.23", default-features = false, features = ["secio", "yamux"] }
+libp2p = { version = "0.24", default-features = false, features = ["secio", "yamux"] }
 log = { version = "0.4", features = ["serde"] }
 proptest = "0.10.1"
 spectral = { version = "0.6", default-features = false }

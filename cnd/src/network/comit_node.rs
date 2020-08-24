@@ -21,7 +21,7 @@ use comit::{
     LockProtocol, Never, NewOrder, OrderId, Position, Role, SecretHash, Side,
 };
 use futures::TryFutureExt;
-use libp2p::{NetworkBehaviour, PeerId};
+use libp2p::{identity::Keypair, NetworkBehaviour, PeerId};
 use std::collections::HashMap;
 use tokio::runtime::Handle;
 
@@ -65,10 +65,11 @@ impl ComitNode {
         storage: Storage,
         protocol_spawner: ProtocolSpawner,
         peer_id: PeerId,
+        key: Keypair,
     ) -> Self {
         Self {
             announce: Announce::default(),
-            orderbook: Orderbook::new(peer_id),
+            orderbook: Orderbook::new(peer_id, key),
             comit: Comit::default(),
             peer_tracker: PeerTracker::default(),
             seed,
