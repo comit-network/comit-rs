@@ -74,7 +74,6 @@ impl Database {
         match stored_swap {
             Ok(_) => Err(anyhow!("Swap is already stored")),
             Err(_) => {
-                // TODO: Consider using https://github.com/3Hren/msgpack-rust instead
                 let key = serialize(&swap_id)?;
 
                 let swap: Swap = swap.into();
