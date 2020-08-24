@@ -6,10 +6,15 @@
 //! anyway.
 
 use crate::LocalSwapId;
+use comit::OrderId;
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("no swap exists in the database for id {0}")]
 pub struct NoSwapExists(pub LocalSwapId);
+
+#[derive(thiserror::Error, Debug, Clone, Copy)]
+#[error("no order exists in the database for id {0}")]
+pub struct NoOrderExists(pub OrderId);
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("no secret hash found in database for swap {0}")]

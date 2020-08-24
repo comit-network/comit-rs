@@ -153,3 +153,13 @@ impl From<BitcoinNetwork> for ledger::Bitcoin {
         }
     }
 }
+
+impl From<bitcoin::Network> for BitcoinNetwork {
+    fn from(bitcoin: bitcoin::Network) -> Self {
+        match bitcoin {
+            bitcoin::Network::Bitcoin => BitcoinNetwork::Mainnet,
+            bitcoin::Network::Testnet => BitcoinNetwork::Testnet,
+            bitcoin::Network::Regtest => BitcoinNetwork::Regtest,
+        }
+    }
+}

@@ -1,19 +1,35 @@
 use crate::{
     asset, bitcoin, halbit, hbit, herc20, identity, lightning,
-    storage::db::{
-        schema::{halbits, hbits, herc20s, secret_hashes, swap_contexts, swaps},
-        wrapper_types::{
-            custom_sql_types::{Text, U32},
-            BitcoinNetwork, Erc20Amount, Satoshis,
+    storage::{
+        db::{
+            schema::{
+                btc_dai_orders, halbits, hbits, herc20s, order_hbit_params, order_herc20_params,
+                orders, secret_hashes, swap_contexts, swaps,
+            },
+            wrapper_types::{
+                custom_sql_types::{Text, U32},
+                BitcoinNetwork, Erc20Amount, Satoshis,
+            },
+            Sqlite,
         },
-        Sqlite,
+        NoOrderExists,
     },
     LocalSwapId, LockProtocol, Role, Side,
 };
-use anyhow::Context;
+use anyhow::{Context, Result};
 use chrono::NaiveDateTime;
+use comit::{asset::Erc20Quantity, ethereum, ethereum::ChainId, OrderId, Position};
 use diesel::{prelude::*, RunQueryDsl};
 use libp2p::PeerId;
+use time::OffsetDateTime;
+
+macro_rules! swap_id_fk {
+    ($local_swap_id:expr) => {
+        swaps::table
+            .filter(swaps::local_swap_id.eq(Text($local_swap_id)))
+            .select(swaps::id)
+    };
+}
 
 #[derive(Identifiable, Queryable, PartialEq, Debug)]
 #[table_name = "swaps"]
@@ -43,6 +59,20 @@ pub struct InsertableSwap {
     role: Text<Role>,
     counterparty_peer_id: Text<PeerId>,
     start_of_swap: NaiveDateTime,
+}
+
+impl InsertableSwap {
+    pub fn insert(self, conn: &SqliteConnection) -> Result<i32> {
+        let local_swap_id = self.local_swap_id.0;
+
+        diesel::insert_into(swaps::dsl::swaps)
+            .values(self)
+            .execute(conn)?;
+
+        let swap_fk = swap_id_fk!(local_swap_id).first(conn)?;
+
+        Ok(swap_fk)
+    }
 }
 
 impl InsertableSwap {
@@ -87,6 +117,23 @@ pub struct InsertableSecretHash {
     secret_hash: Text<comit::SecretHash>,
 }
 
+impl InsertableSecretHash {
+    pub fn new(swap_fk: i32, secret_hash: comit::SecretHash) -> Self {
+        Self {
+            swap_id: swap_fk,
+            secret_hash: Text(secret_hash),
+        }
+    }
+
+    pub fn insert(self, conn: &SqliteConnection) -> Result<()> {
+        diesel::insert_into(secret_hashes::table)
+            .values(self)
+            .execute(conn)?;
+
+        Ok(())
+    }
+}
+
 #[derive(Associations, Clone, Debug, Identifiable, Queryable, PartialEq)]
 #[belongs_to(Swap)]
 #[table_name = "herc20s"]
@@ -113,6 +160,39 @@ pub struct InsertableHerc20 {
     pub redeem_identity: Option<Text<identity::Ethereum>>,
     pub refund_identity: Option<Text<identity::Ethereum>>,
     pub side: Text<Side>,
+}
+
+impl InsertableHerc20 {
+    pub fn insert(self, conn: &SqliteConnection) -> Result<()> {
+        diesel::insert_into(herc20s::table)
+            .values(self)
+            .execute(conn)?;
+
+        Ok(())
+    }
+}
+
+impl InsertableHerc20 {
+    pub fn new(
+        swap_fk: i32,
+        asset: asset::Erc20,
+        chain_id: ChainId,
+        expiry: u32,
+        redeem_identity: identity::Ethereum,
+        refund_identity: identity::Ethereum,
+        side: Side,
+    ) -> Self {
+        Self {
+            swap_id: swap_fk,
+            amount: Text(asset.quantity.into()),
+            chain_id: u32::from(chain_id).into(),
+            expiry: U32::from(expiry),
+            token_contract: Text(asset.token_contract),
+            redeem_identity: Some(Text(redeem_identity)),
+            refund_identity: Some(Text(refund_identity)),
+            side: Text(side),
+        }
+    }
 }
 
 impl From<Herc20> for asset::Erc20 {
@@ -243,9 +323,260 @@ pub struct InsertableHbit {
     pub amount: Text<Satoshis>,
     pub network: Text<BitcoinNetwork>,
     pub expiry: U32,
+    // TODO: Rename to make it obvious that this is OUR final address
     pub final_identity: Text<bitcoin::Address>,
+    // TODO: Rename to make it obvious that this is the other party's transient identity
     pub transient_identity: Option<Text<bitcoin::PublicKey>>,
     pub side: Text<Side>,
+}
+
+impl InsertableHbit {
+    pub fn new(
+        swap_fk: i32,
+        asset: asset::Bitcoin,
+        network: bitcoin::Network,
+        expiry: u32,
+        final_identity: bitcoin::Address,
+        transient_identity: bitcoin::PublicKey,
+        side: Side,
+    ) -> Self {
+        Self {
+            swap_id: swap_fk,
+            amount: Text(asset.into()),
+            network: Text(network.into()),
+            expiry: expiry.into(),
+            final_identity: Text(final_identity),
+            transient_identity: Some(Text(transient_identity)),
+            side: Text(side),
+        }
+    }
+
+    pub fn insert(self, conn: &SqliteConnection) -> Result<()> {
+        diesel::insert_into(hbits::table)
+            .values(self)
+            .execute(conn)?;
+
+        Ok(())
+    }
+}
+
+#[derive(Associations, Clone, Copy, Debug, Identifiable, Queryable, PartialEq)]
+#[table_name = "orders"]
+pub struct Order {
+    id: i32,
+    pub order_id: Text<OrderId>,
+    pub position: Text<Position>,
+    pub created_at: i64,
+}
+
+impl Order {
+    pub fn by_order_id(conn: &SqliteConnection, order_id: OrderId) -> Result<Self> {
+        let order = orders::table
+            .filter(orders::order_id.eq(Text(order_id)))
+            .first::<Order>(conn)
+            .with_context(|| NoOrderExists(order_id))?;
+
+        Ok(order)
+    }
+}
+
+#[derive(Insertable, Clone, Copy, Debug)]
+#[table_name = "orders"]
+pub struct InsertableOrder {
+    pub order_id: Text<OrderId>,
+    pub position: Text<Position>,
+    pub created_at: i64, // TODO: Make a custom SQL type for this
+}
+
+impl InsertableOrder {
+    pub fn new(order_id: OrderId, position: Position, created_at: OffsetDateTime) -> Self {
+        Self {
+            order_id: Text(order_id),
+            position: Text(position),
+            created_at: created_at.timestamp(),
+        }
+    }
+
+    pub fn insert(self, conn: &SqliteConnection) -> Result<i32> {
+        let order_id = self.order_id.0;
+
+        diesel::insert_into(orders::table)
+            .values(self)
+            .execute(conn)?;
+
+        let order_pk = orders::table
+            .filter(orders::order_id.eq(Text(order_id)))
+            .select(orders::id)
+            .first(conn)?;
+
+        Ok(order_pk)
+    }
+}
+
+#[derive(Associations, Clone, Debug, Identifiable, Queryable, PartialEq)]
+#[belongs_to(Order)]
+#[table_name = "btc_dai_orders"]
+pub struct BtcDaiOrder {
+    id: i32,
+    pub order_id: i32,
+    pub quantity: Text<Satoshis>,
+    pub price: Text<Erc20Amount>,
+}
+
+impl BtcDaiOrder {
+    pub fn by_order(conn: &SqliteConnection, order: &Order) -> Result<Self> {
+        let params = Self::belonging_to(order)
+            .first::<Self>(conn)
+            .with_context(|| format!("order {} is not a BTC/DAI order", order.order_id.0))?;
+
+        Ok(params)
+    }
+}
+
+#[derive(Insertable, Clone, Debug)]
+#[table_name = "btc_dai_orders"]
+pub struct InsertableBtcDaiOrder {
+    pub order_id: i32,
+    pub quantity: Text<Satoshis>,
+    pub price: Text<Erc20Amount>,
+}
+
+impl InsertableBtcDaiOrder {
+    pub fn new(order_fk: i32, quantity: asset::Bitcoin, price: Erc20Quantity) -> Self {
+        Self {
+            order_id: order_fk,
+            quantity: Text(quantity.into()),
+            price: Text(price.into()),
+        }
+    }
+
+    pub fn insert(self, conn: &SqliteConnection) -> Result<()> {
+        diesel::insert_into(btc_dai_orders::table)
+            .values(self)
+            .execute(conn)?;
+
+        Ok(())
+    }
+}
+
+#[derive(Associations, Clone, Debug, Identifiable, Queryable, PartialEq)]
+#[belongs_to(Order)]
+#[table_name = "order_hbit_params"]
+pub struct OrderHbitParams {
+    id: i32,
+    pub order_id: i32,
+    pub network: Text<::bitcoin::Network>,
+    pub side: Text<Side>,
+    pub our_final_address: Text<::bitcoin::Address>,
+    pub expiry_offset: i64,
+}
+
+impl OrderHbitParams {
+    pub fn by_order(conn: &SqliteConnection, order: &Order) -> Result<Self> {
+        let params = Self::belonging_to(order)
+            .first::<Self>(conn)
+            .with_context(|| format!("no hbit params found for order {}", order.order_id.0))?;
+
+        Ok(params)
+    }
+}
+
+#[derive(Insertable, Clone, Debug)]
+#[table_name = "order_hbit_params"]
+pub struct InsertableOrderHbitParams {
+    pub order_id: i32,
+    pub network: Text<::bitcoin::Network>,
+    pub side: Text<Side>,
+    pub our_final_address: Text<::bitcoin::Address>,
+    pub expiry_offset: i64,
+}
+
+impl InsertableOrderHbitParams {
+    pub fn new(
+        order_fk: i32,
+        network: ::bitcoin::Network,
+        our_final_address: ::bitcoin::Address,
+        expiry_offset: i64,
+        side: Side,
+    ) -> Self {
+        InsertableOrderHbitParams {
+            order_id: order_fk,
+            network: Text(network),
+            side: Text(side),
+            our_final_address: Text(our_final_address),
+            expiry_offset,
+        }
+    }
+
+    pub fn insert(self, conn: &SqliteConnection) -> Result<()> {
+        diesel::insert_into(order_hbit_params::table)
+            .values(self)
+            .execute(conn)?;
+
+        Ok(())
+    }
+}
+
+#[derive(Associations, Clone, Copy, Debug, Identifiable, Queryable, PartialEq)]
+#[belongs_to(Order)]
+#[table_name = "order_herc20_params"]
+pub struct OrderHerc20Params {
+    id: i32,
+    pub order_id: i32,
+    pub chain_id: U32,
+    pub side: Text<Side>,
+    pub our_htlc_address: Text<ethereum::Address>,
+    pub token_contract: Text<ethereum::Address>,
+    pub expiry_offset: i64,
+}
+
+impl OrderHerc20Params {
+    pub fn by_order(conn: &SqliteConnection, order: &Order) -> Result<Self> {
+        let params = Self::belonging_to(order)
+            .first::<Self>(conn)
+            .with_context(|| format!("no herc20 params found for order {}", order.order_id.0))?;
+
+        Ok(params)
+    }
+}
+
+#[derive(Insertable, Clone, Copy, Debug)]
+#[table_name = "order_herc20_params"]
+pub struct InsertableOrderHerc20Params {
+    pub order_id: i32,
+    pub chain_id: U32,
+    pub side: Text<Side>,
+    pub our_htlc_identity: Text<ethereum::Address>,
+    pub token_contract: Text<ethereum::Address>,
+    pub expiry_offset: i64,
+}
+
+impl InsertableOrderHerc20Params {
+    pub fn new(
+        order_fk: i32,
+        chain_id: ChainId,
+        our_htlc_identity: identity::Ethereum,
+        token_contract: ethereum::Address,
+        expiry_offset: i64,
+        side: Side,
+    ) -> Self {
+        Self {
+            order_id: order_fk,
+            chain_id: u32::from(chain_id).into(),
+            side: Text(side),
+            our_htlc_identity: Text(our_htlc_identity),
+            token_contract: Text(token_contract),
+            expiry_offset,
+        }
+    }
+
+    pub fn insert(self, conn: &SqliteConnection) -> Result<()> {
+        diesel::insert_into(order_herc20_params::table)
+            .values(self)
+            .execute(conn)?;
+
+        Ok(())
+    }
 }
 
 impl From<Hbit> for asset::Bitcoin {
@@ -313,14 +644,6 @@ impl Insert<InsertableHbit> for Sqlite {
     }
 }
 
-macro_rules! swap_id_fk {
-    ($local_swap_id:expr) => {
-        swaps::table
-            .filter(swaps::local_swap_id.eq(Text($local_swap_id)))
-            .select(swaps::id)
-    };
-}
-
 trait EnsureSingleRowAffected {
     fn ensure_single_row_affected(self) -> anyhow::Result<usize>;
 }
@@ -338,20 +661,6 @@ impl EnsureSingleRowAffected for usize {
 }
 
 impl Sqlite {
-    pub fn save_swap(
-        &self,
-        connection: &SqliteConnection,
-        insertable: &InsertableSwap,
-    ) -> anyhow::Result<i32> {
-        diesel::insert_into(swaps::dsl::swaps)
-            .values(insertable)
-            .execute(connection)?;
-
-        let swap_id = swap_id_fk!(insertable.local_swap_id.0).first(connection)?;
-
-        Ok(swap_id)
-    }
-
     pub fn insert_secret_hash(
         &self,
         connection: &SqliteConnection,

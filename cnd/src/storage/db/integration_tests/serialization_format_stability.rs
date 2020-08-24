@@ -8,6 +8,7 @@ use crate::{
     storage::db::wrapper_types::{Erc20Amount, Ether, Satoshis},
     LockProtocol, SecretHash,
 };
+use comit::Position;
 use std::{fmt, str::FromStr};
 
 #[test]
@@ -57,6 +58,13 @@ fn protocol() {
     roundtrip_test::<LockProtocol>("hbit");
     roundtrip_test::<LockProtocol>("herc20");
     assert_num_variants::<LockProtocol>(3)
+}
+
+#[test]
+fn position() {
+    roundtrip_test::<Position>("sell");
+    roundtrip_test::<Position>("buy");
+    assert_num_variants::<Position>(2)
 }
 
 /// Given a string representation of a value T, this function will assert

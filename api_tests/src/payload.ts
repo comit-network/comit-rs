@@ -252,8 +252,24 @@ export interface MarketItemProperties {
     maker: string;
 }
 
+export interface OrderEntity extends Entity {
+    properties: OrderProperties;
+}
+
+export interface OrderProperties {
+    id: string;
+    position: Position;
+    quantity: Amount;
+    price: Amount;
+}
+
 export interface Amount {
-    currency: string;
+    currency: Currency;
     value: string;
     decimals: number;
+}
+
+export enum Currency {
+    BTC = "BTC",
+    DAI = "DAI",
 }

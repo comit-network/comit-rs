@@ -1,4 +1,7 @@
-use crate::{http_api::ActionNotFound, storage::NoSwapExists};
+use crate::{
+    http_api::ActionNotFound,
+    storage::{NoOrderExists, NoSwapExists},
+};
 use http_api_problem::HttpApiProblem;
 use std::error::Error;
 use warp::{
@@ -22,6 +25,11 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
     if e.is::<NoSwapExists>() {
         tracing::error!("swap was not found");
         return HttpApiProblem::new("Swap not found.").set_status(StatusCode::NOT_FOUND);
+    }
+
+    if e.is::<NoOrderExists>() {
+        tracing::error!("order was not found");
+        return HttpApiProblem::new("Order not found.").set_status(StatusCode::NOT_FOUND);
     }
 
     if e.is::<ActionNotFound>() {

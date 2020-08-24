@@ -71,7 +71,7 @@ pub mod order {
     }
 
     prop_compose! {
-        pub fn swap_protocol_hbit_herc20()(hbit_expiry_offset in time::duration(), herc20_expiry_offset in time::duration()) -> SwapProtocol {
+        pub fn swap_protocol_hbit_herc20()(hbit_expiry_offset in expiries::alpha_offset(), herc20_expiry_offset in expiries::beta_offset()) -> SwapProtocol {
             SwapProtocol::HbitHerc20 {
                 hbit_expiry_offset,
                 herc20_expiry_offset,
@@ -80,7 +80,7 @@ pub mod order {
     }
 
     prop_compose! {
-        pub fn swap_protocol_herc20_hbit()(herc20_expiry_offset in time::duration(), hbit_expiry_offset in time::duration()) -> SwapProtocol {
+        pub fn swap_protocol_herc20_hbit()(herc20_expiry_offset in expiries::alpha_offset(), hbit_expiry_offset in expiries::beta_offset()) -> SwapProtocol {
             SwapProtocol::Herc20Hbit {
                 herc20_expiry_offset,
                 hbit_expiry_offset,
@@ -106,6 +106,23 @@ pub mod time {
     prop_compose! {
         pub fn offset_date_time()(unix_timestamp in any::<i32>()) -> OffsetDateTime {
             OffsetDateTime::from_unix_timestamp(unix_timestamp as i64)
+        }
+    }
+}
+
+pub mod expiries {
+    use super::*;
+    use crate::expiries::{AlphaOffset, BetaOffset};
+
+    prop_compose! {
+        pub fn alpha_offset()(duration in time::duration()) -> AlphaOffset {
+            duration.into()
+        }
+    }
+
+    prop_compose! {
+        pub fn beta_offset()(duration in time::duration()) -> BetaOffset {
+            duration.into()
         }
     }
 }

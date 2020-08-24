@@ -70,6 +70,47 @@ table! {
     }
 }
 
+table! {
+    orders {
+        id -> Integer,
+        order_id -> Text,
+        position -> Text,
+        created_at -> BigInt,
+    }
+}
+
+table! {
+    btc_dai_orders {
+        id -> Integer,
+        order_id -> Integer,
+        quantity -> Text,
+        price -> Text,
+    }
+}
+
+table! {
+    order_hbit_params {
+        id -> Integer,
+        order_id -> Integer,
+        network -> Text,
+        side -> Text,
+        our_final_address -> Text,
+        expiry_offset -> BigInt,
+    }
+}
+
+table! {
+    order_herc20_params {
+        id -> Integer,
+        order_id -> Integer,
+        chain_id -> BigInt,
+        side -> Text,
+        our_htlc_identity -> Text,
+        token_contract -> Text,
+        expiry_offset -> BigInt,
+    }
+}
+
 allow_tables_to_appear_in_same_query!(swaps, halbits);
 allow_tables_to_appear_in_same_query!(swaps, herc20s);
 allow_tables_to_appear_in_same_query!(swaps, hbits);

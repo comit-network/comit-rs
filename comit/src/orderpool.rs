@@ -201,6 +201,12 @@ pub struct Match {
     pub match_reference_point: OffsetDateTime,
 }
 
+impl Match {
+    pub fn quote(&self) -> Erc20Quantity {
+        self.quantity.as_sat() * self.price.clone()
+    }
+}
+
 #[tracing::instrument(level = "debug", fields(left = %left.id, right = %right.id, %reserved_left, %reserved_right))]
 fn match_orders(
     left: &BtcDaiOrder,
@@ -369,12 +375,12 @@ mod tests {
     #[test]
     fn given_same_swap_protocols_with_different_parameters_then_no_match() {
         let sell = BtcDaiOrder::sell(btc(1.0), dai(9000), SwapProtocol::HbitHerc20 {
-            hbit_expiry_offset: 2.hours(),
-            herc20_expiry_offset: 1.hours(),
+            hbit_expiry_offset: 2.hours().into(),
+            herc20_expiry_offset: 1.hours().into(),
         });
         let buy = BtcDaiOrder::buy(btc(1.0), dai(9000), SwapProtocol::HbitHerc20 {
-            hbit_expiry_offset: 3.hours(),
-            herc20_expiry_offset: 1.hours(),
+            hbit_expiry_offset: 3.hours().into(),
+            herc20_expiry_offset: 1.hours().into(),
         });
 
         let r#match = match_orders(&sell, &buy, &btc(0.0), &btc(0.0));
@@ -439,15 +445,15 @@ mod tests {
 
     fn hbit_herc20() -> SwapProtocol {
         SwapProtocol::HbitHerc20 {
-            hbit_expiry_offset: Default::default(),
-            herc20_expiry_offset: Default::default(),
+            hbit_expiry_offset: 0.seconds().into(),
+            herc20_expiry_offset: 0.seconds().into(),
         }
     }
 
     fn herc20_hbit() -> SwapProtocol {
         SwapProtocol::Herc20Hbit {
-            hbit_expiry_offset: Default::default(),
-            herc20_expiry_offset: Default::default(),
+            hbit_expiry_offset: 0.seconds().into(),
+            herc20_expiry_offset: 0.seconds().into(),
         }
     }
 }

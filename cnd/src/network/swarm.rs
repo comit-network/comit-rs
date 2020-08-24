@@ -1,19 +1,27 @@
 use crate::{
+    asset,
     config::Settings,
     local_swap_id::LocalSwapId,
     network::{
-        comit_node::{BtcDaiOrderAddresses, ComitNode},
+        comit_node::{ComitNode, SetupSwapContext},
+        setup_swap,
+        setup_swap::{AliceParams, BobParams},
         transport,
     },
     protocol_spawner::ProtocolSpawner,
     storage::{RootSeed, Storage},
 };
-use anyhow::Context as _;
+use anyhow::{Context as _, Result};
 use comit::{
-    network::{swap_digest::SwapDigest, Identities},
-    BtcDaiOrder, BtcDaiOrderForm, OrderId, Role,
+    network::{
+        protocols::setup_swap::{CommonParams, RoleDependentParams},
+        swap_digest::SwapDigest,
+        Identities,
+    },
+    order::SwapProtocol,
+    orderpool, BtcDaiOrder, Role, SecretHash, Side,
 };
-use futures::stream::StreamExt;
+use futures::{channel::mpsc, stream::StreamExt};
 use libp2p::{
     core::{
         identity::{ed25519, Keypair},
@@ -52,19 +60,21 @@ impl Swarm {
 
         let transport = transport::build(local_key_pair.clone(), settings.network.listen.clone())?;
 
+        let (sender, receiver) = mpsc::channel(1);
+
         let behaviour = ComitNode::new(
             seed,
             task_executor.clone(),
-            storage,
+            storage.clone(),
             protocol_spawner,
             local_peer_id.clone(),
             local_key_pair,
-            &settings,
+            sender,
         );
 
         let mut swarm = SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
             .executor(Box::new(TokioExecutor {
-                handle: task_executor,
+                handle: task_executor.clone(),
             }))
             .build();
 
@@ -74,6 +84,8 @@ impl Swarm {
         }
 
         let swarm = Arc::new(Mutex::new(swarm));
+
+        task_executor.spawn(new_match_worker(swarm.clone(), receiver, storage, seed));
 
         Ok(Self {
             inner: swarm,
@@ -115,12 +127,8 @@ impl Swarm {
         guard.initiate_communication(id, peer, role, digest, identities)
     }
 
-    pub async fn publish_order(
-        &self,
-        form: BtcDaiOrderForm,
-        addresses: BtcDaiOrderAddresses,
-    ) -> OrderId {
-        self.inner.lock().await.publish_order(form, addresses)
+    pub async fn publish_order(&self, order: BtcDaiOrder) {
+        self.inner.lock().await.publish_order(order);
     }
 
     pub async fn btc_dai_market(&self) -> Vec<(PeerId, BtcDaiOrder)> {
@@ -199,4 +207,143 @@ fn derive_key_pair(seed: &RootSeed) -> Keypair {
     let bytes = seed.sha256_with_seed(&[b"NODE_ID"]);
     let key = ed25519::SecretKey::from_bytes(bytes).expect("we always pass 32 bytes");
     Keypair::Ed25519(key.into())
+}
+
+/// A background worker that handles new matches coming in through the given
+/// channel.
+///
+/// This is a workaround because we cannot do arbitrary async stuff while we
+/// process events from libp2p in `NetworkBehaviourEventProcess`. To process a
+/// new match, we need to access the database and afterwards call into
+/// [`SetupSwap`]. This in turns requires `&mut self` and hence we cannot just
+/// spawn away a future like we do it in other occasions.
+///
+/// A proper fix for this would be to:
+/// 1. stop handling events within `NetworkBehaviourEventProcess`.
+/// 2. delete the [`SwarmWorker`]
+/// 3. bubble all events of the NetworkBehaviours up to the Swarm
+/// 4. poll the swarm manually using [`futures::select!`]
+///
+/// This would allow us to offload arbitrary async computation after an event
+/// happens, receive a message once it is down, call into the Swarm again and
+/// trigger [`SetupSwap`].
+async fn new_match_worker(
+    swarm: Arc<Mutex<libp2p::Swarm<ComitNode>>>,
+    mut receiver: mpsc::Receiver<orderpool::Match>,
+    storage: Storage,
+    seed: RootSeed,
+) {
+    while let Some(new_match) = receiver.next().await {
+        let order_id = new_match.ours;
+        let peer = new_match.peer.clone();
+        let match_reference_point = new_match.match_reference_point;
+
+        let (swap_id, common, role, protocol) =
+            match handle_new_match(&seed, &storage, new_match).await {
+                Ok(result) => result,
+                Err(e) => {
+                    tracing::warn!("failed to handle new match: {:?}", e);
+                    continue;
+                }
+            };
+
+        let mut guard = swarm.lock().await;
+
+        if let Err(e) = guard
+            .setup_swap
+            .send(&peer, role, common, protocol, SetupSwapContext {
+                swap: swap_id,
+                order: order_id,
+                match_reference_point,
+            })
+        {
+            tracing::warn!("failed to setup swap for order {}: {:#}", order_id, e);
+        }
+    }
+}
+
+async fn handle_new_match(
+    seed: &RootSeed,
+    storage: &Storage,
+    new_match: orderpool::Match,
+) -> Result<(
+    LocalSwapId,
+    CommonParams,
+    RoleDependentParams,
+    setup_swap::SwapProtocol,
+)> {
+    let swap_id = LocalSwapId::random();
+
+    let protocol = new_match.swap_protocol;
+    let order_id = new_match.ours;
+
+    let (order_hbit, order_herc20) = storage
+        .db
+        .do_in_transaction(|conn| {
+            use crate::storage::tables;
+
+            let order = tables::Order::by_order_id(conn, order_id)?;
+            let hbit_params = tables::OrderHbitParams::by_order(conn, &order)?;
+            let herc20_params = tables::OrderHerc20Params::by_order(conn, &order)?;
+
+            Ok((hbit_params, herc20_params))
+        })
+        .await?;
+
+    let our_role = protocol.role(new_match.our_position);
+    let ethereum_absolute_expiry =
+        new_match.match_reference_point + protocol.herc20_expiry_offset();
+    let bitcoin_absolute_expiry = new_match.match_reference_point + protocol.hbit_expiry_offset();
+    let erc20_quantity = new_match.quote();
+    let hbit_quantity = new_match.quantity;
+
+    // TODO: Fix these!
+    #[allow(clippy::cast_sign_loss)]
+    #[allow(clippy::cast_possible_truncation)]
+    let common_params = CommonParams {
+        erc20: asset::Erc20 {
+            token_contract: order_herc20.token_contract.0,
+            quantity: erc20_quantity,
+        },
+        bitcoin: hbit_quantity,
+        ethereum_absolute_expiry: ethereum_absolute_expiry.timestamp() as u32,
+        bitcoin_absolute_expiry: bitcoin_absolute_expiry.timestamp() as u32,
+        ethereum_chain_id: u32::from(order_herc20.chain_id).into(),
+        bitcoin_network: order_hbit.network.0,
+    };
+    let role_params = match our_role {
+        Role::Alice => {
+            let swap_seed = seed.derive_swap_seed(swap_id);
+            RoleDependentParams::Alice(AliceParams {
+                ethereum_identity: order_herc20.our_htlc_address.0,
+                bitcoin_identity: storage.derive_transient_identity(
+                    swap_id,
+                    our_role,
+                    hbit_side(&new_match),
+                ),
+                secret_hash: SecretHash::new(swap_seed.derive_secret()),
+            })
+        }
+        Role::Bob => RoleDependentParams::Bob(BobParams {
+            ethereum_identity: order_herc20.our_htlc_address.0,
+            bitcoin_identity: storage.derive_transient_identity(
+                swap_id,
+                our_role,
+                hbit_side(&new_match),
+            ),
+        }),
+    };
+    let setup_swap_protocol = match protocol {
+        SwapProtocol::HbitHerc20 { .. } => setup_swap::SwapProtocol::HbitHerc20,
+        SwapProtocol::Herc20Hbit { .. } => setup_swap::SwapProtocol::Herc20Hbit,
+    };
+
+    Ok((swap_id, common_params, role_params, setup_swap_protocol))
+}
+
+fn hbit_side(new_match: &orderpool::Match) -> Side {
+    match new_match.swap_protocol {
+        SwapProtocol::HbitHerc20 { .. } => Side::Alpha,
+        SwapProtocol::Herc20Hbit { .. } => Side::Beta,
+    }
 }

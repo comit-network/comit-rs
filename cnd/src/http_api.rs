@@ -6,13 +6,15 @@ pub mod herc20;
 mod herc20_halbit;
 mod herc20_hbit;
 mod info;
-mod orderbook;
+mod orders;
 mod route_factory;
 mod serde_peer_id;
 #[macro_use]
 mod impl_serialize_http;
 mod action;
+mod amount;
 mod dial_addr;
+mod markets;
 mod peers;
 mod problem;
 mod protocol;

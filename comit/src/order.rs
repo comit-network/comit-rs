@@ -1,4 +1,10 @@
-use crate::{asset, asset::Erc20Quantity, Role};
+use crate::{
+    asset,
+    asset::Erc20Quantity,
+    expiries,
+    expiries::{AlphaOffset, BetaOffset},
+    Role,
+};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use time::{Duration, OffsetDateTime};
@@ -37,17 +43,18 @@ impl From<Uuid> for OrderId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BtcDaiOrder {
     pub id: OrderId,
     pub position: Position,
     pub swap_protocol: SwapProtocol,
-    #[serde(with = "time::serde::timestamp")]
     pub created_at: OffsetDateTime,
-    #[serde(with = "asset::bitcoin::sats_as_string")]
     pub quantity: asset::Bitcoin,
     /// The price of this order in WEI per SATOSHI.
-    price: Erc20Quantity,
+    ///
+    /// TOOD: For documentation purposes, this should probably be a dedicated
+    /// type. Remove `pub(crate)` once that is fixed.
+    pub(crate) price: Erc20Quantity,
 }
 
 impl BtcDaiOrder {
@@ -91,7 +98,7 @@ impl BtcDaiOrder {
         let price = self.price.clone();
         match denom {
             Denomination::WeiPerSat => price,
-            Denomination::WeiPerBtc => asset::Bitcoin::from_sat(100_000_000) * price,
+            Denomination::WeiPerBtc => 100_000_000 * price,
         }
     }
 }
@@ -133,7 +140,19 @@ pub enum Denomination {
 /// (i.e., quote currency) and amount as is commonly done in Forex
 /// trading. We use the amounts of each currency to determine the
 /// rate.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, strum_macros::Display)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    Hash,
+    strum_macros::EnumString,
+    strum_macros::Display,
+    strum_macros::EnumIter,
+)]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub enum Position {
@@ -168,16 +187,15 @@ pub enum Position {
 /// (waiting for some number of confirmations) before he moves forward with the
 /// lock on the [`Beta`](Side::Beta) side. Hence, the _duration_ of the lock
 /// differs from the offset specified here.
-#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Eq, Hash)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum SwapProtocol {
     HbitHerc20 {
-        hbit_expiry_offset: Duration,
-        herc20_expiry_offset: Duration,
+        hbit_expiry_offset: AlphaOffset,
+        herc20_expiry_offset: BetaOffset,
     },
     Herc20Hbit {
-        hbit_expiry_offset: Duration,
-        herc20_expiry_offset: Duration,
+        herc20_expiry_offset: AlphaOffset,
+        hbit_expiry_offset: BetaOffset,
     },
 }
 
@@ -212,10 +230,10 @@ impl SwapProtocol {
         match self {
             SwapProtocol::Herc20Hbit {
                 hbit_expiry_offset, ..
-            } => *hbit_expiry_offset,
+            } => Duration::from(*hbit_expiry_offset),
             SwapProtocol::HbitHerc20 {
                 hbit_expiry_offset, ..
-            } => *hbit_expiry_offset,
+            } => Duration::from(*hbit_expiry_offset),
         }
     }
 
@@ -224,41 +242,34 @@ impl SwapProtocol {
             SwapProtocol::Herc20Hbit {
                 herc20_expiry_offset,
                 ..
-            } => *herc20_expiry_offset,
+            } => Duration::from(*herc20_expiry_offset),
             SwapProtocol::HbitHerc20 {
                 herc20_expiry_offset,
                 ..
-            } => *herc20_expiry_offset,
+            } => Duration::from(*herc20_expiry_offset),
         }
     }
 
-    pub fn new(
-        role: Role,
-        position: Position,
-        hbit_expiry_offset: Duration,
-        herc20_expiry_offset: Duration,
-    ) -> Self {
-        match position {
-            Position::Buy => match role {
-                Role::Bob => SwapProtocol::HbitHerc20 {
+    pub fn new(role: Role, position: Position) -> Self {
+        match (role, position) {
+            (Role::Bob, Position::Buy) | (Role::Alice, Position::Sell) => {
+                let (hbit_expiry_offset, herc20_expiry_offset) =
+                    expiries::calculate_expiry_offsets(expiries::Protocol::HbitHerc20, None);
+
+                SwapProtocol::HbitHerc20 {
                     hbit_expiry_offset,
                     herc20_expiry_offset,
-                },
-                Role::Alice => SwapProtocol::Herc20Hbit {
-                    herc20_expiry_offset,
-                    hbit_expiry_offset,
-                },
-            },
-            Position::Sell => match role {
-                Role::Bob => SwapProtocol::Herc20Hbit {
-                    herc20_expiry_offset,
-                    hbit_expiry_offset,
-                },
-                Role::Alice => SwapProtocol::HbitHerc20 {
+                }
+            }
+            (Role::Alice, Position::Buy) | (Role::Bob, Position::Sell) => {
+                let (herc20_expiry_offset, hbit_expiry_offset) =
+                    expiries::calculate_expiry_offsets(expiries::Protocol::Herc20Hbit, None);
+
+                SwapProtocol::Herc20Hbit {
                     hbit_expiry_offset,
                     herc20_expiry_offset,
-                },
-            },
+                }
+            }
         }
     }
 }
@@ -273,10 +284,8 @@ mod tests {
         fn swap_protocol_and_position_interplay(swap_protocol in proptest::order::swap_protocol(), position in proptest::order::position()) {
             let role = swap_protocol.role(position);
 
-            let computed_protocol = SwapProtocol::new(role, position, swap_protocol.hbit_expiry_offset(), swap_protocol.herc20_expiry_offset());
-            let computed_position = swap_protocol.position(role);
+            let computed_position = SwapProtocol::new(role, position).position(role);
 
-            assert_eq!(computed_protocol, swap_protocol);
             assert_eq!(computed_position, position);
         }
     }
@@ -286,10 +295,8 @@ mod tests {
         fn swap_protocol_and_role_interplay(swap_protocol in proptest::order::swap_protocol(), role in proptest::role()) {
             let position = swap_protocol.position(role);
 
-            let computed_protocol = SwapProtocol::new(role, position, swap_protocol.hbit_expiry_offset(), swap_protocol.herc20_expiry_offset());
-            let computed_role = swap_protocol.role(position);
+            let computed_role = SwapProtocol::new(role, position).role(position);
 
-            assert_eq!(computed_protocol, swap_protocol);
             assert_eq!(computed_role, role);
         }
     }

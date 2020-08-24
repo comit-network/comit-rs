@@ -8,3 +8,8 @@ CREATE TABLE address_book
 );
 
 DROP VIEW swap_contexts;
+
+DROP TABLE orders;
+DROP TABLE btc_dai_orders;
+DROP TABLE order_hbit_params;
+DROP TABLE order_herc20_params;

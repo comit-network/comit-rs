@@ -1,34 +1,31 @@
 use crate::{
-    config::Settings,
-    ethereum, hbit, herc20,
     local_swap_id::LocalSwapId,
     network::peer_tracker::PeerTracker,
     spawn,
-    storage::{CreatedSwap, ForSwap, Load, RootSeed, Save, Storage, SwapContext},
+    storage::{
+        ForSwap, InsertableSecretHash, Load, Order, OrderHbitParams, RootSeed, Save, Storage,
+        SwapContext,
+    },
     ProtocolSpawner,
 };
-use chrono::Utc;
+use chrono::NaiveDateTime;
 use comit::{
-    asset, lightning,
+    lightning,
     network::{
         comit::{Comit, LocalData, RemoteData},
         orderbook,
         orderbook::Orderbook,
-        protocols::{
-            announce,
-            announce::Announce,
-            setup_swap::{CommonParams, SetupSwap},
-        },
+        protocols::{announce, announce::Announce, setup_swap::SetupSwap},
         setup_swap,
         swap_digest::SwapDigest,
         Identities, SharedSwapId, WhatAliceLearnedFromBob, WhatBobLearnedFromAlice,
     },
-    order::SwapProtocol,
-    orderpool, BtcDaiOrderForm, LockProtocol, Never, OrderId, Position, Role, SecretHash, Side,
+    orderpool, BtcDaiOrder, LockProtocol, Never, OrderId, Role, SecretHash, Side,
 };
-use futures::TryFutureExt;
+use futures::{channel::mpsc, SinkExt, TryFutureExt};
 use libp2p::{identity::Keypair, NetworkBehaviour, PeerId};
 use std::collections::HashMap;
+use time::OffsetDateTime;
 use tokio::runtime::Handle;
 
 /// A `NetworkBehaviour` that represents a COMIT node.
@@ -36,7 +33,7 @@ use tokio::runtime::Handle;
 #[allow(missing_debug_implementations)]
 pub struct ComitNode {
     pub announce: Announce<LocalSwapId>,
-    pub setup_swap: SetupSwap<LocalSwapId>,
+    pub setup_swap: SetupSwap<SetupSwapContext>,
     pub orderbook: Orderbook,
     pub comit: Comit,
     pub peer_tracker: PeerTracker,
@@ -56,32 +53,11 @@ pub struct ComitNode {
     #[behaviour(ignore)]
     local_swap_ids: HashMap<SharedSwapId, LocalSwapId>,
     #[behaviour(ignore)]
-    order_addresses: HashMap<OrderId, BtcDaiOrderAddresses>,
-    #[behaviour(ignore)]
     storage: Storage,
     #[behaviour(ignore)]
     protocol_spawner: ProtocolSpawner,
-    /// The Bitcoin network we are currently connected to.
     #[behaviour(ignore)]
-    _configured_bitcoin_network: bitcoin::Network,
-    /// The Ethereum network we are currently connected to.
-    #[behaviour(ignore)]
-    _configured_ethereum_network: ethereum::ChainId,
-    /// The address of the DAI ERC20 token contract on the current Ethereum
-    /// network.
-    #[behaviour(ignore)]
-    _dai_contract_address: ethereum::Address,
-}
-
-/// A container used for temporarily storing two addresses provided by a user.
-///
-/// These addresses are used to set up a swap once the order they are associated
-/// with yields a match. This allows us to avoid an interaction with the user at
-/// the time of an order match.
-#[derive(Debug)]
-pub struct BtcDaiOrderAddresses {
-    pub bitcoin: bitcoin::Address,
-    pub ethereum: ethereum::Address,
+    matches_sender: mpsc::Sender<orderpool::Match>,
 }
 
 impl ComitNode {
@@ -92,7 +68,7 @@ impl ComitNode {
         protocol_spawner: ProtocolSpawner,
         peer_id: PeerId,
         key: Keypair,
-        settings: &Settings,
+        matches_sender: mpsc::Sender<orderpool::Match>,
     ) -> Self {
         Self {
             announce: Announce::default(),
@@ -104,12 +80,9 @@ impl ComitNode {
             task_executor,
             local_data: HashMap::default(),
             local_swap_ids: HashMap::default(),
-            order_addresses: Default::default(),
             storage,
             protocol_spawner,
-            _configured_bitcoin_network: settings.bitcoin.network,
-            _configured_ethereum_network: settings.ethereum.chain_id,
-            _dai_contract_address: settings.ethereum.tokens.dai,
+            matches_sender,
         }
     }
 
@@ -151,15 +124,8 @@ impl ComitNode {
         Ok(())
     }
 
-    pub fn publish_order(
-        &mut self,
-        form: BtcDaiOrderForm,
-        addresses: BtcDaiOrderAddresses,
-    ) -> OrderId {
-        let id = self.orderbook.publish(form);
-        self.order_addresses.insert(id, addresses);
-
-        id
+    pub fn publish_order(&mut self, order: BtcDaiOrder) {
+        self.orderbook.publish(order);
     }
 
     fn assert_have_lnd_if_needed(
@@ -171,6 +137,14 @@ impl ComitNode {
         }
         Ok(())
     }
+}
+
+/// The context we are passing to [`SetupSwap`] for each invocation.
+#[derive(Debug, Clone, Copy)]
+pub struct SetupSwapContext {
+    pub swap: LocalSwapId,
+    pub order: OrderId,
+    pub match_reference_point: OffsetDateTime,
 }
 
 impl libp2p::swarm::NetworkBehaviourEventProcess<()> for ComitNode {
@@ -256,301 +230,131 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<announce::BehaviourOutEvent<Loc
 impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> for ComitNode {
     fn inject_event(&mut self, event: orderbook::BehaviourOutEvent) {
         match event {
-            orderbook::BehaviourOutEvent::OrderMatch(orderpool::Match {
-                price,
-                quantity,
-                ours,
-                theirs,
-                peer,
-                our_position,
-                swap_protocol,
-                match_reference_point,
-            }) => {
+            orderbook::BehaviourOutEvent::OrderMatch(new_match) => {
                 tracing::info!(
                     "order {} matched against order {} from {}",
-                    ours,
-                    theirs,
-                    peer
+                    new_match.ours,
+                    new_match.theirs,
+                    new_match.peer
                 );
-                // todo: remove this unwrap
-                let our_identities = self.order_addresses.get(&ours).unwrap();
-                let token_contract = self._dai_contract_address;
-                let swap_id = LocalSwapId::random();
-                let swap_seed = self.seed.derive_swap_seed(swap_id);
+                let mut sender = self.matches_sender.clone();
 
-                match swap_protocol {
-                    SwapProtocol::HbitHerc20 {
-                        hbit_expiry_offset,
-                        herc20_expiry_offset,
-                    } => {
-                        // todo: do checked addition
-                        #[allow(clippy::cast_sign_loss)]
-                        #[allow(clippy::cast_possible_truncation)]
-                        let (ethereum_absolute_expiry, bitcoin_absolute_expiry) = {
-                            let ethereum =
-                                (match_reference_point + herc20_expiry_offset).timestamp() as u32;
-                            let bitcoin =
-                                (match_reference_point + hbit_expiry_offset).timestamp() as u32;
-
-                            (ethereum, bitcoin)
-                        };
-                        let erc20_quantity = quantity * price;
-                        match our_position {
-                            Position::Buy => {
-                                if let Err(e) = self.setup_swap.bob_send_hbit_herc20(
-                                    &peer,
-                                    self.storage.derive_transient_identity(
-                                        swap_id,
-                                        Role::Bob,
-                                        Side::Alpha,
-                                    ),
-                                    our_identities.ethereum,
-                                    CommonParams {
-                                        erc20: asset::Erc20 {
-                                            token_contract,
-                                            quantity: erc20_quantity,
-                                        },
-                                        bitcoin: quantity,
-                                        ethereum_absolute_expiry,
-                                        bitcoin_absolute_expiry,
-                                        ethereum_chain_id: self._configured_ethereum_network,
-                                        bitcoin_network: self._configured_bitcoin_network,
-                                    },
-                                    ours,
-                                    swap_id,
-                                ) {
-                                    tracing::warn!("{}", e);
-                                }
-                            }
-                            Position::Sell => {
-                                let secret = swap_seed.derive_secret();
-                                let secret_hash = SecretHash::new(secret);
-
-                                if let Err(e) = self.setup_swap.alice_send_hbit_herc20(
-                                    &peer,
-                                    self.storage.derive_transient_identity(
-                                        swap_id,
-                                        Role::Alice,
-                                        Side::Alpha,
-                                    ),
-                                    our_identities.ethereum,
-                                    secret_hash,
-                                    CommonParams {
-                                        erc20: asset::Erc20 {
-                                            token_contract: self._dai_contract_address,
-                                            quantity: erc20_quantity,
-                                        },
-                                        bitcoin: quantity,
-                                        ethereum_absolute_expiry,
-                                        bitcoin_absolute_expiry,
-                                        ethereum_chain_id: self._configured_ethereum_network,
-                                        bitcoin_network: self._configured_bitcoin_network,
-                                    },
-                                    ours,
-                                    swap_id,
-                                ) {
-                                    tracing::warn!("{}", e);
-                                }
-                            }
-                        }
+                self.task_executor.spawn(async move {
+                    if sender.send(new_match).await.is_err() {
+                        tracing::error!("failed to dispatch new order match");
                     }
-                    SwapProtocol::Herc20Hbit {
-                        hbit_expiry_offset,
-                        herc20_expiry_offset,
-                    } => {
-                        // todo: do checked addition
-                        #[allow(clippy::cast_sign_loss)]
-                        #[allow(clippy::cast_possible_truncation)]
-                        let (ethereum_absolute_expiry, bitcoin_absolute_expiry) = {
-                            let ethereum =
-                                (match_reference_point + herc20_expiry_offset).timestamp() as u32;
-                            let bitcoin =
-                                (match_reference_point + hbit_expiry_offset).timestamp() as u32;
-
-                            (ethereum, bitcoin)
-                        };
-                        let erc20_quantity = quantity * price;
-                        match our_position {
-                            Position::Buy => {
-                                let secret = swap_seed.derive_secret();
-                                let secret_hash = SecretHash::new(secret);
-
-                                if let Err(e) = self.setup_swap.alice_send_herc20_hbit(
-                                    &peer,
-                                    self.storage.derive_transient_identity(
-                                        swap_id,
-                                        Role::Alice,
-                                        Side::Beta,
-                                    ),
-                                    our_identities.ethereum,
-                                    secret_hash,
-                                    CommonParams {
-                                        erc20: asset::Erc20 {
-                                            token_contract,
-                                            quantity: erc20_quantity,
-                                        },
-                                        bitcoin: quantity,
-                                        ethereum_absolute_expiry,
-                                        bitcoin_absolute_expiry,
-                                        ethereum_chain_id: self._configured_ethereum_network,
-                                        bitcoin_network: self._configured_bitcoin_network,
-                                    },
-                                    ours,
-                                    swap_id,
-                                ) {
-                                    tracing::warn!("{}", e);
-                                }
-                            }
-                            Position::Sell => {
-                                if let Err(e) = self.setup_swap.bob_send_herc20_hbit(
-                                    &peer,
-                                    self.storage.derive_transient_identity(
-                                        swap_id,
-                                        Role::Bob,
-                                        Side::Beta,
-                                    ),
-                                    our_identities.ethereum,
-                                    CommonParams {
-                                        erc20: asset::Erc20 {
-                                            token_contract: self._dai_contract_address,
-                                            quantity: erc20_quantity,
-                                        },
-                                        bitcoin: quantity,
-                                        ethereum_absolute_expiry,
-                                        bitcoin_absolute_expiry,
-                                        ethereum_chain_id: self._configured_ethereum_network,
-                                        bitcoin_network: self._configured_bitcoin_network,
-                                    },
-                                    ours,
-                                    swap_id,
-                                ) {
-                                    tracing::warn!("{}", e);
-                                }
-                            }
-                        }
-                    }
-                }
+                });
             }
         }
     }
 }
 
-impl libp2p::swarm::NetworkBehaviourEventProcess<setup_swap::BehaviourOutEvent<LocalSwapId>>
+impl libp2p::swarm::NetworkBehaviourEventProcess<setup_swap::BehaviourOutEvent<SetupSwapContext>>
     for ComitNode
 {
-    fn inject_event(&mut self, event: setup_swap::BehaviourOutEvent<LocalSwapId>) {
+    fn inject_event(&mut self, event: setup_swap::BehaviourOutEvent<SetupSwapContext>) {
         match event {
             setup_swap::BehaviourOutEvent::ExecutableSwap(exec_swap) => {
-                let spawner = self.protocol_spawner.clone();
+                use crate::storage::tables::{InsertableHbit, InsertableHerc20, InsertableSwap};
+                use setup_swap::SwapProtocol::*;
 
-                let swap_id = exec_swap.context;
+                let SetupSwapContext {
+                    swap: swap_id,
+                    order: order_id,
+                    match_reference_point,
+                } = exec_swap.context;
+                let protocol = exec_swap.swap_protocol;
+                let role = exec_swap.our_role;
                 let secret_hash = exec_swap.herc20.secret_hash;
+                let start_of_swap =
+                    NaiveDateTime::from_timestamp(match_reference_point.timestamp(), 0);
 
-                // todo: remove unwrap
-                let bitcoin_address = self
-                    .order_addresses
-                    .get(&exec_swap.order_id)
-                    .unwrap()
-                    .bitcoin
-                    .clone();
+                let insertable_swap =
+                    InsertableSwap::new(swap_id, exec_swap.peer_id, role, start_of_swap);
 
-                let remote_data = RemoteData {
-                    secret_hash: Some(secret_hash),
-                    ethereum_identity: Some(exec_swap.their_identities().ethereum),
-                    lightning_identity: None,
-                    bitcoin_identity: Some(exec_swap.their_identities().bitcoin),
+                let hbit_params = exec_swap.hbit;
+                let insertable_hbit = move |swap_fk, our_final_address| {
+                    InsertableHbit::new(
+                        swap_fk,
+                        hbit_params.asset,
+                        hbit_params.network,
+                        hbit_params.expiry.into(),
+                        our_final_address,
+                        match (role, protocol) {
+                            (Role::Alice, HbitHerc20) => hbit_params.redeem_identity,
+                            (Role::Bob, HbitHerc20) => hbit_params.refund_identity,
+                            (Role::Alice, Herc20Hbit) => hbit_params.refund_identity,
+                            (Role::Bob, Herc20Hbit) => hbit_params.redeem_identity,
+                        },
+                        match protocol {
+                            HbitHerc20 => Side::Alpha,
+                            Herc20Hbit => Side::Beta,
+                        },
+                    )
                 };
 
-                match exec_swap.swap_protocol {
-                    setup_swap::SwapProtocol::HbitHerc20 => {
-                        let swap_ctx = SwapContext {
+                let herc20_params = exec_swap.herc20;
+                let insertable_herc20 = move |swap_fk| {
+                    InsertableHerc20::new(
+                        swap_fk,
+                        herc20_params.asset,
+                        herc20_params.chain_id,
+                        herc20_params.expiry.into(),
+                        herc20_params.redeem_identity,
+                        herc20_params.refund_identity,
+                        match protocol {
+                            Herc20Hbit => Side::Alpha,
+                            HbitHerc20 => Side::Beta,
+                        },
+                    )
+                };
+                let insertable_secret_hash =
+                    move |swap_fk| InsertableSecretHash::new(swap_fk, secret_hash);
+
+                let save_data_and_start_swap = {
+                    let spawner = self.protocol_spawner.clone();
+                    let storage = self.storage.clone();
+                    async move {
+                        storage
+                            .db
+                            .do_in_transaction(|conn| {
+                                let swap_fk = insertable_swap.insert(conn)?;
+
+                                insertable_secret_hash(swap_fk).insert(conn)?;
+                                insertable_herc20(swap_fk).insert(conn)?;
+
+                                let order = Order::by_order_id(conn, order_id)?;
+                                let order_hbit_params = OrderHbitParams::by_order(conn, &order)?;
+                                insertable_hbit(
+                                    swap_fk,
+                                    order_hbit_params.our_final_address.0.into(),
+                                )
+                                .insert(conn)?;
+
+                                Ok(())
+                            })
+                            .await?;
+                        spawn::spawn(&spawner, &storage, SwapContext {
                             id: swap_id,
-                            role: exec_swap.my_role,
-                            alpha: LockProtocol::Hbit,
-                            beta: LockProtocol::Herc20,
-                        };
-
-                        let created_swap = CreatedSwap {
-                            swap_id,
-                            alpha: hbit::CreatedSwap {
-                                amount: exec_swap.hbit.asset,
-                                final_identity: bitcoin_address,
-                                network: exec_swap.hbit.network.into(),
-                                absolute_expiry: exec_swap.hbit.expiry.into(),
+                            role,
+                            alpha: match protocol {
+                                Herc20Hbit => LockProtocol::Herc20,
+                                HbitHerc20 => LockProtocol::Hbit,
                             },
-                            beta: herc20::CreatedSwap {
-                                asset: exec_swap.herc20.asset.clone(),
-                                identity: exec_swap.my_identities().ethereum,
-                                chain_id: exec_swap.herc20.chain_id,
-                                absolute_expiry: exec_swap.herc20.expiry.into(),
+                            beta: match protocol {
+                                Herc20Hbit => LockProtocol::Hbit,
+                                HbitHerc20 => LockProtocol::Herc20,
                             },
-                            peer: exec_swap.peer_id,
-                            address_hint: None,
-                            role: exec_swap.my_role,
-                            // todo: change to match ref point
-                            start_of_swap: Utc::now().naive_utc(),
-                        };
+                        })
+                        .await?;
 
-                        let storage = self.storage.clone();
-
-                        let start_swap = async move {
-                            storage.save(created_swap).await?;
-                            hack_secret_hash_into_db(swap_id, secret_hash, &storage).await?;
-                            save_swap_remote_data(&storage, swap_ctx, remote_data).await?;
-                            spawn::spawn(&spawner, &storage, swap_ctx).await?;
-                            Ok::<(), anyhow::Error>(())
-                        };
-
-                        self.task_executor
-                            .spawn(start_swap.map_err(|e: anyhow::Error| {
-                                tracing::error!("{}", e);
-                            }));
-                    }
-                    setup_swap::SwapProtocol::Herc20Hbit => {
-                        let swap_ctx = SwapContext {
-                            id: swap_id,
-                            role: exec_swap.my_role,
-                            alpha: LockProtocol::Herc20,
-                            beta: LockProtocol::Hbit,
-                        };
-
-                        let created_swap = CreatedSwap {
-                            swap_id,
-                            beta: hbit::CreatedSwap {
-                                amount: exec_swap.hbit.asset,
-                                final_identity: bitcoin_address,
-                                network: exec_swap.hbit.network.into(),
-                                absolute_expiry: exec_swap.hbit.expiry.into(),
-                            },
-                            alpha: herc20::CreatedSwap {
-                                asset: exec_swap.herc20.asset.clone(),
-                                identity: exec_swap.my_identities().ethereum,
-                                chain_id: exec_swap.herc20.chain_id,
-                                absolute_expiry: exec_swap.herc20.expiry.into(),
-                            },
-                            peer: exec_swap.peer_id.clone(),
-                            address_hint: None,
-                            role: exec_swap.my_role,
-                            // todo: change to match ref point
-                            start_of_swap: Utc::now().naive_utc(),
-                        };
-
-                        let storage = self.storage.clone();
-
-                        let start_swap = async move {
-                            storage.save(created_swap).await?;
-                            hack_secret_hash_into_db(swap_id, secret_hash, &storage).await?;
-                            save_swap_remote_data(&storage, swap_ctx, remote_data).await?;
-                            spawn::spawn(&spawner, &storage, swap_ctx).await?;
-                            Ok::<(), anyhow::Error>(())
-                        };
-
-                        self.task_executor
-                            .spawn(start_swap.map_err(|e: anyhow::Error| {
-                                tracing::error!("{}", e);
-                            }));
+                        Ok(())
                     }
                 };
+                self.task_executor
+                    .spawn(save_data_and_start_swap.map_err(|e: anyhow::Error| {
+                        tracing::error!("{}", e);
+                    }));
             }
             setup_swap::BehaviourOutEvent::AlreadyHaveRoleParams { peer, .. } => tracing::error!(
                 "Already have role dependent parameters from this peer: {}",
@@ -770,23 +574,6 @@ async fn save_swap_remote_data(
             local_swap_id: swap.id,
         }),
     };
-
-    Ok(())
-}
-
-// extremely dirty hack to work around the problem that Alice doesn't update the
-// secret hash in `save_swap_remote_data` previously, we had saved that already
-// prior to this call but with setup-swap, both parties learn about the secret
-// hash at the same time
-async fn hack_secret_hash_into_db(
-    swap_id: LocalSwapId,
-    secret_hash: SecretHash,
-    storage: &Storage,
-) -> anyhow::Result<()> {
-    storage
-        .db
-        .do_in_transaction(|conn| storage.db.insert_secret_hash(conn, swap_id, secret_hash))
-        .await?;
 
     Ok(())
 }

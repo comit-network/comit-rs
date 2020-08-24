@@ -1,8 +1,5 @@
 use crate::{
-    asset::{
-        ethereum::{Error, FromWei, TryFromWei},
-        Bitcoin,
-    },
+    asset::ethereum::{Error, FromWei, TryFromWei},
     ethereum::{Address, U256},
 };
 use num::{pow::Pow, BigUint, Num, Zero};
@@ -46,11 +43,11 @@ impl Erc20Quantity {
     }
 }
 
-impl Mul<Erc20Quantity> for Bitcoin {
+impl Mul<Erc20Quantity> for u64 {
     type Output = Erc20Quantity;
 
     fn mul(self, rhs: Erc20Quantity) -> Self::Output {
-        let sats = self.as_sat();
+        let sats = self;
         let value = Erc20Quantity(rhs.0 * sats);
 
         debug_assert!(value <= Erc20Quantity::max_value());
