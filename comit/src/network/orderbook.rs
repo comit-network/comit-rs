@@ -5,6 +5,7 @@ pub mod take_order;
 
 use crate::{order::*, SharedSwapId};
 use libp2p::{
+    identity::Keypair,
     request_response::{
         ProtocolSupport, RequestResponse, RequestResponseConfig, RequestResponseEvent,
         RequestResponseMessage, ResponseChannel,
@@ -43,7 +44,7 @@ pub struct Orderbook {
 
 impl Orderbook {
     /// Construct a new orderbook for this node using the node's peer ID.
-    pub fn new(me: PeerId) -> Orderbook {
+    pub fn new(me: PeerId, key: Keypair) -> Orderbook {
         let mut config = RequestResponseConfig::default();
         config.set_request_timeout(Duration::from_secs(REQUEST_TIMEOUT_SECS));
         let behaviour = RequestResponse::new(
@@ -53,7 +54,7 @@ impl Orderbook {
         );
 
         Orderbook {
-            makerbook: Makerbook::new(me.clone()),
+            makerbook: Makerbook::new(key),
             order_source: OrderSource::default(),
             take_order: behaviour,
             events: VecDeque::new(),

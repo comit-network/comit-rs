@@ -12,6 +12,7 @@ base64 = "0.12.3"
 bincode = "1.2.1"
 bitcoin = { version = "0.23.0", features = ["rand", "use-serde"] }
 blockchain_contracts = "0.3.2"
+byteorder = "1.3"
 chrono = { version = "0.4", features = ["serde"] }
 conquer-once = "0.2.1"
 derivative = "2"

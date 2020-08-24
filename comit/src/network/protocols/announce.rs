@@ -364,8 +364,8 @@ mod tests {
 
     #[tokio::test]
     async fn given_bob_awaits_an_announcements_when_alice_sends_one_then_swap_is_confirmed() {
-        let (mut alice_swarm, _, alice_id) = new_swarm(|_| Announce::default());
-        let (mut bob_swarm, _, bob_id) = new_swarm(|_| Announce::default());
+        let (mut alice_swarm, _, alice_id) = new_swarm(|_, _| Announce::default());
+        let (mut bob_swarm, _, bob_id) = new_swarm(|_, _| Announce::default());
         connect(&mut alice_swarm, &mut bob_swarm).await;
 
         let swap_digest = SwapDigest::random();
@@ -380,9 +380,9 @@ mod tests {
     async fn given_alice_announces_swap_when_bob_awaits_it_within_timeout_then_swap_is_confirmed() {
         let incoming_announcement_buffer_expiry = Duration::from_secs(5);
 
-        let (mut alice_swarm, _, alice_id) = new_swarm(|_| Announce::default());
+        let (mut alice_swarm, _, alice_id) = new_swarm(|_, _| Announce::default());
         let (mut bob_swarm, _, bob_id) =
-            new_swarm(|_| Announce::new(incoming_announcement_buffer_expiry));
+            new_swarm(|_, _| Announce::new(incoming_announcement_buffer_expiry));
         connect(&mut alice_swarm, &mut bob_swarm).await;
 
         let swap_digest = SwapDigest::random();
@@ -404,9 +404,9 @@ mod tests {
         let incoming_announcement_buffer_expiry = Duration::from_secs(2);
 
         let (mut alice_swarm, _, alice_id) =
-            new_swarm(|_| Announce::new(incoming_announcement_buffer_expiry));
+            new_swarm(|_, _| Announce::new(incoming_announcement_buffer_expiry));
         let (mut bob_swarm, _, bob_id) =
-            new_swarm(|_| Announce::new(incoming_announcement_buffer_expiry));
+            new_swarm(|_, _| Announce::new(incoming_announcement_buffer_expiry));
         connect(&mut alice_swarm, &mut bob_swarm).await;
 
         let swap_digest = SwapDigest::random();
@@ -425,8 +425,8 @@ mod tests {
 
     #[tokio::test]
     async fn given_bob_receives_announcement_with_wrong_peer_id_then_error() {
-        let (mut alice_swarm, ..) = new_swarm(|_| Announce::default());
-        let (mut bob_swarm, _, bob_id) = new_swarm(|_| Announce::default());
+        let (mut alice_swarm, ..) = new_swarm(|_, _| Announce::default());
+        let (mut bob_swarm, _, bob_id) = new_swarm(|_, _| Announce::default());
         connect(&mut alice_swarm, &mut bob_swarm).await;
 
         let swap_digest = SwapDigest::random();
@@ -445,8 +445,8 @@ mod tests {
         let incoming_announcement_buffer_expiry = Duration::from_secs(2);
 
         let (mut alice_swarm, _, alice_id) =
-            new_swarm(|_| Announce::new(incoming_announcement_buffer_expiry));
-        let (mut bob_swarm, _, bob_id) = new_swarm(|_| Announce::default());
+            new_swarm(|_, _| Announce::new(incoming_announcement_buffer_expiry));
+        let (mut bob_swarm, _, bob_id) = new_swarm(|_, _| Announce::default());
         connect(&mut alice_swarm, &mut bob_swarm).await;
 
         let alice_swap_digest = SwapDigest::random();

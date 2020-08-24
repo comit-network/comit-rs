@@ -1,9 +1,11 @@
+use byteorder::{BigEndian, ByteOrder};
 use conquer_once::Lazy;
 use libp2p::{
     gossipsub::{
         Gossipsub, GossipsubConfigBuilder, GossipsubEvent, GossipsubMessage, GossipsubRpc,
-        MessageId, Topic,
+        MessageAuthenticity, MessageId, Topic,
     },
+    identity::Keypair,
     swarm::{
         DialPeerCondition, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters,
     },
@@ -43,9 +45,9 @@ pub struct Makerbook {
 }
 
 impl Makerbook {
-    pub fn new(me: PeerId) -> Self {
+    pub fn new(key: Keypair) -> Self {
         let mut gossipsub = Gossipsub::new(
-            me,
+            MessageAuthenticity::Signed(key),
             GossipsubConfigBuilder::new()
                 .heartbeat_interval(Duration::from_secs(1))
                 .message_id_fn(content_based_id)
@@ -65,7 +67,9 @@ impl Makerbook {
             trading_pair: wire::TradingPair::BtcDai,
         })
         .expect("serialization doesn't panic");
-        self.gossipsub.publish(&COMIT_MAKERS, message);
+        if self.gossipsub.publish(&COMIT_MAKERS, message).is_err() {
+            tracing::warn!("login publish message failed");
+        }
     }
 
     pub fn logout(&mut self) {
@@ -73,7 +77,9 @@ impl Makerbook {
             trading_pair: wire::TradingPair::BtcDai,
         })
         .expect("serialization doesn't panic");
-        self.gossipsub.publish(&COMIT_MAKERS, message);
+        if self.gossipsub.publish(&COMIT_MAKERS, message).is_err() {
+            tracing::warn!("logout publish message failed");
+        }
     }
 
     fn poll(
@@ -92,7 +98,7 @@ impl Makerbook {
 impl NetworkBehaviourEventProcess<GossipsubEvent> for Makerbook {
     fn inject_event(&mut self, event: GossipsubEvent) {
         if let GossipsubEvent::Message(relayed_from, _, message) = event {
-            let source = message.source;
+            let source = message.source.unwrap();
             let message = match serde_json::from_slice::<wire::Message>(&message.data) {
                 Ok(message) => message,
                 Err(e) => {
@@ -134,7 +140,13 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Makerbook {
 fn content_based_id(message: &GossipsubMessage) -> MessageId {
     let mut s = DefaultHasher::new();
     message.data.hash(&mut s);
-    MessageId(s.finish().to_string())
+    let hash = s.finish();
+
+    let mut buf = [0; 8];
+    // FIXME: big or little, does it matter?
+    BigEndian::write_u64(&mut buf, hash);
+
+    MessageId::new(&buf)
 }
 
 mod wire {

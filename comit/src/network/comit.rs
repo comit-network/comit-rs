@@ -469,8 +469,8 @@ mod tests {
     #[tokio::test]
     async fn finalize_lightning_ethereum_swap_success() {
         // arrange
-        let (mut alice_swarm, _, alice_peer_id) = new_swarm(|_| Comit::default());
-        let (mut bob_swarm, _, bob_peer_id) = new_swarm(|_| Comit::default());
+        let (mut alice_swarm, _, alice_peer_id) = new_swarm(|_, _| Comit::default());
+        let (mut bob_swarm, _, bob_peer_id) = new_swarm(|_, _| Comit::default());
         connect(&mut alice_swarm, &mut bob_swarm).await;
 
         let secret_hash = SecretHash::from_str(

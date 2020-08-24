@@ -32,7 +32,7 @@ pub struct Actor<B: NetworkBehaviour> {
 pub async fn new_connected_swarm_pair<B, F>(behaviour_fn: F) -> (Actor<B>, Actor<B>)
 where
     B: NetworkBehaviour,
-    F: Fn(PeerId) -> B + Clone,
+    F: Fn(PeerId, Keypair) -> B + Clone,
     <<<B as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as ProtocolsHandler>::InEvent: Clone,
 <B as NetworkBehaviour>::OutEvent: Debug{
     let (swarm, addr, peer_id) = new_swarm(behaviour_fn.clone());
@@ -54,22 +54,25 @@ where
     (alice, bob)
 }
 
-pub fn new_swarm<B: NetworkBehaviour, F: Fn(PeerId) -> B>(behaviour_fn: F) -> (Swarm<B>, Multiaddr, PeerId) where <<<B as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as ProtocolsHandler>::InEvent: Clone{
+pub fn new_swarm<B: NetworkBehaviour, F: Fn(PeerId, Keypair) -> B>(behaviour_fn: F) -> (Swarm<B>, Multiaddr, PeerId) where <<<B as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as ProtocolsHandler>::InEvent: Clone{
     let keypair = Keypair::generate_ed25519();
     let peer_id = PeerId::from(keypair.public());
 
     let transport = MemoryTransport::default()
         .upgrade(Version::V1)
-        .authenticate(SecioConfig::new(keypair))
+        .authenticate(SecioConfig::new(keypair.clone()))
         .multiplex(Config::default())
         .map(|(peer, muxer), _| (peer, StreamMuxerBox::new(muxer)))
         .timeout(Duration::from_secs(5))
         .boxed();
 
-    let mut swarm: Swarm<B> =
-        SwarmBuilder::new(transport, behaviour_fn(peer_id.clone()), peer_id.clone())
-            .executor(Box::new(GlobalSpawnTokioExecutor))
-            .build();
+    let mut swarm: Swarm<B> = SwarmBuilder::new(
+        transport,
+        behaviour_fn(peer_id.clone(), keypair),
+        peer_id.clone(),
+    )
+    .executor(Box::new(GlobalSpawnTokioExecutor))
+    .build();
 
     let address_port = rand::random::<u64>();
     let addr = format!("/memory/{}", address_port)

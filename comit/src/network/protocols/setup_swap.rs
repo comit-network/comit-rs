@@ -554,8 +554,8 @@ mod tests {
 
     #[tokio::test]
     async fn given_bob_sends_when_alice_sends_one_then_swap_is_confirmed() {
-        let (mut alice_swarm, _, alice_id) = new_swarm(|_| SetupSwap::default());
-        let (mut bob_swarm, _, bob_id) = new_swarm(|_| SetupSwap::default());
+        let (mut alice_swarm, _, alice_id) = new_swarm(|_, _| SetupSwap::default());
+        let (mut bob_swarm, _, bob_id) = new_swarm(|_, _| SetupSwap::default());
         connect(&mut alice_swarm, &mut bob_swarm).await;
 
         let ethereum_identity = identity::Ethereum::random();
