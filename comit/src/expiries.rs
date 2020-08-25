@@ -12,6 +12,8 @@ use time::Duration;
 
 use self::config::{Config, Protocol};
 
+const NO_SCALE: u32 = 100; // 100% scaling factor has no effect.
+
 // TODO: Currently we ignore deploy for Erc20.
 
 // Note on expiry types: Any `Duration` expiry is a relative expiry, any
@@ -48,12 +50,26 @@ pub struct Expiries<A, B> {
 
 /// Calculate a pair of useful expiries, 'useful' means a swap can be
 /// successfully completed with these expiries.
+///
 /// Multiply the resulting offsets by `scale_factor` percentage to give the
-/// counterparty more time to act ( <100 shrinks offsets, >100 expands offsets).
+/// counterparty more time to act, it is expected that `scale_factor` is greater
+/// than 100 i.e., the scaling _increases_ the size of the offsets.
 pub fn calculate_expiry_offsets(
     protocol: Protocol,
-    scale_factor: u32,
+    scale_factor: Option<u32>,
 ) -> (AlphaOffset, BetaOffset) {
+    let scale_factor = match scale_factor {
+        Some(factor) => {
+            if factor < 100 {
+                tracing::warn!("Scaling factor less than 100 makes the expiries smaller, these expiries will not be useful. Using scaling factor of 100");
+                NO_SCALE
+            } else {
+                factor
+            }
+        }
+        None => NO_SCALE,
+    };
+
     let config = protocol.config();
 
     let alice_needs = happy_path_swap_period_for_alice(&config);
@@ -82,7 +98,7 @@ where
     A: CurrentTime,
     B: CurrentTime,
 {
-    pub fn new(protocol: Protocol, alpha: A, beta: B, scale_factor: u32) -> Expiries<A, B> {
+    pub fn new(protocol: Protocol, alpha: A, beta: B, scale_factor: Option<u32>) -> Expiries<A, B> {
         let config = protocol.config();
         let (alpha_offset, beta_offset) = calculate_expiry_offsets(protocol, scale_factor);
 
@@ -690,7 +706,7 @@ mod tests {
 
     #[test]
     fn can_calculate_useful_expiries_for_all_supported_protocols() {
-        let scale = 100;
+        let scale = None;
         let future = Timestamp::now().plus(10);
         let (alpha, beta) = mock_connectors();
 
@@ -703,7 +719,7 @@ mod tests {
 
     #[test]
     fn can_calculate_useful_expiries_for_all_supported_protocols_with_scale() {
-        let scale = 120;
+        let scale = Some(120);
         let now = Timestamp::now();
         let (alpha, beta) = mock_connectors();
 
@@ -732,13 +748,18 @@ mod tests {
 
     #[test]
     fn report() {
-        let no_scale = 150;
+        let scale = Some(150);
         let (alpha, beta) = mock_connectors();
 
-        let exp = Expiries::new(Protocol::Herc20Hbit, alpha, beta, no_scale);
+        println!(
+            "creating expiries with a scaling factor of: {}",
+            scale.unwrap()
+        );
+
+        let exp = Expiries::new(Protocol::Herc20Hbit, alpha, beta, scale);
         println!("\n herc20-hbit swap:\n {}", exp.report());
 
-        let exp = Expiries::new(Protocol::HbitHerc20, alpha, beta, no_scale);
+        let exp = Expiries::new(Protocol::HbitHerc20, alpha, beta, scale);
         println!("\n hbit-herc20 swap:\n {}", exp.report());
     }
 }
