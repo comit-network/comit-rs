@@ -156,7 +156,7 @@ export class BitcoindInstance implements LedgerInstance {
 server=1
 printtoconsole=1
 rpcallowip=0.0.0.0/0
-nodebug=1
+debug=1
 rest=1
 acceptnonstdtxn=0
 zmqpubrawblock=tcp://127.0.0.1:${this.zmqPubRawBlockPort}

@@ -1,4 +1,4 @@
-use crate::network::orderbook::Order;
+use crate::BtcDaiOrder;
 use futures::{AsyncRead, AsyncWrite};
 use libp2p::{
     core::{
@@ -50,11 +50,8 @@ impl OrderSource {
     }
 
     /// Respond to a get orders request.
-    pub fn send_orders(&mut self, handle: ResponseHandle, orders: Vec<Order>) {
-        self.get_orders.send_response(
-            handle.0,
-            orders.into_iter().map(wire::Order::from_model).collect(),
-        );
+    pub fn send_orders(&mut self, handle: ResponseHandle, orders: Vec<BtcDaiOrder>) {
+        self.get_orders.send_response(handle.0, orders);
     }
 
     fn is_time_to_update_orders(&self) -> bool {
@@ -202,11 +199,8 @@ impl NetworkBehaviour for OrderSource {
 
                     return Poll::Ready(NetworkBehaviourAction::GenerateEvent(
                         BehaviourOutEvent::RetrievedOrders {
-                            maker: peer_id.clone(),
-                            orders: orders
-                                .into_iter()
-                                .map(move |order| order.into_model(peer_id.clone()))
-                                .collect(),
+                            maker: peer_id,
+                            orders,
                         },
                     ));
                 }
@@ -281,7 +275,10 @@ pub enum BehaviourOutEvent {
     /// Our orders are being requested by another peer.
     GetOrdersRequest { response_handle: ResponseHandle },
     /// We retrieved orders from the given maker.
-    RetrievedOrders { maker: PeerId, orders: Vec<Order> },
+    RetrievedOrders {
+        maker: PeerId,
+        orders: Vec<BtcDaiOrder>,
+    },
     /// The given maker disconnected.
     ///
     /// It is unlikely that they will respond to any of their orders published
@@ -294,7 +291,7 @@ pub enum BehaviourOutEvent {
 ///
 /// This type allows us to keep the `wire` module private to this module.
 #[derive(Debug)]
-pub struct ResponseHandle(ResponseChannel<Vec<wire::Order>>);
+pub struct ResponseHandle(ResponseChannel<Vec<BtcDaiOrder>>);
 
 #[derive(Debug, Clone, Copy)]
 pub struct GetBtcDaiOrdersProtocol;
@@ -313,7 +310,7 @@ impl RequestResponseCodec for GetBtcDaiOrdersCodec {
     type Protocol = GetBtcDaiOrdersProtocol;
     type Request = ();
     // TODO: Allow a response of "I am not a maker" to stop asking them.
-    type Response = Vec<wire::Order>;
+    type Response = Vec<BtcDaiOrder>;
 
     /// Reads a get orders request from the given I/O stream.
     async fn read_request<T>(&mut self, _: &Self::Protocol, _: &mut T) -> io::Result<Self::Request>
@@ -336,7 +333,7 @@ impl RequestResponseCodec for GetBtcDaiOrdersCodec {
             .await
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         let mut de = serde_json::Deserializer::from_slice(&message);
-        let orders = Vec::<wire::Order>::deserialize(&mut de)?;
+        let orders = Vec::<BtcDaiOrder>::deserialize(&mut de)?;
 
         Ok(orders)
     }
@@ -369,85 +366,5 @@ impl RequestResponseCodec for GetBtcDaiOrdersCodec {
         upgrade::write_one(io, &bytes).await?;
 
         Ok(())
-    }
-}
-
-/// A dedicated module for the types that represent our messages "on the wire".
-mod wire {
-    use crate::{asset, identity, ledger, network::orderbook::Position, OrderId};
-    use serde::{Deserialize, Serialize};
-
-    /// An order, created by a maker (Bob) and shared with the network via
-    /// gossipsub.
-    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-    pub struct Order {
-        pub id: OrderId,
-        pub position: Position,
-        #[serde(with = "asset::bitcoin::sats_as_string")]
-        pub bitcoin_amount: asset::Bitcoin,
-        pub bitcoin_ledger: ledger::Bitcoin,
-        pub bitcoin_absolute_expiry: u32,
-        pub ethereum_amount: asset::Erc20Quantity,
-        pub token_contract: identity::Ethereum,
-        pub ethereum_ledger: ledger::Ethereum,
-        pub ethereum_absolute_expiry: u32,
-    }
-}
-
-impl wire::Order {
-    fn into_model(self, maker: PeerId) -> Order {
-        let wire::Order {
-            id,
-            position,
-            bitcoin_amount,
-            bitcoin_ledger,
-            bitcoin_absolute_expiry,
-            ethereum_amount,
-            token_contract,
-            ethereum_ledger,
-            ethereum_absolute_expiry,
-        } = self;
-        let position = position;
-
-        Order {
-            id,
-            maker,
-            position,
-            bitcoin_amount,
-            bitcoin_ledger,
-            bitcoin_absolute_expiry,
-            ethereum_amount,
-            token_contract,
-            ethereum_ledger,
-            ethereum_absolute_expiry,
-        }
-    }
-
-    fn from_model(order: Order) -> Self {
-        let Order {
-            id,
-            position,
-            bitcoin_amount,
-            bitcoin_ledger,
-            bitcoin_absolute_expiry,
-            ethereum_amount,
-            token_contract,
-            ethereum_ledger,
-            ethereum_absolute_expiry,
-            ..
-        } = order;
-        let position = position;
-
-        Self {
-            id,
-            position,
-            bitcoin_amount,
-            bitcoin_ledger,
-            bitcoin_absolute_expiry,
-            ethereum_amount,
-            token_contract,
-            ethereum_ledger,
-            ethereum_absolute_expiry,
-        }
     }
 }

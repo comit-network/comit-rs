@@ -3,6 +3,8 @@ use num::bigint::ParseBigIntError;
 mod erc20;
 mod ether;
 
+#[cfg(test)]
+pub use self::erc20::dai;
 pub use self::{
     erc20::{Erc20, Erc20Quantity},
     ether::Ether,

@@ -8,7 +8,6 @@ mod herc20_hbit;
 mod info;
 mod orderbook;
 mod route_factory;
-mod serde_peer_id;
 #[macro_use]
 mod impl_serialize_http;
 mod action;

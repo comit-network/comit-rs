@@ -229,3 +229,8 @@ export enum Step {
 export interface SwapAction extends Action {
     name: Step;
 }
+
+export enum Position {
+    Buy = "buy",
+    Sell = "sell",
+}

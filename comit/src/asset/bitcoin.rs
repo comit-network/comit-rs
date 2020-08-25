@@ -1,10 +1,15 @@
 use bitcoin::{util::amount::Denomination, Amount};
-use std::fmt;
+use std::{
+    fmt,
+    ops::{AddAssign, Sub, SubAssign},
+};
 
-#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Default)]
 pub struct Bitcoin(Amount);
 
 impl Bitcoin {
+    pub const ZERO: Bitcoin = Bitcoin(Amount::ZERO);
+
     pub fn from_sat(sat: u64) -> Bitcoin {
         Bitcoin(Amount::from_sat(sat))
     }
@@ -16,11 +21,11 @@ impl Bitcoin {
     pub fn to_le_bytes(self) -> [u8; 8] {
         self.0.as_sat().to_le_bytes()
     }
+}
 
-    #[cfg(test)]
-    pub fn meaningless_test_value() -> Self {
-        Bitcoin::from_sat(1_000u64)
-    }
+#[cfg(test)]
+pub fn btc(btc: f64) -> Bitcoin {
+    Bitcoin(Amount::from_btc(btc).unwrap())
 }
 
 impl From<Bitcoin> for Amount {
@@ -33,6 +38,26 @@ impl fmt::Display for Bitcoin {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let bitcoin = self.0.to_string_in(Denomination::Bitcoin);
         write!(f, "{} BTC", bitcoin)
+    }
+}
+
+impl AddAssign for Bitcoin {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0.add_assign(rhs.0);
+    }
+}
+
+impl SubAssign for Bitcoin {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0.sub_assign(rhs.0);
+    }
+}
+
+impl Sub for Bitcoin {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self(self.0.sub(rhs.0))
     }
 }
 

@@ -4,25 +4,23 @@
  */
 
 import { twoActorTest } from "../src/actor_test";
-import OrderFactory from "../src/actors/order_factory";
 import { sleep } from "../src/utils";
+import { Position } from "../src/payload";
 
-// todo: move test initialisation into single mega function to reduce noise
 describe("orderbook", () => {
     it(
         "btc_dai_buy_order",
         twoActorTest(async ({ alice, bob }) => {
             await alice.connect(bob);
-            const order = await OrderFactory.newBtcDaiOrder(alice, bob, "buy");
 
-            const orderUrl = await bob.makeOrder(order);
-            await alice.takeOrder();
+            await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
+            await bob.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
 
-            await bob.assertSwapCreatedFromOrder(orderUrl);
+            await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
 
+            await alice.assertAndExecuteNextAction("deploy");
             await alice.assertAndExecuteNextAction("fund");
 
-            await bob.assertAndExecuteNextAction("deploy");
             await bob.assertAndExecuteNextAction("fund");
 
             await alice.assertAndExecuteNextAction("redeem");
@@ -35,20 +33,20 @@ describe("orderbook", () => {
             await bob.assertBalancesAfterSwap();
         })
     );
+
     it(
         "btc_dai_sell_order",
         twoActorTest(async ({ alice, bob }) => {
             await alice.connect(bob);
-            const order = await OrderFactory.newBtcDaiOrder(alice, bob, "sell");
 
-            const orderUrl = await bob.makeOrder(order);
-            await alice.takeOrder();
+            await alice.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
+            await bob.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
 
-            await bob.assertSwapCreatedFromOrder(orderUrl);
+            await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
 
-            await alice.assertAndExecuteNextAction("deploy");
             await alice.assertAndExecuteNextAction("fund");
 
+            await bob.assertAndExecuteNextAction("deploy");
             await bob.assertAndExecuteNextAction("fund");
 
             await alice.assertAndExecuteNextAction("redeem");
