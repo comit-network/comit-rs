@@ -15,7 +15,7 @@ use chrono::Local;
 use comit::btsieve::bitcoin::BitcoindConnector;
 use comit::btsieve::ethereum::Web3Connector;
 use futures::channel::mpsc::Sender;
-use futures::{channel::mpsc::Receiver, Future, FutureExt, SinkExt, StreamExt};
+use futures::{channel::mpsc::Receiver, Future, FutureExt, SinkExt, StreamExt, TryFutureExt};
 use futures_timer::Delay;
 
 use std::{sync::Arc, time::Duration};
@@ -260,8 +260,6 @@ async fn execute_swap(
     mut finished_swap_sender: Sender<FinishedSwap>,
     swap: SwapKind,
 ) -> anyhow::Result<()> {
-    db.insert_swap(swap.clone()).await?;
-
     swap.execute(
         Arc::clone(&db),
         Arc::clone(&bitcoin_wallet),
@@ -373,15 +371,28 @@ async fn handle_network_event(
             swarm.set_swap_identities(swap_metadata, bitcoin_identity, ethereum_identity)
         }
         network::Event::SpawnSwap(swap) => {
-            tokio::spawn(execute_swap(
-                Arc::clone(&db),
-                Arc::clone(&bitcoin_wallet),
-                Arc::clone(&ethereum_wallet),
-                Arc::clone(&bitcoin_connector),
-                Arc::clone(&ethereum_connector),
-                finished_swap_sender,
-                swap,
-            ));
+            let swap_id = swap.swap_id();
+
+            let res = db
+                .insert_swap(swap.clone())
+                .map_err(|e| tracing::error!("Could not insert swap {}: {:?}", swap_id, e))
+                .await;
+
+            if res.is_ok() {
+                let _ = tokio::spawn(execute_swap(
+                    Arc::clone(&db),
+                    Arc::clone(&bitcoin_wallet),
+                    Arc::clone(&ethereum_wallet),
+                    Arc::clone(&bitcoin_connector),
+                    Arc::clone(&ethereum_connector),
+                    finished_swap_sender,
+                    swap,
+                ))
+                .await
+                .map_err(|e| {
+                    tracing::error!("Execution failed for swap swap {}: {:?}", swap_id, e)
+                });
+            }
         }
     }
 }
