@@ -328,13 +328,17 @@ fn period_for_bob_to_complete(config: &Config, current_state: BobState) -> Durat
 
 // Scale the duration by factor / 100 i.e., scale the duration by a
 // percentage.
-#[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
-fn scale_by_factor(d: Duration, factor: u32) -> Duration {
-    let secs = d.whole_seconds();
-    let scaled = secs * factor as i64;
-    let reduced = (scaled as f64 / 100.0).floor();
+fn scale_by_factor(orig: Duration, factor: u32) -> Duration {
+    let scaled = orig.whole_seconds() * factor as i64;
+    let reduced = scaled.checked_div_euclid(100);
 
-    Duration::seconds(reduced as i64)
+    match reduced {
+        Some(secs) => Duration::seconds(secs as i64),
+        None => {
+            tracing::warn!("failed to scale {} by {}", orig.whole_seconds(), factor);
+            orig
+        }
+    }
 }
 
 impl<A, B> fmt::Display for Expiries<A, B> {
