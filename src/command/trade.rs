@@ -11,7 +11,7 @@ use crate::{
     Maker, MidMarketRate, Seed, Spread,
 };
 use anyhow::Context;
-use chrono::Local;
+use chrono::Utc;
 use comit::btsieve::bitcoin::BitcoindConnector;
 use comit::btsieve::ethereum::Web3Connector;
 use futures::channel::mpsc::Sender;
@@ -275,7 +275,7 @@ async fn execute_swap(
         .send(FinishedSwap::new(
             swap.clone(),
             swap.params().taker,
-            Local::now(),
+            Utc::now(),
         ))
         .await
         .map_err(|_| {
