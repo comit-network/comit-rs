@@ -196,7 +196,7 @@ impl crate::StaticStub for SwapParams {
                 chain_id: 42.into(),
             },
             secret_hash: SecretHash::new(comit::Secret::from(*b"hello world, you are beautiful!!")),
-            utc_start_of_swap: chrono::Local::now().naive_local(),
+            utc_start_of_swap: chrono::Local::now().naive_utc(),
             swap_id: Default::default(),
             taker: Taker::static_stub(),
         }
@@ -468,7 +468,7 @@ mod tests {
         let secret = secret();
         let secret_hash = SecretHash::new(secret);
 
-        let start_of_swap = Utc::now().naive_local();
+        let start_of_swap = Utc::now().naive_utc();
         let beta_expiry = Timestamp::now().plus(60 * 60);
 
         let (hbit_params, hbit_transient_refund_sk, hbit_transient_redeem_sk) =

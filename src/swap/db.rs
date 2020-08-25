@@ -247,7 +247,7 @@ impl StaticStub for Swap {
                 .unwrap(),
             ),
             taker: network::Taker::static_stub(),
-            utc_start_of_swap: chrono::Local::now().naive_local(),
+            utc_start_of_swap: chrono::Local::now().naive_utc(),
             hbit_funded: None,
             hbit_redeemed: None,
             hbit_refunded: None,
