@@ -234,3 +234,26 @@ export enum Position {
     Buy = "buy",
     Sell = "sell",
 }
+
+export interface MarketEntity extends Entity {
+    entities: MarketItemEntity[];
+}
+
+export interface MarketItemEntity extends EmbeddedRepresentationSubEntity {
+    properties: MarketItemProperties;
+}
+
+export interface MarketItemProperties {
+    id: string;
+    position: Position;
+    quantity: Amount;
+    price: Amount;
+    ours: boolean;
+    maker: string;
+}
+
+export interface Amount {
+    currency: string;
+    value: string;
+    decimals: number;
+}

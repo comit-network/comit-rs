@@ -41,12 +41,13 @@ impl From<Uuid> for OrderId {
 pub struct BtcDaiOrder {
     pub id: OrderId,
     pub position: Position,
-    #[serde(with = "asset::bitcoin::sats_as_string")]
-    pub quantity: asset::Bitcoin,
-    pub price: Erc20Quantity,
     pub swap_protocol: SwapProtocol,
     #[serde(with = "time::serde::timestamp")]
     pub created_at: OffsetDateTime,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    pub quantity: asset::Bitcoin,
+    /// The price of this order in WEI per SATOSHI.
+    price: Erc20Quantity,
 }
 
 impl BtcDaiOrder {
@@ -81,6 +82,45 @@ impl BtcDaiOrder {
             created_at: OffsetDateTime::now_utc(),
         }
     }
+
+    /// Returns the price of this order in the given denomination.
+    ///
+    /// The field `price` holds the value in WEI per SATOSHI, hence we need to
+    /// multiply it by 100_000_000 to get WEI per BTC.
+    pub fn price(&self, denom: Denomination) -> Erc20Quantity {
+        let price = self.price.clone();
+        match denom {
+            Denomination::WeiPerSat => price,
+            Denomination::WeiPerBtc => asset::Bitcoin::from_sat(100_000_000) * price,
+        }
+    }
+}
+
+#[cfg(test)]
+impl BtcDaiOrder {
+    pub fn new_test(
+        id: OrderId,
+        position: Position,
+        quantity: asset::Bitcoin,
+        price: Erc20Quantity,
+        swap_protocol: SwapProtocol,
+        created_at: OffsetDateTime,
+    ) -> BtcDaiOrder {
+        Self {
+            id,
+            position,
+            quantity,
+            price,
+            swap_protocol,
+            created_at,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Denomination {
+    WeiPerBtc,
+    WeiPerSat,
 }
 
 /// The position of the maker for this order. A BTC/DAI buy order,

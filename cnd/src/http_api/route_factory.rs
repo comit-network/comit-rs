@@ -128,6 +128,12 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .and(facade.clone())
         .and_then(swaps::action_refund);
 
+    let get_btc_dai_market = warp::get()
+        .and(warp::path!("markets" / "BTC-DAI"))
+        .and(warp::path::end())
+        .and(facade.clone())
+        .and_then(orderbook::get_btc_dai_market);
+
     let make_btc_dai_order = warp::post()
         .and(warp::path!("orders" / "BTC-DAI"))
         .and(warp::path::end())
@@ -158,6 +164,7 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .or(hbit_herc20)
         .or(herc20_hbit)
         .or(make_btc_dai_order)
+        .or(get_btc_dai_market)
         .or(post_dial_addr)
         .recover(http_api::unpack_problem)
         .with(warp::log("http"))

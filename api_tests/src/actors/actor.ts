@@ -821,6 +821,11 @@ export class Actor {
         this.cndInstance.stop();
     }
 
+    public async restart() {
+        await this.stop();
+        await this.start();
+    }
+
     public async dumpState() {
         this.logger.debug("dumping current state");
 

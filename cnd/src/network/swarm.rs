@@ -11,7 +11,7 @@ use crate::{
 use anyhow::Context as _;
 use comit::{
     network::{swap_digest::SwapDigest, Identities},
-    BtcDaiOrderForm, OrderId, Role,
+    BtcDaiOrder, BtcDaiOrderForm, OrderId, Role,
 };
 use futures::stream::StreamExt;
 use libp2p::{
@@ -121,6 +121,17 @@ impl Swarm {
         addresses: BtcDaiOrderAddresses,
     ) -> OrderId {
         self.inner.lock().await.publish_order(form, addresses)
+    }
+
+    pub async fn btc_dai_market(&self) -> Vec<(PeerId, BtcDaiOrder)> {
+        self.inner
+            .lock()
+            .await
+            .orderbook
+            .orderpool()
+            .all()
+            .map(|(maker, order)| (maker.clone(), order.clone()))
+            .collect()
     }
 
     pub async fn dial_addr(&mut self, addr: Multiaddr) -> anyhow::Result<()> {
