@@ -17,7 +17,7 @@ pub async fn herc20_hbit_alice<A, BC>(
     herc20_params: herc20::Params,
     hbit_params: hbit::Params,
     secret: Secret,
-    start_of_swap: NaiveDateTime,
+    utc_start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
     A: herc20::ExecuteDeploy + herc20::ExecuteFund + herc20::ExecuteRefund + hbit::ExecuteRedeem,
@@ -30,14 +30,14 @@ where
         herc20_params.clone(),
         hbit_params,
         secret,
-        start_of_swap,
+        utc_start_of_swap,
     )
     .await;
 
     use Herc20HbitAliceError::*;
     if let Err(BobFund(herc20_deployed)) | Err(AliceRedeem(herc20_deployed)) = res {
         alice
-            .execute_refund(herc20_params, herc20_deployed, start_of_swap)
+            .execute_refund(herc20_params, herc20_deployed, utc_start_of_swap)
             .await?;
     };
 
@@ -51,7 +51,7 @@ async fn herc20_hbit_happy_alice<A, BC>(
     herc20_params: herc20::Params,
     hbit_params: hbit::Params,
     secret: Secret,
-    start_of_swap: NaiveDateTime,
+    utc_start_of_swap: NaiveDateTime,
 ) -> Result<(), Herc20HbitAliceError>
 where
     A: herc20::ExecuteDeploy + herc20::ExecuteFund + hbit::ExecuteRedeem,
@@ -69,14 +69,15 @@ where
         .execute_fund(
             herc20_params.clone(),
             herc20_deployed.clone(),
-            start_of_swap,
+            utc_start_of_swap,
         )
         .await
         .map_err(|_| AliceFund)?;
 
-    let hbit_funded = hbit::watch_for_funded(bitcoin_connector, &hbit_params.shared, start_of_swap)
-        .await
-        .map_err(|_| BobFund(herc20_deployed.clone()))?;
+    let hbit_funded =
+        hbit::watch_for_funded(bitcoin_connector, &hbit_params.shared, utc_start_of_swap)
+            .await
+            .map_err(|_| BobFund(herc20_deployed.clone()))?;
 
     let _hbit_redeemed = alice
         .execute_redeem(hbit_params, hbit_funded, secret)
@@ -96,7 +97,7 @@ pub async fn herc20_hbit_bob<B, EC, BC>(
     bitcoin_connector: &BC,
     herc20_params: herc20::Params,
     hbit_params: hbit::Params,
-    start_of_swap: NaiveDateTime,
+    utc_start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
     B: hbit::ExecuteFund + hbit::ExecuteRefund + herc20::ExecuteRedeem,
@@ -112,7 +113,7 @@ where
         bitcoin_connector,
         herc20_params,
         hbit_params,
-        start_of_swap,
+        utc_start_of_swap,
     )
     .await;
 
@@ -131,7 +132,7 @@ async fn herc20_hbit_happy_bob<B, EC, BC>(
     bitcoin_connector: &BC,
     herc20_params: herc20::Params,
     hbit_params: hbit::Params,
-    start_of_swap: NaiveDateTime,
+    utc_start_of_swap: NaiveDateTime,
 ) -> Result<(), Herc20HbitBobError>
 where
     B: hbit::ExecuteFund + herc20::ExecuteRedeem,
@@ -144,14 +145,14 @@ where
     use Herc20HbitBobError::*;
 
     let herc20_deployed =
-        herc20::watch_for_deployed(ethereum_connector, herc20_params.clone(), start_of_swap)
+        herc20::watch_for_deployed(ethereum_connector, herc20_params.clone(), utc_start_of_swap)
             .await
             .map_err(|_| AliceDeploy)?;
 
     let _herc20_funded = herc20::watch_for_funded(
         ethereum_connector,
         herc20_params.clone(),
-        start_of_swap,
+        utc_start_of_swap,
         herc20_deployed.clone(),
     )
     .await
@@ -163,7 +164,7 @@ where
         bitcoin_connector,
         &hbit_params.shared,
         hbit_funded.location,
-        start_of_swap,
+        utc_start_of_swap,
     )
     .await
     .map_err(|_| AliceRedeem(hbit_funded))?;
@@ -173,7 +174,7 @@ where
             herc20_params,
             hbit_redeemed.secret,
             herc20_deployed.clone(),
-            start_of_swap,
+            utc_start_of_swap,
         )
         .await
         .map_err(|_| BobRedeem)?;

@@ -21,7 +21,7 @@ pub struct Bob<AW, BW> {
     pub db: Arc<Database>,
     pub swap_id: SwapId,
     pub secret_hash: SecretHash,
-    pub start_of_swap: NaiveDateTime,
+    pub utc_start_of_swap: NaiveDateTime,
     pub beta_expiry: Timestamp,
 }
 
@@ -53,11 +53,11 @@ where
         &self,
         params: herc20::Params,
         deploy_event: herc20::Deployed,
-        start_of_swap: NaiveDateTime,
+        utc_start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<herc20::Funded> {
         let action = self
             .beta_wallet
-            .execute_fund(params, deploy_event, start_of_swap);
+            .execute_fund(params, deploy_event, utc_start_of_swap);
         let poll_beta_has_expired = poll_beta_has_expired(&self.beta_wallet, self.beta_expiry);
 
         try_do_it_once(
@@ -80,11 +80,11 @@ where
         params: comit::herc20::Params,
         secret: Secret,
         deploy_event: comit::herc20::Deployed,
-        start_of_swap: NaiveDateTime,
+        utc_start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<comit::herc20::Redeemed> {
-        let action = self
-            .alpha_wallet
-            .execute_redeem(params, secret, deploy_event, start_of_swap);
+        let action =
+            self.alpha_wallet
+                .execute_redeem(params, secret, deploy_event, utc_start_of_swap);
 
         try_do_it_once(
             self.db.as_ref(),
@@ -105,11 +105,11 @@ where
         &self,
         params: herc20::Params,
         deploy_event: herc20::Deployed,
-        start_of_swap: NaiveDateTime,
+        utc_start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<herc20::Refunded> {
         let action = self
             .beta_wallet
-            .execute_refund(params, deploy_event, start_of_swap);
+            .execute_refund(params, deploy_event, utc_start_of_swap);
 
         try_do_it_once(
             self.db.as_ref(),

@@ -20,7 +20,7 @@ pub trait ExecuteFund {
         &self,
         params: Params,
         deploy_event: Deployed,
-        start_of_swap: NaiveDateTime,
+        utc_start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded>;
 }
 
@@ -31,7 +31,7 @@ pub trait ExecuteRedeem {
         params: Params,
         secret: Secret,
         deploy_event: Deployed,
-        start_of_swap: NaiveDateTime,
+        utc_start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed>;
 }
 
@@ -41,7 +41,7 @@ pub trait ExecuteRefund {
         &self,
         params: Params,
         deploy_event: Deployed,
-        start_of_swap: NaiveDateTime,
+        utc_start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded>;
 }
 
@@ -54,13 +54,13 @@ pub struct Funded {
 pub async fn watch_for_funded<C>(
     connector: &C,
     params: Params,
-    start_of_swap: NaiveDateTime,
+    utc_start_of_swap: NaiveDateTime,
     deployed: Deployed,
 ) -> anyhow::Result<Funded>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
-    match comit::herc20::watch_for_funded(connector, params, start_of_swap, deployed).await? {
+    match comit::herc20::watch_for_funded(connector, params, utc_start_of_swap, deployed).await? {
         comit::herc20::Funded::Correctly { transaction, asset } => {
             Ok(Funded { transaction, asset })
         }

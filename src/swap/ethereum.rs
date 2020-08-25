@@ -33,14 +33,18 @@ impl herc20::ExecuteFund for Wallet {
         &self,
         params: herc20::Params,
         deploy_event: herc20::Deployed,
-        start_of_swap: NaiveDateTime,
+        utc_start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<herc20::Funded> {
         let action = params.build_fund_action(deploy_event.location);
         let _data = self.inner.call_contract(action).await?;
 
-        let event =
-            herc20::watch_for_funded(self.connector.as_ref(), params, start_of_swap, deploy_event)
-                .await?;
+        let event = herc20::watch_for_funded(
+            self.connector.as_ref(),
+            params,
+            utc_start_of_swap,
+            deploy_event,
+        )
+        .await?;
 
         Ok(event)
     }
@@ -53,13 +57,13 @@ impl herc20::ExecuteRedeem for Wallet {
         params: herc20::Params,
         secret: Secret,
         deploy_event: herc20::Deployed,
-        start_of_swap: NaiveDateTime,
+        utc_start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<herc20::Redeemed> {
         let action = params.build_redeem_action(deploy_event.location, secret);
         let _data = self.inner.call_contract(action).await?;
 
         let event =
-            herc20::watch_for_redeemed(self.connector.as_ref(), start_of_swap, deploy_event)
+            herc20::watch_for_redeemed(self.connector.as_ref(), utc_start_of_swap, deploy_event)
                 .await?;
 
         Ok(event)
@@ -75,7 +79,7 @@ impl herc20::ExecuteRefund for Wallet {
         &self,
         params: herc20::Params,
         deploy_event: herc20::Deployed,
-        start_of_swap: NaiveDateTime,
+        utc_start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<herc20::Refunded> {
         loop {
             if self.ledger_time().await? >= params.expiry {
@@ -89,7 +93,7 @@ impl herc20::ExecuteRefund for Wallet {
         let _data = self.inner.call_contract(action).await?;
 
         let event =
-            herc20::watch_for_refunded(self.connector.as_ref(), start_of_swap, deploy_event)
+            herc20::watch_for_refunded(self.connector.as_ref(), utc_start_of_swap, deploy_event)
                 .await?;
 
         Ok(event)

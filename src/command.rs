@@ -127,7 +127,7 @@ pub fn into_history_trade(
         .into();
 
     Trade {
-        start_timestamp: history::LocalDateTime::from_utc_naive(&swap.start_of_swap),
+        start_timestamp: history::LocalDateTime::from_utc_naive(&swap.utc_start_of_swap),
         final_timestamp,
         base_symbol: Symbol::Btc,
         quote_symbol: Symbol::Dai,
