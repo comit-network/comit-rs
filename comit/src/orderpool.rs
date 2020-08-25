@@ -1,4 +1,9 @@
-use crate::{asset, asset::Erc20Quantity, order::SwapProtocol, BtcDaiOrder, OrderId, Position};
+use crate::{
+    asset,
+    asset::Erc20Quantity,
+    order::{Denomination, SwapProtocol},
+    BtcDaiOrder, OrderId, Position,
+};
 use libp2p::PeerId;
 use std::{collections::HashMap, iter, iter::FromIterator, ops::AddAssign};
 use time::OffsetDateTime;
@@ -203,11 +208,15 @@ fn match_orders(
     reserved_left: &asset::Bitcoin,
     reserved_right: &asset::Bitcoin,
 ) -> Option<InternalMatch> {
+    use Denomination::WeiPerSat;
     use Position::*;
 
+    let price_left = left.price(WeiPerSat);
+    let price_right = right.price(WeiPerSat);
+
     let price = match (left.position, right.position) {
-        (Sell, Buy) if left.price <= right.price => &left.price,
-        (Buy, Sell) if left.price >= right.price => &right.price,
+        (Sell, Buy) if price_left <= price_right => price_left,
+        (Buy, Sell) if price_left >= price_right => price_right,
         (Sell, Sell) | (Buy, Buy) => {
             tracing::trace!("orders with the same position don't match");
             return None;
@@ -216,9 +225,9 @@ fn match_orders(
             tracing::trace!(
                 "{}ing at {} and {}ing at {} does not match",
                 left.position,
-                left.price,
+                price_left,
                 right.position,
-                right.price
+                price_right
             );
             return None;
         }
@@ -247,10 +256,7 @@ fn match_orders(
 
     tracing::trace!("matched with {} at price {}", quantity, price);
 
-    Some(InternalMatch {
-        price: price.clone(),
-        quantity,
-    })
+    Some(InternalMatch { price, quantity })
 }
 
 // TODO: Find better name
@@ -378,21 +384,17 @@ mod tests {
 
     #[test]
     fn make_reference_point_picks_the_more_recent_one() {
-        let first = BtcDaiOrder {
-            id: OrderId::random(),
-            position: Position::Buy,
-            quantity: Default::default(),
-            price: Erc20Quantity::zero(),
-            swap_protocol: hbit_herc20(),
-            created_at: OffsetDateTime::from_unix_timestamp(0),
+        let proto = BtcDaiOrder::buy(Default::default(), Erc20Quantity::zero(), hbit_herc20());
+
+        let first = {
+            let mut order = proto.clone();
+            order.created_at = OffsetDateTime::from_unix_timestamp(0);
+            order
         };
-        let second = BtcDaiOrder {
-            id: OrderId::random(),
-            position: Position::Buy,
-            quantity: Default::default(),
-            price: Erc20Quantity::zero(),
-            swap_protocol: hbit_herc20(),
-            created_at: OffsetDateTime::from_unix_timestamp(1000),
+        let second = {
+            let mut order = proto;
+            order.created_at = OffsetDateTime::from_unix_timestamp(1000);
+            order
         };
 
         let reference_point = make_reference_point(&first, &second);

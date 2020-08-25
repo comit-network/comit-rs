@@ -55,14 +55,14 @@ pub mod order {
 
     prop_compose! {
         pub fn btc_dai_order()(id in order_id(), price in asset::erc20_quantity(), quantity in asset::bitcoin(), swap_protocol in swap_protocol(), position in position(), created_at in time::offset_date_time()) -> BtcDaiOrder {
-            BtcDaiOrder {
+            BtcDaiOrder::new_test(
                 id,
-                price,
-                quantity,
                 position,
+                quantity,
+                price,
                 swap_protocol,
                 created_at
-            }
+            )
         }
     }
 

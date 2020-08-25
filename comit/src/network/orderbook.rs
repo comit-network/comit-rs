@@ -86,10 +86,6 @@ impl Orderbook {
         &self.orderpool
     }
 
-    pub fn orderpool_mut(&mut self) -> &mut OrderPool {
-        &mut self.orderpool
-    }
-
     fn my_poll<BIE>(
         &mut self,
         _: &mut Context<'_>,
