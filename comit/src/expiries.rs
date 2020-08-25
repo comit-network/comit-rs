@@ -87,8 +87,8 @@ pub fn calculate_expiry_offsets(
     // Bob redeems on alpha ledger so needs time to act before the alpha expiry.
     let alpha_offset = cmp::max(bob_needs, beta_offset); // Alpha expiry must not be less than beta expiry.
 
-    let alpha_offset = scale_by_factor(alpha_offset, scale_factor);
-    let beta_offset = scale_by_factor(beta_offset, scale_factor);
+    let alpha_offset = scale_up_by_factor(alpha_offset, scale_factor);
+    let beta_offset = scale_up_by_factor(beta_offset, scale_factor);
 
     (alpha_offset.into(), beta_offset.into())
 }
@@ -327,8 +327,12 @@ fn period_for_bob_to_complete(config: &Config, current_state: BobState) -> Durat
 }
 
 // Scale the duration by factor / 100 i.e., scale the duration by a
-// percentage.
-fn scale_by_factor(orig: Duration, factor: u32) -> Duration {
+// percentage. If factor is <= 100 returns original value unscaled.
+fn scale_up_by_factor(orig: Duration, factor: u32) -> Duration {
+    if factor <= 100 {
+        return orig;
+    }
+
     let scaled = orig.whole_seconds() * factor as i64;
     let reduced = scaled.checked_div_euclid(100);
 
@@ -737,16 +741,23 @@ mod tests {
     }
 
     #[test]
-    fn scale_by_factor_100_works() {
+    fn scale_up_by_factor_100_or_less_does_not_scale() {
         let d = Duration::minute();
-        let scaled = scale_by_factor(d, 100);
-        assert_eq!(d, scaled)
+
+        let scaled = scale_up_by_factor(d, 100);
+        assert_eq!(d, scaled);
+
+        let scaled = scale_up_by_factor(d, 10);
+        assert_eq!(d, scaled);
+
+        let scaled = scale_up_by_factor(d, 0);
+        assert_eq!(d, scaled);
     }
 
     #[test]
-    fn scale_by_factor_200_works() {
+    fn scale_up_by_factor_200_works() {
         let d = Duration::minute();
-        let got = scale_by_factor(d, 200);
+        let got = scale_up_by_factor(d, 200);
         let want = 2_i32.minutes();
 
         assert_that!(got).is_equal_to(want)
