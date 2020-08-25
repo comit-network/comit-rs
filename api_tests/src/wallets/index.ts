@@ -1,12 +1,9 @@
-import { HarnessGlobal, sleep } from "../utils";
+import { sleep } from "../utils";
 import { BitcoinWallet } from "./bitcoin";
 import { EthereumWallet } from "./ethereum";
+import { Asset } from "../asset";
 import { LightningWallet } from "./lightning";
 import { Logger } from "log4js";
-import { ActorName } from "../actors/actor";
-import { Asset } from "../asset";
-
-declare var global: HarnessGlobal;
 
 interface AllWallets {
     bitcoin?: BitcoinWallet;
@@ -47,46 +44,6 @@ export class Wallets {
 
         return wallet;
     }
-
-    public async initializeForLedger<K extends keyof AllWallets>(
-        name: K,
-        logger: Logger,
-        actor?: ActorName
-    ) {
-        switch (name) {
-            case "ethereum":
-                this.wallets.ethereum = await EthereumWallet.new_instance(
-                    global.ledgerConfigs.ethereum.dev_account_key,
-                    global.ledgerConfigs.ethereum.rpc_url,
-                    logger,
-                    global.gethLockDir,
-                    global.ledgerConfigs.ethereum.chain_id
-                );
-                break;
-            case "bitcoin":
-                this.wallets.bitcoin = await BitcoinWallet.newInstance(
-                    global.ledgerConfigs.bitcoin,
-                    logger
-                );
-                break;
-            case "lightning":
-                switch (actor) {
-                    case "alice": {
-                        this.wallets.lightning = global.lndWallets.alice;
-                        break;
-                    }
-                    case "bob": {
-                        this.wallets.lightning = global.lndWallets.bob;
-                        break;
-                    }
-                    default: {
-                        throw new Error(
-                            `Cannot initialize Lightning wallet for actor: '${actor}'`
-                        );
-                    }
-                }
-        }
-    }
 }
 
 export async function pollUntilMinted(
@@ -102,4 +59,57 @@ export async function pollUntilMinted(
 
         return pollUntilMinted(wallet, minimumBalance, asset);
     }
+}
+
+export function newBitcoinStubWallet(logger: Logger): BitcoinWallet {
+    return newStubWallet(
+        {
+            address: () =>
+                Promise.resolve("bcrt1qq7pflkfujg6dq25n73n66yjkvppq6h9caklrhz"),
+        },
+        logger
+    );
+}
+
+export function newEthereumStubWallet(logger: Logger): EthereumWallet {
+    return newStubWallet(
+        {
+            account: () => "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+        },
+        logger
+    );
+}
+
+export function newLightningStubWallet(logger: Logger): LightningWallet {
+    return newStubWallet(
+        {
+            pubkey: () =>
+                Promise.resolve(
+                    "02ed138aaed50d2d597f6fe8d30759fd3949fe73fdf961322713f1c19e10036a06"
+                ),
+        },
+        logger
+    );
+}
+
+function newStubWallet<W extends Wallet, T extends Partial<W>>(
+    stubs: T,
+    logger: Logger
+): W {
+    const stubWallet: Partial<W> = {
+        ...stubs,
+        mint: (_: Asset) => {
+            logger.warn("StubWallet doesn't mint anything");
+        },
+        getBalanceByAsset: async (asset: Asset) => {
+            logger.warn(
+                "StubWallet always returns 0 balance for asset",
+                asset.name
+            );
+
+            return Promise.resolve(0);
+        },
+    };
+
+    return (stubWallet as unknown) as W;
 }

@@ -22,7 +22,9 @@ export async function createActors(
                 global.cargoTargetDir,
                 cndLogFile,
                 actorLogger,
-                global.cndConfigOverrides
+                global.cndConfigOverrides,
+                global.gethLockDir,
+                global.lndWallets
             )
         );
     }

@@ -8,7 +8,15 @@ import { lock } from "proper-lockfile";
 import { Asset } from "../asset";
 import path from "path";
 
-export class EthereumWallet implements Wallet {
+export interface EthereumWallet extends Wallet {
+    inner: EthereumWalletSdk;
+
+    account(): string;
+    deployErc20TokenContract(): Promise<string>;
+    getTransactionStatus(txid: string): Promise<number>;
+}
+
+export class Web3EthereumWallet implements EthereumWallet {
     public MaximumFee = 0;
 
     private constructor(
@@ -34,7 +42,7 @@ export class EthereumWallet implements Wallet {
             ""
         );
         const inner = new EthereumWalletSdk(rpcUrl);
-        return new EthereumWallet(
+        return new Web3EthereumWallet(
             ethereumDevAccount,
             logger,
             ethereumLockDir,

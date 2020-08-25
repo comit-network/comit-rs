@@ -1,5 +1,5 @@
-import { promises as asyncFs } from "fs";
 import * as fs from "fs";
+import { promises as asyncFs } from "fs";
 import { promisify } from "util";
 import { Global } from "@jest/types";
 import rimraf from "rimraf";

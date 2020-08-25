@@ -1,5 +1,6 @@
 use crate::{http_api::ActionNotFound, storage::NoSwapExists};
 use http_api_problem::HttpApiProblem;
+use std::error::Error;
 use warp::{
     body::BodyDeserializeError,
     http::{self, StatusCode},
@@ -46,11 +47,13 @@ pub async fn unpack_problem(rejection: Rejection) -> Result<impl Reply, Rejectio
     }
 
     if let Some(invalid_body) = rejection.find::<BodyDeserializeError>() {
-        return Ok(problem_to_reply(
-            &HttpApiProblem::new("Invalid body.")
-                .set_status(StatusCode::BAD_REQUEST)
-                .set_detail(format!("{:?}", invalid_body)),
-        ));
+        let mut problem = HttpApiProblem::new("Invalid body.").set_status(StatusCode::BAD_REQUEST);
+
+        if let Some(source) = invalid_body.source() {
+            problem = problem.set_detail(format!("{}", source));
+        }
+
+        return Ok(problem_to_reply(&problem));
     }
 
     Err(rejection)

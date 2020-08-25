@@ -11,14 +11,7 @@ describe("herc20-halbit-respawn", () => {
     it(
         "herc20-halbit-alice-misses-bob-fund",
         twoActorTest(async ({ alice, bob }) => {
-            const bodies = (
-                await SwapFactory.newSwap(alice, bob, {
-                    ledgers: {
-                        alpha: "ethereum",
-                        beta: "lightning",
-                    },
-                })
-            ).herc20Halbit;
+            const bodies = (await SwapFactory.newSwap(alice, bob)).herc20Halbit;
 
             await alice.createHerc20HalbitSwap(bodies.alice);
             await bob.createHerc20HalbitSwap(bodies.bob);
@@ -49,14 +42,7 @@ describe("herc20-halbit-respawn", () => {
     it(
         "herc20-halbit-bob-misses-alice-redeem",
         twoActorTest(async ({ alice, bob }) => {
-            const bodies = (
-                await SwapFactory.newSwap(alice, bob, {
-                    ledgers: {
-                        alpha: "ethereum",
-                        beta: "lightning",
-                    },
-                })
-            ).herc20Halbit;
+            const bodies = (await SwapFactory.newSwap(alice, bob)).herc20Halbit;
 
             await alice.createHerc20HalbitSwap(bodies.alice);
             await bob.createHerc20HalbitSwap(bodies.bob);
@@ -88,14 +74,7 @@ describe("herc20-halbit-respawn", () => {
     it(
         "halbit-herc20-alice-misses-bob-deploy-and-fund",
         twoActorTest(async ({ alice, bob }) => {
-            const bodies = (
-                await SwapFactory.newSwap(alice, bob, {
-                    ledgers: {
-                        alpha: "lightning",
-                        beta: "ethereum",
-                    },
-                })
-            ).halbitHerc20;
+            const bodies = (await SwapFactory.newSwap(alice, bob)).halbitHerc20;
 
             await alice.createHalbitHerc20Swap(bodies.alice);
             await bob.createHalbitHerc20Swap(bodies.bob);
@@ -127,14 +106,7 @@ describe("herc20-halbit-respawn", () => {
     it(
         "halbit-herc20-bob-down-misses-alice-redeem",
         twoActorTest(async ({ alice, bob }) => {
-            const bodies = (
-                await SwapFactory.newSwap(alice, bob, {
-                    ledgers: {
-                        alpha: "lightning",
-                        beta: "ethereum",
-                    },
-                })
-            ).halbitHerc20;
+            const bodies = (await SwapFactory.newSwap(alice, bob)).halbitHerc20;
 
             await alice.createHalbitHerc20Swap(bodies.alice);
             await bob.createHalbitHerc20Swap(bodies.bob);

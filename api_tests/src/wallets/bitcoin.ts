@@ -2,20 +2,34 @@ import crypto from "crypto";
 import { bip32, networks } from "bitcoinjs-lib";
 import { Logger } from "log4js";
 import BitcoinRpcClient from "bitcoin-core";
-import { BitcoindWallet as BitcoinWalletSdk, BitcoindWallet } from "comit-sdk";
+import {
+    BitcoindWallet as BitcoinWalletSdk,
+    BitcoindWallet as BitcoindWalletSdk,
+} from "comit-sdk";
 import { toBitcoin, toSatoshi } from "satoshi-bitcoin";
 import { pollUntilMinted, Wallet } from "./index";
 import { BitcoinNodeConfig } from "../ledgers";
 import { Asset } from "../asset";
 
-export class BitcoinWallet implements Wallet {
+export interface BitcoinWallet extends Wallet {
+    inner: BitcoinWalletSdk;
+
+    address(): Promise<string>;
+
+    mintToAddress(
+        minimumExpectedBalance: bigint,
+        toAddress: string
+    ): Promise<void>;
+}
+
+export class BitcoindWallet implements BitcoinWallet {
     public static async newInstance(config: BitcoinNodeConfig, logger: Logger) {
         const hdKey = bip32.fromSeed(crypto.randomBytes(32), networks.regtest);
         const derivationPath = "44h/1h/0h/0/*";
         const walletDescriptor = `wpkh(${hdKey.toBase58()}/${derivationPath})`;
 
         const walletName = hdKey.fingerprint.toString("hex");
-        const wallet = await BitcoindWallet.newInstance({
+        const wallet = await BitcoindWalletSdk.newInstance({
             url: config.rpcUrl,
             username: config.username,
             password: config.password,
@@ -41,7 +55,7 @@ export class BitcoinWallet implements Wallet {
             ...rpcClientArgs,
         });
 
-        return new BitcoinWallet(wallet, defaultClient, minerClient, logger);
+        return new BitcoindWallet(wallet, defaultClient, minerClient, logger);
     }
 
     public MaximumFee = 100000;

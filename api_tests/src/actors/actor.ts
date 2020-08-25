@@ -30,10 +30,18 @@ import { CndInstance } from "../cnd/cnd_instance";
 import { Ledger, LedgerKind } from "../ledgers/ledger";
 import { HarnessGlobal, LedgerConfig, sleep } from "../utils";
 import { Actors } from "./index";
-import { Wallets } from "../wallets";
+import {
+    newBitcoinStubWallet,
+    newEthereumStubWallet,
+    newLightningStubWallet,
+    Wallets,
+} from "../wallets";
 import { defaultLedgerDescriptionForLedger } from "./defaults";
 import pTimeout from "p-timeout";
 import { Entity, Link } from "comit-sdk/dist/src/cnd/siren";
+import { BitcoindWallet, BitcoinWallet } from "../wallets/bitcoin";
+import { EthereumWallet, Web3EthereumWallet } from "../wallets/ethereum";
+import { LightningWallet } from "../wallets/lightning";
 import { merge } from "lodash";
 
 declare var global: HarnessGlobal;
@@ -52,7 +60,9 @@ export class Actor {
         cargoTargetDirectory: string,
         cndLogFile: string,
         logger: Logger,
-        configOverrides: Partial<CndConfigFile>
+        configOverrides: Partial<CndConfigFile>,
+        ethereumLockDir: string,
+        lndWallets: { alice?: LightningWallet; bob?: LightningWallet }
     ) {
         const actorConfig = await E2ETestActorConfig.for(name, logger);
         const generatedConfig = actorConfig.generateCndConfigFile(ledgerConfig);
@@ -72,11 +82,20 @@ export class Actor {
             JSON.stringify(finalConfig)
         );
 
-        return new Actor(logger, cndInstance, name);
+        const wallets = new Wallets({
+            bitcoin: await newBitcoinWallet(ledgerConfig, logger),
+            ethereum: await newEthereumWallet(
+                ledgerConfig,
+                ethereumLockDir,
+                logger
+            ),
+            lightning: newLightningWallet(lndWallets, name, logger),
+        });
+
+        return new Actor(logger, cndInstance, wallets, name);
     }
 
     public actors: Actors;
-    public wallets: Wallets;
 
     readonly cnd: Cnd;
     public swap: Swap;
@@ -93,9 +112,9 @@ export class Actor {
     constructor(
         public readonly logger: Logger,
         public readonly cndInstance: CndInstance,
+        public readonly wallets: Wallets,
         public readonly name: ActorName
     ) {
-        this.wallets = new Wallets({});
         const socket = cndInstance.getConfigFile().http_api.socket;
         this.cnd = new Cnd(`http://${socket}`);
 
@@ -276,17 +295,6 @@ export class Actor {
         quantity: number,
         price: number
     ): Promise<string> {
-        await this.wallets.initializeForLedger(
-            "bitcoin",
-            this.logger,
-            this.name
-        );
-        await this.wallets.initializeForLedger(
-            "ethereum",
-            this.logger,
-            this.name
-        );
-
         const sats = Number(quantity) * 100_000_000;
         const btcAsset = {
             ledger: LedgerKind.Bitcoin,
@@ -953,5 +961,52 @@ export class Actor {
                 peers.peers.findIndex((candidate) => candidate.id === peer) !==
                 -1
         );
+    }
+}
+
+async function newBitcoinWallet(
+    ledgerConfig: LedgerConfig,
+    logger: Logger
+): Promise<BitcoinWallet> {
+    const bitcoinConfig = ledgerConfig.bitcoin;
+    return bitcoinConfig
+        ? BitcoindWallet.newInstance(bitcoinConfig, logger)
+        : Promise.resolve(newBitcoinStubWallet(logger));
+}
+
+async function newEthereumWallet(
+    ledgerConfig: LedgerConfig,
+    ethereumLockDir: string,
+    logger: Logger
+): Promise<EthereumWallet> {
+    const ethereumConfig = ledgerConfig.ethereum;
+    return ethereumConfig
+        ? Web3EthereumWallet.new_instance(
+              ethereumConfig.dev_account_key,
+              ethereumConfig.rpc_url,
+              logger,
+              ethereumLockDir,
+              ethereumConfig.chain_id
+          )
+        : Promise.resolve(newEthereumStubWallet(logger));
+}
+
+function newLightningWallet(
+    lightningWallets: { alice?: LightningWallet; bob?: LightningWallet },
+    actor: ActorName,
+    logger: Logger
+): LightningWallet {
+    switch (actor) {
+        case "alice": {
+            return lightningWallets.alice || newLightningStubWallet(logger);
+        }
+        case "bob": {
+            return lightningWallets.bob || newLightningStubWallet(logger);
+        }
+        default: {
+            throw new Error(
+                `Cannot initialize Lightning wallet for actor: '${actor}'`
+            );
+        }
     }
 }

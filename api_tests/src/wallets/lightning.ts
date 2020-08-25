@@ -7,7 +7,24 @@ import { AddressType, Peer } from "@radar/lnrpc";
 import { Logger } from "log4js";
 import { LightningNodeConfig } from "../ledgers";
 
-export class LightningWallet implements Wallet {
+export interface LightningWallet extends Wallet {
+    readonly inner: LightningWalletSdk;
+
+    address(): Promise<string>;
+    pubkey(): Promise<string>;
+    connectPeer(toWallet: LightningWallet): Promise<any>;
+    listPeers(): Promise<Peer[]>;
+    getChannels(): Promise<any>; // any because dependency versions don't match
+    openChannel(toWallet: LightningWallet, quantity: number): Promise<void>;
+    addInvoice(
+        sats: string
+    ): Promise<{
+        rHash: string;
+        paymentRequest: string;
+    }>;
+}
+
+export class LndWallet implements LightningWallet {
     public static async newInstance(
         bitcoinWallet: BitcoinWallet,
         logger: Logger,
@@ -22,13 +39,13 @@ export class LightningWallet implements Wallet {
 
         logger.debug("lnd getinfo:", await inner.lnd.lnrpc.getInfo());
 
-        return new LightningWallet(inner, logger, bitcoinWallet);
+        return new LndWallet(inner, logger, bitcoinWallet);
     }
 
     public MaximumFee = 0;
 
     private constructor(
-        public readonly inner: LightningWalletSdk,
+        readonly inner: LightningWalletSdk,
         private readonly logger: Logger,
         private readonly bitcoinWallet: BitcoinWallet
     ) {}
@@ -96,8 +113,10 @@ export class LightningWallet implements Wallet {
         return response.peers ? response.peers : [];
     }
 
+    // @ts-ignore: dependency versions don't match ...
     public async getChannels() {
         const listChannelsResponse = await this.inner.lnd.lnrpc.listChannels();
+
         return listChannelsResponse.channels;
     }
 
@@ -154,5 +173,9 @@ export class LightningWallet implements Wallet {
         }
         await sleep(500);
         return this.pollUntilChannelIsOpen(outpoint);
+    }
+
+    public async pubkey(): Promise<string> {
+        return this.inner.getPubkey();
     }
 }
