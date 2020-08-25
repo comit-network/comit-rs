@@ -278,14 +278,6 @@ where
         let now = self.beta_connector.current_time();
         now > expiry.0
     }
-
-    /// Generate a report from the expiries.
-    pub fn report(&self) -> String {
-        format!(
-            "config: {}\n    alpha_offset: {}\n    beta_offset: {}",
-            self.config, self.alpha_offset, self.beta_offset
-        )
-    }
 }
 
 /// Duration for a complete happy path swap for Alice.
@@ -343,6 +335,16 @@ fn scale_by_factor(d: Duration, factor: u32) -> Duration {
     let reduced = (scaled as f64 / 100.0).floor();
 
     Duration::seconds(reduced as i64)
+}
+
+impl<A, B> fmt::Display for Expiries<A, B> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "config: {}\n    alpha_offset: {}\n    beta_offset: {}",
+            self.config, self.alpha_offset, self.beta_offset
+        )
+    }
 }
 
 // Its super easy to mix these up, add types so the compiler saves us.
@@ -757,9 +759,9 @@ mod tests {
         );
 
         let exp = Expiries::new(Protocol::Herc20Hbit, alpha, beta, scale);
-        println!("\n herc20-hbit swap:\n {}", exp.report());
+        println!("\n herc20-hbit swap:\n {}", exp);
 
         let exp = Expiries::new(Protocol::HbitHerc20, alpha, beta, scale);
-        println!("\n hbit-herc20 swap:\n {}", exp.report());
+        println!("\n hbit-herc20 swap:\n {}", exp);
     }
 }
