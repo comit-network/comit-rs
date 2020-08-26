@@ -65,7 +65,7 @@ impl<'c> Blockchain<'c> {
                 anyhow::anyhow!("Failed to parse geth dev account private key from string")
             })?,
             url.clone(),
-            ChainId::regtest(),
+            ChainId::GETH_DEV,
         );
 
         Ok(Self {
@@ -148,7 +148,7 @@ impl<'c> Blockchain<'c> {
                 data: contract,
                 amount: Ether::zero(),
                 gas_limit: 1_000_000,
-                chain_id: ChainId::regtest(),
+                chain_id: ChainId::GETH_DEV,
             })
             .await?;
 

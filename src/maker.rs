@@ -1,17 +1,11 @@
 use crate::{
     bitcoin,
     ethereum::{self, dai},
-    network::{self, Taker},
-    order::{BtcDaiOrder, Position, Symbol},
+    order::{BtcDaiOrderForm, Symbol},
     rate::Spread,
     MidMarketRate,
 };
-
-#[derive(Debug, Clone)]
-pub struct TakenOrder {
-    pub inner: BtcDaiOrder,
-    pub taker: Taker,
-}
+use comit::{order::SwapProtocol, Position, Role};
 
 // Bundles the state of the application
 #[derive(Debug)]
@@ -27,6 +21,7 @@ pub struct Maker {
     spread: Spread,
     bitcoin_network: bitcoin::Network,
     ethereum_chain: ethereum::Chain,
+    role: Role,
 }
 
 impl Maker {
@@ -41,6 +36,7 @@ impl Maker {
         spread: Spread,
         bitcoin_network: bitcoin::Network,
         dai_chain: ethereum::Chain,
+        role: Role,
     ) -> Self {
         Maker {
             btc_balance: Some(btc_balance),
@@ -54,6 +50,7 @@ impl Maker {
             spread,
             bitcoin_network,
             ethereum_chain: dai_chain,
+            role,
         }
     }
 
@@ -83,7 +80,7 @@ impl Maker {
     pub fn update_bitcoin_balance(
         &mut self,
         balance: bitcoin::Amount,
-    ) -> anyhow::Result<Option<BtcDaiOrder>> {
+    ) -> anyhow::Result<Option<BtcDaiOrderForm>> {
         // if we had a balance and the balance did not change => no new orders
         if let Some(previous_balance) = self.btc_balance {
             if previous_balance == balance {
@@ -103,7 +100,7 @@ impl Maker {
     pub fn update_dai_balance(
         &mut self,
         balance: dai::Amount,
-    ) -> anyhow::Result<Option<BtcDaiOrder>> {
+    ) -> anyhow::Result<Option<BtcDaiOrderForm>> {
         // if we had a balance and the balance did not change => no new orders
         if let Some(previous_balance) = self.dai_balance.clone() {
             if previous_balance == balance {
@@ -120,9 +117,13 @@ impl Maker {
         self.dai_balance = None;
     }
 
-    pub fn new_sell_order(&self) -> anyhow::Result<BtcDaiOrder> {
+    pub fn swap_protocol(&self, position: Position) -> SwapProtocol {
+        SwapProtocol::new(self.role, position)
+    }
+
+    pub fn new_sell_order(&self) -> anyhow::Result<BtcDaiOrderForm> {
         match (self.mid_market_rate, self.btc_balance) {
-            (Some(mid_market_rate), Some(btc_balance)) => BtcDaiOrder::new_sell(
+            (Some(mid_market_rate), Some(btc_balance)) => BtcDaiOrderForm::new_sell(
                 btc_balance,
                 self.btc_fee,
                 self.btc_reserved_funds,
@@ -137,9 +138,9 @@ impl Maker {
         }
     }
 
-    pub fn new_buy_order(&self) -> anyhow::Result<BtcDaiOrder> {
+    pub fn new_buy_order(&self) -> anyhow::Result<BtcDaiOrderForm> {
         match (self.mid_market_rate, self.dai_balance.clone()) {
-            (Some(mid_market_rate), Some(dai_balance)) => BtcDaiOrder::new_buy(
+            (Some(mid_market_rate), Some(dai_balance)) => BtcDaiOrderForm::new_buy(
                 dai_balance,
                 self.dai_reserved_funds.clone(),
                 self.dai_max_sell_amount.clone(),
@@ -153,7 +154,7 @@ impl Maker {
         }
     }
 
-    pub fn new_order(&self, position: Position) -> anyhow::Result<BtcDaiOrder> {
+    pub fn new_order(&self, position: Position) -> anyhow::Result<BtcDaiOrderForm> {
         match position {
             Position::Buy => self.new_buy_order(),
             Position::Sell => self.new_sell_order(),
@@ -165,25 +166,20 @@ impl Maker {
     /// Re & take & reserve
     pub fn process_taken_order(
         &mut self,
-        order: TakenOrder,
+        order: BtcDaiOrderForm,
     ) -> anyhow::Result<TakeRequestDecision> {
         match self.mid_market_rate {
             Some(current_mid_market_rate) => {
                 let current_profitable_rate = self
                     .spread
-                    .apply(current_mid_market_rate.into(), order.inner.position)?;
+                    .apply(current_mid_market_rate.into(), order.position)?;
 
-                if !order.inner.is_as_profitable_as(current_profitable_rate)? {
+                if !order.is_as_profitable_as(current_profitable_rate)? {
                     return Ok(TakeRequestDecision::RateNotProfitable);
                 }
 
-                match order.inner {
-                    order
-                    @
-                    BtcDaiOrder {
-                        position: Position::Buy,
-                        ..
-                    } => match self.dai_balance {
+                match order.position {
+                    Position::Buy => match self.dai_balance {
                         Some(ref dai_balance) => {
                             let updated_dai_reserved_funds =
                                 self.dai_reserved_funds.clone() + order.quote.amount;
@@ -195,12 +191,7 @@ impl Maker {
                         }
                         None => anyhow::bail!(BalanceNotAvailable(Symbol::Dai)),
                     },
-                    order
-                    @
-                    BtcDaiOrder {
-                        position: Position::Sell,
-                        ..
-                    } => match self.btc_balance {
+                    Position::Sell => match self.btc_balance {
                         Some(btc_balance) => {
                             let updated_btc_reserved_funds =
                                 self.btc_reserved_funds + order.base.amount + self.btc_fee;
@@ -216,7 +207,7 @@ impl Maker {
 
                 Ok(TakeRequestDecision::GoForSwap)
             }
-            None => anyhow::bail!(RateNotAvailable(order.inner.position)),
+            None => anyhow::bail!(RateNotAvailable(order.position)),
         }
     }
 
@@ -240,8 +231,8 @@ pub enum TakeRequestDecision {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PublishOrders {
-    pub new_sell_order: BtcDaiOrder,
-    pub new_buy_order: BtcDaiOrder,
+    pub new_sell_order: BtcDaiOrderForm,
+    pub new_buy_order: BtcDaiOrderForm,
 }
 
 #[derive(Debug, Copy, Clone, thiserror::Error)]
@@ -252,23 +243,10 @@ pub struct RateNotAvailable(Position);
 #[error("{0} balance not available.")]
 pub struct BalanceNotAvailable(Symbol);
 
-impl From<&network::TakenOrder> for TakenOrder {
-    fn from(from: &network::TakenOrder) -> Self {
-        Self {
-            inner: from.inner.clone(),
-            taker: from.taker.clone(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        network::Taker,
-        order::{BtcDaiOrder, Position},
-        MidMarketRate, Rate, StaticStub,
-    };
+    use crate::{order::BtcDaiOrderForm, MidMarketRate, Rate, StaticStub};
     use std::convert::TryFrom;
 
     impl StaticStub for Maker {
@@ -285,15 +263,7 @@ mod tests {
                 spread: Spread::default(),
                 bitcoin_network: bitcoin::Network::Bitcoin,
                 ethereum_chain: ethereum::Chain::static_stub(),
-            }
-        }
-    }
-
-    impl StaticStub for TakenOrder {
-        fn static_stub() -> Self {
-            Self {
-                inner: BtcDaiOrder::static_stub(),
-                taker: Taker::static_stub(),
+                role: Role::Bob,
             }
         }
     }
@@ -313,8 +283,8 @@ mod tests {
         dai::Amount::from_dai_trunc(dai).unwrap()
     }
 
-    fn some_btc(btc: f64) -> Option<bitcoin::Amount> {
-        Some(bitcoin::Amount::from_btc(btc).unwrap())
+    fn some_btc(btc: f64) -> Option<crate::bitcoin::Amount> {
+        Some(crate::bitcoin::Amount::from_btc(btc).unwrap())
     }
 
     fn some_dai(dai: f64) -> Option<dai::Amount> {
@@ -344,13 +314,10 @@ mod tests {
             ..StaticStub::static_stub()
         };
 
-        let taken_order = TakenOrder {
-            inner: BtcDaiOrder {
-                position: Position::Sell,
-                base: btc_asset(1.5),
-                quote: dai_asset(dai::Amount::zero()),
-            },
-            ..StaticStub::static_stub()
+        let taken_order = BtcDaiOrderForm {
+            position: Position::Sell,
+            base: btc_asset(1.5),
+            quote: dai_asset(dai::Amount::zero()),
         };
 
         let event = maker.process_taken_order(taken_order).unwrap();
@@ -367,13 +334,10 @@ mod tests {
             ..StaticStub::static_stub()
         };
 
-        let taken_order = TakenOrder {
-            inner: BtcDaiOrder {
-                position: Position::Sell,
-                base: btc_asset(1.5),
-                quote: dai_asset(dai::Amount::zero()),
-            },
-            ..StaticStub::static_stub()
+        let taken_order = BtcDaiOrderForm {
+            position: Position::Sell,
+            base: btc_asset(1.5),
+            quote: dai_asset(dai::Amount::zero()),
         };
 
         let event = maker.process_taken_order(taken_order).unwrap();
@@ -390,13 +354,10 @@ mod tests {
             ..StaticStub::static_stub()
         };
 
-        let taken_order = TakenOrder {
-            inner: BtcDaiOrder {
-                position: Position::Buy,
-                base: btc_asset(1.0),
-                quote: dai_asset(dai_amount(1.5)),
-            },
-            ..StaticStub::static_stub()
+        let taken_order = BtcDaiOrderForm {
+            position: Position::Buy,
+            base: btc_asset(1.0),
+            quote: dai_asset(dai_amount(1.5)),
         };
 
         let result = maker.process_taken_order(taken_order).unwrap();
@@ -413,13 +374,10 @@ mod tests {
             ..StaticStub::static_stub()
         };
 
-        let taken_order = TakenOrder {
-            inner: BtcDaiOrder {
-                position: Position::Buy,
-                base: btc_asset(1.0),
-                quote: dai_asset(dai_amount(1.5)),
-            },
-            ..StaticStub::static_stub()
+        let taken_order = BtcDaiOrderForm {
+            position: Position::Buy,
+            base: btc_asset(1.0),
+            quote: dai_asset(dai_amount(1.5)),
         };
 
         let result = maker.process_taken_order(taken_order).unwrap();
@@ -435,13 +393,10 @@ mod tests {
             ..StaticStub::static_stub()
         };
 
-        let taken_order = TakenOrder {
-            inner: BtcDaiOrder {
-                position: Position::Sell,
-                base: btc_asset(1.5),
-                quote: dai_asset(dai::Amount::zero()),
-            },
-            ..StaticStub::static_stub()
+        let taken_order = BtcDaiOrderForm {
+            position: Position::Sell,
+            base: btc_asset(1.5),
+            quote: dai_asset(dai::Amount::zero()),
         };
 
         let result = maker.process_taken_order(taken_order).unwrap();
@@ -457,13 +412,10 @@ mod tests {
             ..StaticStub::static_stub()
         };
 
-        let taken_order = TakenOrder {
-            inner: BtcDaiOrder {
-                position: Position::Buy,
-                base: btc_asset(1.0),
-                quote: dai_asset(dai_amount(1.5)),
-            },
-            ..StaticStub::static_stub()
+        let taken_order = BtcDaiOrderForm {
+            position: Position::Buy,
+            base: btc_asset(1.0),
+            quote: dai_asset(dai_amount(1.5)),
         };
 
         let result = maker.process_taken_order(taken_order).unwrap();
@@ -479,13 +431,10 @@ mod tests {
             ..StaticStub::static_stub()
         };
 
-        let taken_order = TakenOrder {
-            inner: BtcDaiOrder {
-                position: Position::Sell,
-                base: btc_asset(1.0),
-                quote: dai_asset(dai::Amount::zero()),
-            },
-            ..StaticStub::static_stub()
+        let taken_order = BtcDaiOrderForm {
+            position: Position::Sell,
+            base: btc_asset(1.0),
+            quote: dai_asset(dai::Amount::zero()),
         };
 
         let result = maker.process_taken_order(taken_order).unwrap();
@@ -500,7 +449,7 @@ mod tests {
             ..StaticStub::static_stub()
         };
 
-        let taken_order = TakenOrder {
+        let taken_order = BtcDaiOrderForm {
             ..StaticStub::static_stub()
         };
 
@@ -521,13 +470,10 @@ mod tests {
             ..StaticStub::static_stub()
         };
 
-        let taken_order = TakenOrder {
-            inner: BtcDaiOrder {
-                position: Position::Sell,
-                base: btc_asset(1.0),
-                quote: dai_asset(dai_amount(9000.0)),
-            },
-            ..StaticStub::static_stub()
+        let taken_order = BtcDaiOrderForm {
+            position: Position::Sell,
+            base: btc_asset(1.0),
+            quote: dai_asset(dai_amount(9000.0)),
         };
 
         let result = maker.process_taken_order(taken_order).unwrap();
@@ -542,13 +488,10 @@ mod tests {
             ..StaticStub::static_stub()
         };
 
-        let taken_order = TakenOrder {
-            inner: BtcDaiOrder {
-                position: Position::Buy,
-                base: btc_asset(1.0),
-                quote: dai_asset(dai_amount(11000.0)),
-            },
-            ..StaticStub::static_stub()
+        let taken_order = BtcDaiOrderForm {
+            position: Position::Buy,
+            base: btc_asset(1.0),
+            quote: dai_asset(dai_amount(11000.0)),
         };
 
         let result = maker.process_taken_order(taken_order).unwrap();
@@ -676,13 +619,7 @@ mod tests {
         let new_sell_order = maker.new_sell_order().unwrap();
         assert_eq!(new_sell_order.base, btc_asset(1.0));
 
-        let taker = Taker::static_stub();
-        let result = maker
-            .process_taken_order(TakenOrder {
-                inner: new_sell_order,
-                taker,
-            })
-            .unwrap();
+        let result = maker.process_taken_order(new_sell_order).unwrap();
 
         assert_eq!(result, TakeRequestDecision::GoForSwap);
         assert_eq!(maker.btc_reserved_funds, btc(1.0))
@@ -700,13 +637,7 @@ mod tests {
         let new_buy_order = maker.new_buy_order().unwrap();
         assert_eq!(new_buy_order.quote, dai_asset(dai_amount(1.0)));
 
-        let taker = Taker::static_stub();
-        let result = maker
-            .process_taken_order(TakenOrder {
-                inner: new_buy_order,
-                taker,
-            })
-            .unwrap();
+        let result = maker.process_taken_order(new_buy_order).unwrap();
 
         assert_eq!(result, TakeRequestDecision::GoForSwap);
         assert_eq!(maker.dai_reserved_funds, dai_amount(1.0))

@@ -56,7 +56,7 @@ mod tests {
         let ethereum_wallet = crate::ethereum::Wallet::new(
             seed,
             ethereum_blockchain.node_url.clone(),
-            ethereum::Chain::new(ChainId::regtest(), ethereum_blockchain.token_contract()),
+            ethereum::Chain::new(ChainId::GETH_DEV, ethereum_blockchain.token_contract()),
         )
         .await
         .unwrap();

@@ -132,7 +132,12 @@ impl Amount {
         // Apply the rate
         let (worth, _remainder) = self.as_atto().div_rem(&uint_rate);
 
+        if worth.is_zero() {
+            anyhow::bail!("Not enough atto for rate")
+        }
+
         let inv_exp = Self::ADJUSTEMENT_EXP.abs() as usize;
+
         let sats = divide_pow_ten_trunc(worth, inv_exp)
             .to_u64()
             .ok_or_else(|| anyhow::anyhow!("Result is unexpectedly large"))?;
@@ -235,8 +240,7 @@ impl From<Amount> for Erc20Quantity {
 mod tests {
     use super::*;
     use proptest::prelude::*;
-    use std::convert::TryFrom;
-    use std::str::FromStr;
+    use std::{convert::TryFrom, str::FromStr};
 
     #[test]
     fn given_float_dai_amount_less_precise_than_attodai_then_exact_value_is_stored() {

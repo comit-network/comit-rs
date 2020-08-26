@@ -383,7 +383,7 @@ impl crate::StaticStub for Params {
             refund_identity: Default::default(),
             expiry: 12345689.into(),
             secret_hash: SecretHash::new(Secret::from(*b"hello world, you are beautiful!!")),
-            chain_id: comit::ethereum::ChainId::regtest(),
+            chain_id: comit::ethereum::ChainId::GETH_DEV,
         }
     }
 }

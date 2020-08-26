@@ -3,6 +3,9 @@ use crate::{
     ethereum::{self, dai},
     Rate, Spread,
 };
+
+use comit::asset::ethereum::TryFromWei;
+use comit::{order::SwapProtocol, Position};
 use std::fmt::{Display, Formatter};
 use std::{cmp::min, convert::TryFrom, fmt};
 
@@ -13,20 +16,33 @@ pub enum Symbol {
     Dai,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, strum_macros::Display)]
-pub enum Position {
-    Buy,
-    Sell,
-}
-
+// todo: change to price quantity model
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BtcDaiOrder {
+pub struct BtcDaiOrderForm {
     pub position: Position,
     pub base: bitcoin::Asset,
     pub quote: dai::Asset,
 }
 
-impl BtcDaiOrder {
+// todo: this will go when price quantity model is introduced
+impl BtcDaiOrderForm {
+    pub fn to_order_comit_order(
+        &self,
+        swap_protocol: SwapProtocol,
+    ) -> anyhow::Result<comit::BtcDaiOrder> {
+        let rate = Rate::try_from(BtcDaiOrderForm {
+            position: self.position,
+            base: self.base,
+            quote: self.quote.clone(),
+        })?;
+
+        Ok(comit::BtcDaiOrder::new(
+            self.position,
+            comit::asset::Bitcoin::from_sat(self.base.amount.as_sat()),
+            comit::asset::Erc20Quantity::try_from_wei(rate.integer())?,
+            swap_protocol,
+        ))
+    }
     #[allow(clippy::too_many_arguments)]
     pub fn new_sell(
         base_balance: bitcoin::Amount,
@@ -37,7 +53,7 @@ impl BtcDaiOrder {
         spread: Spread,
         bitcoin_network: bitcoin::Network,
         dai_chain: ethereum::Chain,
-    ) -> anyhow::Result<BtcDaiOrder> {
+    ) -> anyhow::Result<BtcDaiOrderForm> {
         if let Some(max_amount) = max_amount {
             if max_amount < base_fees {
                 anyhow::bail!(MaxAmountSmallerThanMaxFee)
@@ -57,6 +73,7 @@ impl BtcDaiOrder {
             Some(max_amount) => min(base_balance - base_reserved_funds, max_amount) - base_fees,
             None => base_balance - base_reserved_funds - base_fees,
         };
+
         let base = bitcoin::Asset {
             amount: base_amount,
             network: bitcoin_network,
@@ -70,7 +87,7 @@ impl BtcDaiOrder {
             chain: dai_chain,
         };
 
-        Ok(BtcDaiOrder {
+        Ok(BtcDaiOrderForm {
             position: Position::Sell,
             base,
             quote,
@@ -86,7 +103,7 @@ impl BtcDaiOrder {
         spread: Spread,
         bitcoin_network: bitcoin::Network,
         dai_chain: ethereum::Chain,
-    ) -> anyhow::Result<BtcDaiOrder> {
+    ) -> anyhow::Result<BtcDaiOrderForm> {
         if quote_balance <= quote_reserved_funds {
             anyhow::bail!(InsufficientFunds(Symbol::Dai))
         }
@@ -109,7 +126,7 @@ impl BtcDaiOrder {
             chain: dai_chain,
         };
 
-        Ok(BtcDaiOrder {
+        Ok(BtcDaiOrderForm {
             position: Position::Buy,
             base,
             quote,
@@ -139,12 +156,12 @@ impl BtcDaiOrder {
     }
 }
 
-impl Display for BtcDaiOrder {
+impl Display for BtcDaiOrderForm {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{}, {}, {}",
-            self.position,
+            self.position.to_string(),
             self.base.amount.to_string(),
             self.quote.amount.to_string()
         )?;
@@ -179,26 +196,8 @@ pub trait Fees {
     fn fees(&self) -> Self::Amount;
 }
 
-impl From<Position> for comit::network::Position {
-    fn from(from: Position) -> Self {
-        match from {
-            Position::Buy => comit::network::Position::Buy,
-            Position::Sell => comit::network::Position::Sell,
-        }
-    }
-}
-
-impl From<comit::network::Position> for Position {
-    fn from(from: comit::network::Position) -> Self {
-        match from {
-            comit::network::Position::Buy => Position::Buy,
-            comit::network::Position::Sell => Position::Sell,
-        }
-    }
-}
-
 #[cfg(test)]
-impl crate::StaticStub for BtcDaiOrder {
+impl crate::StaticStub for BtcDaiOrderForm {
     fn static_stub() -> Self {
         Self {
             position: Position::Buy,
@@ -220,8 +219,7 @@ mod tests {
     use crate::{MidMarketRate, Rate, StaticStub};
     use num::BigUint;
     use proptest::prelude::*;
-    use std::convert::TryFrom;
-    use std::str::FromStr;
+    use std::{convert::TryFrom, str::FromStr};
 
     fn btc(btc: f64) -> bitcoin::Amount {
         bitcoin::Amount::from_btc(btc).unwrap()
@@ -248,7 +246,7 @@ mod tests {
     #[test]
     fn given_a_balance_return_order_selling_full_balance() {
         let rate = Rate::try_from(1.0).unwrap();
-        let order = BtcDaiOrder::new_sell(
+        let order = BtcDaiOrderForm::new_sell(
             btc(10.0),
             btc(0.0),
             btc(0.0),
@@ -262,7 +260,7 @@ mod tests {
 
         assert_eq!(order.base, btc_asset(10.0));
 
-        let order = BtcDaiOrder::new_buy(
+        let order = BtcDaiOrderForm::new_buy(
             dai_amount(10.0),
             dai_amount(0.0),
             Some(dai_amount(100.0)),
@@ -279,7 +277,7 @@ mod tests {
     #[test]
     fn given_a_balance_and_locked_funds_return_order_selling_available_balance() {
         let rate = Rate::try_from(1.0).unwrap();
-        let order = BtcDaiOrder::new_sell(
+        let order = BtcDaiOrderForm::new_sell(
             btc(10.0),
             btc(0.0),
             btc(2.0),
@@ -293,7 +291,7 @@ mod tests {
 
         assert_eq!(order.base, btc_asset(8.0));
 
-        let order = BtcDaiOrder::new_buy(
+        let order = BtcDaiOrderForm::new_buy(
             dai_amount(10.0),
             dai_amount(2.0),
             None,
@@ -310,7 +308,7 @@ mod tests {
     #[test]
     fn given_an_available_balance_and_a_max_amount_sell_min_of_either() {
         let rate = Rate::try_from(1.0).unwrap();
-        let order = BtcDaiOrder::new_sell(
+        let order = BtcDaiOrderForm::new_sell(
             btc(10.0),
             btc(0.0),
             btc(2.0),
@@ -324,7 +322,7 @@ mod tests {
 
         assert_eq!(order.base, btc_asset(2.0));
 
-        let order = BtcDaiOrder::new_buy(
+        let order = BtcDaiOrderForm::new_buy(
             dai_amount(10.0),
             dai_amount(2.0),
             Some(dai_amount(2.0)),
@@ -341,7 +339,7 @@ mod tests {
     #[test]
     fn given_an_available_balance_and_fees_sell_balance_minus_fees() {
         let rate = Rate::try_from(1.0).unwrap();
-        let order = BtcDaiOrder::new_buy(
+        let order = BtcDaiOrderForm::new_buy(
             dai_amount(10.0),
             dai_amount(3.0),
             Some(dai_amount(1.0)),
@@ -360,7 +358,7 @@ mod tests {
         let spread = Spread::new(0).unwrap();
 
         let rate = Rate::try_from(0.1).unwrap();
-        let order = BtcDaiOrder::new_sell(
+        let order = BtcDaiOrderForm::new_sell(
             btc(1051.0),
             btc(1.0),
             btc(50.0),
@@ -378,7 +376,7 @@ mod tests {
         assert_eq!(order.quote, dai_asset(100.0));
 
         let rate = Rate::try_from(10.0).unwrap();
-        let order = BtcDaiOrder::new_sell(
+        let order = BtcDaiOrderForm::new_sell(
             btc(1051.0),
             btc(1.0),
             btc(50.0),
@@ -394,7 +392,7 @@ mod tests {
         assert_eq!(order.quote, dai_asset(10_000.0));
 
         let rate = Rate::try_from(0.1).unwrap();
-        let order = BtcDaiOrder::new_buy(
+        let order = BtcDaiOrderForm::new_buy(
             dai_amount(1050.0),
             dai_amount(50.0),
             None,
@@ -409,7 +407,7 @@ mod tests {
         assert_eq!(order.quote, dai_asset(1000.0));
 
         let rate = Rate::try_from(10.0).unwrap();
-        let order = BtcDaiOrder::new_buy(
+        let order = BtcDaiOrderForm::new_buy(
             dai_amount(1050.0),
             dai_amount(50.0),
             None,
@@ -429,7 +427,7 @@ mod tests {
         let rate = Rate::try_from(10_000.0).unwrap();
         let spread = Spread::new(300).unwrap();
 
-        let order = BtcDaiOrder::new_sell(
+        let order = BtcDaiOrderForm::new_sell(
             btc(1.51),
             btc(0.01),
             btc(0.5),
@@ -444,7 +442,7 @@ mod tests {
         assert_eq!(order.base, btc_asset(1.0));
         assert_eq!(order.quote, dai_asset(10_300.0));
 
-        let order = BtcDaiOrder::new_buy(
+        let order = BtcDaiOrderForm::new_buy(
             dai_amount(10_051.0),
             dai_amount(51.0),
             None,
@@ -464,7 +462,7 @@ mod tests {
         let rate = Rate::try_from(1.0).unwrap();
         let spread = Spread::new(0).unwrap();
 
-        let result = BtcDaiOrder::new_sell(
+        let result = BtcDaiOrderForm::new_sell(
             btc(1.0),
             btc(2.0),
             btc(0.0),
@@ -476,7 +474,7 @@ mod tests {
         );
         assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
 
-        let result = BtcDaiOrder::new_buy(
+        let result = BtcDaiOrderForm::new_buy(
             dai_amount(1.0),
             dai_amount(2.0),
             None,
@@ -493,7 +491,7 @@ mod tests {
         let rate = Rate::try_from(1.0).unwrap();
         let spread = Spread::new(0).unwrap();
 
-        let result = BtcDaiOrder::new_sell(
+        let result = BtcDaiOrderForm::new_sell(
             btc(1.0),
             btc(0.0),
             btc(2.0),
@@ -505,7 +503,7 @@ mod tests {
         );
         assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
 
-        let result = BtcDaiOrder::new_buy(
+        let result = BtcDaiOrderForm::new_buy(
             dai_amount(1.0),
             dai_amount(2.0),
             None,
@@ -519,7 +517,7 @@ mod tests {
 
     #[test]
     fn sell_order_is_as_good_as_market_rate() {
-        let order = BtcDaiOrder {
+        let order = BtcDaiOrderForm {
             position: Position::Sell,
             base: btc_asset(1.0),
             quote: dai_asset(1.0),
@@ -533,7 +531,7 @@ mod tests {
 
     #[test]
     fn sell_order_is_better_than_market_rate() {
-        let order = BtcDaiOrder {
+        let order = BtcDaiOrderForm {
             position: Position::Sell,
             base: btc_asset(1.0),
             quote: dai_asset(1.0),
@@ -547,7 +545,7 @@ mod tests {
 
     #[test]
     fn sell_order_is_worse_than_market_rate() {
-        let order = BtcDaiOrder {
+        let order = BtcDaiOrderForm {
             position: Position::Sell,
             base: btc_asset(1.0),
             quote: dai_asset(1.0),
@@ -561,7 +559,7 @@ mod tests {
 
     #[test]
     fn buy_order_is_as_good_as_market_rate() {
-        let order = BtcDaiOrder {
+        let order = BtcDaiOrderForm {
             position: Position::Buy,
             base: btc_asset(1.0),
             quote: dai_asset(1.0),
@@ -575,7 +573,7 @@ mod tests {
 
     #[test]
     fn buy_order_is_better_than_market_rate() {
-        let order = BtcDaiOrder {
+        let order = BtcDaiOrderForm {
             position: Position::Buy,
             base: btc_asset(1.0),
             quote: dai_asset(1.0),
@@ -589,7 +587,7 @@ mod tests {
 
     #[test]
     fn buy_order_is_worse_than_market_rate() {
-        let order = BtcDaiOrder {
+        let order = BtcDaiOrderForm {
             position: Position::Buy,
             base: btc_asset(1.0),
             quote: dai_asset(1.0),
@@ -616,7 +614,7 @@ mod tests {
                 let dai_reserved_funds = dai::Amount::from_atto(dai_reserved_funds);
                 let dai_max_amount = dai::Amount::from_atto(dai_max_amount);
 
-                let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_buy(dai_balance, dai_reserved_funds, Some(dai_max_amount), rate, spread, bitcoin::Network::Bitcoin, ethereum::Chain::Mainnet);
+                let _: anyhow::Result<BtcDaiOrderForm> = BtcDaiOrderForm::new_buy(dai_balance, dai_reserved_funds, Some(dai_max_amount), rate, spread, bitcoin::Network::Bitcoin, ethereum::Chain::Mainnet);
             }
         }
     }
@@ -634,7 +632,7 @@ mod tests {
                 let dai_balance = dai::Amount::from_atto(dai_balance);
                 let dai_reserved_funds = dai::Amount::from_atto(dai_reserved_funds);
 
-                let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_buy(dai_balance, dai_reserved_funds, None, rate, spread, bitcoin::Network::Bitcoin, ethereum::Chain::Mainnet);
+                let _: anyhow::Result<BtcDaiOrderForm> = BtcDaiOrderForm::new_buy(dai_balance, dai_reserved_funds, None, rate, spread, bitcoin::Network::Bitcoin, ethereum::Chain::Mainnet);
             }
         }
     }
@@ -651,7 +649,7 @@ mod tests {
             let spread = Spread::new(spread);
 
             if let (Ok(rate), Ok(spread)) = (rate, spread) {
-                let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_sell(btc_balance, btc_fees, btc_reserved_funds, Some(btc_max_amount), rate, spread, bitcoin::Network::Bitcoin, ethereum::Chain::Mainnet);
+                let _: anyhow::Result<BtcDaiOrderForm> = BtcDaiOrderForm::new_sell(btc_balance, btc_fees, btc_reserved_funds, Some(btc_max_amount), rate, spread, bitcoin::Network::Bitcoin, ethereum::Chain::Mainnet);
             }
         }
     }
@@ -667,7 +665,7 @@ mod tests {
             let spread = Spread::new(spread);
 
             if let (Ok(rate), Ok(spread)) = (rate, spread) {
-                let _: anyhow::Result<BtcDaiOrder> = BtcDaiOrder::new_sell(btc_balance, btc_fees, btc_reserved_funds, None, rate, spread, bitcoin::Network::Bitcoin, ethereum::Chain::Mainnet);
+                let _: anyhow::Result<BtcDaiOrderForm> = BtcDaiOrderForm::new_sell(btc_balance, btc_fees, btc_reserved_funds, None, rate, spread, bitcoin::Network::Bitcoin, ethereum::Chain::Mainnet);
             }
         }
     }

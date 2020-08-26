@@ -2,15 +2,15 @@ use self::{
     hbit::{HbitFunded, HbitRedeemed, HbitRefunded},
     herc20::{Herc20Deployed, Herc20Funded, Herc20Redeemed, Herc20Refunded},
 };
-use crate::{network, network::Taker, swap, swap::SwapKind, SwapId};
+use crate::{network, network::ActivePeer, swap, swap::SwapKind, SwapId};
 use anyhow::{anyhow, Context};
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::iter::FromIterator;
 
 #[cfg(test)]
 use crate::StaticStub;
+use std::collections::HashSet;
+use std::iter::FromIterator;
 
 mod hbit;
 mod herc20;
@@ -39,10 +39,10 @@ impl Database {
             .ok_or_else(|| anyhow!("The path is not utf-8 valid: {:?}", path))?;
         let db = sled::open(path).context(format!("Could not open the DB at {}", path))?;
 
-        if !db.contains_key("takers")? {
-            let takers = Vec::<Taker>::new();
-            let takers = serialize(&takers)?;
-            let _ = db.insert("takers", takers)?;
+        if !db.contains_key("active_peer")? {
+            let peers = Vec::<ActivePeer>::new();
+            let peers = serialize(&peers)?;
+            let _ = db.insert("active_peer", peers)?;
         }
 
         Ok(Database { db })
@@ -56,9 +56,9 @@ impl Database {
             tmp_dir.path().display()
         ))?;
 
-        let takers = Vec::<Taker>::new();
-        let takers = serialize(&takers)?;
-        let _ = db.insert("takers", takers)?;
+        let peers = Vec::<ActivePeer>::new();
+        let peers = serialize(&peers)?;
+        let _ = db.insert("active_peer", peers)?;
 
         Ok(Database { db, tmp_dir })
     }
@@ -103,8 +103,9 @@ impl Database {
 
                     match (swap_id, swap) {
                         (Ok(swap_id), Ok(swap)) => Some(Ok(SwapKind::from((swap, swap_id)))),
-                        (Ok(_), Err(err)) => Some(Err(err)), // If the swap id deserialize, then it should be a swap
-                        (_, _) => None,                      // This is not a swap item
+                        (Ok(_), Err(err)) => Some(Err(err)), // If the swap id deserialize, then
+                        // it should be a swap
+                        (..) => None, // This is not a swap item
                     }
                 }
                 Err(err) => Some(Err(err).context("Could not retrieve data")),
@@ -139,10 +140,11 @@ impl Database {
     }
 }
 
-/// Active takers related functions
+/// These methods are used to prevent a peer from having more than one ongoing swap with nectar
+/// An active peer refers to one that has an ongoing swap with nectar.
 impl Database {
-    pub async fn insert_active_taker(&self, taker: Taker) -> anyhow::Result<()> {
-        self.modify_takers_with(|takers: &mut HashSet<Taker>| takers.insert(taker.clone()))?;
+    pub async fn insert_active_peer(&self, peer: ActivePeer) -> anyhow::Result<()> {
+        self.modify_peers_with(|peers: &mut HashSet<ActivePeer>| peers.insert(peer.clone()))?;
 
         self.db
             .flush_async()
@@ -151,8 +153,8 @@ impl Database {
             .context("Could not flush db")
     }
 
-    pub async fn remove_active_taker(&self, taker: &Taker) -> anyhow::Result<()> {
-        self.modify_takers_with(|takers: &mut HashSet<Taker>| takers.remove(taker))?;
+    pub async fn remove_active_peer(&self, peer: &ActivePeer) -> anyhow::Result<()> {
+        self.modify_peers_with(|peers: &mut HashSet<ActivePeer>| peers.remove(peer))?;
         self.db
             .flush_async()
             .await
@@ -160,37 +162,37 @@ impl Database {
             .context("Could not flush db")
     }
 
-    pub fn contains_active_taker(&self, taker: &Taker) -> anyhow::Result<bool> {
-        let takers = self.takers()?;
+    pub fn contains_active_peer(&self, peer: &ActivePeer) -> anyhow::Result<bool> {
+        let peers = self.peers()?;
 
-        Ok(takers.contains(&taker))
+        Ok(peers.contains(&peer))
     }
 
-    fn modify_takers_with(
+    fn modify_peers_with(
         &self,
-        operation_fn: impl Fn(&mut HashSet<Taker>) -> bool,
+        operation_fn: impl Fn(&mut HashSet<ActivePeer>) -> bool,
     ) -> anyhow::Result<()> {
-        let mut takers = self.takers()?;
+        let mut peers = self.peers()?;
 
-        operation_fn(&mut takers);
+        operation_fn(&mut peers);
 
-        let updated_takers = Vec::<Taker>::from_iter(takers);
-        let updated_takers = serialize(&updated_takers)?;
+        let updated_peers = Vec::<ActivePeer>::from_iter(peers);
+        let updated_peers = serialize(&updated_peers)?;
 
-        self.db.insert("takers", updated_takers)?;
+        self.db.insert("active_peer", updated_peers)?;
 
         Ok(())
     }
 
-    fn takers(&self) -> anyhow::Result<HashSet<Taker>> {
-        let takers = self
+    fn peers(&self) -> anyhow::Result<HashSet<ActivePeer>> {
+        let peers = self
             .db
-            .get("takers")?
-            .ok_or_else(|| anyhow::anyhow!("no key \"takers\" in db"))?;
-        let takers: Vec<Taker> = deserialize(&takers)?;
-        let takers = HashSet::<Taker>::from_iter(takers);
+            .get("active_peer")?
+            .ok_or_else(|| anyhow::anyhow!("no key \"active_peer\" in db"))?;
+        let peers: Vec<ActivePeer> = deserialize(&peers)?;
+        let peers = HashSet::<ActivePeer>::from_iter(peers);
 
-        Ok(takers)
+        Ok(peers)
     }
 }
 
@@ -214,8 +216,8 @@ struct Swap {
     pub hbit_params: hbit::Params,
     pub herc20_params: herc20::Params,
     pub secret_hash: comit::SecretHash,
-    pub utc_start_of_swap: NaiveDateTime,
-    pub taker: network::Taker,
+    pub utc_start_of_swap: DateTime<Utc>,
+    pub active_peer: network::ActivePeer,
     pub hbit_funded: Option<HbitFunded>,
     pub hbit_redeemed: Option<HbitRedeemed>,
     pub hbit_refunded: Option<HbitRefunded>,
@@ -246,8 +248,8 @@ impl StaticStub for Swap {
                 )
                 .unwrap(),
             ),
-            taker: network::Taker::static_stub(),
-            utc_start_of_swap: chrono::Local::now().naive_utc(),
+            active_peer: network::ActivePeer::static_stub(),
+            utc_start_of_swap: chrono::Utc::now(),
             hbit_funded: None,
             hbit_redeemed: None,
             hbit_refunded: None,
@@ -269,7 +271,7 @@ impl From<(Swap, SwapId)> for SwapKind {
             herc20_params,
             secret_hash,
             utc_start_of_swap: start_of_swap,
-            taker,
+            active_peer: taker,
             ..
         } = swap;
 
@@ -277,7 +279,7 @@ impl From<(Swap, SwapId)> for SwapKind {
             hbit_params: hbit_params.into(),
             herc20_params: herc20_params.into(),
             secret_hash,
-            utc_start_of_swap: start_of_swap,
+            start_of_swap,
             swap_id,
             taker,
         };
@@ -301,8 +303,8 @@ impl From<SwapKind> for Swap {
             hbit_params: swap.hbit_params.into(),
             herc20_params: swap.herc20_params.into(),
             secret_hash: swap.secret_hash,
-            utc_start_of_swap: swap.utc_start_of_swap,
-            taker: swap.taker,
+            utc_start_of_swap: swap.start_of_swap,
+            active_peer: swap.taker,
             hbit_funded: None,
             hbit_redeemed: None,
             hbit_refunded: None,
@@ -355,16 +357,16 @@ mod tests {
     }
 
     #[quickcheck_async::tokio]
-    async fn taker_no_longer_has_ongoing_trade_after_removal(taker: Taker) -> bool {
+    async fn taker_no_longer_has_ongoing_trade_after_removal(peer: ActivePeer) -> bool {
         let db = Database::new_test().unwrap();
 
-        let _ = db.insert_active_taker(taker.clone()).await.unwrap();
+        let _ = db.insert_active_peer(peer.clone()).await.unwrap();
 
-        let res = db.contains_active_taker(&taker);
+        let res = db.contains_active_peer(&peer);
         assert!(matches!(res, Ok(true)));
 
-        let _ = db.remove_active_taker(&taker).await.unwrap();
-        let res = db.contains_active_taker(&taker);
+        let _ = db.remove_active_peer(&peer).await.unwrap();
+        let res = db.contains_active_peer(&peer);
 
         matches!(res, Ok(false))
     }

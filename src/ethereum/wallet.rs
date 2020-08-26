@@ -147,18 +147,17 @@ impl Wallet {
 
         let contract_address = match self.wait_until_transaction_receipt(hash).await? {
             TransactionReceipt {
-                status: 1,
+                successful: true,
                 contract_address: Some(contract_address),
                 ..
             } => contract_address,
-            TransactionReceipt { status: 0, .. } => {
-                anyhow::bail!("Transaction receipt status failed")
-            }
+            TransactionReceipt {
+                successful: false, ..
+            } => anyhow::bail!("Transaction receipt status failed"),
             TransactionReceipt {
                 contract_address: None,
                 ..
             } => anyhow::bail!("No contract address in deployment transaction receipt"),
-            receipt => anyhow::bail!("Fetched invalid transaction receipt: {:?}", receipt),
         };
 
         let transaction = self.get_transaction_by_hash(hash).await?;
@@ -447,7 +446,7 @@ mod tests {
         let wallet = Wallet::new(
             seed,
             node_url,
-            ethereum::Chain::new(ChainId::regtest(), dai_contract_address),
+            ethereum::Chain::new(ChainId::GETH_DEV, dai_contract_address),
         )
         .await?;
 

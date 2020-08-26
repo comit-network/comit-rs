@@ -13,6 +13,7 @@
 #![cfg_attr(not(test), warn(clippy::unwrap_used))]
 #![forbid(unsafe_code)]
 #![recursion_limit = "256"]
+#![type_length_limit = "1944624"]
 
 mod bitcoin;
 mod command;

@@ -4,20 +4,22 @@ use crate::{
     config::Settings,
     ethereum::{self, dai},
     history::History,
-    maker::{PublishOrders, TakeRequestDecision},
+    maker::PublishOrders,
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, Swarm},
     swap::{Database, SwapKind, SwapParams},
     Maker, MidMarketRate, Seed, Spread,
 };
 use anyhow::Context;
-use chrono::Utc;
 use comit::btsieve::bitcoin::BitcoindConnector;
 use comit::btsieve::ethereum::Web3Connector;
 use futures::channel::mpsc::Sender;
 use futures::{channel::mpsc::Receiver, Future, FutureExt, SinkExt, StreamExt, TryFutureExt};
 use futures_timer::Delay;
 
+use crate::maker::TakeRequestDecision;
+use crate::network::ActivePeer;
+use comit::{Position, Role};
 use std::{sync::Arc, time::Duration};
 
 const ENSURED_CONSUME_ZERO_BUFFER: usize = 0;
@@ -44,21 +46,24 @@ pub async fn trade(
     #[cfg(test)]
     let db = Arc::new(Database::new_test()?);
 
-    let mut swarm = Swarm::new(&seed, &settings, Arc::clone(&db))?;
+    let mut swarm = Swarm::new(
+        &seed,
+        &settings,
+        Arc::clone(&bitcoin_wallet),
+        Arc::clone(&ethereum_wallet),
+        Arc::clone(&db),
+    )?;
 
     let initial_sell_order = maker
         .new_sell_order()
         .context("Could not generate sell order")?;
+
     let initial_buy_order = maker
         .new_buy_order()
         .context("Could not generate buy order")?;
 
-    swarm
-        .publish(initial_sell_order.into())
-        .context("Could not publish initial sell order")?;
-    swarm
-        .publish(initial_buy_order.into())
-        .context("Could not publish initial buy order")?;
+    swarm.publish(initial_sell_order.to_order_comit_order(maker.swap_protocol(Position::Buy))?);
+    swarm.publish(initial_buy_order.to_order_comit_order(maker.swap_protocol(Position::Sell))?);
 
     let update_interval = Duration::from_secs(15u64);
 
@@ -162,6 +167,8 @@ async fn init_maker(
         spread,
         settings.bitcoin.network,
         settings.ethereum.chain,
+        // todo: get from config
+        Role::Bob,
     ))
 }
 
@@ -260,6 +267,8 @@ async fn execute_swap(
     mut finished_swap_sender: Sender<FinishedSwap>,
     swap: SwapKind,
 ) -> anyhow::Result<()> {
+    db.insert_swap(swap.clone()).await?;
+
     swap.execute(
         Arc::clone(&db),
         Arc::clone(&bitcoin_wallet),
@@ -273,7 +282,7 @@ async fn execute_swap(
         .send(FinishedSwap::new(
             swap.clone(),
             swap.params().taker,
-            Utc::now(),
+            chrono::Utc::now(),
         ))
         .await
         .map_err(|_| {
@@ -321,82 +330,6 @@ fn respawn_swaps(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
-async fn handle_network_event(
-    network_event: network::Event,
-    maker: &mut Maker,
-    swarm: &mut Swarm,
-    db: Arc<Database>,
-    bitcoin_wallet: Arc<bitcoin::Wallet>,
-    ethereum_wallet: Arc<ethereum::Wallet>,
-    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
-    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    finished_swap_sender: Sender<FinishedSwap>,
-) {
-    match network_event {
-        network::Event::TakeRequest(order) => {
-            let order_ref = &order;
-            let result = maker.process_taken_order(order_ref.into());
-
-            match result {
-                Ok(TakeRequestDecision::GoForSwap) => {
-                    let position = order_ref.inner.position;
-                    let _ = swarm
-                        .confirm(order)
-                        .await
-                        .map_err(|e| tracing::error!("Failed to confirm order: {}", e));
-
-                    match maker.new_order(position) {
-                        Ok(new_order) => {
-                            let _ = swarm
-                                .publish(new_order.into())
-                                .map_err(|e| tracing::error!("Failed to publish order: {}", e));
-                        }
-                        Err(e) => tracing::error!("Error when trying to create order: {}", e),
-                    }
-                }
-                Ok(TakeRequestDecision::RateNotProfitable)
-                | Ok(TakeRequestDecision::InsufficientFunds) => swarm.deny(order),
-                Err(e) => {
-                    tracing::error!("Processing taken order yielded error: {}", e);
-                    swarm.deny(order)
-                }
-            }
-        }
-        network::Event::SetSwapIdentities(swap_metadata) => {
-            let bitcoin_identity =
-                bitcoin_wallet.derive_transient_sk(swap_metadata.swap_id().into());
-            let ethereum_identity = ethereum_wallet.account();
-
-            swarm.set_swap_identities(swap_metadata, bitcoin_identity, ethereum_identity)
-        }
-        network::Event::SpawnSwap(swap) => {
-            let swap_id = swap.swap_id();
-
-            let res = db
-                .insert_swap(swap.clone())
-                .map_err(|e| tracing::error!("Could not insert swap {}: {:?}", swap_id, e))
-                .await;
-
-            if res.is_ok() {
-                let _ = tokio::spawn(execute_swap(
-                    Arc::clone(&db),
-                    Arc::clone(&bitcoin_wallet),
-                    Arc::clone(&ethereum_wallet),
-                    Arc::clone(&bitcoin_connector),
-                    Arc::clone(&ethereum_connector),
-                    finished_swap_sender,
-                    swap,
-                ))
-                .await
-                .map_err(|e| {
-                    tracing::error!("Execution failed for swap swap {}: {:?}", swap_id, e)
-                });
-            }
-        }
-    }
-}
-
 fn handle_rate_update(
     rate_update: anyhow::Result<MidMarketRate>,
     maker: &mut Maker,
@@ -410,12 +343,19 @@ fn handle_rate_update(
                     new_sell_order,
                     new_buy_order,
                 })) => {
-                    let _ = swarm
-                        .publish(new_sell_order.into())
-                        .map_err(|e| tracing::error!("Failed to publish new sell order: {}", e));
-                    let _ = swarm
-                        .publish(new_buy_order.into())
-                        .map_err(|e| tracing::error!("Failed to publish new buy order: {}", e));
+                    match (
+                        new_sell_order.to_order_comit_order(maker.swap_protocol(Position::Sell)),
+                        new_buy_order.to_order_comit_order(maker.swap_protocol(Position::Buy)),
+                    ) {
+                        (Ok(sell), Ok(buy)) => {
+                            swarm.publish(sell);
+                            swarm.publish(buy);
+                            swarm.clear_own_orders();
+                        }
+                        // todo: This messy error handling code will be removed when we move to
+                        // price quantity order model in nectar
+                        (e1, e2) => tracing::error!("Could not update rate: {:?}, {:?}", e1, e2),
+                    }
                 }
                 Ok(None) => (),
                 Err(e) => tracing::warn!("Rate update yielded error: {}", e),
@@ -439,9 +379,13 @@ fn handle_btc_balance_update(
     match btc_balance_update {
         Ok(btc_balance) => match maker.update_bitcoin_balance(btc_balance) {
             Ok(Some(new_sell_order)) => {
-                let _ = swarm
-                    .publish(new_sell_order.into())
-                    .map_err(|e| tracing::error!("Failed to publish new order: {}", e));
+                match new_sell_order.to_order_comit_order(maker.swap_protocol(Position::Sell)) {
+                    Ok(order) => {
+                        swarm.clear_own_orders();
+                        swarm.publish(order);
+                    }
+                    Err(e) => tracing::error!("Could not handle btc update: {}", e),
+                }
             }
             Ok(None) => (),
             Err(e) => tracing::warn!("Bitcoin balance update yielded error: {}", e),
@@ -464,9 +408,13 @@ fn handle_dai_balance_update(
     match dai_balance_update {
         Ok(dai_balance) => match maker.update_dai_balance(dai_balance) {
             Ok(Some(new_buy_order)) => {
-                let _ = swarm
-                    .publish(new_buy_order.into())
-                    .map_err(|e| tracing::error!("Failed to publish order: {}", e));
+                match new_buy_order.to_order_comit_order(maker.swap_protocol(Position::Buy)) {
+                    Ok(order) => {
+                        swarm.clear_own_orders();
+                        swarm.publish(order);
+                    }
+                    Err(e) => tracing::error!("Could not handle dai balance update: {}", e),
+                }
             }
             Ok(None) => (),
             Err(e) => tracing::warn!("Dai balance update yielded error: {}", e),
@@ -490,7 +438,7 @@ async fn handle_finished_swap(
 ) {
     {
         let trade = into_history_trade(
-            finished_swap.taker.peer_id(),
+            finished_swap.peer.peer_id(),
             finished_swap.swap.clone(),
             #[cfg(not(test))]
             finished_swap.final_timestamp,
@@ -517,7 +465,7 @@ async fn handle_finished_swap(
     maker.free_funds(dai, btc);
 
     let _ = db
-        .remove_active_taker(&finished_swap.taker)
+        .remove_active_peer(&finished_swap.peer)
         .await
         .map_err(|error| tracing::error!("Unable to remove from active takers: {}", error));
 
@@ -525,6 +473,83 @@ async fn handle_finished_swap(
         .remove_swap(&swap_id)
         .await
         .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn handle_network_event(
+    network_event: network::Event,
+    maker: &mut Maker,
+    swarm: &mut Swarm,
+    db: Arc<Database>,
+    bitcoin_wallet: Arc<bitcoin::Wallet>,
+    ethereum_wallet: Arc<ethereum::Wallet>,
+    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
+    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
+    finished_swap_sender: Sender<FinishedSwap>,
+) {
+    match network_event {
+        network::Event::OrderMatch {
+            form,
+            to,
+            to_send,
+            common,
+            swap_protocol,
+            swap_id,
+            match_ref_point,
+        } => {
+            let result = maker.process_taken_order(form);
+
+            match result {
+                Ok(TakeRequestDecision::GoForSwap) => {
+                    if let Err(e) = swarm.setup_swap(
+                        &to,
+                        to_send,
+                        common,
+                        swap_protocol,
+                        swap_id,
+                        match_ref_point,
+                    ) {
+                        tracing::error!("Sending setup swap message yielded error: {}", e)
+                    }
+                    let _ = db
+                        .insert_active_peer(ActivePeer { peer_id: to })
+                        .await
+                        .map_err(|e| tracing::error!("Failed to confirm order: {}", e));
+
+                    // todo: publish new order here?
+                    // What if i publish a new order here and the does go
+                    // through?
+                }
+                Ok(TakeRequestDecision::InsufficientFunds) => tracing::info!("Insufficient funds"),
+                Ok(TakeRequestDecision::RateNotProfitable) => tracing::info!("Rate not profitable"),
+                Err(e) => tracing::error!("Processing taken order yielded error: {}", e),
+            };
+        }
+        network::Event::SpawnSwap(swap) => {
+            let swap_id = swap.swap_id();
+
+            let res = db
+                .insert_swap(swap.clone())
+                .map_err(|e| tracing::error!("Could not insert swap {}: {:?}", swap_id, e))
+                .await;
+
+            if res.is_ok() {
+                let _ = tokio::spawn(execute_swap(
+                    Arc::clone(&db),
+                    Arc::clone(&bitcoin_wallet),
+                    Arc::clone(&ethereum_wallet),
+                    Arc::clone(&bitcoin_connector),
+                    Arc::clone(&ethereum_connector),
+                    finished_swap_sender,
+                    swap,
+                ))
+                .await
+                .map_err(|e| {
+                    tracing::error!("Execution failed for swap swap {}: {:?}", swap_id, e)
+                });
+            }
+        }
+    }
 }
 
 #[cfg(all(test, feature = "test-docker"))]
@@ -576,7 +601,7 @@ mod tests {
             ethereum: settings::Ethereum {
                 node_url: ethereum_blockchain.node_url.clone(),
                 chain: ethereum::Chain::new(
-                    ChainId::regtest(),
+                    ChainId::GETH_DEV,
                     ethereum_blockchain.token_contract(),
                 ),
             },
@@ -619,7 +644,7 @@ mod tests {
                 ethereum_wallet.account(),
                 asset::Erc20::new(
                     settings.ethereum.chain.dai_contract_address(),
-                    Erc20Quantity::from_wei(5_000_000_000u64),
+                    Erc20Quantity::from_wei(1_000_000_000_000_000_000u64),
                 ),
                 settings.ethereum.chain.chain_id(),
             )

@@ -1,6 +1,6 @@
 use crate::fs::ensure_directory_exists;
 use anyhow::Result;
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use chrono::{DateTime, Utc};
 use csv::*;
 use num::BigUint;
 use serde::{Serialize, Serializer};
@@ -77,14 +77,6 @@ impl Serialize for PeerId {
 #[derive(Debug, Clone, Copy)]
 pub struct UtcDateTime {
     inner: DateTime<Utc>,
-}
-
-impl UtcDateTime {
-    pub fn from_utc_naive(naive_date_time: &NaiveDateTime) -> Self {
-        UtcDateTime {
-            inner: Utc.from_utc_datetime(&naive_date_time),
-        }
-    }
 }
 
 impl From<DateTime<Utc>> for UtcDateTime {

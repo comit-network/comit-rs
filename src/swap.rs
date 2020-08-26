@@ -9,11 +9,11 @@ mod comit;
 mod db;
 pub mod ethereum;
 
-use crate::{network::Taker, swap::bob::Bob, SwapId};
+use crate::{network::ActivePeer, swap::bob::Bob, SwapId};
 use std::sync::Arc;
 
 pub use self::comit::{hbit, herc20};
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 pub use db::Database;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -55,7 +55,7 @@ impl SwapKind {
                 hbit_params,
                 herc20_params,
                 secret_hash,
-                utc_start_of_swap: start_of_swap,
+                start_of_swap,
                 swap_id,
                 ..
             }) => {
@@ -83,7 +83,7 @@ impl SwapKind {
                 hbit_params,
                 herc20_params,
                 secret_hash,
-                utc_start_of_swap: start_of_swap,
+                start_of_swap,
                 swap_id,
                 ..
             }) => {
@@ -118,9 +118,9 @@ pub struct SwapParams {
     pub hbit_params: hbit::Params,
     pub herc20_params: herc20::Params,
     pub secret_hash: comit::SecretHash,
-    pub utc_start_of_swap: NaiveDateTime,
+    pub start_of_swap: DateTime<Utc>,
     pub swap_id: SwapId,
-    pub taker: Taker,
+    pub taker: ActivePeer,
 }
 
 /// Fetch the current network time for a ledger.
@@ -196,9 +196,9 @@ impl crate::StaticStub for SwapParams {
                 chain_id: 42.into(),
             },
             secret_hash: SecretHash::new(comit::Secret::from(*b"hello world, you are beautiful!!")),
-            utc_start_of_swap: chrono::Local::now().naive_utc(),
+            start_of_swap: chrono::Utc::now(),
             swap_id: Default::default(),
-            taker: Taker::static_stub(),
+            taker: ActivePeer::static_stub(),
         }
     }
 }
@@ -236,16 +236,15 @@ mod arbitrary {
                 chain_id: ChainId::from(u32::arbitrary(g)),
             };
 
+            let naive = chrono::NaiveDateTime::from_timestamp(u32::arbitrary(g) as i64, 0);
+
             SwapParams {
                 hbit_params: hbit::Params::arbitrary(g),
                 herc20_params,
                 secret_hash: secret_hash(g),
-                utc_start_of_swap: chrono::NaiveDateTime::from_timestamp(
-                    u32::arbitrary(g) as i64,
-                    0,
-                ),
+                start_of_swap: chrono::DateTime::from_utc(naive, chrono::offset::Utc),
                 swap_id: SwapId::arbitrary(g),
-                taker: Taker::arbitrary(g),
+                taker: ActivePeer::arbitrary(g),
             }
         }
     }
@@ -365,7 +364,7 @@ mod tests {
                 blockchain,
             )
         };
-        let ethereum_chain_id = ethereum::ChainId::regtest();
+        let ethereum_chain_id = ethereum::ChainId::GETH_DEV;
         let (ethereum_connector, ethereum_node_url, ethereum_blockchain, token_contract) = {
             let mut blockchain = test_harness::ethereum::Blockchain::new(&client)?;
             blockchain.init().await?;
@@ -400,7 +399,7 @@ mod tests {
             let ethereum_wallet = crate::ethereum::Wallet::new(
                 seed,
                 ethereum_node_url.clone(),
-                crate::ethereum::Chain::new(ChainId::regtest(), token_contract),
+                crate::ethereum::Chain::new(ChainId::GETH_DEV, token_contract),
             )
             .await?;
 
@@ -432,7 +431,7 @@ mod tests {
             let ethereum_wallet = crate::ethereum::Wallet::new(
                 seed,
                 ethereum_node_url,
-                crate::ethereum::Chain::new(ChainId::regtest(), token_contract),
+                crate::ethereum::Chain::new(ChainId::GETH_DEV, token_contract),
             )
             .await?;
 
@@ -468,7 +467,7 @@ mod tests {
         let secret = secret();
         let secret_hash = SecretHash::new(secret);
 
-        let start_of_swap = Utc::now().naive_utc();
+        let start_of_swap = Utc::now();
         let beta_expiry = Timestamp::now().plus(60 * 60);
 
         let (hbit_params, hbit_transient_refund_sk, hbit_transient_redeem_sk) =
@@ -493,9 +492,9 @@ mod tests {
                 },
                 herc20_params: herc20_params.clone(),
                 secret_hash,
-                utc_start_of_swap: start_of_swap,
+                start_of_swap,
                 swap_id,
-                taker: Taker::static_stub(),
+                taker: ActivePeer::static_stub(),
             });
 
             alice_db.insert_swap(swap).await.unwrap();
@@ -531,9 +530,9 @@ mod tests {
                 },
                 herc20_params: herc20_params.clone(),
                 secret_hash,
-                utc_start_of_swap: start_of_swap,
+                start_of_swap,
                 swap_id,
-                taker: Taker::static_stub(),
+                taker: ActivePeer::static_stub(),
             });
 
             bob_db.insert_swap(swap).await.unwrap();

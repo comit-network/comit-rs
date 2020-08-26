@@ -1,6 +1,6 @@
-use crate::order::Position;
-use crate::{bitcoin, ethereum::dai, float_maths::divide_pow_ten_trunc, order::BtcDaiOrder};
+use crate::{bitcoin, ethereum::dai, float_maths::divide_pow_ten_trunc, order::BtcDaiOrderForm};
 use anyhow::Context;
+use comit::Position;
 use num::{BigUint, Integer, ToPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -9,7 +9,7 @@ use std::str::FromStr;
 
 /// Represent a rate. Note this is designed to support Bitcoin/Dai buy and sell rates (Bitcoin being in the range of 10k-100kDai)
 /// A rate has a maximum precision of 9 digits after the decimal
-// rate = self.0 * 10e-9
+/// rate = self.0 * 10e-9
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, PartialOrd)]
 pub struct Rate(u64);
 
@@ -75,9 +75,9 @@ impl TryFrom<f64> for Rate {
     }
 }
 
-impl TryFrom<BtcDaiOrder> for Rate {
+impl TryFrom<BtcDaiOrderForm> for Rate {
     type Error = anyhow::Error;
-    fn try_from(BtcDaiOrder { base, quote, .. }: BtcDaiOrder) -> anyhow::Result<Self> {
+    fn try_from(BtcDaiOrderForm { base, quote, .. }: BtcDaiOrderForm) -> anyhow::Result<Self> {
         // Divide atto by satoshi
         let (quotient, _) = quote
             .amount
