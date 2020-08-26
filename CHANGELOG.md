@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -   **Breaking Change** Remove support for RFC003 swaps
 -   **Breaking Change** Config directory for MacOS changed from `/Users/<user>/Library/Preferences/comit/` to `/Users/<user>/Library/Application Support/comit/`.
+-   **Breaking Change comit lib API**: Use `DateTime<Utc>` instead of `NaiveDateTime` to remove ambiguity on the timezone.
 
 ## [0.8.0] - 2020-06-12
 

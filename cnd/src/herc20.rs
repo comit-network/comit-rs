@@ -7,7 +7,7 @@ use crate::{
     tracing_ext::InstrumentProtocol,
     transaction, LocalSwapId, LockProtocol, Role, Secret, Side,
 };
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use futures::TryStreamExt;
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -26,7 +26,7 @@ pub use comit::herc20::*;
 pub async fn new<C>(
     id: LocalSwapId,
     params: Params,
-    start_of_swap: NaiveDateTime,
+    start_of_swap: DateTime<Utc>,
     role: Role,
     side: Side,
     states: Arc<States>,

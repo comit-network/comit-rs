@@ -13,6 +13,7 @@ use bitcoin::Network;
 use diesel::{BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 use std::sync::Arc;
 
+use chrono::{DateTime, Utc};
 pub use db::*;
 pub use seed::*;
 
@@ -124,7 +125,7 @@ where
             role,
             alpha,
             beta,
-            start_of_swap: tab.swap.start_of_swap,
+            start_of_swap: DateTime::<Utc>::from_utc(tab.swap.start_of_swap, Utc),
         })
     }
 }

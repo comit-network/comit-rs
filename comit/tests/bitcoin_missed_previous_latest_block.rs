@@ -2,7 +2,7 @@ pub mod bitcoin_helper;
 
 use bitcoin::Address;
 use bitcoin_helper::BitcoinConnectorMock;
-use chrono::{offset::Utc, NaiveDateTime};
+use chrono::{offset::Utc, DateTime, NaiveDateTime};
 use comit::btsieve::bitcoin::watch_for_created_outpoint;
 use std::str::FromStr;
 
@@ -29,7 +29,10 @@ async fn find_transaction_missed_previous_latest_block() {
     // set the start of the swap to one second after the first block,
     // otherwise we run into the problem, that we try to fetch blocks prior to the
     // first one
-    let start_of_swap = NaiveDateTime::from_timestamp((block1.header.time as i64) + 1, 0);
+    let start_of_swap = DateTime::<Utc>::from_utc(
+        NaiveDateTime::from_timestamp((block1.header.time as i64) + 1, 0),
+        Utc,
+    );
     let (expected_transaction, _out_point) = watch_for_created_outpoint(
         &connector,
         start_of_swap,
@@ -76,7 +79,10 @@ async fn find_transaction_missed_previous_latest_block_with_big_gap() {
     // set the start of the swap to one second after the first block,
     // otherwise we run into the problem, that we try to fetch blocks prior to the
     // first one
-    let start_of_swap = NaiveDateTime::from_timestamp((block1.header.time as i64) + 1, 0);
+    let start_of_swap = DateTime::<Utc>::from_utc(
+        NaiveDateTime::from_timestamp((block1.header.time as i64) + 1, 0),
+        Utc,
+    );
     let (expected_transaction, _out_point) = watch_for_created_outpoint(
         &connector,
         start_of_swap,
@@ -114,7 +120,7 @@ async fn find_transaction_if_blockchain_reorganisation() {
         ],
     );
 
-    let start_of_swap = Utc::now().naive_local();
+    let start_of_swap = Utc::now();
     let (expected_transaction, _out_point) = watch_for_created_outpoint(
         &connector,
         start_of_swap,
@@ -153,7 +159,7 @@ async fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
         ],
     );
 
-    let start_of_swap = Utc::now().naive_local();
+    let start_of_swap = Utc::now();
     let (expected_transaction, _out_point) = watch_for_created_outpoint(&connector, start_of_swap, Address::from_str(
         include_str!(
             "test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/address"

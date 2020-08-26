@@ -30,7 +30,7 @@ async fn bitcoin_transaction_pattern_e2e_test() {
     // make sure we have money
     client.generate(101, None).unwrap();
 
-    let start_of_swap = Utc::now().naive_local();
+    let start_of_swap = Utc::now();
 
     let send_money_to_address = async {
         tokio::time::delay_for(Duration::from_secs(2)).await;

@@ -6,7 +6,7 @@ use crate::{
     LocalSwapId, Role, Side,
 };
 use bitcoin::{Address, Block, BlockHash};
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use comit::{asset, htlc_location, transaction, LockProtocol, Secret};
 pub use comit::{hbit::*, identity};
 use futures::TryStreamExt;
@@ -24,7 +24,7 @@ use tokio::sync::Mutex;
 pub async fn new<C>(
     id: LocalSwapId,
     params: Params,
-    start_of_swap: NaiveDateTime,
+    start_of_swap: DateTime<Utc>,
     role: Role,
     side: Side,
     states: Arc<States>,

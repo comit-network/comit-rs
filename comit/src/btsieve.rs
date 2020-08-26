@@ -4,7 +4,7 @@ mod jsonrpc;
 
 use crate::Never;
 use async_trait::async_trait;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use genawaiter::sync::{Co, Gen};
 use std::{collections::HashSet, future::Future, hash::Hash};
 
@@ -25,7 +25,7 @@ pub trait BlockByHash: Send + Sync + 'static {
 
 /// Checks if a given block predates a certain timestamp.
 pub trait Predates {
-    fn predates(&self, timestamp: NaiveDateTime) -> bool;
+    fn predates(&self, timestamp: DateTime<Utc>) -> bool;
 }
 
 /// Abstracts over the ability of getting the hash of the current block.
@@ -53,7 +53,7 @@ pub trait PreviousBlockHash {
 /// the given timestamp again.
 pub fn fetch_blocks_since<'a, C, B, H>(
     connector: &'a C,
-    start_of_swap: NaiveDateTime,
+    start_of_swap: DateTime<Utc>,
 ) -> Gen<B, (), impl Future<Output = anyhow::Result<Never>> + 'a>
 where
     C: LatestBlock<Block = B> + BlockByHash<Block = B, BlockHash = H>,
@@ -130,7 +130,7 @@ where
 
 /// Constructs a predicate that returns `true` if the given block predates the
 /// start_of_swap timestamp.
-fn predates_start_of_swap<B>(start_of_swap: NaiveDateTime) -> impl Fn(&B) -> bool
+fn predates_start_of_swap<B>(start_of_swap: DateTime<Utc>) -> impl Fn(&B) -> bool
 where
     B: Predates,
 {
@@ -141,7 +141,7 @@ where
 /// or the block predates the start_of_swap timestamp.
 fn seen_block_or_predates_start_of_swap<'sb, B, H>(
     seen_blocks: &'sb HashSet<H>,
-    start_of_swap: NaiveDateTime,
+    start_of_swap: DateTime<Utc>,
 ) -> impl Fn(&B) -> bool + 'sb
 where
     B: Predates + BlockHash<BlockHash = H>,
