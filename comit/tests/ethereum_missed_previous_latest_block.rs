@@ -1,6 +1,6 @@
 pub mod ethereum_helper;
 
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use comit::{
     btsieve::ethereum::matching_transaction_and_receipt,
     ethereum::{Block, Transaction, TransactionReceipt},
@@ -43,7 +43,10 @@ async fn find_transaction_missed_previous_latest_block_single_block_gap() {
     let block2: Block = include_json_test_data!(
         "./test_data/ethereum/find_transaction_missed_previous_latest_block/block2.json"
     );
-    let start_of_swap = NaiveDateTime::from_timestamp(block2.timestamp.as_u32() as i64, 0);
+    let start_of_swap = DateTime::<Utc>::from_utc(
+        NaiveDateTime::from_timestamp(block2.timestamp.as_u32() as i64, 0),
+        Utc,
+    );
 
     let (got_transaction, got_receipt) =
         matching_transaction_and_receipt(&connector, start_of_swap, {
@@ -97,7 +100,10 @@ async fn find_transaction_missed_previous_latest_block_two_block_gap() {
     let block2: Block = include_json_test_data!(
         "./test_data/ethereum/find_transaction_missed_previous_latest_block/block2.json"
     );
-    let start_of_swap = NaiveDateTime::from_timestamp(block2.timestamp.as_u32() as i64, 0);
+    let start_of_swap = DateTime::<Utc>::from_utc(
+        NaiveDateTime::from_timestamp(block2.timestamp.as_u32() as i64, 0),
+        Utc,
+    );
 
     let (got_transaction, got_receipt) =
         matching_transaction_and_receipt(&connector, start_of_swap, {

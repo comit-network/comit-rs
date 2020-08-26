@@ -2,7 +2,7 @@ pub mod bitcoin_helper;
 
 use bitcoin::Address;
 use bitcoin_helper::BitcoinConnectorMock;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use comit::btsieve::bitcoin::watch_for_created_outpoint;
 use std::str::FromStr;
 
@@ -26,8 +26,10 @@ async fn find_transaction_go_back_into_the_past() {
         ],
     );
 
-    let start_of_swap =
-        NaiveDateTime::from_timestamp(block1_with_transaction.header.time as i64, 0);
+    let start_of_swap = DateTime::<Utc>::from_utc(
+        NaiveDateTime::from_timestamp(block1_with_transaction.header.time as i64, 0),
+        Utc,
+    );
     let (expected_transaction, _out_point) = watch_for_created_outpoint(
         &connector,
         start_of_swap,

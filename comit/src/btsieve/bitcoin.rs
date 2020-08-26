@@ -12,7 +12,7 @@ use crate::{
     identity,
 };
 use bitcoin::{self, BitcoinHash, OutPoint};
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use genawaiter::GeneratorState;
 
 type Hash = bitcoin::BlockHash;
@@ -37,7 +37,7 @@ impl PreviousBlockHash for Block {
 #[tracing::instrument(level = "debug", skip(blockchain_connector, start_of_swap, identity), fields(%outpoint))]
 pub async fn watch_for_spent_outpoint<C>(
     blockchain_connector: &C,
-    start_of_swap: NaiveDateTime,
+    start_of_swap: DateTime<Utc>,
     outpoint: OutPoint,
     identity: identity::Bitcoin,
 ) -> anyhow::Result<(bitcoin::Transaction, bitcoin::TxIn)>
@@ -60,7 +60,7 @@ where
 #[tracing::instrument(level = "debug", skip(blockchain_connector, start_of_swap))]
 pub async fn watch_for_created_outpoint<C>(
     blockchain_connector: &C,
-    start_of_swap: NaiveDateTime,
+    start_of_swap: DateTime<Utc>,
     address: bitcoin::Address,
 ) -> anyhow::Result<(bitcoin::Transaction, bitcoin::OutPoint)>
 where
@@ -89,7 +89,7 @@ where
 
 async fn watch<C, S, M>(
     connector: &C,
-    start_of_swap: NaiveDateTime,
+    start_of_swap: DateTime<Utc>,
     sieve: S,
 ) -> anyhow::Result<(bitcoin::Transaction, M)>
 where
@@ -118,7 +118,7 @@ where
 }
 
 impl Predates for Block {
-    fn predates(&self, timestamp: NaiveDateTime) -> bool {
+    fn predates(&self, timestamp: DateTime<Utc>) -> bool {
         let unix_timestamp = timestamp.timestamp();
         let block_time = self.header.time as i64;
 

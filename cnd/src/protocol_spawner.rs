@@ -1,7 +1,7 @@
 use crate::{
     btsieve, halbit, hbit, herc20, http_api::LedgerNotConfigured, LocalSwapId, Role, Side,
 };
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use comit::lnd::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams};
 use std::sync::Arc;
 use tokio::runtime::Handle;
@@ -27,7 +27,7 @@ pub trait Spawn<P> {
         &self,
         id: LocalSwapId,
         params: P,
-        start_of_swap: NaiveDateTime,
+        start_of_swap: DateTime<Utc>,
         side: Side,
         role: Role,
     );
@@ -69,7 +69,7 @@ impl Spawn<herc20::Params> for ProtocolSpawner {
         &self,
         id: LocalSwapId,
         params: herc20::Params,
-        start_of_swap: NaiveDateTime,
+        start_of_swap: DateTime<Utc>,
         side: Side,
         role: Role,
     ) {
@@ -92,7 +92,7 @@ impl Spawn<hbit::Params> for ProtocolSpawner {
         &self,
         id: LocalSwapId,
         params: hbit::Params,
-        start_of_swap: NaiveDateTime,
+        start_of_swap: DateTime<Utc>,
         side: Side,
         role: Role,
     ) {
@@ -115,7 +115,7 @@ impl Spawn<halbit::Params> for ProtocolSpawner {
         &self,
         id: LocalSwapId,
         params: halbit::Params,
-        _: NaiveDateTime,
+        _: DateTime<Utc>,
         side: Side,
         role: Role,
     ) {

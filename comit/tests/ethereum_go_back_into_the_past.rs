@@ -1,6 +1,6 @@
 pub mod ethereum_helper;
 
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use comit::{
     btsieve::ethereum::matching_transaction_and_receipt,
     ethereum::{Block, Transaction, TransactionReceipt},
@@ -45,8 +45,10 @@ async fn find_transaction_go_back_into_the_past() {
         vec![(want_transaction.hash, want_receipt.clone())],
     );
 
-    let start_of_swap =
-        NaiveDateTime::from_timestamp(block1_with_transaction.timestamp.low_u32() as i64, 0);
+    let start_of_swap = DateTime::<Utc>::from_utc(
+        NaiveDateTime::from_timestamp(block1_with_transaction.timestamp.low_u32() as i64, 0),
+        Utc,
+    );
 
     let (got_transaction, got_receipt) =
         matching_transaction_and_receipt(&connector, start_of_swap, {
