@@ -1,17 +1,11 @@
 use crate::fs::ensure_directory_exists;
 use anyhow::Result;
-use chrono::{DateTime, NaiveDateTime, TimeZone};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use csv::*;
 use num::BigUint;
 use serde::{Serialize, Serializer};
 use std::fs::{File, OpenOptions};
 use std::path::Path;
-
-#[cfg(not(test))]
-use chrono::Local;
-
-#[cfg(test)]
-use chrono::FixedOffset;
 
 #[derive(Debug, Copy, Clone, Serialize)]
 #[serde(rename_all = "UPPERCASE")]
@@ -77,50 +71,29 @@ impl Serialize for PeerId {
     }
 }
 
+/// Struct representing a UTC Date Time.
+/// Blockchain times are always UTC so we are keeping consistent with the domain
+/// A local time might be useful can be added if a user requests it.
 #[derive(Debug, Clone, Copy)]
-pub struct LocalDateTime {
-    #[cfg(not(test))]
-    inner: DateTime<Local>,
-    // Allows the test to pass on all machines, no matter their timezone.
-    // Should be fine because we do not do any manipulations on the dates, just capture and write.
-    // This should not stay if we start to manipulate the dates
-    #[cfg(test)]
-    inner: DateTime<FixedOffset>,
+pub struct UtcDateTime {
+    inner: DateTime<Utc>,
 }
 
-#[cfg(not(test))]
-impl LocalDateTime {
+impl UtcDateTime {
     pub fn from_utc_naive(naive_date_time: &NaiveDateTime) -> Self {
-        LocalDateTime {
-            inner: Local.from_utc_datetime(&naive_date_time),
+        UtcDateTime {
+            inner: Utc.from_utc_datetime(&naive_date_time),
         }
     }
 }
 
-#[cfg(test)]
-impl LocalDateTime {
-    pub fn from_utc_naive(naive_date_time: &NaiveDateTime) -> Self {
-        LocalDateTime {
-            inner: FixedOffset::east(0).from_utc_datetime(&naive_date_time),
-        }
+impl From<DateTime<Utc>> for UtcDateTime {
+    fn from(date_time: DateTime<Utc>) -> Self {
+        UtcDateTime { inner: date_time }
     }
 }
 
-#[cfg(not(test))]
-impl From<DateTime<Local>> for LocalDateTime {
-    fn from(date_time: DateTime<Local>) -> Self {
-        LocalDateTime { inner: date_time }
-    }
-}
-
-#[cfg(test)]
-impl From<DateTime<FixedOffset>> for LocalDateTime {
-    fn from(date_time: DateTime<FixedOffset>) -> Self {
-        LocalDateTime { inner: date_time }
-    }
-}
-
-impl Serialize for LocalDateTime {
+impl Serialize for UtcDateTime {
     fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
     where
         S: Serializer,
@@ -134,9 +107,9 @@ impl Serialize for LocalDateTime {
 #[derive(Debug, Clone, Serialize)]
 pub struct Trade {
     /// When the trade was taken and accepted
-    pub start_timestamp: LocalDateTime,
+    pub utc_start_timestamp: UtcDateTime,
     /// When the last transaction (redeem or refund) was seen (can be changed to confirmed in the future)
-    pub final_timestamp: LocalDateTime,
+    pub utc_final_timestamp: UtcDateTime,
     /// The symbol of the base currency
     pub base_symbol: Symbol,
     /// The symbol of the quote currency
@@ -169,10 +142,10 @@ impl Trade {
         use std::str::FromStr;
 
         Trade {
-            start_timestamp: DateTime::from_str("2020-07-10T17:48:26.123+10:00")
+            utc_start_timestamp: DateTime::from_str("2020-07-10T17:48:26.123+10:00")
                 .unwrap()
                 .into(),
-            final_timestamp: DateTime::from_str("2020-07-10T18:48:26.456+10:00")
+            utc_final_timestamp: DateTime::from_str("2020-07-10T18:48:26.456+10:00")
                 .unwrap()
                 .into(),
             base_symbol: Symbol::Btc,
@@ -192,10 +165,10 @@ impl Trade {
         use std::str::FromStr;
 
         Trade {
-            start_timestamp: DateTime::from_str("2020-07-11T12:00:00.789+10:00")
+            utc_start_timestamp: DateTime::from_str("2020-07-11T12:00:00.789+10:00")
                 .unwrap()
                 .into(),
-            final_timestamp: DateTime::from_str("2020-07-11T13:00:00.000+10:00")
+            utc_final_timestamp: DateTime::from_str("2020-07-11T13:00:00.000+10:00")
                 .unwrap()
                 .into(),
             base_symbol: Symbol::Btc,
@@ -261,9 +234,9 @@ mod tests {
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
 
-        let expected_contents = "start_timestamp,final_timestamp,base_symbol,quote_symbol,position,base_precise_amount,quote_precise_amount,peer
-2020-07-10T17:48:26.123+10:00,2020-07-10T18:48:26.456+10:00,BTC,DAI,Buy,1000000,99000000000000000000,QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg
-2020-07-11T12:00:00.789+10:00,2020-07-11T13:00:00+10:00,BTC,DAI,Sell,20000000,2012340000000000000000,QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK
+        let expected_contents = "utc_start_timestamp,utc_final_timestamp,base_symbol,quote_symbol,position,base_precise_amount,quote_precise_amount,peer
+2020-07-10T07:48:26.123+00:00,2020-07-10T08:48:26.456+00:00,BTC,DAI,Buy,1000000,99000000000000000000,QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg
+2020-07-11T02:00:00.789+00:00,2020-07-11T03:00:00+00:00,BTC,DAI,Sell,20000000,2012340000000000000000,QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK
 ";
 
         assert_eq!(contents, expected_contents);
@@ -290,9 +263,9 @@ mod tests {
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
 
-        let expected_contents = "start_timestamp,final_timestamp,base_symbol,quote_symbol,position,base_precise_amount,quote_precise_amount,peer
-2020-07-10T17:48:26.123+10:00,2020-07-10T18:48:26.456+10:00,BTC,DAI,Buy,1000000,99000000000000000000,QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg
-2020-07-11T12:00:00.789+10:00,2020-07-11T13:00:00+10:00,BTC,DAI,Sell,20000000,2012340000000000000000,QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK
+        let expected_contents = "utc_start_timestamp,utc_final_timestamp,base_symbol,quote_symbol,position,base_precise_amount,quote_precise_amount,peer
+2020-07-10T07:48:26.123+00:00,2020-07-10T08:48:26.456+00:00,BTC,DAI,Buy,1000000,99000000000000000000,QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg
+2020-07-11T02:00:00.789+00:00,2020-07-11T03:00:00+00:00,BTC,DAI,Sell,20000000,2012340000000000000000,QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK
 ";
 
         assert_eq!(contents, expected_contents);

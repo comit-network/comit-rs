@@ -17,7 +17,7 @@ pub async fn hbit_herc20_alice<A, EC>(
     hbit_params: hbit::Params,
     herc20_params: herc20::Params,
     secret: Secret,
-    start_of_swap: NaiveDateTime,
+    utc_start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
     A: hbit::ExecuteFund + herc20::ExecuteRedeem + hbit::ExecuteRefund,
@@ -31,7 +31,7 @@ where
         hbit_params,
         herc20_params,
         secret,
-        start_of_swap,
+        utc_start_of_swap,
     )
     .await;
 
@@ -52,7 +52,7 @@ async fn hbit_herc20_happy_alice<A, EC>(
     hbit_params: hbit::Params,
     herc20_params: herc20::Params,
     secret: Secret,
-    start_of_swap: NaiveDateTime,
+    utc_start_of_swap: NaiveDateTime,
 ) -> Result<(), HbitHerc20AliceError>
 where
     A: hbit::ExecuteFund + herc20::ExecuteRedeem,
@@ -68,21 +68,21 @@ where
         .map_err(|_| AliceFund)?;
 
     let herc20_deployed =
-        herc20::watch_for_deployed(ethereum_connector, herc20_params.clone(), start_of_swap)
+        herc20::watch_for_deployed(ethereum_connector, herc20_params.clone(), utc_start_of_swap)
             .await
             .map_err(|_| BobDeploy(hbit_funded))?;
 
     let _herc20_funded = herc20::watch_for_funded(
         ethereum_connector,
         herc20_params.clone(),
-        start_of_swap,
+        utc_start_of_swap,
         herc20_deployed.clone(),
     )
     .await
     .map_err(|_| BobFund(hbit_funded))?;
 
     let _herc20_redeemed = alice
-        .execute_redeem(herc20_params, secret, herc20_deployed, start_of_swap)
+        .execute_redeem(herc20_params, secret, herc20_deployed, utc_start_of_swap)
         .await
         .map_err(|_| AliceRedeem(hbit_funded))?;
 
@@ -99,7 +99,7 @@ pub async fn hbit_herc20_bob<B, BC, EC>(
     ethereum_connector: &EC,
     hbit_params: hbit::Params,
     herc20_params: herc20::Params,
-    start_of_swap: NaiveDateTime,
+    utc_start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
     B: herc20::ExecuteDeploy + herc20::ExecuteFund + hbit::ExecuteRedeem + herc20::ExecuteRefund,
@@ -115,13 +115,13 @@ where
         ethereum_connector,
         hbit_params,
         herc20_params.clone(),
-        start_of_swap,
+        utc_start_of_swap,
     )
     .await;
 
     use HbitHerc20BobError::*;
     if let Err(AliceRedeem(herc20_deployed)) = res {
-        bob.execute_refund(herc20_params, herc20_deployed, start_of_swap)
+        bob.execute_refund(herc20_params, herc20_deployed, utc_start_of_swap)
             .await?;
     }
 
@@ -135,7 +135,7 @@ async fn hbit_herc20_happy_bob<B, BC, EC>(
     ethereum_connector: &EC,
     hbit_params: hbit::Params,
     herc20_params: herc20::Params,
-    start_of_swap: NaiveDateTime,
+    utc_start_of_swap: NaiveDateTime,
 ) -> Result<(), HbitHerc20BobError>
 where
     B: herc20::ExecuteDeploy + herc20::ExecuteFund + hbit::ExecuteRedeem,
@@ -147,9 +147,10 @@ where
 {
     use HbitHerc20BobError::*;
 
-    let hbit_funded = hbit::watch_for_funded(bitcoin_connector, &hbit_params.shared, start_of_swap)
-        .await
-        .map_err(|_| AliceFund)?;
+    let hbit_funded =
+        hbit::watch_for_funded(bitcoin_connector, &hbit_params.shared, utc_start_of_swap)
+            .await
+            .map_err(|_| AliceFund)?;
 
     let herc20_deployed = bob
         .execute_deploy(herc20_params.clone())
@@ -160,15 +161,18 @@ where
         .execute_fund(
             herc20_params.clone(),
             herc20_deployed.clone(),
-            start_of_swap,
+            utc_start_of_swap,
         )
         .await
         .map_err(|_| BobFund)?;
 
-    let herc20_redeemed =
-        herc20::watch_for_redeemed(ethereum_connector, start_of_swap, herc20_deployed.clone())
-            .await
-            .map_err(|_| AliceRedeem(herc20_deployed))?;
+    let herc20_redeemed = herc20::watch_for_redeemed(
+        ethereum_connector,
+        utc_start_of_swap,
+        herc20_deployed.clone(),
+    )
+    .await
+    .map_err(|_| AliceRedeem(herc20_deployed))?;
 
     let _hbit_redeem = bob
         .execute_redeem(hbit_params, hbit_funded, herc20_redeemed.secret)

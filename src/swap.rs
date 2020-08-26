@@ -13,6 +13,7 @@ use crate::{network::Taker, swap::bob::Bob, SwapId};
 use std::sync::Arc;
 
 pub use self::comit::{hbit, herc20};
+use chrono::NaiveDateTime;
 pub use db::Database;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -54,7 +55,7 @@ impl SwapKind {
                 hbit_params,
                 herc20_params,
                 secret_hash,
-                start_of_swap,
+                utc_start_of_swap: start_of_swap,
                 swap_id,
                 ..
             }) => {
@@ -64,7 +65,7 @@ impl SwapKind {
                     db,
                     swap_id: *swap_id,
                     secret_hash: *secret_hash,
-                    start_of_swap: *start_of_swap,
+                    utc_start_of_swap: *start_of_swap,
                     beta_expiry: herc20_params.expiry,
                 };
 
@@ -82,7 +83,7 @@ impl SwapKind {
                 hbit_params,
                 herc20_params,
                 secret_hash,
-                start_of_swap,
+                utc_start_of_swap: start_of_swap,
                 swap_id,
                 ..
             }) => {
@@ -92,7 +93,7 @@ impl SwapKind {
                     db,
                     swap_id: *swap_id,
                     secret_hash: *secret_hash,
-                    start_of_swap: *start_of_swap,
+                    utc_start_of_swap: *start_of_swap,
                     beta_expiry: herc20_params.expiry,
                 };
 
@@ -117,8 +118,7 @@ pub struct SwapParams {
     pub hbit_params: hbit::Params,
     pub herc20_params: herc20::Params,
     pub secret_hash: comit::SecretHash,
-    // TODO: Why naive and not DateTime<Local>?
-    pub start_of_swap: chrono::NaiveDateTime,
+    pub utc_start_of_swap: NaiveDateTime,
     pub swap_id: SwapId,
     pub taker: Taker,
 }
@@ -196,7 +196,7 @@ impl crate::StaticStub for SwapParams {
                 chain_id: 42.into(),
             },
             secret_hash: SecretHash::new(comit::Secret::from(*b"hello world, you are beautiful!!")),
-            start_of_swap: chrono::Local::now().naive_local(),
+            utc_start_of_swap: chrono::Local::now().naive_utc(),
             swap_id: Default::default(),
             taker: Taker::static_stub(),
         }
@@ -240,7 +240,10 @@ mod arbitrary {
                 hbit_params: hbit::Params::arbitrary(g),
                 herc20_params,
                 secret_hash: secret_hash(g),
-                start_of_swap: chrono::NaiveDateTime::from_timestamp(u32::arbitrary(g) as i64, 0),
+                utc_start_of_swap: chrono::NaiveDateTime::from_timestamp(
+                    u32::arbitrary(g) as i64,
+                    0,
+                ),
                 swap_id: SwapId::arbitrary(g),
                 taker: Taker::arbitrary(g),
             }
@@ -465,7 +468,7 @@ mod tests {
         let secret = secret();
         let secret_hash = SecretHash::new(secret);
 
-        let start_of_swap = Utc::now().naive_local();
+        let start_of_swap = Utc::now().naive_utc();
         let beta_expiry = Timestamp::now().plus(60 * 60);
 
         let (hbit_params, hbit_transient_refund_sk, hbit_transient_redeem_sk) =
@@ -490,7 +493,7 @@ mod tests {
                 },
                 herc20_params: herc20_params.clone(),
                 secret_hash,
-                start_of_swap,
+                utc_start_of_swap: start_of_swap,
                 swap_id,
                 taker: Taker::static_stub(),
             });
@@ -504,7 +507,7 @@ mod tests {
                 db: Arc::clone(&alice_db),
                 swap_id,
                 secret,
-                start_of_swap,
+                utc_start_of_swap: start_of_swap,
                 beta_expiry: herc20_params.expiry,
             };
 
@@ -528,7 +531,7 @@ mod tests {
                 },
                 herc20_params: herc20_params.clone(),
                 secret_hash,
-                start_of_swap,
+                utc_start_of_swap: start_of_swap,
                 swap_id,
                 taker: Taker::static_stub(),
             });
@@ -542,7 +545,7 @@ mod tests {
                 db: bob_db,
                 swap_id,
                 secret_hash,
-                start_of_swap,
+                utc_start_of_swap: start_of_swap,
                 beta_expiry: herc20_params.expiry,
             };
 

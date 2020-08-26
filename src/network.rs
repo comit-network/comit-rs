@@ -426,7 +426,7 @@ impl NetworkBehaviourEventProcess<network::comit::BehaviourOutEvent> for Nectar 
                             hbit_params,
                             herc20_params,
                             secret_hash,
-                            start_of_swap: Utc::now().naive_local(),
+                            utc_start_of_swap: Utc::now().naive_utc(),
                             swap_id: crate::SwapId::default(),
                             taker,
                         })
@@ -463,7 +463,7 @@ impl NetworkBehaviourEventProcess<network::comit::BehaviourOutEvent> for Nectar 
                             hbit_params,
                             herc20_params,
                             secret_hash,
-                            start_of_swap: Utc::now().naive_local(),
+                            utc_start_of_swap: Utc::now().naive_utc(),
                             swap_id: crate::SwapId::default(),
                             taker,
                         })

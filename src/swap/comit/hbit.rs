@@ -55,12 +55,12 @@ pub struct Funded {
 pub async fn watch_for_funded<C>(
     connector: &C,
     params: &SharedParams,
-    start_of_swap: NaiveDateTime,
+    utc_start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<Funded>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
 {
-    match comit::hbit::watch_for_funded(connector, &params, start_of_swap).await? {
+    match comit::hbit::watch_for_funded(connector, &params, utc_start_of_swap).await? {
         comit::hbit::Funded::Correctly {
             asset, location, ..
         } => Ok(Funded { asset, location }),

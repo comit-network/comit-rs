@@ -15,7 +15,7 @@ use crate::{
     swap::SwapKind,
     {bitcoin, history},
 };
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Utc};
 use num::BigUint;
 use std::str::FromStr;
 
@@ -109,7 +109,7 @@ fn parse_ether(str: &str) -> anyhow::Result<ether::Amount> {
 pub fn into_history_trade(
     peer_id: libp2p::PeerId,
     swap: SwapKind,
-    #[cfg(not(test))] final_timestamp: DateTime<Local>,
+    #[cfg(not(test))] final_timestamp: DateTime<Utc>,
 ) -> history::Trade {
     use crate::history::*;
 
@@ -127,8 +127,8 @@ pub fn into_history_trade(
         .into();
 
     Trade {
-        start_timestamp: history::LocalDateTime::from_utc_naive(&swap.start_of_swap),
-        final_timestamp,
+        utc_start_timestamp: history::UtcDateTime::from_utc_naive(&swap.utc_start_of_swap),
+        utc_final_timestamp: final_timestamp,
         base_symbol: Symbol::Btc,
         quote_symbol: Symbol::Dai,
         position,
@@ -144,11 +144,11 @@ pub fn into_history_trade(
 pub struct FinishedSwap {
     pub swap: SwapKind,
     pub taker: Taker,
-    pub final_timestamp: DateTime<Local>,
+    pub final_timestamp: DateTime<Utc>,
 }
 
 impl FinishedSwap {
-    pub fn new(swap: SwapKind, taker: Taker, final_timestamp: DateTime<Local>) -> Self {
+    pub fn new(swap: SwapKind, taker: Taker, final_timestamp: DateTime<Utc>) -> Self {
         Self {
             swap,
             taker,

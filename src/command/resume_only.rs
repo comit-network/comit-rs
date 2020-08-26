@@ -2,7 +2,7 @@ use crate::{
     bitcoin, command::into_history_trade, command::FinishedSwap, config::Settings, ethereum,
     history::History, swap::Database, swap::SwapKind,
 };
-use chrono::Local;
+use chrono::Utc;
 use comit::btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use futures::future::{join_all, TryFutureExt};
 use std::sync::{Arc, Mutex};
@@ -80,8 +80,6 @@ async fn execute_swap(
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
     swap: SwapKind,
 ) -> anyhow::Result<FinishedSwap> {
-    db.insert_swap(swap.clone()).await?;
-
     swap.execute(
         Arc::clone(&db),
         Arc::clone(&bitcoin_wallet),
@@ -94,7 +92,7 @@ async fn execute_swap(
     Ok(FinishedSwap::new(
         swap.clone(),
         swap.params().taker,
-        Local::now(),
+        Utc::now(),
     ))
 }
 
