@@ -12,30 +12,67 @@ use num::integer;
 use std::{cmp, fmt};
 use time::Duration;
 
-pub use config::Protocol;
-
-const NO_SCALE: u32 = 100; // 100% scaling factor has no effect.
-
 // TODO: Currently we ignore deploy for Erc20.
 
-// Note on expiry types: Any `Duration` expiry is a relative expiry, any
-// `Timestamp` expiry is an absolute expiry. We can use relative expiries to
-// create absolute expiries when, for example, swap execution starts.
+// TODO: Research how times are calculated on each chain and if we can compare
+// time across chains? This knowledge is needed because we calculate the alpha
+// expiry offset based on the beta expiry offset, if one cannot compare times on
+// two different chains then this calculation is invalid.
+
+/// Calculate a pair of expiries suitable for use with the herc20-hbit COMIT
+/// protocol.
+pub fn expiry_offsets_herc20_hbit() -> (AlphaOffset, BetaOffset) {
+    let config = Config::herc20_hbit();
+    expiry_offsets(&config)
+}
+
+/// Calculate a pair of expiries suitable for use with the hbit-herc20 COMIT
+/// protocol.
+pub fn expiry_offsets_hbit_herc20() -> (AlphaOffset, BetaOffset) {
+    let config = Config::hbit_herc20();
+    expiry_offsets(&config)
+}
+
+fn expiry_offsets(config: &Config) -> (AlphaOffset, BetaOffset) {
+    let alice_needs = happy_path_swap_period_for_alice(config);
+    let bob_needs = happy_path_swap_period_for_bob(config);
+
+    // Alice redeems on beta ledger so needs time to act before the beta expiry.
+    let beta_offset = alice_needs;
+
+    // Alpha expiry must be at least 'safety window' time after beta expiry.
+    let minimum_safe = beta_offset + config.bobs_safety_window();
+
+    let alpha_offset = cmp::max(minimum_safe, bob_needs);
+
+    (alpha_offset.into(), beta_offset.into())
+}
+
+// FIXME: Do consumers of this module need this function?
+/// Convert expiry offsets to absolute expiry timestamps i.e., expiry measure in
+/// seconds since epoch.
+pub fn to_timestamps(
+    start_at: Timestamp,
+    alpha_offset: AlphaOffset,
+    beta_offset: BetaOffset,
+) -> (AlphaExpiry, BetaExpiry) {
+    let alpha = start_at.add_duration(alpha_offset.into());
+    let beta = start_at.add_duration(beta_offset.into());
+
+    (alpha.into(), beta.into())
+}
 
 /// Current time as a UNIX timestamp from the perspective of the implementer.
 ///
 /// Intended for getting the current time from the underlying blockchain.
 /// The definition `current time` varies depending on the blockchain, this
 /// always refers to the time used by the op codes used in the COMIT contracts.
+#[async_trait::async_trait]
 pub trait CurrentTime {
-    fn current_time(&self) -> Timestamp; // TODO: This will need to be async.
+    async fn current_time(&self) -> Timestamp;
 }
 
-/// Data that defines and manipulates expiry times.
-///
-/// Language note: We use the term 'expiries' (plural of expiry) to make it
-/// explicit that there are two expiry times however we refer it as singular
-/// since it is the struct, or pair of expiries, that we are referring to.
+/// This struct provides the functionality 'what should I do next'.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Expiries<A, B> {
     /// Configuration values for calculating transition periods.
@@ -48,51 +85,12 @@ pub struct Expiries<A, B> {
     alpha_offset: AlphaOffset,
     /// The beta ledger expiry offset.
     beta_offset: BetaOffset,
-}
-
-/// Calculate a pair of useful expiries, 'useful' means a swap can be
-/// successfully completed with these expiries.
-///
-/// Multiply the resulting offsets by `scale_factor` percentage to give the
-/// counterparty more time to act, it is expected that `scale_factor` is greater
-/// than 100 i.e., the scaling _increases_ the size of the offsets.
-pub fn calculate_expiry_offsets(
-    protocol: Protocol,
-    scale_factor: Option<u32>,
-) -> (AlphaOffset, BetaOffset) {
-    let scale_factor = match scale_factor {
-        Some(factor) => {
-            if factor < 100 {
-                tracing::warn!("Scaling factor less than 100 makes the expiries smaller, these expiries will not be useful. Using scaling factor of 100");
-                NO_SCALE
-            } else {
-                factor
-            }
-        }
-        None => NO_SCALE,
-    };
-
-    let config = protocol.config();
-
-    let alice_needs = happy_path_swap_period_for_alice(&config);
-    let bob_needs = happy_path_swap_period_for_bob(&config);
-
-    // Alice redeems on beta ledger so needs time to act before the beta expiry.
-    let beta_offset = alice_needs;
-
-    // TODO: Now that we have a buffer before beta expiry for Alice to act within
-    // the alpha expiry can be the same as the beta expiry with no loss of
-    // atomicity. However this introduces a new concern - there is no guarantee that
-    // the time is the same on both chains. We should have some buffer between the
-    // expiries based on this possible disparity.
-
-    // Bob redeems on alpha ledger so needs time to act before the alpha expiry.
-    let alpha_offset = cmp::max(bob_needs, beta_offset); // Alpha expiry must not be less than beta expiry.
-
-    let alpha_offset = scale_up_by_factor(alpha_offset, scale_factor);
-    let beta_offset = scale_up_by_factor(beta_offset, scale_factor);
-
-    (alpha_offset.into(), beta_offset.into())
+    /// Start of swap, in seconds since epoch.
+    start_at: Timestamp,
+    /// The alpha ledger expiry timestamp.
+    alpha_expiry: AlphaExpiry,
+    /// The beta ledger expiry timestamp.
+    beta_expiry: BetaExpiry,
 }
 
 impl<A, B> Expiries<A, B>
@@ -100,129 +98,56 @@ where
     A: CurrentTime,
     B: CurrentTime,
 {
-    pub fn new(protocol: Protocol, alpha: A, beta: B, scale_factor: Option<u32>) -> Expiries<A, B> {
-        let config = protocol.config();
-        let (alpha_offset, beta_offset) = calculate_expiry_offsets(protocol, scale_factor);
+    pub fn new_herc20_hbit(start_at: Timestamp, alpha_connector: A, beta_connector: B) -> Self {
+        let config = Config::herc20_hbit();
+        Expiries::new(config, start_at, alpha_connector, beta_connector)
+    }
 
+    pub fn new_hbit_herc20(start_at: Timestamp, alpha_connector: A, beta_connector: B) -> Self {
+        let config = Config::hbit_herc20();
+        Expiries::new(config, start_at, alpha_connector, beta_connector)
+    }
+
+    fn new(config: Config, start_at: Timestamp, alpha_connector: A, beta_connector: B) -> Self {
+        let (alpha_offset, beta_offset) = expiry_offsets(&config);
+        let (alpha_expiry, beta_expiry) = to_timestamps(start_at, alpha_offset, beta_offset);
         Expiries {
             config,
-            alpha_connector: alpha,
-            beta_connector: beta,
+            alpha_connector,
+            beta_connector,
             alpha_offset,
             beta_offset,
+            start_at,
+            alpha_expiry,
+            beta_expiry,
         }
-    }
-
-    /// Returns true if expiries are useful for a swap started at `start_at`.
-    pub fn is_useful(&self, start_at: Timestamp) -> bool {
-        if self.alpha_offset.0 < self.beta_offset.0 {
-            return false;
-        }
-
-        let alice_needs = happy_path_swap_period_for_alice(&self.config);
-        if alice_needs > self.beta_offset.0 {
-            return false;
-        }
-
-        let bob_needs = happy_path_swap_period_for_bob(&self.config);
-        if bob_needs > self.alpha_offset.0 {
-            return false;
-        }
-
-        // `start_at` could be in the past so we need to check absolute expiries.
-        let (alpha_expiry, beta_expiry) = self.to_absolute(start_at);
-
-        if !self.alice_can_complete(AliceState::initial(), beta_expiry) {
-            return false;
-        }
-
-        if !self.bob_can_complete(BobState::initial(), alpha_expiry) {
-            return false;
-        }
-
-        true
-    }
-
-    /// Convert expiry offsets to absolute expiries.
-    pub fn to_absolute(&self, start_at: Timestamp) -> (AlphaExpiry, BetaExpiry) {
-        let alpha = start_at.add_duration(self.alpha_offset.into());
-        let beta = start_at.add_duration(self.beta_offset.into());
-
-        (alpha.into(), beta.into())
-    }
-
-    /// True if Alice has time to complete a swap (i.e. transition to done)
-    /// before the expiry time elapses.
-    fn alice_can_complete(&self, current_state: AliceState, expiry: BetaExpiry) -> bool {
-        let period = period_for_alice_to_complete(&self.config, current_state);
-        let now = self.beta_connector.current_time();
-
-        // Alice redeems on beta ledger so is concerned about the beta expiry.
-        let end_time = now.add_duration(period);
-        end_time < expiry.0
-    }
-
-    /// True if Bob has time to complete a swap (i.e. transition to done)
-    /// before the expiry time elapses.
-    fn bob_can_complete(&self, current_state: BobState, expiry: AlphaExpiry) -> bool {
-        let period = period_for_bob_to_complete(&self.config, current_state);
-        let now = self.alpha_connector.current_time();
-
-        // Bob redeems on alpha ledger so is concerned about the alpha expiry.
-        let end_time = now.add_duration(period);
-        end_time < expiry.0
-    }
-
-    /// If Alice's next action is not taken within X minutes the expiries will
-    /// become un-useful. Returns X.
-    pub fn alice_should_act_within(
-        &self,
-        current_state: AliceState,
-        expiry: BetaExpiry,
-    ) -> Duration {
-        let period = period_for_alice_to_complete(&self.config, current_state);
-        let start_time = expiry.0.sub_duration(period);
-        let now = self.beta_connector.current_time();
-
-        timestamp::duration_between(now, start_time)
-    }
-
-    /// If Bob's next action is not taken within X minutes the expiries will
-    /// become un-useful. Returns X.
-    pub fn bob_should_act_within(&self, current_state: BobState, expiry: AlphaExpiry) -> Duration {
-        let period = period_for_bob_to_complete(&self.config, current_state);
-        let start_time = expiry.0.sub_duration(period);
-        let now = self.alpha_connector.current_time();
-
-        timestamp::duration_between(now, start_time)
     }
 
     /// Returns the recommended next action that Alice should take.
-    pub fn next_action_for_alice(
-        &self,
-        current_state: AliceState,
-        alpha: AlphaExpiry,
-        beta: BetaExpiry,
-    ) -> AliceAction {
+    pub async fn next_action_for_alice(&self, current_state: AliceState) -> AliceAction {
         if current_state == AliceState::Done {
             return AliceAction::NoFurtherAction;
         }
 
-        let funded = current_state.has_sent_fund_transaction();
+        if current_state == AliceState::RedeemBetaTransactionBroadcast {
+            return AliceAction::NoFurtherAction;
+        }
 
-        if self.alpha_expiry_has_elapsed(alpha) {
+        let funded = current_state.has_broadcast_fund_transaction();
+
+        if self.alpha_expiry_has_elapsed().await {
             if funded {
                 return AliceAction::Refund;
             }
             return AliceAction::Abort;
         }
 
-        let both_parties_can_complete = self.alice_can_complete(current_state, beta)
-            && self.bob_can_complete(current_state.into(), alpha);
+        let both_parties_can_complete = self.alice_can_complete(current_state).await
+            && self.bob_can_complete(current_state.into()).await;
 
         if !both_parties_can_complete {
             if funded {
-                return AliceAction::WaitForRefund;
+                return AliceAction::WaitToRefund;
             }
             return AliceAction::Abort;
         }
@@ -232,13 +157,12 @@ where
     }
 
     /// Returns the recommended next action that Bob should take.
-    pub fn next_action_for_bob(
-        &self,
-        current_state: BobState,
-        alpha: AlphaExpiry,
-        beta: BetaExpiry,
-    ) -> BobAction {
+    pub async fn next_action_for_bob(&self, current_state: BobState) -> BobAction {
         if current_state == BobState::Done {
+            return BobAction::NoFurtherAction;
+        }
+
+        if current_state == BobState::RedeemAlphaTransactionBroadcast {
             return BobAction::NoFurtherAction;
         }
 
@@ -248,21 +172,21 @@ where
             return BobAction::RedeemAlpha;
         }
 
-        let funded = current_state.has_sent_fund_transaction();
+        let funded = current_state.has_broadcast_fund_transaction();
 
-        if self.beta_expiry_has_elapsed(beta) {
+        if self.beta_expiry_has_elapsed().await {
             if funded {
                 return BobAction::Refund;
             }
             return BobAction::Abort;
         };
 
-        let both_parties_can_complete = self.alice_can_complete(current_state.into(), beta)
-            && self.bob_can_complete(current_state, alpha);
+        let both_parties_can_complete = self.alice_can_complete(current_state.into()).await
+            && self.bob_can_complete(current_state).await;
 
         if !both_parties_can_complete {
             if funded {
-                return BobAction::WaitForRefund;
+                return BobAction::WaitToRefund;
             }
             return BobAction::Abort;
         }
@@ -271,14 +195,56 @@ where
         next_action
     }
 
-    fn alpha_expiry_has_elapsed(&self, expiry: AlphaExpiry) -> bool {
-        let now = self.alpha_connector.current_time();
-        now > expiry.0
+    /// True if Alice has time to complete a swap (i.e. transition to done)
+    /// before the beta expiry time elapses.
+    pub async fn alice_can_complete(&self, current_state: AliceState) -> bool {
+        let period = period_for_alice_to_complete(&self.config, current_state);
+        let now = self.beta_connector.current_time().await;
+
+        // Alice redeems on beta ledger so is concerned about the beta expiry.
+        let end_time = now.add_duration(period);
+        end_time < self.beta_expiry.0
     }
 
-    fn beta_expiry_has_elapsed(&self, expiry: BetaExpiry) -> bool {
-        let now = self.beta_connector.current_time();
-        now > expiry.0
+    /// True if Bob has time to complete a swap (i.e. transition to done)
+    /// before the expiry time elapses.
+    pub async fn bob_can_complete(&self, current_state: BobState) -> bool {
+        let period = period_for_bob_to_complete(&self.config, current_state);
+        let now = self.alpha_connector.current_time().await;
+
+        // Bob redeems on alpha ledger so is concerned about the alpha expiry.
+        let end_time = now.add_duration(period);
+        end_time < self.alpha_expiry.0
+    }
+
+    /// If Alice's next action is not taken within X minutes the expiries will
+    /// become un-useful. Returns X.
+    pub async fn alice_should_act_within(&self, current_state: AliceState) -> Duration {
+        let period = period_for_alice_to_complete(&self.config, current_state);
+        let start_time = self.beta_expiry.0.sub_duration(period);
+        let now = self.beta_connector.current_time().await;
+
+        timestamp::duration_between(now, start_time)
+    }
+
+    /// If Bob's next action is not taken within X minutes the expiries will
+    /// become un-useful. Returns X.
+    pub async fn bob_should_act_within(&self, current_state: BobState) -> Duration {
+        let period = period_for_bob_to_complete(&self.config, current_state);
+        let start_time = self.alpha_expiry.0.sub_duration(period);
+        let now = self.alpha_connector.current_time().await;
+
+        timestamp::duration_between(now, start_time)
+    }
+
+    async fn alpha_expiry_has_elapsed(&self) -> bool {
+        let now = self.alpha_connector.current_time().await;
+        now > self.alpha_expiry.0
+    }
+
+    async fn beta_expiry_has_elapsed(&self) -> bool {
+        let now = self.beta_connector.current_time().await;
+        now > self.beta_expiry.0
     }
 }
 
@@ -326,25 +292,6 @@ fn period_for_bob_to_complete(config: &Config, current_state: BobState) -> Durat
     }
 
     period_to_complete(config, current_state, Duration::zero())
-}
-
-// Scale the duration by factor / 100 i.e., scale the duration by a
-// percentage. If factor is <= 100 returns original value unscaled.
-fn scale_up_by_factor(orig: Duration, factor: u32) -> Duration {
-    if factor <= 100 {
-        return orig;
-    }
-
-    let scaled = orig.whole_seconds() * factor as i64;
-    let reduced = scaled.checked_div_euclid(100);
-
-    match reduced {
-        Some(secs) => Duration::seconds(secs as i64),
-        None => {
-            tracing::warn!("failed to scale {} by {}", orig.whole_seconds(), factor);
-            orig
-        }
-    }
 }
 
 impl<A, B> fmt::Display for Expiries<A, B> {
@@ -431,14 +378,14 @@ pub enum AliceState {
     None,
     /// Swap has been started.
     Started,
-    /// The fund alpha transaction has been sent to the network.
-    FundAlphaTransactionSent,
+    /// The fund alpha transaction has been broadcast to the network.
+    FundAlphaTransactionBroadcast,
     /// Implies fund alpha transaction has reached finality.
     AlphaFunded,
     /// Implies fund beta transaction has reached finality.
     BetaFunded,
-    /// The redeem beta transaction has been sent to the network.
-    RedeemBetaTransactionSent,
+    /// The redeem beta transaction has been broadcast to the network.
+    RedeemBetaTransactionBroadcast,
     /// Implies beta redeem transaction has reached finality.
     Done,
 }
@@ -449,20 +396,20 @@ pub enum AliceAction {
     // Happy path actions for Alice.
     Start,
     FundAlpha,
-    WaitForFundTransactionFinality,
-    WaitForBetaFunded,
+    WaitForAlphaFundTransactionFinality,
+    WaitForBetaFundTransactionFinality,
     RedeemBeta,
-    WaitForRedeemBetaTransactionFinality,
+    WaitForBetaRedeemTransactionFinality,
     NoFurtherAction, // Implies swap is done from Alice's perspective.
     // Cancel path.
-    Abort,         // Implies HTLC not funded, abort but take no further action.
-    WaitForRefund, // Implies alpha ledger HTLC funded but expiry not yet elapsed.
-    Refund,        // Implies HTLC funded and expiry time elapsed.
+    Abort,        // Implies HTLC not funded, abort but take no further action.
+    WaitToRefund, // Implies alpha ledger HTLC funded but expiry not yet elapsed.
+    Refund,       // Implies HTLC funded and expiry time elapsed.
 }
 
 impl AliceState {
     /// Returns Alice's initial swap state.
-    fn initial() -> Self {
+    pub fn initial() -> Self {
         AliceState::None
     }
 
@@ -472,11 +419,11 @@ impl AliceState {
 
         match self {
             None => (Start, Started),
-            Started => (FundAlpha, FundAlphaTransactionSent),
-            FundAlphaTransactionSent => (WaitForFundTransactionFinality, AlphaFunded),
-            AlphaFunded => (WaitForBetaFunded, BetaFunded),
-            BetaFunded => (RedeemBeta, RedeemBetaTransactionSent),
-            RedeemBetaTransactionSent => (WaitForRedeemBetaTransactionFinality, Done),
+            Started => (FundAlpha, FundAlphaTransactionBroadcast),
+            FundAlphaTransactionBroadcast => (WaitForAlphaFundTransactionFinality, AlphaFunded),
+            AlphaFunded => (WaitForBetaFundTransactionFinality, BetaFunded),
+            BetaFunded => (RedeemBeta, RedeemBetaTransactionBroadcast),
+            RedeemBetaTransactionBroadcast => (WaitForBetaRedeemTransactionFinality, Done),
             Done => (NoFurtherAction, Done),
         }
     }
@@ -493,42 +440,42 @@ impl AliceState {
                 c.start()
             }
             FundAlpha => {
-                // Transition from Started to FundAlphaTransactionSent
-                c.create_alpha_fund_transaction()
+                // Transition from Started to FundAlphaTransactionBroadcast
+                c.broadcast_alpha_fund_transaction()
             }
-            WaitForFundTransactionFinality => {
-                // Transition from FundAlphaTransactionSent to AlphaFunded
+            WaitForAlphaFundTransactionFinality => {
+                // Transition from FundAlphaTransactionBroadcast to AlphaFunded
                 c.mine_alpha_fund_transaction() + c.finality_alpha()
             }
-            WaitForBetaFunded => {
+            WaitForBetaFundTransactionFinality => {
                 // Transition from AlphaFunded to BetaFunded
-                c.create_beta_fund_transaction()
+                c.broadcast_beta_fund_transaction()
                     + c.mine_beta_fund_transaction()
                     + c.finality_beta()
             }
             RedeemBeta => {
-                // Transition from BetaFunded to RedeemBetaTransactionSent
-                c.create_beta_redeem_transaction()
+                // Transition from BetaFunded to RedeemBetaTransactionBroadcast
+                c.broadcast_beta_redeem_transaction()
             }
-            WaitForRedeemBetaTransactionFinality => {
-                // Transition from RedeemBetaTransactionSent to Done
+            WaitForBetaRedeemTransactionFinality => {
+                // Transition from RedeemBetaTransactionBroadcast to Done
                 c.mine_beta_redeem_transaction() + c.finality_beta()
             }
-            // Transitioning to any of the cancel actions takes, be definition, zero time.
-            NoFurtherAction | Abort | WaitForRefund | Refund => Duration::zero(),
+            // Transitioning to any of the cancel actions take, be definition, zero time.
+            NoFurtherAction | Abort | WaitToRefund | Refund => Duration::zero(),
         }
     }
 
     /// True if Alice has funded the alpha HTLC. We return true as soon as the
-    /// fund transaction has been sent since any time after attempting to refund
-    /// is the correct cancellation action.
-    fn has_sent_fund_transaction(&self) -> bool {
+    /// fund transaction has been broadcast since any time after attempting to
+    /// refund is the correct cancellation action.
+    fn has_broadcast_fund_transaction(&self) -> bool {
         match self {
             AliceState::None | AliceState::Started => false,
-            AliceState::FundAlphaTransactionSent
+            AliceState::FundAlphaTransactionBroadcast
             | AliceState::AlphaFunded
             | AliceState::BetaFunded
-            | AliceState::RedeemBetaTransactionSent
+            | AliceState::RedeemBetaTransactionBroadcast
             | AliceState::Done => true,
         }
     }
@@ -537,21 +484,20 @@ impl AliceState {
 /// Happy path states for Bob.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum BobState {
-    // Bob does not have a None state because swap creation time is implicit in Bob's first time
-    // to act after Alice funds.
+    // Bob does not have a None state because start time is implicit in Bob's fund Beta action.
     /// Initial state, swap has been started.
     Started,
     /// Implies fund alpha transaction has reached finality.
     AlphaFunded,
-    /// The fund beta transaction has been sent to the network.
-    FundBetaTransactionSent,
+    /// The fund beta transaction has been broadcast to the network.
+    FundBetaTransactionBroadcast,
     /// Implies fund beta transaction has reached finality.
     BetaFunded,
     /// The redeem beta transaction has been seen (e.g. an unconfirmed
     /// transaction in the mempool).
     RedeemBetaTransactionSeen,
-    /// The redeem alpha transaction has been sent to the network.
-    RedeemAlphaTransactionSent,
+    /// The redeem alpha transaction has been broadcast to the network.
+    RedeemAlphaTransactionBroadcast,
     /// Implies alpha redeem transaction has reached finality.
     Done,
 }
@@ -560,22 +506,22 @@ pub enum BobState {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum BobAction {
     // Happy path actions for Bob.
-    WaitForAlphaFunded,
+    WaitForAlphaFundTransactionFinality,
     FundBeta,
     WaitForBetaFundTransactionFinality,
-    WaitForBetaRedeemTransactionToBeSeen,
+    WaitForBetaRedeemTransactionBroadcast,
     RedeemAlpha,
     WaitForAlphaRedeemTransactionFinality,
     NoFurtherAction, // Implies swap is done from Bob's perspective.
     // Cancel path.
-    Abort,         // Implies HTLC not funded, abort but take no further action.
-    WaitForRefund, // Implies alpha ledger HTLC funded but expiry not yet elapsed.
-    Refund,        // Implies HTLC funded and expiry time elapsed.
+    Abort,        // Implies HTLC not funded, abort but take no further action.
+    WaitToRefund, // Implies alpha ledger HTLC funded but expiry not yet elapsed.
+    Refund,       // Implies HTLC funded and expiry time elapsed.
 }
 
 impl BobState {
     /// Returns Bob's initial swap state.
-    fn initial() -> Self {
+    pub fn initial() -> Self {
         BobState::Started
     }
 
@@ -584,15 +530,15 @@ impl BobState {
         use self::{BobAction::*, BobState::*};
 
         match self {
-            Started => (WaitForAlphaFunded, AlphaFunded),
-            AlphaFunded => (FundBeta, FundBetaTransactionSent),
-            FundBetaTransactionSent => (WaitForBetaFundTransactionFinality, BetaFunded),
+            Started => (WaitForAlphaFundTransactionFinality, AlphaFunded),
+            AlphaFunded => (FundBeta, FundBetaTransactionBroadcast),
+            FundBetaTransactionBroadcast => (WaitForBetaFundTransactionFinality, BetaFunded),
             BetaFunded => (
-                WaitForBetaRedeemTransactionToBeSeen,
+                WaitForBetaRedeemTransactionBroadcast,
                 RedeemBetaTransactionSeen,
             ),
-            RedeemBetaTransactionSeen => (RedeemAlpha, RedeemAlphaTransactionSent),
-            RedeemAlphaTransactionSent => (WaitForAlphaRedeemTransactionFinality, Done),
+            RedeemBetaTransactionSeen => (RedeemAlpha, RedeemAlphaTransactionBroadcast),
+            RedeemAlphaTransactionBroadcast => (WaitForAlphaRedeemTransactionFinality, Done),
             Done => (NoFurtherAction, Done),
         }
     }
@@ -604,49 +550,51 @@ impl BobState {
         let (next_action, _next_state) = self.next();
 
         match next_action {
-            WaitForAlphaFunded => {
+            WaitForAlphaFundTransactionFinality => {
                 // Transition from Started to AlphaFunded
                 c.start()
-                    + c.create_alpha_fund_transaction()
+                    + c.broadcast_alpha_fund_transaction()
                     + c.mine_alpha_fund_transaction()
                     + c.finality_alpha()
             }
             FundBeta => {
-                // Transition from AlphaFunded to FundBetaTransactionSent
-                c.create_beta_fund_transaction()
+                // Transition from AlphaFunded to FundBetaTransactionBroadcast
+                c.broadcast_beta_fund_transaction()
             }
             WaitForBetaFundTransactionFinality => {
-                // Transition from FundBetaTransactionSent to BetaFunded
+                // Transition from FundBetaTransactionBroadcast to BetaFunded
                 c.mine_beta_fund_transaction() + c.finality_beta()
             }
-            WaitForBetaRedeemTransactionToBeSeen => {
+            // We include mine_beta_redeem_transaction since Bob will not necessarily be watching
+            // the network (i.e., only watching mined blocks).
+            WaitForBetaRedeemTransactionBroadcast => {
                 // Transition from BetaFunded to RedeemBetaTransactionSeen
-                c.create_beta_redeem_transaction() + c.mine_beta_redeem_transaction()
+                c.broadcast_beta_redeem_transaction() + c.mine_beta_redeem_transaction()
             }
             RedeemAlpha => {
                 // Transition from RedeemBetaTransactionSeen to
-                // RedeemAlphaTransactionSent
-                c.create_alpha_redeem_transaction()
+                // RedeemAlphaTransactionBroadcast
+                c.broadcast_alpha_redeem_transaction()
             }
             WaitForAlphaRedeemTransactionFinality => {
-                // Transition from RedeemAlphaTransactionSent to Done
+                // Transition from RedeemAlphaTransactionBroadcast to Done
                 c.mine_alpha_redeem_transaction() + c.finality_alpha()
             }
-            // Transitioning to any of the cancel actions takes, be definition, zero time.
-            NoFurtherAction | Abort | WaitForRefund | Refund => Duration::zero(),
+            // Transitioning to any of the cancel actions take, be definition, zero time.
+            NoFurtherAction | Abort | WaitToRefund | Refund => Duration::zero(),
         }
     }
 
     /// True if Bob has funded the beta HTLC. We return true as soon as the
-    /// fund transaction has been sent since any time after attempting to refund
-    /// is the correct cancellation action.
-    fn has_sent_fund_transaction(&self) -> bool {
+    /// fund transaction has been broadcast since any time after attempting to
+    /// refund is the correct cancellation action.
+    fn has_broadcast_fund_transaction(&self) -> bool {
         match self {
             BobState::Started | BobState::AlphaFunded => false,
-            BobState::FundBetaTransactionSent
+            BobState::FundBetaTransactionBroadcast
             | BobState::BetaFunded
             | BobState::RedeemBetaTransactionSeen
-            | BobState::RedeemAlphaTransactionSent
+            | BobState::RedeemAlphaTransactionBroadcast
             | BobState::Done => true,
         }
     }
@@ -665,11 +613,11 @@ impl From<AliceState> for BobState {
         match state {
             None => Self::Started,
             Started => Self::Started,
-            FundAlphaTransactionSent => Self::Started,
+            FundAlphaTransactionBroadcast => Self::Started,
             AlphaFunded => Self::AlphaFunded,
             // We don't look for the redeem alpha transaction so `BetaFunded` is the last of Bob's
             // states we can verify.
-            BetaFunded | RedeemBetaTransactionSent | Done => Self::BetaFunded,
+            BetaFunded | RedeemBetaTransactionBroadcast | Done => Self::BetaFunded,
         }
     }
 }
@@ -681,99 +629,13 @@ impl From<BobState> for AliceState {
         match state {
             Started => Self::None,
             AlphaFunded => Self::AlphaFunded,
-            FundBetaTransactionSent => Self::AlphaFunded,
+            FundBetaTransactionBroadcast => Self::AlphaFunded,
             BetaFunded => Self::BetaFunded,
             // We don't wait for the redeem beta transaction to reach finality so
-            // `RedeemBetaTransactionSent` is the last of Alice's states we can verify.
-            RedeemBetaTransactionSeen | RedeemAlphaTransactionSent | Done => {
-                Self::RedeemBetaTransactionSent
+            // `RedeemBetaTransactionBroadcast` is the last of Alice's states we can verify.
+            RedeemBetaTransactionSeen | RedeemAlphaTransactionBroadcast | Done => {
+                Self::RedeemBetaTransactionBroadcast
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use spectral::prelude::*;
-    use time::{prelude::*, Duration};
-
-    #[derive(Clone, Copy, Debug)]
-    struct MockConnector;
-
-    impl CurrentTime for MockConnector {
-        fn current_time(&self) -> Timestamp {
-            Timestamp::now()
-        }
-    }
-
-    fn mock_connectors() -> (MockConnector, MockConnector) {
-        (MockConnector, MockConnector)
-    }
-
-    #[test]
-    fn can_calculate_useful_expiries_for_all_supported_protocols() {
-        let scale = None;
-        let future = Timestamp::now().plus(10);
-        let (alpha, beta) = mock_connectors();
-
-        let exp = Expiries::new(Protocol::Herc20Hbit, alpha, beta, scale);
-        assert!(exp.is_useful(future));
-
-        let exp = Expiries::new(Protocol::HbitHerc20, alpha, beta, scale);
-        assert!(exp.is_useful(future));
-    }
-
-    #[test]
-    fn can_calculate_useful_expiries_for_all_supported_protocols_with_scale() {
-        let scale = Some(120);
-        let now = Timestamp::now();
-        let (alpha, beta) = mock_connectors();
-
-        let exp = Expiries::new(Protocol::Herc20Hbit, alpha, beta, scale);
-        assert!(exp.is_useful(now));
-
-        let exp = Expiries::new(Protocol::HbitHerc20, alpha, beta, scale);
-        assert!(exp.is_useful(now));
-    }
-
-    #[test]
-    fn scale_up_by_factor_100_or_less_does_not_scale() {
-        let d = Duration::minute();
-
-        let scaled = scale_up_by_factor(d, 100);
-        assert_eq!(d, scaled);
-
-        let scaled = scale_up_by_factor(d, 10);
-        assert_eq!(d, scaled);
-
-        let scaled = scale_up_by_factor(d, 0);
-        assert_eq!(d, scaled);
-    }
-
-    #[test]
-    fn scale_up_by_factor_200_works() {
-        let d = Duration::minute();
-        let got = scale_up_by_factor(d, 200);
-        let want = 2_i32.minutes();
-
-        assert_that!(got).is_equal_to(want)
-    }
-
-    #[test]
-    fn report() {
-        let scale = Some(150);
-        let (alpha, beta) = mock_connectors();
-
-        println!(
-            "creating expiries with a scaling factor of: {}",
-            scale.unwrap()
-        );
-
-        let exp = Expiries::new(Protocol::Herc20Hbit, alpha, beta, scale);
-        println!("\n herc20-hbit swap:\n {}", exp);
-
-        let exp = Expiries::new(Protocol::HbitHerc20, alpha, beta, scale);
-        println!("\n hbit-herc20 swap:\n {}", exp);
     }
 }
