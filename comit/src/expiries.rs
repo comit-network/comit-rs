@@ -7,6 +7,7 @@
 mod config;
 
 use crate::timestamp::{self, Timestamp};
+use num::integer;
 use std::{cmp, fmt};
 use time::Duration;
 
@@ -412,14 +413,9 @@ fn human_readable(seconds: i64) -> String {
     const SECONDS_IN_AN_HOUR: i64 = SECONDS_IN_A_MINUTE * 60;
     const SECONDS_IN_A_DAY: i64 = SECONDS_IN_AN_HOUR * 24;
 
-    let days = seconds / SECONDS_IN_A_DAY;
-    let rem = seconds % SECONDS_IN_A_DAY;
-
-    let hours = rem / SECONDS_IN_AN_HOUR;
-    let rem = rem % SECONDS_IN_AN_HOUR;
-
-    let mins = rem / SECONDS_IN_A_MINUTE;
-    let secs = rem % SECONDS_IN_A_MINUTE;
+    let (days, days_rem) = integer::div_rem(seconds, SECONDS_IN_A_DAY);
+    let (hours, hours_rem) = integer::div_rem(days_rem, SECONDS_IN_AN_HOUR);
+    let (mins, secs) = integer::div_rem(hours_rem, SECONDS_IN_A_MINUTE);
 
     format!(
         "({} total seconds) {} days {} hours {} minutes {} seconds",
