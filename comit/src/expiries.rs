@@ -8,6 +8,7 @@ mod config;
 
 use self::config::Config;
 use crate::timestamp::{self, Timestamp};
+use async_trait::async_trait;
 use num::integer;
 use std::{cmp, fmt};
 use time::Duration;
@@ -67,7 +68,7 @@ pub fn to_timestamps(
 /// Intended for getting the current time from the underlying blockchain.
 /// The definition `current time` varies depending on the blockchain, this
 /// always refers to the time used by the op codes used in the COMIT contracts.
-#[async_trait::async_trait]
+#[async_trait]
 pub trait CurrentTime {
     async fn current_time(&self) -> Timestamp;
 }
@@ -129,23 +130,30 @@ where
             return AliceAction::NoFurtherAction;
         }
 
-        if current_state == AliceState::RedeemBetaTransactionBroadcast {
-            return AliceAction::NoFurtherAction;
-        }
-
         let funded = current_state.has_broadcast_fund_transaction();
+        let redeemed = current_state.has_broadcast_redeem_transaction();
 
         if self.alpha_expiry_has_elapsed().await {
+            if redeemed {
+                let (next_action, _state) = current_state.next();
+                return next_action;
+            }
+
             if funded {
                 return AliceAction::Refund;
             }
+
             return AliceAction::Abort;
         }
 
-        let both_parties_can_complete = self.alice_can_complete(current_state).await
-            && self.bob_can_complete(current_state.into()).await;
+        // If we are asking the next action the we have started.
+        let alice_can_complete = match current_state {
+            AliceState::None => self.alice_can_complete(AliceState::Started).await,
+            _ => self.alice_can_complete(current_state).await,
+        };
+        let bob_can_complete = self.bob_can_complete(current_state.into()).await;
 
-        if !both_parties_can_complete {
+        if !(alice_can_complete && bob_can_complete) {
             if funded {
                 return AliceAction::WaitToRefund;
             }
@@ -162,10 +170,6 @@ where
             return BobAction::NoFurtherAction;
         }
 
-        if current_state == BobState::RedeemAlphaTransactionBroadcast {
-            return BobAction::NoFurtherAction;
-        }
-
         // If Alice has redeemed Bob's only action is to redeem irrespective of expiry
         // time.
         if current_state == BobState::RedeemBetaTransactionSeen {
@@ -173,18 +177,34 @@ where
         }
 
         let funded = current_state.has_broadcast_fund_transaction();
+        let redeemed = current_state.has_broadcast_redeem_transaction();
 
         if self.beta_expiry_has_elapsed().await {
+            if redeemed {
+                let (next_action, _state) = current_state.next();
+                return next_action;
+            }
+
             if funded {
                 return BobAction::Refund;
             }
             return BobAction::Abort;
         };
 
-        let both_parties_can_complete = self.alice_can_complete(current_state.into()).await
-            && self.bob_can_complete(current_state).await;
+        // If we are asking the next action we can assume Alice has started.
+        let alice_state = current_state.into();
+        let alice_can_complete = match alice_state {
+            AliceState::None => self.alice_can_complete(AliceState::Started).await,
+            _ => self.alice_can_complete(alice_state).await,
+        };
+        let bob_can_complete = self.bob_can_complete(current_state).await;
 
-        if !both_parties_can_complete {
+        if !(alice_can_complete && bob_can_complete) {
+            // let both_parties_can_complete =
+            // self.alice_can_complete(current_state.into()).await     && self.
+            // bob_can_complete(current_state).await;
+
+            // if !both_parties_can_complete {
             if funded {
                 return BobAction::WaitToRefund;
             }
@@ -479,6 +499,18 @@ impl AliceState {
             | AliceState::Done => true,
         }
     }
+
+    /// True if Alice has broadcast her redeem transaction.
+    fn has_broadcast_redeem_transaction(&self) -> bool {
+        match self {
+            AliceState::None
+            | AliceState::Started
+            | AliceState::FundAlphaTransactionBroadcast
+            | AliceState::AlphaFunded
+            | AliceState::BetaFunded => false,
+            AliceState::RedeemBetaTransactionBroadcast | AliceState::Done => true,
+        }
+    }
 }
 
 /// Happy path states for Bob.
@@ -598,6 +630,18 @@ impl BobState {
             | BobState::Done => true,
         }
     }
+
+    /// True if Bob has broadcast his redeem transaction.
+    fn has_broadcast_redeem_transaction(&self) -> bool {
+        match self {
+            BobState::Started
+            | BobState::AlphaFunded
+            | BobState::FundBetaTransactionBroadcast
+            | BobState::BetaFunded
+            | BobState::RedeemBetaTransactionSeen => false,
+            BobState::RedeemAlphaTransactionBroadcast | BobState::Done => true,
+        }
+    }
 }
 
 /// From<'role'State> converts a state object into a best guess at the
@@ -637,5 +681,200 @@ impl From<BobState> for AliceState {
                 Self::RedeemBetaTransactionBroadcast
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use spectral::prelude::*;
+    use std::sync::Arc;
+    use time::{prelude::*, Duration};
+    use tokio::sync::Mutex;
+
+    #[derive(Clone, Debug)]
+    struct MockConnector {
+        current_time: Arc<Mutex<Timestamp>>,
+    }
+
+    #[async_trait]
+    impl CurrentTime for MockConnector {
+        async fn current_time(&self) -> Timestamp {
+            let guard = self.current_time.lock().await;
+            *guard
+        }
+    }
+
+    impl Default for MockConnector {
+        fn default() -> Self {
+            MockConnector {
+                current_time: Arc::new(Mutex::new(Timestamp::now())),
+            }
+        }
+    }
+
+    impl MockConnector {
+        /// Create a new connector with current time incremented `inc` seconds.
+        async fn inc(&self, secs: u32) {
+            let mut guard = self.current_time.lock().await;
+            *guard = guard.plus(secs);
+        }
+    }
+
+    fn mock_connectors() -> (MockConnector, MockConnector) {
+        (MockConnector::default(), MockConnector::default())
+    }
+
+    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+    async fn inc_connectors(d: Duration, a: MockConnector, b: MockConnector) {
+        let secs = d.whole_seconds() as u32;
+        a.inc(secs).await;
+        b.inc(secs).await;
+    }
+
+    // Run this test with --nocapture to see what offsets we are calculating.
+    #[test]
+    fn can_create_offsets() {
+        fn print(p: &str, a: AlphaOffset, b: BetaOffset) {
+            println!("{} expiry offsets: \n alpha: {} \n beta: {}", p, a, b);
+        }
+
+        let (a, b) = expiry_offsets_herc20_hbit();
+        print("herc20-hbit", a, b);
+
+        let (a, b) = expiry_offsets_hbit_herc20();
+        print("hbit-herc20", a, b);
+    }
+
+    #[tokio::test]
+    async fn alice_can_complete_a_swap() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let exp = Expiries::new_hbit_herc20(start_at, ac.clone(), bc.clone());
+        let mut cur = AliceState::initial();
+
+        let inc = 1.minutes();
+
+        while cur != AliceState::Done {
+            inc_connectors(inc, ac.clone(), bc.clone()).await;
+            let (want_action, state) = cur.next();
+            let got_action = exp.next_action_for_alice(cur).await;
+
+            assert_that!(got_action).is_equal_to(want_action);
+
+            cur = state;
+        }
+    }
+
+    #[tokio::test]
+    async fn bob_can_complete_a_swap() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let exp = Expiries::new_hbit_herc20(start_at, ac.clone(), bc.clone());
+        let mut cur = BobState::initial();
+
+        let inc = 1.minutes();
+
+        while cur != BobState::Done {
+            inc_connectors(inc, ac.clone(), bc.clone()).await;
+            let (want_action, state) = cur.next();
+            let got_action = exp.next_action_for_bob(cur).await;
+
+            assert_that!(got_action).is_equal_to(want_action);
+
+            cur = state;
+        }
+    }
+
+    #[tokio::test]
+    async fn alice_next_action_wait_to_refund_after_expiry_elapsed() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+
+        let inc = exp.beta_offset.0 + 1.minutes();
+        inc_connectors(inc, ac, bc).await;
+
+        let alice_state = AliceState::FundAlphaTransactionBroadcast;
+
+        let want_action = AliceAction::WaitToRefund;
+        let got_action = exp.next_action_for_alice(alice_state).await;
+
+        assert_that!(got_action).is_equal_to(want_action);
+    }
+
+    #[tokio::test]
+    async fn alice_next_action_abort_after_expiry_elapsed() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+
+        let inc = exp.beta_offset.0 + 1.minutes();
+        inc_connectors(inc, ac, bc).await;
+
+        let alice_state = AliceState::Started;
+
+        let want_action = AliceAction::Abort;
+        let got_action = exp.next_action_for_alice(alice_state).await;
+
+        assert_that!(got_action).is_equal_to(want_action);
+    }
+
+    #[tokio::test]
+    async fn bob_next_action_refund_after_expiry_elapsed() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+
+        let inc = exp.beta_offset.0 + 1.minutes();
+        inc_connectors(inc, ac, bc).await;
+
+        let bob_state = BobState::BetaFunded;
+
+        let want_action = BobAction::Refund;
+        let got_action = exp.next_action_for_bob(bob_state).await;
+
+        assert_that!(got_action).is_equal_to(want_action);
+    }
+
+    #[tokio::test]
+    async fn bob_next_action_abort_after_expiry_elapsed() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+
+        let inc = exp.beta_offset.0 + 1.minutes();
+        inc_connectors(inc, ac, bc).await;
+
+        let bob_state = BobState::AlphaFunded;
+
+        let want_action = BobAction::Abort;
+        let got_action = exp.next_action_for_bob(bob_state).await;
+
+        assert_that!(got_action).is_equal_to(want_action);
+    }
+
+    #[tokio::test]
+    async fn bob_next_action_abort_when_alice_takes_too_long_to_start() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+
+        let inc = 2.hours();
+        inc_connectors(inc, ac, bc).await;
+
+        let bob_state = BobState::Started;
+
+        let want_action = BobAction::Abort;
+        let got_action = exp.next_action_for_bob(bob_state).await;
+
+        assert_that!(got_action).is_equal_to(want_action);
     }
 }
