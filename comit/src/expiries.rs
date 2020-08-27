@@ -877,4 +877,31 @@ mod tests {
 
         assert_that!(got_action).is_equal_to(want_action);
     }
+
+    // Alice tries to attack Bob by waiting until close to beta expiry then
+    // broadcasting a transaction with super high fees. Alice hopes that her redeem
+    // transaction will go in and that she will be able to refund before Bob has had
+    // time to redeem. Bob is still safe for two reasons:
+    //
+    // 1. He is watching the expiry times and has not yet refunded so we know that
+    //    the expiry has only just elapsed.
+    // 2. Since the expiry has only just elapsed there is still time enough for
+    //    Bob's redeem transaction to reach finality before Alice can refund.
+    #[tokio::test]
+    async fn bob_next_action_redeem_after_expiry_elapsed_and_secret_seen() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+
+        let inc = exp.beta_offset.0 + 1.minutes();
+        inc_connectors(inc, ac, bc).await;
+
+        let bob_state = BobState::RedeemBetaTransactionSeen;
+
+        let want_action = BobAction::RedeemAlpha;
+        let got_action = exp.next_action_for_bob(bob_state).await;
+
+        assert_that!(got_action).is_equal_to(want_action);
+    }
 }
