@@ -2,11 +2,8 @@ mod makerbook;
 mod order_source;
 
 use crate::{
-    asset,
-    asset::Erc20Quantity,
-    order::SwapProtocol,
     orderpool::{Match, OrderPool},
-    BtcDaiOrder, OrderId, Position,
+    BtcDaiOrder, OrderId,
 };
 use libp2p::{
     identity::Keypair,
@@ -34,15 +31,6 @@ pub struct Orderbook {
     orderpool: OrderPool,
 }
 
-/// Represents a "form" that contains all data for creating a new order.
-#[derive(Debug, Clone)]
-pub struct BtcDaiOrderForm {
-    pub position: Position,
-    pub quantity: asset::Bitcoin,
-    pub price: Erc20Quantity,
-    pub swap_protocol: SwapProtocol,
-}
-
 impl Orderbook {
     /// Construct a new orderbook for this node using the node's peer ID.
     pub fn new(me: PeerId, key: Keypair) -> Orderbook {
@@ -65,16 +53,9 @@ impl Orderbook {
         self.orderpool.clear_own_orders();
     }
 
-    /// Make a new order.
-    ///
-    /// The resulting order will eventually be visible to other peers.
-    pub fn publish(&mut self, form: BtcDaiOrderForm) -> OrderId {
-        let order = BtcDaiOrder::new(form.position, form.quantity, form.price, form.swap_protocol);
-        let id = order.id;
-
+    /// Publish this order so it is visible to other peers.
+    pub fn publish(&mut self, order: BtcDaiOrder) {
         self.orderpool.publish(order);
-
-        id
     }
 
     /// Cancel an order we previously published.

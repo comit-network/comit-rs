@@ -61,6 +61,7 @@ mod ethereum {
     pub use comit::ethereum::*;
 }
 mod bitcoin {
+    pub use ::bitcoin::Network;
     pub use comit::bitcoin::{Address, PublicKey};
 }
 mod lightning {
@@ -283,7 +284,7 @@ async fn make_http_api_worker(
     facade: Facade,
     incoming_requests: tokio::net::TcpListener,
 ) {
-    let routes = http_api::create_routes(facade, &settings.http_api.cors.allowed_origins);
+    let routes = http_api::create_routes(facade, &settings);
 
     match incoming_requests.local_addr() {
         Ok(socket) => {

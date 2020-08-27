@@ -90,6 +90,12 @@ impl From<U32> for u32 {
     }
 }
 
+impl From<u32> for U32 {
+    fn from(value: u32) -> U32 {
+        U32(value)
+    }
+}
+
 impl From<U32> for Timestamp {
     fn from(value: U32) -> Timestamp {
         Timestamp::from(value.0)

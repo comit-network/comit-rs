@@ -1,4 +1,8 @@
-use crate::BtcDaiOrder;
+use crate::{
+    expiries::{AlphaOffset, BetaOffset},
+    order::SwapProtocol,
+    BtcDaiOrder,
+};
 use futures::{AsyncRead, AsyncWrite};
 use libp2p::{
     core::{
@@ -21,6 +25,7 @@ use std::{
     task::{Context, Poll},
     time::{Duration, Instant},
 };
+use time::NumericalDuration;
 
 /// Wait at least this long before re-getting orders from a maker.
 const POLLING_INTERVAL: Duration = Duration::from_secs(5);
@@ -333,9 +338,9 @@ impl RequestResponseCodec for GetBtcDaiOrdersCodec {
             .await
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         let mut de = serde_json::Deserializer::from_slice(&message);
-        let orders = Vec::<BtcDaiOrder>::deserialize(&mut de)?;
+        let orders = Vec::<wire::BtcDaiOrder>::deserialize(&mut de)?;
 
-        Ok(orders)
+        Ok(orders.into_iter().map(|wire| wire.into_model()).collect())
     }
 
     /// Writes a get orders request to the given I/O stream.
@@ -362,9 +367,130 @@ impl RequestResponseCodec for GetBtcDaiOrdersCodec {
     where
         T: AsyncWrite + Unpin + Send,
     {
-        let bytes = serde_json::to_vec(&orders)?;
+        let bytes = serde_json::to_vec(
+            &orders
+                .into_iter()
+                .map(wire::BtcDaiOrder::from_model)
+                .collect::<Vec<_>>(),
+        )?;
         upgrade::write_one(io, &bytes).await?;
 
         Ok(())
+    }
+}
+
+/// A dedicated module for the types that represent our messages "on the wire".
+mod wire {
+    use crate::{asset, asset::Erc20Quantity, OrderId, Position};
+    use serde::{Deserialize, Serialize};
+    use time::OffsetDateTime;
+
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+    pub struct BtcDaiOrder {
+        pub id: OrderId,
+        pub position: Position,
+        pub swap_protocol: SwapProtocol,
+        #[serde(with = "time::serde::timestamp")]
+        pub created_at: OffsetDateTime,
+        #[serde(with = "asset::bitcoin::sats_as_string")]
+        pub quantity: asset::Bitcoin,
+        pub price: Erc20Quantity,
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+    #[serde(rename_all = "snake_case")]
+    pub enum SwapProtocol {
+        HbitHerc20 {
+            hbit_expiry_offset: i64,
+            herc20_expiry_offset: i64,
+        },
+        Herc20Hbit {
+            herc20_expiry_offset: i64,
+            hbit_expiry_offset: i64,
+        },
+    }
+}
+
+impl wire::BtcDaiOrder {
+    fn into_model(self) -> BtcDaiOrder {
+        let wire::BtcDaiOrder {
+            id,
+            position,
+            swap_protocol,
+            created_at,
+            quantity,
+            price,
+        } = self;
+
+        BtcDaiOrder {
+            id,
+            position,
+            swap_protocol: swap_protocol.into_model(),
+            created_at,
+            quantity,
+            price,
+        }
+    }
+
+    fn from_model(model: BtcDaiOrder) -> Self {
+        let BtcDaiOrder {
+            id,
+            position,
+            swap_protocol,
+            created_at,
+            quantity,
+            price,
+        } = model;
+
+        Self {
+            id,
+            position,
+            swap_protocol: wire::SwapProtocol::from_model(swap_protocol),
+            created_at,
+            quantity,
+            price,
+        }
+    }
+}
+
+impl wire::SwapProtocol {
+    fn into_model(self) -> SwapProtocol {
+        match self {
+            wire::SwapProtocol::Herc20Hbit {
+                herc20_expiry_offset,
+                hbit_expiry_offset,
+            } => SwapProtocol::Herc20Hbit {
+                herc20_expiry_offset: AlphaOffset::from(herc20_expiry_offset.seconds()),
+                hbit_expiry_offset: BetaOffset::from(hbit_expiry_offset.seconds()),
+            },
+            wire::SwapProtocol::HbitHerc20 {
+                hbit_expiry_offset,
+                herc20_expiry_offset,
+            } => SwapProtocol::HbitHerc20 {
+                hbit_expiry_offset: AlphaOffset::from(hbit_expiry_offset.seconds()),
+                herc20_expiry_offset: BetaOffset::from(herc20_expiry_offset.seconds()),
+            },
+        }
+    }
+
+    fn from_model(model: SwapProtocol) -> Self {
+        use time::Duration;
+
+        match model {
+            SwapProtocol::HbitHerc20 {
+                hbit_expiry_offset,
+                herc20_expiry_offset,
+            } => wire::SwapProtocol::HbitHerc20 {
+                hbit_expiry_offset: Duration::from(hbit_expiry_offset).whole_seconds(),
+                herc20_expiry_offset: Duration::from(herc20_expiry_offset).whole_seconds(),
+            },
+            SwapProtocol::Herc20Hbit {
+                herc20_expiry_offset,
+                hbit_expiry_offset,
+            } => wire::SwapProtocol::Herc20Hbit {
+                herc20_expiry_offset: Duration::from(herc20_expiry_offset).whole_seconds(),
+                hbit_expiry_offset: Duration::from(hbit_expiry_offset).whole_seconds(),
+            },
+        }
     }
 }

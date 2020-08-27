@@ -32,7 +32,7 @@ pub trait LoadAll<T>: Send + Sync + 'static {
 /// Save data to the storage layer.
 #[async_trait]
 pub trait Save<T>: Send + Sync + 'static {
-    async fn save(&self, swap: T) -> anyhow::Result<()>;
+    async fn save(&self, entity: T) -> anyhow::Result<()>;
 }
 
 /// Convenience struct to use with `Save` for saving some data T that relates to
@@ -47,10 +47,10 @@ pub struct ForSwap<T> {
 #[derive(Debug, Clone)]
 pub struct Storage {
     pub db: Sqlite,
-    seed: RootSeed,
-    herc20_states: Arc<herc20::States>,
-    halbit_states: Arc<halbit::States>,
-    hbit_states: Arc<hbit::States>,
+    pub seed: RootSeed,
+    pub herc20_states: Arc<herc20::States>,
+    pub halbit_states: Arc<halbit::States>,
+    pub hbit_states: Arc<hbit::States>,
 }
 
 impl Storage {
@@ -167,7 +167,7 @@ macro_rules! impl_load_tables {
 
                 let (swap, alpha, beta, secret_hash) = self
                     .db
-                    .do_in_transaction::<_, _, anyhow::Error>(move |conn| {
+                    .do_in_transaction::<_, _>(move |conn| {
                         let key = Text(id);
 
                         let swap: Swap = swaps::table
@@ -345,10 +345,10 @@ impl Load<SwapContext> for Storage {
         let context = self
             .db
             .do_in_transaction(|connection| {
-                swap_contexts::table
+                Ok(swap_contexts::table
                     .filter(swap_contexts::local_swap_id.eq(Text(swap_id)))
                     .get_result::<tables::SwapContext>(connection)
-                    .optional()
+                    .optional()?)
             })
             .await?
             .ok_or(NoSwapExists(swap_id))?;
@@ -383,7 +383,7 @@ impl LoadAll<SwapContext> for Storage {
         let contexts = self
             .db
             .do_in_transaction(|connection| {
-                swap_contexts::table.load::<tables::SwapContext>(connection)
+                Ok(swap_contexts::table.load::<tables::SwapContext>(connection)?)
             })
             .await?
             .into_iter()
@@ -417,14 +417,11 @@ where
         }: CreatedSwap<TCreatedA, TCreatedB>,
     ) -> anyhow::Result<()> {
         self.db
-            .do_in_transaction::<_, _, anyhow::Error>(move |conn| {
-                let swap_id = self.db.save_swap(
-                    conn,
-                    &InsertableSwap::new(swap_id, peer, role, start_of_swap),
-                )?;
-
-                let insertable_alpha = alpha.into_insertable(swap_id, role, Side::Alpha);
-                let insertable_beta = beta.into_insertable(swap_id, role, Side::Beta);
+            .do_in_transaction::<_, _>(move |conn| {
+                let swap_fk =
+                    InsertableSwap::new(swap_id, peer, role, start_of_swap).insert(conn)?;
+                let insertable_alpha = alpha.into_insertable(swap_fk, role, Side::Alpha);
+                let insertable_beta = beta.into_insertable(swap_fk, role, Side::Beta);
 
                 self.db.insert(conn, &insertable_alpha)?;
                 self.db.insert(conn, &insertable_beta)?;

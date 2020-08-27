@@ -62,10 +62,9 @@ impl Sqlite {
         })
     }
 
-    pub async fn do_in_transaction<F, T, E>(&self, f: F) -> Result<T, E>
+    pub async fn do_in_transaction<F, T>(&self, f: F) -> anyhow::Result<T>
     where
-        F: FnOnce(&SqliteConnection) -> Result<T, E>,
-        E: From<diesel::result::Error>,
+        F: FnOnce(&SqliteConnection) -> anyhow::Result<T>,
     {
         let guard = self.connection.lock().await;
         let connection = &*guard;

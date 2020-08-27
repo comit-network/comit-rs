@@ -1,6 +1,5 @@
-use crate::{
-    asset, ethereum::ChainId, hbit, herc20, identity, OrderId, Role, SecretHash, Timestamp,
-};
+use crate::{asset, ethereum::ChainId, hbit, herc20, identity, Role, SecretHash, Timestamp};
+use anyhow::Result;
 use bitcoin::Network;
 use futures::prelude::*;
 use libp2p::{
@@ -28,6 +27,7 @@ pub struct AlreadyHaveRoleParams;
 #[derive(Clone, Debug)]
 #[allow(clippy::large_enum_variant)]
 pub enum BehaviourOutEvent<C> {
+    // TODO: Split this into two events, one for HbitHerc20 and one for Herc20Hbit
     ExecutableSwap(ExecutableSwap<C>),
     AlreadyHaveRoleParams {
         peer: PeerId,
@@ -36,91 +36,29 @@ pub enum BehaviourOutEvent<C> {
     },
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct Identities {
-    pub ethereum: identity::Ethereum,
-    pub bitcoin: identity::Bitcoin,
-}
-
-impl Identities {
-    pub fn new(ethereum: identity::Ethereum, bitcoin: identity::Bitcoin) -> Identities {
-        Identities { ethereum, bitcoin }
-    }
-}
-
-fn identities_of_role(
-    role: Role,
-    hbit: hbit::Params,
-    herc20: herc20::Params,
-    swap_protocol: SwapProtocol,
-) -> Identities {
-    match (role, swap_protocol) {
-        (Role::Alice, SwapProtocol::HbitHerc20) => {
-            Identities::new(herc20.redeem_identity, hbit.refund_identity)
-        }
-        (Role::Alice, SwapProtocol::Herc20Hbit) => {
-            Identities::new(herc20.refund_identity, hbit.redeem_identity)
-        }
-        (Role::Bob, SwapProtocol::HbitHerc20) => {
-            Identities::new(herc20.refund_identity, hbit.redeem_identity)
-        }
-        (Role::Bob, SwapProtocol::Herc20Hbit) => {
-            Identities::new(herc20.redeem_identity, hbit.refund_identity)
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct ExecutableSwap<C> {
-    pub my_role: Role,
+    pub our_role: Role,
     pub herc20: herc20::Params,
     pub hbit: hbit::Params,
     pub swap_protocol: SwapProtocol,
-    pub order_id: OrderId,
     pub peer_id: PeerId,
     pub context: C,
 }
 
-impl<C> ExecutableSwap<C> {
-    fn their_role(&self) -> Role {
-        match self.my_role {
-            Role::Alice => Role::Bob,
-            Role::Bob => Role::Alice,
-        }
-    }
-    pub fn my_identities(&self) -> Identities {
-        identities_of_role(
-            self.my_role,
-            self.hbit,
-            self.herc20.clone(),
-            self.swap_protocol,
-        )
-    }
-    pub fn their_identities(&self) -> Identities {
-        identities_of_role(
-            self.their_role(),
-            self.hbit,
-            self.herc20.clone(),
-            self.swap_protocol,
-        )
-    }
-}
-
-#[allow(clippy::too_many_arguments)] // We'll fix it later :)
 impl<C> BehaviourOutEvent<C> {
     fn new_executable_swap(
-        my_role: Role,
+        our_role: Role,
         common: CommonParams,
         alice: &AliceParams,
         bob: &BobParams,
         swap_protocol: SwapProtocol,
-        order_id: OrderId,
         peer_id: PeerId,
         context: C,
     ) -> Self {
         match swap_protocol {
             SwapProtocol::HbitHerc20 => BehaviourOutEvent::ExecutableSwap(ExecutableSwap {
-                my_role,
+                our_role,
                 herc20: herc20::Params {
                     asset: common.erc20,
                     redeem_identity: alice.ethereum_identity,
@@ -138,12 +76,11 @@ impl<C> BehaviourOutEvent<C> {
                     secret_hash: alice.secret_hash,
                 },
                 swap_protocol,
-                order_id,
                 peer_id,
                 context,
             }),
             SwapProtocol::Herc20Hbit => BehaviourOutEvent::ExecutableSwap(ExecutableSwap {
-                my_role,
+                our_role,
                 herc20: herc20::Params {
                     asset: common.erc20,
                     redeem_identity: bob.ethereum_identity,
@@ -161,7 +98,6 @@ impl<C> BehaviourOutEvent<C> {
                     secret_hash: alice.secret_hash,
                 },
                 swap_protocol,
-                order_id,
                 peer_id,
                 context,
             }),
@@ -186,8 +122,6 @@ pub struct SetupSwap<C: Clone + Send + 'static> {
     #[behaviour(ignore)]
     swap_data: HashMap<CommonParams, RoleDependentParams>,
     #[behaviour(ignore)]
-    order_ids: HashMap<CommonParams, OrderId>,
-    #[behaviour(ignore)]
     context: HashMap<CommonParams, C>,
 }
 
@@ -206,168 +140,22 @@ impl<C: Clone + Send + 'static> Default for SetupSwap<C> {
             ),
             events: Default::default(),
             swap_data: Default::default(),
-            order_ids: Default::default(),
             context: Default::default(),
         }
     }
 }
 
-#[allow(clippy::too_many_arguments)] // We'll fix it later :)
 impl<C: Clone + Send + 'static> SetupSwap<C> {
-    pub fn alice_send_hbit_herc20(
+    pub fn send(
         &mut self,
         to: &PeerId,
-        bitcoin_identity: identity::Bitcoin,
-        ethereum_identity: identity::Ethereum,
-        secret_hash: SecretHash,
-        common: CommonParams,
-        order_id: OrderId,
-        context: C,
-    ) -> anyhow::Result<()> {
-        self.alice_send(
-            to,
-            bitcoin_identity,
-            ethereum_identity,
-            secret_hash,
-            common,
-            SwapProtocol::HbitHerc20,
-            order_id,
-            context,
-        )
-    }
-
-    pub fn alice_send_herc20_hbit(
-        &mut self,
-        to: &PeerId,
-        bitcoin_identity: identity::Bitcoin,
-        ethereum_identity: identity::Ethereum,
-        secret_hash: SecretHash,
-        common: CommonParams,
-        order_id: OrderId,
-        context: C,
-    ) -> anyhow::Result<()> {
-        self.alice_send(
-            to,
-            bitcoin_identity,
-            ethereum_identity,
-            secret_hash,
-            common,
-            SwapProtocol::Herc20Hbit,
-            order_id,
-            context,
-        )
-    }
-
-    pub fn bob_send_hbit_herc20(
-        &mut self,
-        to: &PeerId,
-        bitcoin_identity: identity::Bitcoin,
-        ethereum_identity: identity::Ethereum,
-        common: CommonParams,
-        order_id: OrderId,
-        context: C,
-    ) -> anyhow::Result<()> {
-        self.bob_send(
-            to,
-            bitcoin_identity,
-            ethereum_identity,
-            common,
-            SwapProtocol::HbitHerc20,
-            order_id,
-            context,
-        )
-    }
-
-    pub fn bob_send_herc20_hbit(
-        &mut self,
-        to: &PeerId,
-        bitcoin_identity: identity::Bitcoin,
-        ethereum_identity: identity::Ethereum,
-        common: CommonParams,
-        order_id: OrderId,
-        context: C,
-    ) -> anyhow::Result<()> {
-        self.bob_send(
-            to,
-            bitcoin_identity,
-            ethereum_identity,
-            common,
-            SwapProtocol::Herc20Hbit,
-            order_id,
-            context,
-        )
-    }
-    fn alice_send(
-        &mut self,
-        to: &PeerId,
-        bitcoin_identity: identity::Bitcoin,
-        ethereum_identity: identity::Ethereum,
-        secret_hash: SecretHash,
+        to_send: RoleDependentParams,
         common: CommonParams,
         swap_protocol: SwapProtocol,
-        order_id: OrderId,
         context: C,
-    ) -> anyhow::Result<()> {
-        let alice = AliceParams {
-            ethereum_identity,
-            bitcoin_identity,
-            secret_hash,
-        };
-        match self.swap_data.get(&common) {
-            Some(RoleDependentParams::Bob(bob)) => {
-                self.events
-                    .push_back(BehaviourOutEvent::new_executable_swap(
-                        Role::Alice,
-                        common.clone(),
-                        &alice,
-                        bob,
-                        swap_protocol,
-                        order_id,
-                        to.clone(),
-                        context,
-                    ));
-            }
-            Some(RoleDependentParams::Alice(_)) => {
-                return Err(anyhow::Error::from(AlreadyHaveRoleParams))
-            }
-            None => {
-                self.swap_data
-                    .insert(common.clone(), RoleDependentParams::Alice(alice));
-                self.order_ids.insert(common.clone(), order_id);
-                self.context.insert(common.clone(), context);
-            }
-        }
-        let _ = match swap_protocol {
-            SwapProtocol::Herc20Hbit => self.herc20_hbit.send_request(to, Message::Alice {
-                _marker: Default::default(),
-                alice,
-                common,
-            }),
-            SwapProtocol::HbitHerc20 => self.hbit_herc20.send_request(to, Message::Alice {
-                _marker: Default::default(),
-                alice,
-                common,
-            }),
-        };
-        Ok(())
-    }
-
-    fn bob_send(
-        &mut self,
-        to: &PeerId,
-        bitcoin_identity: identity::Bitcoin,
-        ethereum_identity: identity::Ethereum,
-        common: CommonParams,
-        swap_protocol: SwapProtocol,
-        order_id: OrderId,
-        context: C,
-    ) -> anyhow::Result<()> {
-        let bob = BobParams {
-            ethereum_identity,
-            bitcoin_identity,
-        };
-        match self.swap_data.get(&common) {
-            Some(RoleDependentParams::Alice(alice)) => {
+    ) -> Result<()> {
+        match (self.swap_data.get(&common), &to_send) {
+            (Some(RoleDependentParams::Alice(alice)), RoleDependentParams::Bob(bob)) => {
                 self.events
                     .push_back(BehaviourOutEvent::new_executable_swap(
                         Role::Bob,
@@ -375,32 +163,35 @@ impl<C: Clone + Send + 'static> SetupSwap<C> {
                         alice,
                         &bob,
                         swap_protocol,
-                        order_id,
                         to.clone(),
                         context,
                     ));
             }
-            Some(RoleDependentParams::Bob(_)) => {
-                return Err(anyhow::Error::from(AlreadyHaveRoleParams))
+            (Some(RoleDependentParams::Bob(bob)), RoleDependentParams::Alice(alice)) => {
+                self.events
+                    .push_back(BehaviourOutEvent::new_executable_swap(
+                        Role::Alice,
+                        common.clone(),
+                        &alice,
+                        bob,
+                        swap_protocol,
+                        to.clone(),
+                        context,
+                    ));
             }
-            None => {
-                self.swap_data
-                    .insert(common.clone(), RoleDependentParams::Bob(bob));
-                self.order_ids.insert(common.clone(), order_id);
+            (None, role) => {
+                self.swap_data.insert(common.clone(), *role);
                 self.context.insert(common.clone(), context);
             }
+            (Some(_), _) => return Err(anyhow::Error::from(AlreadyHaveRoleParams)),
         }
         let _ = match swap_protocol {
-            SwapProtocol::Herc20Hbit => self.herc20_hbit.send_request(to, Message::Bob {
-                _marker: Default::default(),
-                bob,
-                common,
-            }),
-            SwapProtocol::HbitHerc20 => self.hbit_herc20.send_request(to, Message::Bob {
-                _marker: Default::default(),
-                bob,
-                common,
-            }),
+            SwapProtocol::Herc20Hbit => self
+                .herc20_hbit
+                .send_request(to, to_send.to_message(common)),
+            SwapProtocol::HbitHerc20 => self
+                .hbit_herc20
+                .send_request(to, to_send.to_message(common)),
         };
         Ok(())
     }
@@ -430,7 +221,6 @@ impl<C: Clone + Send + 'static> SetupSwap<C> {
         match self.swap_data.get(&common) {
             Some(RoleDependentParams::Alice(alice)) => {
                 // todo: remove unwrap
-                let order_id = self.order_ids.get(&common).copied().unwrap();
                 let context = self.context.get(&common).cloned().unwrap();
                 self.events
                     .push_back(BehaviourOutEvent::new_executable_swap(
@@ -439,7 +229,6 @@ impl<C: Clone + Send + 'static> SetupSwap<C> {
                         alice,
                         &bob,
                         swap_protocol,
-                        order_id,
                         from,
                         context,
                     ));
@@ -477,7 +266,6 @@ impl<C: Clone + Send + 'static> SetupSwap<C> {
             }
             Some(RoleDependentParams::Bob(bob)) => {
                 // todo: remove unwrap
-                let order_id = self.order_ids.get(&common).copied().unwrap();
                 let context = self.context.get(&common).cloned().unwrap();
                 self.events
                     .push_back(BehaviourOutEvent::new_executable_swap(
@@ -486,7 +274,6 @@ impl<C: Clone + Send + 'static> SetupSwap<C> {
                         &alice,
                         bob,
                         swap_protocol,
-                        order_id,
                         from,
                         context,
                     ))
@@ -607,21 +394,38 @@ pub struct CommonParams {
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct AliceParams {
-    ethereum_identity: identity::Ethereum,
-    bitcoin_identity: identity::Bitcoin,
-    secret_hash: SecretHash,
+    pub ethereum_identity: identity::Ethereum,
+    pub bitcoin_identity: identity::Bitcoin,
+    pub secret_hash: SecretHash,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct BobParams {
-    ethereum_identity: identity::Ethereum,
-    bitcoin_identity: identity::Bitcoin,
+    pub ethereum_identity: identity::Ethereum,
+    pub bitcoin_identity: identity::Bitcoin,
 }
 
 #[derive(Debug, Copy, Clone)]
 pub enum RoleDependentParams {
     Alice(AliceParams),
     Bob(BobParams),
+}
+
+impl RoleDependentParams {
+    fn to_message<U>(self, common: CommonParams) -> Message<U> {
+        match self {
+            RoleDependentParams::Alice(alice) => Message::Alice {
+                _marker: PhantomData,
+                common,
+                alice,
+            },
+            RoleDependentParams::Bob(bob) => Message::Bob {
+                _marker: PhantomData,
+                common,
+                bob,
+            },
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -738,29 +542,31 @@ mod tests {
             bitcoin_network: Network::Regtest,
         };
 
-        let alice_order_id = OrderId::random();
-        let bob_order_id = OrderId::random();
         let alice_context = 1;
         let bob_context = 2;
 
         bob_swarm
-            .bob_send_hbit_herc20(
+            .send(
                 &alice_id,
-                bitcoin_identity,
-                ethereum_identity,
+                RoleDependentParams::Bob(BobParams {
+                    ethereum_identity,
+                    bitcoin_identity,
+                }),
                 common.clone(),
-                bob_order_id,
+                SwapProtocol::HbitHerc20,
                 bob_context,
             )
             .expect("bob failed to send");
         alice_swarm
-            .alice_send_hbit_herc20(
+            .send(
                 &bob_id,
-                bitcoin_identity,
-                ethereum_identity,
-                secret_hash,
+                RoleDependentParams::Alice(AliceParams {
+                    ethereum_identity,
+                    bitcoin_identity,
+                    secret_hash,
+                }),
                 common,
-                alice_order_id,
+                SwapProtocol::HbitHerc20,
                 alice_context,
             )
             .expect("alice failed to send");
@@ -768,8 +574,6 @@ mod tests {
         assert_both_confirmed(
             alice_swarm.next(),
             bob_swarm.next(),
-            alice_order_id,
-            bob_order_id,
             alice_context,
             bob_context,
         )
@@ -779,25 +583,21 @@ mod tests {
     async fn assert_both_confirmed<C: PartialEq + Debug>(
         alice_event: impl Future<Output = BehaviourOutEvent<C>>,
         bob_event: impl Future<Output = BehaviourOutEvent<C>>,
-        expected_alice_order_id: OrderId,
-        expected_bob_order_id: OrderId,
         expected_alice_context: C,
         expected_bob_context: C,
     ) {
         match await_events_or_timeout(alice_event, bob_event).await {
             (
                 BehaviourOutEvent::ExecutableSwap(ExecutableSwap {
-                    my_role: alice_role, hbit: alice_hbit,
-                    herc20: alice_herc20, swap_protocol: alice_swap_protocol, order_id: alice_order_id, context: alice_context, .. }),
+                    our_role: alice_role, hbit: alice_hbit,
+                    herc20: alice_herc20, swap_protocol: alice_swap_protocol, context: alice_context, .. }),
                 BehaviourOutEvent::ExecutableSwap(ExecutableSwap {
-                    my_role: bob_role,  herc20: bob_herc20, hbit: bob_hbit, swap_protocol: bob_swap_protocol, order_id: bob_order_id, context: bob_context, ..}),
+                    our_role: bob_role,  herc20: bob_herc20, hbit: bob_hbit, swap_protocol: bob_swap_protocol, context: bob_context, ..}),
             ) => {
                 assert_ne!(alice_role, bob_role);
                 assert_eq!(alice_hbit, bob_hbit);
                 assert_eq!(alice_herc20, bob_herc20);
                 assert_eq!(alice_swap_protocol, bob_swap_protocol);
-                assert_eq!(expected_alice_order_id, alice_order_id);
-                assert_eq!(expected_bob_order_id, bob_order_id);
                 assert_eq!(expected_alice_context, alice_context);
                 assert_eq!(expected_bob_context, bob_context);
 

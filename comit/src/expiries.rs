@@ -6,12 +6,13 @@
 
 mod config;
 
+use self::config::Config;
 use crate::timestamp::{self, Timestamp};
 use num::integer;
 use std::{cmp, fmt};
 use time::Duration;
 
-use self::config::{Config, Protocol};
+pub use config::Protocol;
 
 const NO_SCALE: u32 = 100; // 100% scaling factor has no effect.
 

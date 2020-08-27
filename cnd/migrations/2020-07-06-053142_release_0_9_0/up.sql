@@ -21,4 +21,54 @@ SELECT id,
                (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Beta'),
                (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Beta')
            ) as beta
-FROM swaps
+FROM swaps;
+
+-- These should have been in the previous migration but that was already shipped.
+DROP TABLE rfc003_bitcoin_ethereum_bitcoin_ether_request_messages;
+DROP TABLE rfc003_ethereum_bitcoin_ether_bitcoin_request_messages;
+DROP TABLE rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages;
+DROP TABLE rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages;
+DROP TABLE rfc003_ethereum_bitcoin_accept_messages;
+DROP TABLE rfc003_bitcoin_ethereum_accept_messages;
+DROP TABLE rfc003_decline_messages;
+DROP TABLE rfc003_swaps;
+
+CREATE TABLE orders
+(
+    id INTEGER      NOT NULL PRIMARY KEY,
+    order_id UNIQUE NOT NULL,
+    position        NOT NULL,
+    created_at      NOT NULL
+);
+
+CREATE TABLE btc_dai_orders
+(
+    id INTEGER      NOT NULL PRIMARY KEY,
+    order_id UNIQUE NOT NULL,
+    quantity        NOT NULL,
+    price           NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders (id)
+);
+
+CREATE TABLE order_hbit_params
+(
+    id INTEGER        NOT NULL PRIMARY KEY,
+    order_id UNIQUE   NOT NULL,
+    network           NOT NULL,
+    side              NOT NULL,
+    our_final_address NOT NULL,
+    expiry_offset     NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders (id)
+);
+
+CREATE TABLE order_herc20_params
+(
+    id INTEGER        NOT NULL PRIMARY KEY,
+    order_id UNIQUE   NOT NULL,
+    chain_id          NOT NULL,
+    side              NOT NULL,
+    our_htlc_identity NOT NULL,
+    token_contract    NOT NULL,
+    expiry_offset     NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders (id)
+);

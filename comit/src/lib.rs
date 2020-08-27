@@ -58,7 +58,7 @@ pub mod export {
 }
 
 pub use self::{
-    network::{orderbook::BtcDaiOrderForm, SharedSwapId},
+    network::SharedSwapId,
     order::{BtcDaiOrder, OrderId, Position},
     secret::Secret,
     secret_hash::SecretHash,
