@@ -254,7 +254,7 @@ impl SwapProtocol {
         match (role, position) {
             (Role::Bob, Position::Buy) | (Role::Alice, Position::Sell) => {
                 let (hbit_expiry_offset, herc20_expiry_offset) =
-                    expiries::calculate_expiry_offsets(expiries::Protocol::HbitHerc20, None);
+                    expiries::expiry_offsets_hbit_herc20();
 
                 SwapProtocol::HbitHerc20 {
                     hbit_expiry_offset,
@@ -263,7 +263,7 @@ impl SwapProtocol {
             }
             (Role::Alice, Position::Buy) | (Role::Bob, Position::Sell) => {
                 let (herc20_expiry_offset, hbit_expiry_offset) =
-                    expiries::calculate_expiry_offsets(expiries::Protocol::Herc20Hbit, None);
+                    expiries::expiry_offsets_herc20_hbit();
 
                 SwapProtocol::Herc20Hbit {
                     hbit_expiry_offset,
