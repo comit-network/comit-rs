@@ -69,3 +69,31 @@ test(
         });
     })
 );
+
+test(
+    "given_alice_makes_an_order_when_fully_matched_against_bobs_order_then_settling_says_100",
+    twoActorTest(async ({ alice, bob }) => {
+        await alice.connect(bob);
+        const aliceHref = await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
+        const bobHref = await bob.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
+
+        await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
+
+        await expect(
+            alice.fetchOrder(aliceHref).then((r) => r.properties)
+        ).resolves.toMatchObject({
+            state: {
+                open: "0.00",
+                settling: "1.00",
+            },
+        });
+        await expect(
+            bob.fetchOrder(bobHref).then((r) => r.properties)
+        ).resolves.toMatchObject({
+            state: {
+                open: "0.00",
+                settling: "1.00",
+            },
+        });
+    })
+);

@@ -367,6 +367,11 @@ pub struct Order {
     pub order_id: Text<OrderId>,
     pub position: Text<Position>,
     pub created_at: i64,
+    pub open: i32,
+    pub closed: i32,
+    pub settling: i32,
+    pub failed: i32,
+    pub cancelled: i32,
 }
 
 impl Order {
@@ -378,6 +383,28 @@ impl Order {
 
         Ok(order)
     }
+
+    /// Marks the status of the current order as settling.
+    ///
+    /// Whilst we don't have partial order matching, this simply means updating
+    /// the percent of:
+    ///
+    /// - `open` to `0`
+    /// - `settling` to `100`
+    ///
+    /// Once we implement partial order matching, this will need to get more
+    /// sophisticated.
+    pub fn mark_as_settling(conn: &SqliteConnection, order: &Order) -> Result<()> {
+        let affected_rows = diesel::update(order)
+            .set((orders::settling.eq(100), orders::open.eq(0)))
+            .execute(conn)?;
+
+        if affected_rows == 0 {
+            anyhow::bail!("failed to mark order {} as settling", order.order_id.0)
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Insertable, Clone, Copy, Debug)]
@@ -385,15 +412,36 @@ impl Order {
 pub struct InsertableOrder {
     pub order_id: Text<OrderId>,
     pub position: Text<Position>,
-    pub created_at: i64, // TODO: Make a custom SQL type for this
+    pub created_at: i64,
+    // TODO: Make a custom SQL type for this
+    pub open: i32,
+    pub closed: i32,
+    pub settling: i32,
+    pub failed: i32,
+    pub cancelled: i32,
 }
 
 impl InsertableOrder {
-    pub fn new(order_id: OrderId, position: Position, created_at: OffsetDateTime) -> Self {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        order_id: OrderId,
+        position: Position,
+        created_at: OffsetDateTime,
+        open: i32,
+        closed: i32,
+        settling: i32,
+        failed: i32,
+        cancelled: i32,
+    ) -> Self {
         Self {
             order_id: Text(order_id),
             position: Text(position),
             created_at: created_at.timestamp(),
+            open,
+            closed,
+            settling,
+            failed,
+            cancelled,
         }
     }
 

@@ -5,7 +5,7 @@ use crate::{
 use anyhow::Result;
 use comit::{asset::Erc20Quantity, OrderId, Position};
 use futures::TryFutureExt;
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use warp::{http::Method, Filter, Rejection, Reply};
 
 /// The warp filter for getting a single order.
@@ -37,13 +37,13 @@ async fn handler(order_id: OrderId, facade: Facade) -> Result<impl Reply> {
         position: order.position.0,
         price: Amount::dai(100_000_000 * Erc20Quantity::from(btc_dai_order.price.0)), /* TODO: Consolidate this with logic in BtcDaiOrder model */
         quantity: Amount::btc(btc_dai_order.quantity.0.into()),
-        // TODO: fill these with useful values
-        state: State {
-            open: "0.0".to_owned(),
-            closed: "0.0".to_owned(),
-            settling: "0.0".to_owned(),
-            failed: "0.0".to_owned(),
-        },
+        state: State::new(
+            order.open,
+            order.closed,
+            order.settling,
+            order.failed,
+            order.cancelled,
+        )?,
     };
 
     let entity = make_entity(order)?;
@@ -53,12 +53,7 @@ async fn handler(order_id: OrderId, facade: Facade) -> Result<impl Reply> {
 
 fn make_entity(order: OrderResponse) -> Result<siren::Entity> {
     let order_id = order.id;
-    let can_cancel = order
-        .state
-        .open
-        .parse::<f64>()
-        .map(|open| open > 0.0)
-        .unwrap_or(false);
+    let can_cancel = order.state.open > 0;
 
     let mut entity = siren::Entity::default().with_properties(order)?;
 
@@ -89,12 +84,40 @@ struct OrderResponse {
 }
 
 #[derive(Serialize)]
-// TODO: Make these fields numbers and only serialize to string
 struct State {
-    open: String,
-    closed: String,
-    settling: String,
-    failed: String,
+    #[serde(serialize_with = "percent_string")]
+    open: u8,
+    #[serde(serialize_with = "percent_string")]
+    closed: u8,
+    #[serde(serialize_with = "percent_string")]
+    settling: u8,
+    #[serde(serialize_with = "percent_string")]
+    failed: u8,
+    #[serde(serialize_with = "percent_string")]
+    cancelled: u8,
+}
+
+impl State {
+    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)] // we only store positive values in the DB ranging from 0 - 100
+    fn new(open: i32, closed: i32, settling: i32, failed: i32, cancelled: i32) -> Result<Self> {
+        Ok(Self {
+            open: open as u8,
+            closed: closed as u8,
+            settling: settling as u8,
+            failed: failed as u8,
+            cancelled: cancelled as u8,
+        })
+    }
+}
+
+fn percent_string<S>(value: &u8, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    #[allow(clippy::cast_precision_loss)] // we only deal with very small values here (0 - 100)
+    let percent = (*value as f32) / 100f32;
+
+    serializer.serialize_str(&format!("{:.2}", percent))
 }
 
 #[cfg(test)]
@@ -111,10 +134,11 @@ mod tests {
             price: Amount::dai(Erc20Quantity::from_wei_dec_str("9100000000000000000000").unwrap()),
             quantity: Amount::btc(Bitcoin::from_sat(10000000)),
             state: State {
-                open: "0.3".to_owned(),
-                closed: "0.1".to_owned(),
-                settling: "0.0".to_owned(),
-                failed: "0.6".to_owned(),
+                open: 30,
+                closed: 10,
+                settling: 0,
+                failed: 60,
+                cancelled: 0,
             },
         })
         .unwrap();
@@ -139,10 +163,11 @@ mod tests {
       "value": "10000000"
     },
     "state": {
-      "closed": "0.1",
-      "failed": "0.6",
-      "open": "0.3",
-      "settling": "0.0"
+      "cancelled": "0.00",
+      "closed": "0.10",
+      "failed": "0.60",
+      "open": "0.30",
+      "settling": "0.00"
     }
   },
   "entities": [],

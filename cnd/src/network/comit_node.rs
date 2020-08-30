@@ -324,6 +324,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<setup_swap::BehaviourOutEvent<S
                                 insertable_herc20(swap_fk).insert(conn)?;
 
                                 let order = Order::by_order_id(conn, order_id)?;
+                                Order::mark_as_settling(conn, &order)?;
                                 let order_hbit_params = OrderHbitParams::by_order(conn, &order)?;
                                 insertable_hbit(
                                     swap_fk,
