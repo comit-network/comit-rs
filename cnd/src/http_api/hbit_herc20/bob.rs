@@ -3,8 +3,8 @@ use crate::{
     http_api::{
         hbit, herc20,
         protocol::{
-            AlphaAbsoluteExpiry, AlphaEvents, AlphaLedger, AlphaParams, BetaAbsoluteExpiry,
-            BetaEvents, BetaLedger, BetaParams, Hbit, Herc20, Ledger, LedgerEvents,
+            AlphaAbsoluteExpiry, AlphaLedger, AlphaProtocol, BetaAbsoluteExpiry, BetaLedger,
+            BetaProtocol, Events, Ledger, Protocol, SwapEvent,
         },
         ActionNotFound, BobSwap,
     },
@@ -130,76 +130,11 @@ impl RefundAction
     }
 }
 
-impl AlphaParams
+impl AlphaProtocol
     for BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc20::Finalized>
 {
-    type Output = Hbit;
-    fn alpha_params(&self) -> Self::Output {
-        self.clone().into()
-    }
-}
-
-impl AlphaEvents
-    for BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc20::Finalized>
-{
-    fn alpha_events(&self) -> Option<LedgerEvents> {
+    fn alpha_protocol(&self) -> Protocol {
         match self {
-            BobSwap::Finalized {
-                alpha_finalized:
-                    hbit::FinalizedAsRedeemer {
-                        state: bitcoin_state,
-                        ..
-                    },
-                ..
-            } => Some(bitcoin_state.clone().into()),
-            _ => None,
-        }
-    }
-}
-
-impl BetaParams
-    for BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc20::Finalized>
-{
-    type Output = Herc20;
-    fn beta_params(&self) -> Self::Output {
-        self.clone().into()
-    }
-}
-
-impl BetaEvents
-    for BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc20::Finalized>
-{
-    fn beta_events(&self) -> Option<LedgerEvents> {
-        match self {
-            BobSwap::Finalized {
-                beta_finalized:
-                    herc20::Finalized {
-                        state: herc20_state,
-                        ..
-                    },
-                ..
-            } => Some(herc20_state.clone().into()),
-            _ => None,
-        }
-    }
-}
-
-impl InitAction
-    for BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc20::Finalized>
-{
-    type Output = Never;
-    fn init_action(&self) -> anyhow::Result<Self::Output> {
-        anyhow::bail!(ActionNotFound)
-    }
-}
-
-impl From<BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc20::Finalized>>
-    for Hbit
-{
-    fn from(
-        from: BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc20::Finalized>,
-    ) -> Self {
-        match from {
             BobSwap::Created {
                 alpha_created: bitcoin_asset,
                 ..
@@ -211,21 +146,16 @@ impl From<BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc2
                         ..
                     },
                 ..
-            } => Self {
-                protocol: "hbit".to_owned(),
-                quantity: bitcoin_asset.as_sat().to_string(),
-            },
+            } => Protocol::hbit(*bitcoin_asset),
         }
     }
 }
 
-impl From<BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc20::Finalized>>
-    for Herc20
+impl BetaProtocol
+    for BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc20::Finalized>
 {
-    fn from(
-        from: BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc20::Finalized>,
-    ) -> Self {
-        match from {
+    fn beta_protocol(&self) -> Protocol {
+        match self {
             BobSwap::Created {
                 beta_created: herc20_asset,
                 ..
@@ -237,12 +167,45 @@ impl From<BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc2
                         ..
                     },
                 ..
-            } => Self {
-                protocol: "herc20".to_owned(),
-                quantity: herc20_asset.quantity.to_wei_dec(),
-                token_contract: herc20_asset.token_contract.to_string(),
-            },
+            } => Protocol::herc20_dai(herc20_asset.quantity.clone()),
         }
+    }
+}
+
+impl Events
+    for BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc20::Finalized>
+{
+    fn events(&self) -> Vec<SwapEvent> {
+        match self {
+            BobSwap::Finalized {
+                alpha_finalized:
+                    hbit::FinalizedAsRedeemer {
+                        state: hbit_state, ..
+                    },
+                beta_finalized:
+                    herc20::Finalized {
+                        state: herc20_state,
+                        ..
+                    },
+                ..
+            } => {
+                let mut events = Vec::new();
+                events.extend(Vec::from(herc20_state));
+                events.extend(Vec::from(hbit_state));
+
+                events
+            }
+            _ => Vec::new(),
+        }
+    }
+}
+
+impl InitAction
+    for BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc20::Finalized>
+{
+    type Output = Never;
+    fn init_action(&self) -> anyhow::Result<Self::Output> {
+        anyhow::bail!(ActionNotFound)
     }
 }
 

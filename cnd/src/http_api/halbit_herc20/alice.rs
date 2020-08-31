@@ -4,21 +4,19 @@ use crate::{
     http_api::{
         halbit, herc20,
         protocol::{
-            AlphaAbsoluteExpiry, AlphaEvents, AlphaLedger, AlphaParams, BetaAbsoluteExpiry,
-            BetaEvents, BetaLedger, BetaParams, Halbit, Herc20, Ledger, LedgerEvents,
+            AlphaAbsoluteExpiry, AlphaLedger, AlphaProtocol, BetaAbsoluteExpiry, BetaLedger,
+            BetaProtocol, Events, Ledger, Protocol, SwapEvent,
         },
         ActionNotFound, AliceSwap,
     },
     DeployAction, FundAction, InitAction, Never, RedeemAction, RefundAction, SecretHash, Timestamp,
 };
 
-impl From<AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized>>
-    for Herc20
+impl BetaProtocol
+    for AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized>
 {
-    fn from(
-        from: AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized>,
-    ) -> Self {
-        match from {
+    fn beta_protocol(&self) -> Protocol {
+        match self {
             AliceSwap::Created {
                 beta_created: herc20_asset,
                 ..
@@ -30,22 +28,16 @@ impl From<AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Fin
                         ..
                     },
                 ..
-            } => Self {
-                protocol: "herc20".to_owned(),
-                quantity: herc20_asset.quantity.to_wei_dec(),
-                token_contract: herc20_asset.token_contract.to_string(),
-            },
+            } => Protocol::herc20_dai(herc20_asset.quantity.clone()),
         }
     }
 }
 
-impl From<AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized>>
-    for Halbit
+impl AlphaProtocol
+    for AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized>
 {
-    fn from(
-        from: AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized>,
-    ) -> Self {
-        match from {
+    fn alpha_protocol(&self) -> Protocol {
+        match self {
             AliceSwap::Created {
                 alpha_created: halbit_asset,
                 ..
@@ -57,56 +49,34 @@ impl From<AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Fin
                         ..
                     },
                 ..
-            } => Self {
-                protocol: "halbit".to_owned(),
-                quantity: halbit_asset.as_sat().to_string(),
-            },
+            } => Protocol::halbit(*halbit_asset),
         }
     }
 }
 
-impl BetaParams for AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized> {
-    type Output = Herc20;
-    fn beta_params(&self) -> Self::Output {
-        self.clone().into()
-    }
-}
-
-impl BetaEvents for AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized> {
-    fn beta_events(&self) -> Option<LedgerEvents> {
+impl Events for AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized> {
+    fn events(&self) -> Vec<SwapEvent> {
         match self {
-            AliceSwap::Created { .. } => None,
-            AliceSwap::Finalized {
-                beta_finalized:
-                    herc20::Finalized {
-                        state: herc20_state,
-                        ..
-                    },
-                ..
-            } => Some(herc20_state.clone().into()),
-        }
-    }
-}
-
-impl AlphaParams for AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized> {
-    type Output = Halbit;
-    fn alpha_params(&self) -> Self::Output {
-        self.clone().into()
-    }
-}
-
-impl AlphaEvents for AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized> {
-    fn alpha_events(&self) -> Option<LedgerEvents> {
-        match self {
-            AliceSwap::Created { .. } => None,
+            AliceSwap::Created { .. } => Vec::new(),
             AliceSwap::Finalized {
                 alpha_finalized:
                     halbit::Finalized {
                         state: halbit_state,
                         ..
                     },
+                beta_finalized:
+                    herc20::Finalized {
+                        state: herc20_state,
+                        ..
+                    },
                 ..
-            } => Some((*halbit_state).into()),
+            } => {
+                let mut events = Vec::new();
+                events.extend(Vec::from(halbit_state));
+                events.extend(Vec::from(herc20_state));
+
+                events
+            }
         }
     }
 }
