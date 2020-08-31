@@ -116,9 +116,7 @@ impl NetworkBehaviourEventProcess<order_source::BehaviourOutEvent> for Orderbook
                     .send_orders(response_handle, self.orderpool.ours().cloned().collect());
             }
             order_source::BehaviourOutEvent::RetrievedOrders { maker, orders } => {
-                if !orders.is_empty() {
-                    self.orderpool.receive(maker, orders);
-                }
+                self.orderpool.receive(maker, orders);
             }
             order_source::BehaviourOutEvent::MakerIsGone { maker } => {
                 self.orderpool.remove_all_from(&maker);

@@ -19,7 +19,7 @@ use comit::{
         Identities,
     },
     order::SwapProtocol,
-    orderpool, BtcDaiOrder, Role, SecretHash, Side,
+    orderpool, BtcDaiOrder, OrderId, Role, SecretHash, Side,
 };
 use futures::{channel::mpsc, stream::StreamExt};
 use libp2p::{
@@ -128,7 +128,7 @@ impl Swarm {
     }
 
     pub async fn publish_order(&self, order: BtcDaiOrder) {
-        self.inner.lock().await.publish_order(order);
+        self.inner.lock().await.orderbook.publish(order);
     }
 
     pub async fn btc_dai_market(&self) -> Vec<(PeerId, BtcDaiOrder)> {
@@ -140,6 +140,10 @@ impl Swarm {
             .all()
             .map(|(maker, order)| (maker.clone(), order.clone()))
             .collect()
+    }
+
+    pub async fn cancel_order(&self, order_id: OrderId) {
+        self.inner.lock().await.orderbook.cancel(order_id);
     }
 
     pub async fn dial_addr(&mut self, addr: Multiaddr) -> anyhow::Result<()> {

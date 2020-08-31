@@ -45,6 +45,7 @@ import { BitcoindWallet, BitcoinWallet } from "../wallets/bitcoin";
 import { EthereumWallet, Web3EthereumWallet } from "../wallets/ethereum";
 import { LightningWallet } from "../wallets/lightning";
 import { merge } from "lodash";
+import { AxiosResponse } from "axios";
 
 declare var global: HarnessGlobal;
 
@@ -401,6 +402,21 @@ export class Actor {
         const response = await this.cnd.fetch<OpenOrdersEntity>("/orders");
 
         return response.data;
+    }
+
+    public async executeSirenAction<T>(
+        entity: Entity,
+        actionName: string
+    ): Promise<AxiosResponse<T>> {
+        const action = entity.actions.find(
+            (action) => action.name === actionName
+        );
+
+        if (!action) {
+            throw new Error(`Action ${actionName} is not present`);
+        }
+
+        return this.cnd.executeSirenAction(action);
     }
 
     /**

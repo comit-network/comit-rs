@@ -1,9 +1,11 @@
+mod cancel;
 mod get_single;
-mod list_open_orders;
+mod list_open;
 mod make_btc_dai;
 
-pub use get_single::route as get_single_order;
-pub use list_open_orders::route as list_open_orders;
+pub use cancel::route as cancel;
+pub use get_single::route as get_single;
+pub use list_open::route as list_open;
 pub use make_btc_dai::route as make_btc_dai;
 
 use crate::{
@@ -86,14 +88,14 @@ where
 fn make_order_entity(properties: OrderProperties) -> Result<siren::Entity> {
     let mut entity = siren::Entity::default().with_properties(&properties)?;
 
-    if let Some(action) = delete_action(&properties) {
+    if let Some(action) = cancel_action(&properties) {
         entity = entity.with_action(action)
     }
 
     Ok(entity)
 }
 
-fn delete_action(order: &OrderProperties) -> Option<siren::Action> {
+fn cancel_action(order: &OrderProperties) -> Option<siren::Action> {
     if order.state.open > 0 {
         Some(siren::Action {
             name: "cancel".to_string(),
@@ -101,7 +103,7 @@ fn delete_action(order: &OrderProperties) -> Option<siren::Action> {
             method: Some(Method::DELETE),
             href: format!("/orders/{}", order.id),
             title: None,
-            _type: None,
+            _type: Some("application/json".to_owned()),
             fields: vec![],
         })
     } else {

@@ -20,7 +20,7 @@ use comit::{
         swap_digest::SwapDigest,
         Identities, SharedSwapId, WhatAliceLearnedFromBob, WhatBobLearnedFromAlice,
     },
-    orderpool, BtcDaiOrder, LockProtocol, Never, OrderId, Role, SecretHash, Side,
+    orderpool, LockProtocol, Never, OrderId, Role, SecretHash, Side,
 };
 use futures::{channel::mpsc, SinkExt, TryFutureExt};
 use libp2p::{identity::Keypair, NetworkBehaviour, PeerId};
@@ -122,10 +122,6 @@ impl ComitNode {
         self.local_data.insert(local_swap_id, local_data);
 
         Ok(())
-    }
-
-    pub fn publish_order(&mut self, order: BtcDaiOrder) {
-        self.orderbook.publish(order);
     }
 
     fn assert_have_lnd_if_needed(

@@ -12,7 +12,7 @@ use crate::{
             },
             Sqlite,
         },
-        NoOrderExists,
+        NoOrderExists, NotOpen,
     },
     LocalSwapId, LockProtocol, Role, Side,
 };
@@ -402,6 +402,22 @@ impl Order {
 
         if affected_rows == 0 {
             anyhow::bail!("failed to mark order {} as settling", order.order_id.0)
+        }
+
+        Ok(())
+    }
+
+    pub fn cancel(&self, conn: &SqliteConnection) -> Result<()> {
+        if self.open == 0 {
+            anyhow::bail!(NotOpen(self.order_id.0))
+        }
+
+        let affected_rows = diesel::update(self)
+            .set((orders::cancelled.eq(self.open), orders::open.eq(0)))
+            .execute(conn)?;
+
+        if affected_rows == 0 {
+            anyhow::bail!("failed to mark order {} as cancelled", self.order_id.0)
         }
 
         Ok(())
