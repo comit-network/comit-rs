@@ -16,7 +16,6 @@ import {
     OrderEntity,
     Position,
     SwapResponse,
-    SwapStatus,
 } from "../payload";
 import { Logger } from "log4js";
 import { CndConfigFile, E2ETestActorConfig } from "../config";
@@ -40,7 +39,7 @@ import {
 } from "../wallets";
 import { defaultLedgerDescriptionForLedger } from "./defaults";
 import pTimeout from "p-timeout";
-import { Entity, Link } from "comit-sdk/dist/src/cnd/siren";
+import { Entity } from "comit-sdk/dist/src/cnd/siren";
 import { BitcoindWallet, BitcoinWallet } from "../wallets/bitcoin";
 import { EthereumWallet, Web3EthereumWallet } from "../wallets/ethereum";
 import { LightningWallet } from "../wallets/lightning";
@@ -419,43 +418,6 @@ export class Actor {
         return this.cnd.executeSirenAction(action);
     }
 
-    /**
-     * Wait until a swap is created on bobs end
-     */
-    public async assertSwapCreatedFromOrder(orderUrl: string) {
-        if (this.name === "bob") {
-            // Since Alice has taken the swap, the order created by Bob should have an associated swap in the navigational link
-            const bobGetOrderResponse = await this.cnd.fetch<Entity>(orderUrl);
-
-            expect(bobGetOrderResponse.status).toEqual(200);
-            const linkToBobSwap = bobGetOrderResponse.data.links.find(
-                (link: Link) => link.rel.includes("swap")
-            );
-            expect(linkToBobSwap).toBeDefined();
-
-            // The link the Bobs swap should return 200
-            // "GET /swaps/934dd090-f8eb-4244-9aba-78e23d3f79eb HTTP/1.1"
-            const bobSwapResponse = await this.cnd.fetch<Entity>(
-                linkToBobSwap.href
-            );
-
-            expect(bobSwapResponse.status).toEqual(200);
-
-            this.swap = new Swap(
-                this.cnd,
-                linkToBobSwap.href,
-                new SdkWallets({
-                    ethereum: this.wallets.ethereum.inner,
-                    bitcoin: this.wallets.bitcoin.inner,
-                })
-            );
-        } else {
-            throw new Error(
-                `assertSwapCreated does not support the actor ${this.name} yet`
-            );
-        }
-    }
-
     private async setStartingBalances() {
         switch (this.name) {
             case "alice": {
@@ -515,25 +477,6 @@ export class Actor {
             await sleep(500);
 
             return this.pollCndUntil(location, predicate);
-        }
-    }
-
-    public async pollSwapResponse(
-        swapUrl: string,
-        iteration: number = 0
-    ): Promise<SwapResponse> {
-        if (iteration > 5) {
-            throw new Error(`Could not retrieve Swap ${swapUrl}`);
-        }
-        iteration++;
-
-        try {
-            return this.cnd
-                .fetch<SwapResponse>(swapUrl)
-                .then((response) => response.data);
-        } catch (error) {
-            await sleep(1000);
-            return this.pollSwapResponse(swapUrl, iteration);
         }
     }
 
@@ -759,24 +702,6 @@ export class Actor {
                 }
             }
         });
-    }
-
-    /**
-     * Assertions against Ledgers
-     */
-
-    public async assertSwapped() {
-        this.logger.debug("Checking if cnd reports status 'SWAPPED'");
-
-        while (true) {
-            await sleep(200);
-            const entity = await this.swap.fetchDetails();
-            if (entity.properties.status === SwapStatus.Swapped) {
-                break;
-            }
-        }
-
-        await this.assertBalancesAfterSwap();
     }
 
     public async assertBalancesAfterSwap() {

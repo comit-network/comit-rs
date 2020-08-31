@@ -62,19 +62,6 @@ export interface SwapResponse extends Entity {
 }
 
 /**
- * Element of the array in the payload returned when fetching all swaps on the `/swaps/` endpoint
- */
-export interface SwapElementResponse extends EmbeddedRepresentationSubEntity {
-    properties: Properties;
-    entities: (LedgerState | LedgerParameters)[];
-    actions: SwapAction[];
-    /**
-     * links for this swap, contains a self reference
-     */
-    links: Link[];
-}
-
-/**
  * The properties of a swap
  */
 export interface Properties {
