@@ -21,6 +21,7 @@ use chrono::NaiveDateTime;
 use comit::{asset::Erc20Quantity, ethereum, ethereum::ChainId, OrderId, Position};
 use diesel::{prelude::*, RunQueryDsl};
 use libp2p::PeerId;
+use std::ops::Add;
 use time::OffsetDateTime;
 
 macro_rules! swap_id_fk {
@@ -405,6 +406,15 @@ impl Order {
 
         Ok(())
     }
+}
+
+pub fn all_open_btc_dai_orders(conn: &SqliteConnection) -> Result<Vec<(Order, BtcDaiOrder)>> {
+    let orders = orders::table
+        .inner_join(btc_dai_orders::table)
+        .filter(orders::open.add(orders::settling).ge(0))
+        .load::<(Order, BtcDaiOrder)>(conn)?;
+
+    Ok(orders)
 }
 
 #[derive(Insertable, Clone, Copy, Debug)]

@@ -97,3 +97,45 @@ test(
         });
     })
 );
+
+test(
+    "given_alice_makes_an_order_when_listing_all_orders_then_it_is_returned",
+    oneActorTest(async ({ alice }) => {
+        await alice.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
+
+        const orders = await alice.listOpenOrders();
+
+        expect(orders.entities).toHaveLength(1);
+        expect(orders.entities[0].properties).toMatchObject({
+            position: Position.Sell,
+            quantity: {
+                currency: Currency.BTC,
+                value: "20000000",
+                decimals: 8,
+            },
+            price: {
+                currency: Currency.DAI,
+                value: "9000000000000000000000",
+                decimals: 18,
+            },
+            state: {
+                open: "1.00",
+            },
+        });
+    })
+);
+
+test(
+    "given_a_settling_order_when_open_orders_are_listed_is_still_returned_but_cannot_be_cancelled",
+    twoActorTest(async ({ alice, bob }) => {
+        await alice.connect(bob);
+        await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
+        await bob.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
+        await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
+
+        const orders = await alice.listOpenOrders();
+
+        expect(orders.entities).toHaveLength(1);
+        expect(orders.entities[0].actions).toHaveLength(0);
+    })
+);
