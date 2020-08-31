@@ -13,6 +13,12 @@ use num::integer;
 use std::{cmp, fmt};
 use time::Duration;
 
+#[cfg(not(test))]
+use tracing::debug;
+
+#[cfg(test)]
+use std::println as debug;
+
 // TODO: Research how times are calculated on each chain and if we can compare
 // time across chains? This knowledge is needed because we calculate the alpha
 // expiry offset based on the beta expiry offset, if one cannot compare times on
@@ -144,12 +150,17 @@ where
             return AliceAction::Abort;
         }
 
-        // If we are asking the next action the we have started.
+        // If we are asking the next action then we have started.
         let alice_can_complete = match current_state {
             AliceState::None => self.alice_can_complete(AliceState::Started).await,
             _ => self.alice_can_complete(current_state).await,
         };
         let bob_can_complete = self.bob_can_complete(current_state.into()).await;
+
+        debug!(
+            "{:?}: {} {}",
+            current_state, alice_can_complete, bob_can_complete
+        );
 
         if !(alice_can_complete && bob_can_complete) {
             if funded {
@@ -242,6 +253,10 @@ where
 
         // Alice redeems on beta ledger so is concerned about the beta expiry.
         let end_time = now.add_duration(period);
+        // debug!(
+        //     "alice_can_complete {:?} \n end_time: {:?} beta_expiry: {:?}",
+        //     current_state, end_time, self.beta_expiry.0
+        // );
         end_time < self.beta_expiry.0
     }
 
@@ -251,8 +266,14 @@ where
         let period = period_for_bob_to_complete(&self.config, current_state);
         let now = self.alpha_connector.current_time().await;
 
+        debug!("Bob now: {:?} period: {:?}", now, period.whole_seconds());
+
         // Bob redeems on alpha ledger so is concerned about the alpha expiry.
         let end_time = now.add_duration(period);
+        debug!(
+            "bob_can_complete {:?} \n end_time: {:?} alpha_expiry: {:?}",
+            current_state, end_time, self.alpha_expiry.0
+        );
         end_time < self.alpha_expiry.0
     }
 
@@ -529,6 +550,7 @@ impl AliceState {
             }
             FundAlpha => {
                 // Transition from Started to FundAlphaTransactionBroadcast
+                // or (for herc20) from AlphaDeployed to FundAlphaTransactionBroadcast
                 c.broadcast_alpha_fund_transaction()
             }
             WaitForAlphaFundTransactionFinality => {
@@ -688,10 +710,11 @@ impl BobState {
         };
 
         match next_action {
+            // Once Alice starts we need at least this much time, note that c.start() is not
+            // included otherwise the actual time Alice takes invalidates the swap for Bob.
             WaitForAlphaFundTransactionFinality => {
                 // Transition from Started to AlphaFunded
-                c.start()
-                    + c.broadcast_alpha_fund_transaction()
+                c.broadcast_alpha_fund_transaction()
                     + c.mine_alpha_fund_transaction()
                     + c.finality_alpha()
             }
@@ -775,11 +798,11 @@ impl From<AliceState> for BobState {
         use AliceState::*;
 
         match state {
-            None => Self::Started,
-            Started => Self::Started,
-            DeployAlphaTransactionBroadcast => Self::Started,
-            AlphaDeployed => Self::Started,
-            FundAlphaTransactionBroadcast => Self::Started,
+            None
+            | Started
+            | DeployAlphaTransactionBroadcast
+            | AlphaDeployed
+            | FundAlphaTransactionBroadcast => Self::Started,
             AlphaFunded => Self::AlphaFunded,
             // We don't look for the redeem alpha transaction so `BetaFunded` is the last of Bob's
             // states we can verify.
@@ -794,10 +817,10 @@ impl From<BobState> for AliceState {
 
         match state {
             Started => Self::None,
-            AlphaFunded => Self::AlphaFunded,
-            DeployBetaTransactionBroadcast => Self::AlphaFunded,
-            BetaDeployed => Self::AlphaFunded,
-            FundBetaTransactionBroadcast => Self::AlphaFunded,
+            AlphaFunded
+            | DeployBetaTransactionBroadcast
+            | BetaDeployed
+            | FundBetaTransactionBroadcast => Self::AlphaFunded,
             BetaFunded => Self::BetaFunded,
             // We don't wait for the redeem beta transaction to reach finality so
             // `RedeemBetaTransactionBroadcast` is the last of Alice's states we can verify.
@@ -871,7 +894,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn alice_can_complete_a_hbit_herc20_swap() {
+    async fn alice_can_complete_an_hbit_herc20_swap() {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
@@ -892,7 +915,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn alice_can_complete_a_herc20_hbit_swap() {
+    async fn alice_can_complete_an_herc20_hbit_swap() {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
@@ -913,7 +936,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bob_can_complete_a_herc20_hbit_swap() {
+    async fn bob_can_complete_an_herc20_hbit_swap() {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
@@ -934,11 +957,59 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bob_can_complete_a_hbit_herc20_swap() {
+    async fn bob_can_complete_an_hbit_herc20_swap() {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
         let exp = Expiries::new_hbit_herc20(start_at, ac.clone(), bc.clone());
+        let mut cur = BobState::initial();
+
+        let inc = 1.minutes();
+
+        while cur != BobState::Done {
+            inc_connectors(inc, ac.clone(), bc.clone()).await;
+            let (want_action, state) = cur.next_hbit_herc20();
+            let got_action = exp.next_action_for_bob(cur).await;
+
+            assert_that!(got_action).is_equal_to(want_action);
+
+            cur = state;
+        }
+    }
+
+    #[tokio::test]
+    async fn bob_can_complete_an_herc20_hbit_swap_with_slow_alice_start() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+        let inc = 50.minutes(); // Alice takes this long to start.
+        inc_connectors(inc, ac.clone(), bc.clone()).await;
+
+        let mut cur = BobState::initial();
+
+        let inc = 1.minutes();
+
+        while cur != BobState::Done {
+            inc_connectors(inc, ac.clone(), bc.clone()).await;
+            let (want_action, state) = cur.next_herc20_hbit();
+            let got_action = exp.next_action_for_bob(cur).await;
+
+            assert_that!(got_action).is_equal_to(want_action);
+
+            cur = state;
+        }
+    }
+
+    #[tokio::test]
+    async fn bob_can_complete_an_hbit_herc20_swap_with_slow_alice_start() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let exp = Expiries::new_hbit_herc20(start_at, ac.clone(), bc.clone());
+        let inc = 50.minutes(); // Alice takes this long to start.
+        inc_connectors(inc, ac.clone(), bc.clone()).await;
+
         let mut cur = BobState::initial();
 
         let inc = 1.minutes();
