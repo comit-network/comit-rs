@@ -198,6 +198,14 @@ where
     //   here. What to do with the other new states? Especially those that do not
     //   require an action e.g. wait_for_foo ???
 
+    // Over in Nectar it seems that we can plug directly into the
+    // `hbit_herc20_happy_alice` function by:
+    //
+    // - Add an `Expiries` parameter.
+    // - Before each call to execute_foo() we could pass the state (since we have
+    //   full knowledge of it at that stage) to `expiries ` and confirm that the
+    //   next action is still the happy path action.
+
     if swap.init_action().is_ok() {
         return Ok(Some(ActionName::Init));
     }
