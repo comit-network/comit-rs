@@ -76,6 +76,11 @@ table! {
         order_id -> Text,
         position -> Text,
         created_at -> BigInt,
+        open -> Integer,
+        closed -> Integer,
+        settling -> Integer,
+        failed -> Integer,
+        cancelled -> Integer,
     }
 }
 

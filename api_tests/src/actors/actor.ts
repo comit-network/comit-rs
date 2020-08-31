@@ -12,6 +12,7 @@ import {
     Herc20HalbitPayload,
     Herc20HbitPayload,
     LedgerState,
+    OrderEntity,
     Position,
     SwapResponse,
     SwapStatus,
@@ -387,6 +388,12 @@ export class Actor {
         });
 
         return response.headers.location;
+    }
+
+    public async fetchOrder(href: string): Promise<OrderEntity> {
+        const response = await this.cnd.fetch<OrderEntity>(href);
+
+        return response.data;
     }
 
     /**

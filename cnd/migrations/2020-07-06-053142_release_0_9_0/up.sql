@@ -38,7 +38,12 @@ CREATE TABLE orders
     id INTEGER      NOT NULL PRIMARY KEY,
     order_id UNIQUE NOT NULL,
     position        NOT NULL,
-    created_at      NOT NULL
+    created_at      NOT NULL,
+    open            NOT NULL,
+    closed          NOT NULL,
+    settling        NOT NULL,
+    failed          NOT NULL,
+    cancelled       NOT NULL
 );
 
 CREATE TABLE btc_dai_orders

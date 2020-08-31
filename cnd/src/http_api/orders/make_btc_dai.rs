@@ -92,7 +92,8 @@ fn save_order(
     swap: SwapParams,
     settings: Settings,
 ) -> impl FnOnce(&SqliteConnection) -> Result<()> {
-    let insertable_order = InsertableOrder::new(order.id, order.position, order.created_at);
+    let insertable_order =
+        InsertableOrder::new(order.id, order.position, order.created_at, 100, 0, 0, 0, 0);
 
     let insertable_btc_dai_order = {
         let quantity = order.quantity;

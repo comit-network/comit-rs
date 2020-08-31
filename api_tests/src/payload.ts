@@ -261,6 +261,11 @@ export interface OrderProperties {
     position: Position;
     quantity: Amount;
     price: Amount;
+    open: string;
+    closed: string;
+    settling: string;
+    failed: string;
+    cancelled: string;
 }
 
 export interface Amount {
