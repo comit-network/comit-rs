@@ -490,25 +490,25 @@ impl AliceState {
     /// fund transaction has been broadcast since any time after attempting to
     /// refund is the correct cancellation action.
     fn has_broadcast_fund_transaction(&self) -> bool {
+        use AliceState::*;
+
         match self {
-            AliceState::None | AliceState::Started => false,
-            AliceState::FundAlphaTransactionBroadcast
-            | AliceState::AlphaFunded
-            | AliceState::BetaFunded
-            | AliceState::RedeemBetaTransactionBroadcast
-            | AliceState::Done => true,
+            None | Started => false,
+            FundAlphaTransactionBroadcast
+            | AlphaFunded
+            | BetaFunded
+            | RedeemBetaTransactionBroadcast
+            | Done => true,
         }
     }
 
     /// True if Alice has broadcast her redeem transaction.
     fn has_broadcast_redeem_transaction(&self) -> bool {
+        use AliceState::*;
+
         match self {
-            AliceState::None
-            | AliceState::Started
-            | AliceState::FundAlphaTransactionBroadcast
-            | AliceState::AlphaFunded
-            | AliceState::BetaFunded => false,
-            AliceState::RedeemBetaTransactionBroadcast | AliceState::Done => true,
+            None | Started | FundAlphaTransactionBroadcast | AlphaFunded | BetaFunded => false,
+            RedeemBetaTransactionBroadcast | Done => true,
         }
     }
 }
@@ -621,25 +621,29 @@ impl BobState {
     /// fund transaction has been broadcast since any time after attempting to
     /// refund is the correct cancellation action.
     fn has_broadcast_fund_transaction(&self) -> bool {
+        use BobState::*;
+
         match self {
-            BobState::Started | BobState::AlphaFunded => false,
-            BobState::FundBetaTransactionBroadcast
-            | BobState::BetaFunded
-            | BobState::RedeemBetaTransactionSeen
-            | BobState::RedeemAlphaTransactionBroadcast
-            | BobState::Done => true,
+            Started | AlphaFunded => false,
+            FundBetaTransactionBroadcast
+            | BetaFunded
+            | RedeemBetaTransactionSeen
+            | RedeemAlphaTransactionBroadcast
+            | Done => true,
         }
     }
 
     /// True if Bob has broadcast his redeem transaction.
     fn has_broadcast_redeem_transaction(&self) -> bool {
+        use BobState::*;
+
         match self {
-            BobState::Started
-            | BobState::AlphaFunded
-            | BobState::FundBetaTransactionBroadcast
-            | BobState::BetaFunded
-            | BobState::RedeemBetaTransactionSeen => false,
-            BobState::RedeemAlphaTransactionBroadcast | BobState::Done => true,
+            Started
+            | AlphaFunded
+            | FundBetaTransactionBroadcast
+            | BetaFunded
+            | RedeemBetaTransactionSeen => false,
+            RedeemAlphaTransactionBroadcast | Done => true,
         }
     }
 }
