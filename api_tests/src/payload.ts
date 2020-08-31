@@ -278,3 +278,12 @@ export enum Currency {
     BTC = "BTC",
     DAI = "DAI",
 }
+
+export interface OpenOrderEntity extends EmbeddedRepresentationSubEntity {
+    properties: OrderProperties;
+    rel: ["item"];
+}
+
+export interface OpenOrdersEntity extends Entity {
+    entities: OpenOrderEntity[];
+}

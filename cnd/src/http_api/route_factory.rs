@@ -155,6 +155,7 @@ pub fn create(facade: Facade, settings: &Settings) -> BoxedFilter<(impl Reply,)>
         .or(herc20_hbit)
         .or(orders::make_btc_dai(facade.clone(), settings.clone()))
         .or(orders::get_single_order(facade.clone()))
+        .or(orders::list_open_orders(facade.clone()))
         .or(markets::get_btc_dai_market(facade))
         .or(post_dial_addr)
         .recover(http_api::unpack_problem)
