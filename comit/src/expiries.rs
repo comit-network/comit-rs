@@ -871,7 +871,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn alice_can_complete_a_swap() {
+    async fn alice_can_complete_a_hbit_herc20_swap() {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
@@ -892,7 +892,49 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn bob_can_complete_a_swap() {
+    async fn alice_can_complete_a_herc20_hbit_swap() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+        let mut cur = AliceState::initial();
+
+        let inc = 1.minutes();
+
+        while cur != AliceState::Done {
+            inc_connectors(inc, ac.clone(), bc.clone()).await;
+            let (want_action, state) = cur.next_herc20_hbit();
+            let got_action = exp.next_action_for_alice(cur).await;
+
+            assert_that!(got_action).is_equal_to(want_action);
+
+            cur = state;
+        }
+    }
+
+    #[tokio::test]
+    async fn bob_can_complete_a_herc20_hbit_swap() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+        let mut cur = BobState::initial();
+
+        let inc = 1.minutes();
+
+        while cur != BobState::Done {
+            inc_connectors(inc, ac.clone(), bc.clone()).await;
+            let (want_action, state) = cur.next_herc20_hbit();
+            let got_action = exp.next_action_for_bob(cur).await;
+
+            assert_that!(got_action).is_equal_to(want_action);
+
+            cur = state;
+        }
+    }
+
+    #[tokio::test]
+    async fn bob_can_complete_a_hbit_herc20_swap() {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
