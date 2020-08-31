@@ -51,7 +51,8 @@ impl OrderPool {
 
     /// Receive other people's orders.
     ///
-    /// This replaces all current orders this peer with the newly received ones.
+    /// This replaces all current orders of this peer with the newly received
+    /// ones.
     pub fn receive(&mut self, maker: PeerId, orders: Vec<BtcDaiOrder>) {
         let map = HashMap::from_iter(orders.into_iter().map(|o| (o.id, o)));
 

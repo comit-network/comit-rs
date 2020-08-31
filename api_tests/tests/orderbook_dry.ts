@@ -4,6 +4,7 @@
  */
 import { twoActorTest, oneActorTest } from "../src/actor_test";
 import { MarketEntity, Currency, OrderEntity, Position } from "../src/payload";
+import { Problem } from "comit-sdk";
 
 test(
     "given_two_connected_nodes_when_other_node_publishes_order_then_it_is_returned_in_the_market",
@@ -137,5 +138,76 @@ test(
 
         expect(orders.entities).toHaveLength(1);
         expect(orders.entities[0].actions).toHaveLength(0);
+    })
+);
+
+test(
+    "given_an_order_when_cancelled_state_changes_to_cancelled",
+    oneActorTest(async ({ alice }) => {
+        const href = await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
+
+        const order = await alice.fetchOrder(href);
+
+        expect(order.actions).toHaveLength(1);
+        await alice.executeSirenAction(order, "cancel");
+
+        await expect(
+            alice.fetchOrder(href).then((r) => r.properties)
+        ).resolves.toMatchObject({
+            state: {
+                open: "0.00",
+                cancelled: "1.00",
+            },
+        });
+        await expect(
+            alice.fetchOrder(href).then((r) => r.actions)
+        ).resolves.toHaveLength(0);
+    })
+);
+
+test(
+    "given_a_settling_order_when_trying_to_cancel_then_fails",
+    twoActorTest(async ({ alice, bob }) => {
+        await alice.connect(bob);
+        const href = await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
+        await bob.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
+        await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
+
+        const order = await alice.fetchOrder(href);
+        // @ts-ignore `client` is private
+        const cancelAttempt = alice.cnd.client.delete(
+            `/orders/${order.properties.id}`
+        );
+
+        await expect(cancelAttempt).rejects.toEqual(
+            new Problem({
+                status: 400,
+                title: "Order can no longer be cancelled.",
+            })
+        );
+    })
+);
+
+test(
+    "given_an_order_when_cancelled_then_it_is_taken_from_the_market",
+    twoActorTest(async ({ alice, bob }) => {
+        await alice.connect(bob);
+
+        // make an order and wait until Bob sees it
+        const href = await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
+        await bob.pollCndUntil<MarketEntity>(
+            "/markets/BTC-DAI",
+            (market) => market.entities.length > 0
+        );
+
+        // cancel it
+        const order = await alice.fetchOrder(href);
+        await alice.executeSirenAction(order, "cancel");
+
+        // assert that bob no longer sees the order
+        await bob.pollCndUntil<MarketEntity>(
+            "/markets/BTC-DAI",
+            (market) => market.entities.length === 0
+        );
     })
 );
