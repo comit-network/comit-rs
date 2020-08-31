@@ -186,6 +186,18 @@ where
         + AlphaAbsoluteExpiry
         + BetaAbsoluteExpiry,
 {
+    // In order to be able to integrate the new expiries next action logic:
+    //
+    // - Will need to be able to access the Expires. One solution; we could add it
+    //   to the swap struct.
+    // - Ask the facade what state the swap is in and get back an
+    //   expiries::AliceState or BobState. This is the swap state from our
+    //   perspective, we know our role.
+    // - Call swap.expiries.next_action_for_<actor>()
+    // - If the action maps to init/deploy/fund/refund/redeem we can handle as we do
+    //   here. What to do with the other new states? Especially those that do not
+    //   require an action e.g. wait_for_foo ???
+
     if swap.init_action().is_ok() {
         return Ok(Some(ActionName::Init));
     }
