@@ -6,14 +6,12 @@
 
 mod config;
 
-use self::config::Config;
+use self::config::{Config, Protocol};
 use crate::timestamp::{self, Timestamp};
 use async_trait::async_trait;
 use num::integer;
 use std::{cmp, fmt};
 use time::Duration;
-
-// TODO: Currently we ignore deploy for Erc20.
 
 // TODO: Research how times are calculated on each chain and if we can compare
 // time across chains? This knowledge is needed because we calculate the alpha
@@ -135,7 +133,7 @@ where
 
         if self.alpha_expiry_has_elapsed().await {
             if redeemed {
-                let (next_action, _state) = current_state.next();
+                let (next_action, _state) = self.next_action_and_state_for_alice(current_state);
                 return next_action;
             }
 
@@ -160,7 +158,7 @@ where
             return AliceAction::Abort;
         }
 
-        let (next_action, _state) = current_state.next();
+        let (next_action, _state) = self.next_action_and_state_for_alice(current_state);
         next_action
     }
 
@@ -181,7 +179,7 @@ where
 
         if self.beta_expiry_has_elapsed().await {
             if redeemed {
-                let (next_action, _state) = current_state.next();
+                let (next_action, _state) = self.next_action_and_state_for_bob(current_state);
                 return next_action;
             }
 
@@ -211,8 +209,29 @@ where
             return BobAction::Abort;
         }
 
-        let (next_action, _state) = current_state.next();
+        let (next_action, _state) = self.next_action_and_state_for_bob(current_state);
         next_action
+    }
+
+    fn next_action_and_state_for_alice(
+        &self,
+        current_state: AliceState,
+    ) -> (AliceAction, AliceState) {
+        match self.protocol() {
+            Protocol::Herc20Hbit => current_state.next_herc20_hbit(),
+            Protocol::HbitHerc20 => current_state.next_hbit_herc20(),
+        }
+    }
+
+    fn protocol(&self) -> Protocol {
+        self.config.protocol()
+    }
+
+    fn next_action_and_state_for_bob(&self, current_state: BobState) -> (BobAction, BobState) {
+        match self.protocol() {
+            Protocol::Herc20Hbit => current_state.next_herc20_hbit(),
+            Protocol::HbitHerc20 => current_state.next_hbit_herc20(),
+        }
     }
 
     /// True if Alice has time to complete a swap (i.e. transition to done)
@@ -287,7 +306,10 @@ fn period_for_alice_to_complete(config: &Config, current_state: AliceState) -> D
             return acc;
         }
 
-        let (_action, next_state) = state.next();
+        let (_action, next_state) = match config.protocol() {
+            Protocol::Herc20Hbit => state.next_herc20_hbit(),
+            Protocol::HbitHerc20 => state.next_hbit_herc20(),
+        };
         let transition_period = state.transition_period(config);
 
         period_to_complete(config, next_state, acc + transition_period)
@@ -305,7 +327,11 @@ fn period_for_bob_to_complete(config: &Config, current_state: BobState) -> Durat
             return acc;
         }
 
-        let (_action, next_state) = state.next();
+        let (_action, next_state) = match config.protocol() {
+            Protocol::Herc20Hbit => state.next_herc20_hbit(),
+            Protocol::HbitHerc20 => state.next_hbit_herc20(),
+        };
+
         let transition_period = state.transition_period(config);
 
         period_to_complete(config, next_state, acc + transition_period)
@@ -398,6 +424,14 @@ pub enum AliceState {
     None,
     /// Swap has been started.
     Started,
+    /// ERC20 only. The deploy transaction has been broadcast to the network.
+    DeployAlphaTransactionBroadcast,
+    /// ERC20 only. Implies deploy ERC20 HTLC has been mined.
+    // We only wait for a single confirmation because that is what our current btsieve
+    // implementation does. This is safe since the next action is Alice to fund and we
+    // wait for the fund transaction to reach finality which implies the deploy
+    // transaction has also reached finality.
+    AlphaDeployed,
     /// The fund alpha transaction has been broadcast to the network.
     FundAlphaTransactionBroadcast,
     /// Implies fund alpha transaction has reached finality.
@@ -415,6 +449,8 @@ pub enum AliceState {
 pub enum AliceAction {
     // Happy path actions for Alice.
     Start,
+    DeployAlpha,                       // ERC20 only.
+    WaitForAlphaDeployTransactionMine, // ERC20 only.
     FundAlpha,
     WaitForAlphaFundTransactionFinality,
     WaitForBetaFundTransactionFinality,
@@ -433,13 +469,34 @@ impl AliceState {
         AliceState::None
     }
 
-    /// Gets the next action required to transition to the next state.
-    fn next(&self) -> (AliceAction, AliceState) {
+    /// Gets the next action required to transition to the next state for a
+    /// herc20-hbit swap.
+    fn next_herc20_hbit(&self) -> (AliceAction, AliceState) {
+        use self::{AliceAction::*, AliceState::*};
+
+        match self {
+            None => (Start, Started),
+            Started => (DeployAlpha, DeployAlphaTransactionBroadcast),
+            DeployAlphaTransactionBroadcast => (WaitForAlphaDeployTransactionMine, AlphaDeployed),
+            AlphaDeployed => (FundAlpha, FundAlphaTransactionBroadcast),
+            FundAlphaTransactionBroadcast => (WaitForAlphaFundTransactionFinality, AlphaFunded),
+            AlphaFunded => (WaitForBetaFundTransactionFinality, BetaFunded),
+            BetaFunded => (RedeemBeta, RedeemBetaTransactionBroadcast),
+            RedeemBetaTransactionBroadcast => (WaitForBetaRedeemTransactionFinality, Done),
+            Done => (NoFurtherAction, Done),
+        }
+    }
+
+    /// Gets the next action required to transition to the next state for a
+    /// hbit-herc20 swap.
+    fn next_hbit_herc20(&self) -> (AliceAction, AliceState) {
         use self::{AliceAction::*, AliceState::*};
 
         match self {
             None => (Start, Started),
             Started => (FundAlpha, FundAlphaTransactionBroadcast),
+            DeployAlphaTransactionBroadcast => unreachable!("hbit-herc20 no deploy for Alice"),
+            AlphaDeployed => unreachable!("hbit-herc20 no deploy for Alice"),
             FundAlphaTransactionBroadcast => (WaitForAlphaFundTransactionFinality, AlphaFunded),
             AlphaFunded => (WaitForBetaFundTransactionFinality, BetaFunded),
             BetaFunded => (RedeemBeta, RedeemBetaTransactionBroadcast),
@@ -452,12 +509,23 @@ impl AliceState {
     fn transition_period(&self, c: &Config) -> Duration {
         use self::AliceAction::*;
 
-        let (next_action, _next_state) = self.next();
+        let (next_action, _next_state) = match c.protocol() {
+            Protocol::Herc20Hbit => self.next_herc20_hbit(),
+            Protocol::HbitHerc20 => self.next_hbit_herc20(),
+        };
 
         match next_action {
             Start => {
                 // Transition from None to Started
                 c.start()
+            }
+            DeployAlpha => {
+                // Transition from Started to DeployAlphaTransactionBroadcast
+                c.broadcast_alpha_deploy_transaction()
+            }
+            WaitForAlphaDeployTransactionMine => {
+                // Transition from DeployAlphaTransactionBroadcast to AlphaDeployed
+                c.mine_alpha_deploy_transaction()
             }
             FundAlpha => {
                 // Transition from Started to FundAlphaTransactionBroadcast
@@ -493,7 +561,7 @@ impl AliceState {
         use AliceState::*;
 
         match self {
-            None | Started => false,
+            None | Started | DeployAlphaTransactionBroadcast | AlphaDeployed => false,
             FundAlphaTransactionBroadcast
             | AlphaFunded
             | BetaFunded
@@ -507,7 +575,13 @@ impl AliceState {
         use AliceState::*;
 
         match self {
-            None | Started | FundAlphaTransactionBroadcast | AlphaFunded | BetaFunded => false,
+            None
+            | Started
+            | FundAlphaTransactionBroadcast
+            | AlphaFunded
+            | BetaFunded
+            | DeployAlphaTransactionBroadcast
+            | AlphaDeployed => false,
             RedeemBetaTransactionBroadcast | Done => true,
         }
     }
@@ -521,6 +595,11 @@ pub enum BobState {
     Started,
     /// Implies fund alpha transaction has reached finality.
     AlphaFunded,
+    /// ERC20 only. The deploy transaction has been broadcast to the network.
+    DeployBetaTransactionBroadcast,
+    /// ERC20 only. Implies deploy ERC20 HTLC has been mined. (See AliceState
+    /// for details.)
+    BetaDeployed,
     /// The fund beta transaction has been broadcast to the network.
     FundBetaTransactionBroadcast,
     /// Implies fund beta transaction has reached finality.
@@ -539,6 +618,8 @@ pub enum BobState {
 pub enum BobAction {
     // Happy path actions for Bob.
     WaitForAlphaFundTransactionFinality,
+    DeployBeta,                       // ERC20 only.
+    WaitForBetaDeployTransactionMine, // ERC20 only.
     FundBeta,
     WaitForBetaFundTransactionFinality,
     WaitForBetaRedeemTransactionBroadcast,
@@ -557,13 +638,37 @@ impl BobState {
         BobState::Started
     }
 
-    /// Gets the next action required to transition to the next state.
-    fn next(&self) -> (BobAction, BobState) {
+    /// Gets the next action required to transition to the next state for a
+    /// herc20-hbit swap.
+    fn next_herc20_hbit(&self) -> (BobAction, BobState) {
         use self::{BobAction::*, BobState::*};
 
         match self {
             Started => (WaitForAlphaFundTransactionFinality, AlphaFunded),
             AlphaFunded => (FundBeta, FundBetaTransactionBroadcast),
+            DeployBetaTransactionBroadcast => unreachable!("herc20-hbit no deploy for Bob"),
+            BetaDeployed => unreachable!("herc20-hbit no deploy for Bob"),
+            FundBetaTransactionBroadcast => (WaitForBetaFundTransactionFinality, BetaFunded),
+            BetaFunded => (
+                WaitForBetaRedeemTransactionBroadcast,
+                RedeemBetaTransactionSeen,
+            ),
+            RedeemBetaTransactionSeen => (RedeemAlpha, RedeemAlphaTransactionBroadcast),
+            RedeemAlphaTransactionBroadcast => (WaitForAlphaRedeemTransactionFinality, Done),
+            Done => (NoFurtherAction, Done),
+        }
+    }
+
+    /// Gets the next action required to transition to the next state for a
+    /// hbit-herc20 swap.
+    fn next_hbit_herc20(&self) -> (BobAction, BobState) {
+        use self::{BobAction::*, BobState::*};
+
+        match self {
+            Started => (WaitForAlphaFundTransactionFinality, AlphaFunded),
+            AlphaFunded => (DeployBeta, DeployBetaTransactionBroadcast),
+            DeployBetaTransactionBroadcast => (WaitForBetaDeployTransactionMine, BetaDeployed),
+            BetaDeployed => (FundBeta, FundBetaTransactionBroadcast),
             FundBetaTransactionBroadcast => (WaitForBetaFundTransactionFinality, BetaFunded),
             BetaFunded => (
                 WaitForBetaRedeemTransactionBroadcast,
@@ -579,7 +684,10 @@ impl BobState {
     fn transition_period(&self, c: &Config) -> Duration {
         use self::BobAction::*;
 
-        let (next_action, _next_state) = self.next();
+        let (next_action, _next_state) = match c.protocol() {
+            Protocol::Herc20Hbit => self.next_herc20_hbit(),
+            Protocol::HbitHerc20 => self.next_hbit_herc20(),
+        };
 
         match next_action {
             WaitForAlphaFundTransactionFinality => {
@@ -588,6 +696,14 @@ impl BobState {
                     + c.broadcast_alpha_fund_transaction()
                     + c.mine_alpha_fund_transaction()
                     + c.finality_alpha()
+            }
+            DeployBeta => {
+                // Transition from AlphaFunded to DeployBetaTransactionBroadcast
+                c.broadcast_beta_deploy_transaction()
+            }
+            WaitForBetaDeployTransactionMine => {
+                // Transition from DeployBetaTransactionBroadcast to BetaDeployed
+                c.mine_beta_deploy_transaction()
             }
             FundBeta => {
                 // Transition from AlphaFunded to FundBetaTransactionBroadcast
@@ -624,7 +740,7 @@ impl BobState {
         use BobState::*;
 
         match self {
-            Started | AlphaFunded => false,
+            Started | AlphaFunded | DeployBetaTransactionBroadcast | BetaDeployed => false,
             FundBetaTransactionBroadcast
             | BetaFunded
             | RedeemBetaTransactionSeen
@@ -640,6 +756,8 @@ impl BobState {
         match self {
             Started
             | AlphaFunded
+            | DeployBetaTransactionBroadcast
+            | BetaDeployed
             | FundBetaTransactionBroadcast
             | BetaFunded
             | RedeemBetaTransactionSeen => false,
@@ -661,6 +779,8 @@ impl From<AliceState> for BobState {
         match state {
             None => Self::Started,
             Started => Self::Started,
+            DeployAlphaTransactionBroadcast => Self::Started,
+            AlphaDeployed => Self::Started,
             FundAlphaTransactionBroadcast => Self::Started,
             AlphaFunded => Self::AlphaFunded,
             // We don't look for the redeem alpha transaction so `BetaFunded` is the last of Bob's
@@ -677,6 +797,8 @@ impl From<BobState> for AliceState {
         match state {
             Started => Self::None,
             AlphaFunded => Self::AlphaFunded,
+            DeployBetaTransactionBroadcast => Self::AlphaFunded,
+            BetaDeployed => Self::AlphaFunded,
             FundBetaTransactionBroadcast => Self::AlphaFunded,
             BetaFunded => Self::BetaFunded,
             // We don't wait for the redeem beta transaction to reach finality so
@@ -762,7 +884,7 @@ mod tests {
 
         while cur != AliceState::Done {
             inc_connectors(inc, ac.clone(), bc.clone()).await;
-            let (want_action, state) = cur.next();
+            let (want_action, state) = cur.next_hbit_herc20();
             let got_action = exp.next_action_for_alice(cur).await;
 
             assert_that!(got_action).is_equal_to(want_action);
@@ -783,7 +905,7 @@ mod tests {
 
         while cur != BobState::Done {
             inc_connectors(inc, ac.clone(), bc.clone()).await;
-            let (want_action, state) = cur.next();
+            let (want_action, state) = cur.next_hbit_herc20();
             let got_action = exp.next_action_for_bob(cur).await;
 
             assert_that!(got_action).is_equal_to(want_action);
@@ -904,6 +1026,66 @@ mod tests {
         let bob_state = BobState::RedeemBetaTransactionSeen;
 
         let want_action = BobAction::RedeemAlpha;
+        let got_action = exp.next_action_for_bob(bob_state).await;
+
+        assert_that!(got_action).is_equal_to(want_action);
+    }
+
+    #[tokio::test]
+    async fn alice_next_action_after_start_is_deploy_herc20_hbit() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+
+        let alice_state = AliceState::Started;
+
+        let want_action = AliceAction::DeployAlpha;
+        let got_action = exp.next_action_for_alice(alice_state).await;
+
+        assert_that!(got_action).is_equal_to(want_action);
+    }
+
+    #[tokio::test]
+    async fn alice_next_action_after_start_is_fund_hbit_herc20() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let exp = Expiries::new_hbit_herc20(start_at, ac.clone(), bc.clone());
+
+        let alice_state = AliceState::Started;
+
+        let want_action = AliceAction::FundAlpha;
+        let got_action = exp.next_action_for_alice(alice_state).await;
+
+        assert_that!(got_action).is_equal_to(want_action);
+    }
+
+    #[tokio::test]
+    async fn bob_next_action_after_alpha_funded_is_deploy_hbit_herc20() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let exp = Expiries::new_hbit_herc20(start_at, ac.clone(), bc.clone());
+
+        let bob_state = BobState::AlphaFunded;
+
+        let want_action = BobAction::DeployBeta;
+        let got_action = exp.next_action_for_bob(bob_state).await;
+
+        assert_that!(got_action).is_equal_to(want_action);
+    }
+
+    #[tokio::test]
+    async fn bob_next_action_after_alpha_funded_is_fund_herc20_hbit() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+
+        let bob_state = BobState::AlphaFunded;
+
+        let want_action = BobAction::FundBeta;
         let got_action = exp.next_action_for_bob(bob_state).await;
 
         assert_that!(got_action).is_equal_to(want_action);
