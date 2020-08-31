@@ -170,7 +170,7 @@ where
 
         // If Alice has redeemed Bob's only action is to redeem irrespective of expiry
         // time.
-        if current_state == BobState::RedeemBetaTransactionSeen {
+        if current_state == BobState::RedeemBetaTransactionBroadcast {
             return BobAction::RedeemAlpha;
         }
 
@@ -577,11 +577,11 @@ impl AliceState {
         match self {
             None
             | Started
+            | DeployAlphaTransactionBroadcast
+            | AlphaDeployed
             | FundAlphaTransactionBroadcast
             | AlphaFunded
-            | BetaFunded
-            | DeployAlphaTransactionBroadcast
-            | AlphaDeployed => false,
+            | BetaFunded => false,
             RedeemBetaTransactionBroadcast | Done => true,
         }
     }
@@ -597,16 +597,14 @@ pub enum BobState {
     AlphaFunded,
     /// ERC20 only. The deploy transaction has been broadcast to the network.
     DeployBetaTransactionBroadcast,
-    /// ERC20 only. Implies deploy ERC20 HTLC has been mined. (See AliceState
-    /// for details.)
+    /// ERC20 only. Implies deploy ERC20 HTLC has been mined.
     BetaDeployed,
     /// The fund beta transaction has been broadcast to the network.
     FundBetaTransactionBroadcast,
     /// Implies fund beta transaction has reached finality.
     BetaFunded,
-    /// The redeem beta transaction has been seen (e.g. an unconfirmed
-    /// transaction in the mempool).
-    RedeemBetaTransactionSeen,
+    /// The redeem beta transaction has been broadcast to the network.
+    RedeemBetaTransactionBroadcast,
     /// The redeem alpha transaction has been broadcast to the network.
     RedeemAlphaTransactionBroadcast,
     /// Implies alpha redeem transaction has reached finality.
@@ -651,9 +649,9 @@ impl BobState {
             FundBetaTransactionBroadcast => (WaitForBetaFundTransactionFinality, BetaFunded),
             BetaFunded => (
                 WaitForBetaRedeemTransactionBroadcast,
-                RedeemBetaTransactionSeen,
+                RedeemBetaTransactionBroadcast,
             ),
-            RedeemBetaTransactionSeen => (RedeemAlpha, RedeemAlphaTransactionBroadcast),
+            RedeemBetaTransactionBroadcast => (RedeemAlpha, RedeemAlphaTransactionBroadcast),
             RedeemAlphaTransactionBroadcast => (WaitForAlphaRedeemTransactionFinality, Done),
             Done => (NoFurtherAction, Done),
         }
@@ -672,9 +670,9 @@ impl BobState {
             FundBetaTransactionBroadcast => (WaitForBetaFundTransactionFinality, BetaFunded),
             BetaFunded => (
                 WaitForBetaRedeemTransactionBroadcast,
-                RedeemBetaTransactionSeen,
+                RedeemBetaTransactionBroadcast,
             ),
-            RedeemBetaTransactionSeen => (RedeemAlpha, RedeemAlphaTransactionBroadcast),
+            RedeemBetaTransactionBroadcast => (RedeemAlpha, RedeemAlphaTransactionBroadcast),
             RedeemAlphaTransactionBroadcast => (WaitForAlphaRedeemTransactionFinality, Done),
             Done => (NoFurtherAction, Done),
         }
@@ -716,11 +714,11 @@ impl BobState {
             // We include mine_beta_redeem_transaction since Bob will not necessarily be watching
             // the network (i.e., only watching mined blocks).
             WaitForBetaRedeemTransactionBroadcast => {
-                // Transition from BetaFunded to RedeemBetaTransactionSeen
+                // Transition from BetaFunded to RedeemBetaTransactionBroadcast
                 c.broadcast_beta_redeem_transaction() + c.mine_beta_redeem_transaction()
             }
             RedeemAlpha => {
-                // Transition from RedeemBetaTransactionSeen to
+                // Transition from RedeemBetaTransactionBroadcast to
                 // RedeemAlphaTransactionBroadcast
                 c.broadcast_alpha_redeem_transaction()
             }
@@ -743,7 +741,7 @@ impl BobState {
             Started | AlphaFunded | DeployBetaTransactionBroadcast | BetaDeployed => false,
             FundBetaTransactionBroadcast
             | BetaFunded
-            | RedeemBetaTransactionSeen
+            | RedeemBetaTransactionBroadcast
             | RedeemAlphaTransactionBroadcast
             | Done => true,
         }
@@ -760,7 +758,7 @@ impl BobState {
             | BetaDeployed
             | FundBetaTransactionBroadcast
             | BetaFunded
-            | RedeemBetaTransactionSeen => false,
+            | RedeemBetaTransactionBroadcast => false,
             RedeemAlphaTransactionBroadcast | Done => true,
         }
     }
@@ -803,7 +801,7 @@ impl From<BobState> for AliceState {
             BetaFunded => Self::BetaFunded,
             // We don't wait for the redeem beta transaction to reach finality so
             // `RedeemBetaTransactionBroadcast` is the last of Alice's states we can verify.
-            RedeemBetaTransactionSeen | RedeemAlphaTransactionBroadcast | Done => {
+            RedeemBetaTransactionBroadcast | RedeemAlphaTransactionBroadcast | Done => {
                 Self::RedeemBetaTransactionBroadcast
             }
         }
@@ -1014,7 +1012,7 @@ mod tests {
     // 2. Since the expiry has only just elapsed there is still time enough for
     //    Bob's redeem transaction to reach finality before Alice can refund.
     #[tokio::test]
-    async fn bob_next_action_redeem_after_expiry_elapsed_and_secret_seen() {
+    async fn bob_next_action_redeem_after_expiry_elapsed_and_secret_broadcast() {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
@@ -1023,7 +1021,7 @@ mod tests {
         let inc = exp.beta_offset.0 + 1.minutes();
         inc_connectors(inc, ac, bc).await;
 
-        let bob_state = BobState::RedeemBetaTransactionSeen;
+        let bob_state = BobState::RedeemBetaTransactionBroadcast;
 
         let want_action = BobAction::RedeemAlpha;
         let got_action = exp.next_action_for_bob(bob_state).await;
