@@ -4,11 +4,10 @@
 use std::fmt;
 use time::Duration;
 
-// TODO: From somewhere within the system we need to return to the
-// user a transaction fee to use for each of the transactions (deploy,
-// fund, refund, redeem). In this module we assume the fee is set to
-// the suggested amount. We rely on this assumption for the
-// confirmation time calculations in this module to be correct.
+// TODO: From somewhere within the system we need to return to the user a
+// transaction fee to use for each of the transactions (deploy, fund, refund,
+// redeem). In this module we assume the fee is set to the suggested amount. We
+// rely on this assumption for the confirmation time calculations to be correct.
 //
 // For Ethereum:
 //
@@ -36,7 +35,7 @@ use time::Duration;
 const BITCOIN_BLOCK_TIME_SECS: u16 = 600; // 10 minutes, average Bitcoin block time.
 const ETHEREUM_BLOCK_TIME_SECS: u16 = 20; // Conservative Ethereum block time.
 
-// TODO: Fee recommendation must use this value.
+// TODO: Fee recommendation must use this value of N.
 const BITCOIN_MINE_WITHIN_N_BLOCKS: u8 = 3; // Value arbitrarily chosen.
 const ETHEREUM_MINE_WITHIN_N_BLOCKS: u8 = 3; // Value arbitrarily chosen.
 
@@ -262,8 +261,9 @@ const fn time_to_mine_n_blocks(n: u8, average_block_time_secs: u16) -> Duration 
     // average block time an actor waits longer than time T, this will cause the
     // swap to abort. Therefore we double the time T.
     //
-    // TODO: Define an acceptable probability threshold and actually do the math to
-    // calculate this time window.
+    // In the future we could define an acceptable probability threshold and
+    // actually do the math to calculate this time window. This adds however a lot
+    // of complexity for minimal benefit.
 
     let acceptable = t as i64 * 2;
 
