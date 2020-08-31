@@ -28,7 +28,7 @@
         "@types/rimraf": "^3.0.0",
         "@types/tail": "^2.0.0",
         "@types/tmp": "^0.2.0",
-        "ajv": "^6.12.3",
+        "ajv": "^6.12.4",
         "bignumber.js": "^9.0.0",
         "bitcoin-core": "^3.0.0",
         "bitcoinjs-lib": "^5.1.10",
