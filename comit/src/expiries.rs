@@ -13,12 +13,6 @@ use num::integer;
 use std::{cmp, fmt};
 use time::Duration;
 
-#[cfg(not(test))]
-use tracing::debug;
-
-#[cfg(test)]
-use std::println as debug;
-
 // TODO: Research how times are calculated on each chain and if we can compare
 // time across chains? This knowledge is needed because we calculate the alpha
 // expiry offset based on the beta expiry offset, if one cannot compare times on
@@ -157,11 +151,6 @@ where
         };
         let bob_can_complete = self.bob_can_complete(current_state.into()).await;
 
-        debug!(
-            "{:?}: {} {}",
-            current_state, alice_can_complete, bob_can_complete
-        );
-
         if !(alice_can_complete && bob_can_complete) {
             if funded {
                 return AliceAction::WaitToRefund;
@@ -253,10 +242,6 @@ where
 
         // Alice redeems on beta ledger so is concerned about the beta expiry.
         let end_time = now.add_duration(period);
-        // debug!(
-        //     "alice_can_complete {:?} \n end_time: {:?} beta_expiry: {:?}",
-        //     current_state, end_time, self.beta_expiry.0
-        // );
         end_time < self.beta_expiry.0
     }
 
@@ -266,14 +251,8 @@ where
         let period = period_for_bob_to_complete(&self.config, current_state);
         let now = self.alpha_connector.current_time().await;
 
-        debug!("Bob now: {:?} period: {:?}", now, period.whole_seconds());
-
         // Bob redeems on alpha ledger so is concerned about the alpha expiry.
         let end_time = now.add_duration(period);
-        debug!(
-            "bob_can_complete {:?} \n end_time: {:?} alpha_expiry: {:?}",
-            current_state, end_time, self.alpha_expiry.0
-        );
         end_time < self.alpha_expiry.0
     }
 
