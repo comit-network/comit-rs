@@ -77,3 +77,12 @@ CREATE TABLE order_herc20_params
     expiry_offset     NOT NULL,
     FOREIGN KEY (order_id) REFERENCES orders (id)
 );
+
+CREATE TABLE order_swaps
+(
+    id INTEGER     NOT NULL PRIMARY KEY,
+    order_id       NOT NULL,
+    swap_id UNIQUE NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders (id),
+    FOREIGN KEY (swap_id) REFERENCES swaps (id)
+)

@@ -3,8 +3,8 @@ use crate::{
     network::peer_tracker::PeerTracker,
     spawn,
     storage::{
-        ForSwap, InsertableSecretHash, Load, Order, OrderHbitParams, RootSeed, Save, Storage,
-        SwapContext,
+        ForSwap, InsertableOrderSwap, InsertableSecretHash, Load, Order, OrderHbitParams, RootSeed,
+        Save, Storage, SwapContext,
     },
     ProtocolSpawner,
 };
@@ -314,16 +314,17 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<setup_swap::BehaviourOutEvent<S
                         storage
                             .db
                             .do_in_transaction(|conn| {
-                                let swap_fk = insertable_swap.insert(conn)?;
+                                let swap_pk = insertable_swap.insert(conn)?;
 
-                                insertable_secret_hash(swap_fk).insert(conn)?;
-                                insertable_herc20(swap_fk).insert(conn)?;
+                                insertable_secret_hash(swap_pk).insert(conn)?;
+                                insertable_herc20(swap_pk).insert(conn)?;
 
                                 let order = Order::by_order_id(conn, order_id)?;
                                 Order::mark_as_settling(conn, &order)?;
+                                InsertableOrderSwap::new(swap_pk, order.id).insert(conn)?;
                                 let order_hbit_params = OrderHbitParams::by_order(conn, &order)?;
                                 insertable_hbit(
-                                    swap_fk,
+                                    swap_pk,
                                     order_hbit_params.our_final_address.0.into(),
                                 )
                                 .insert(conn)?;
@@ -352,6 +353,16 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<setup_swap::BehaviourOutEvent<S
                     .spawn(save_data_and_start_swap.map_err(|e: anyhow::Error| {
                         tracing::error!("{}", e);
                     }));
+                if let Err(e) = self
+                    .orderbook
+                    .orderpool_mut()
+                    .notify_swap_setup_successful(order_id, hbit_params.asset)
+                {
+                    tracing::error!(
+                        "failed to notify orderpool about successful swap setup: {:#}",
+                        e
+                    );
+                }
             }
             setup_swap::BehaviourOutEvent::AlreadyHaveRoleParams { peer, .. } => tracing::error!(
                 "Already have role dependent parameters from this peer: {}",
