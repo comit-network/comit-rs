@@ -4,11 +4,10 @@
 use std::fmt;
 use time::Duration;
 
-// TODO: From somewhere within the system we need to return to the
-// user a transaction fee to use for each of the transactions (deploy,
-// fund, refund, redeem). In this module we assume the fee is set to
-// the suggested amount. We rely on this assumption for the
-// confirmation time calculations in this module to be correct.
+// TODO: From somewhere within the system we need to return to the user a
+// transaction fee to use for each of the transactions (deploy, fund, refund,
+// redeem). In this module we assume the fee is set to the suggested amount. We
+// rely on this assumption for the confirmation time calculations to be correct.
 //
 // For Ethereum:
 //
@@ -36,7 +35,7 @@ use time::Duration;
 const BITCOIN_BLOCK_TIME_SECS: u16 = 600; // 10 minutes, average Bitcoin block time.
 const ETHEREUM_BLOCK_TIME_SECS: u16 = 20; // Conservative Ethereum block time.
 
-// TODO: Fee recommendation must use this value.
+// TODO: Fee recommendation must use this value of N.
 const BITCOIN_MINE_WITHIN_N_BLOCKS: u8 = 3; // Value arbitrarily chosen.
 const ETHEREUM_MINE_WITHIN_N_BLOCKS: u8 = 3; // Value arbitrarily chosen.
 
@@ -49,10 +48,13 @@ const ACT_WITH_USER_INTERACTION_MINS: u32 = 60; // Value arbitrarily chosen.
 /// Configuration values used during transition period calculations.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Config {
+    protocol: Protocol,
     alpha_required_confirmations: u8,
     beta_required_confirmations: u8,
     alpha_average_block_time: u16,
     beta_average_block_time: u16,
+    alpha_mine_deploy_within_n_blocks: u8,
+    beta_mine_deploy_within_n_blocks: u8,
     alpha_mine_fund_within_n_blocks: u8,
     beta_mine_fund_within_n_blocks: u8,
     alpha_mine_redeem_within_n_blocks: u8,
@@ -65,10 +67,13 @@ impl Config {
     /// Construct a config object suitable for a herc20-hbit swap.
     pub const fn herc20_hbit() -> Self {
         Config {
+            protocol: Protocol::Herc20Hbit,
             alpha_required_confirmations: ETHEREUM_CONFIRMATIONS,
             beta_required_confirmations: BITCOIN_CONFIRMATIONS,
             alpha_average_block_time: ETHEREUM_BLOCK_TIME_SECS,
             beta_average_block_time: BITCOIN_BLOCK_TIME_SECS,
+            alpha_mine_deploy_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
+            beta_mine_deploy_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
             alpha_mine_fund_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
             beta_mine_fund_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
             alpha_mine_redeem_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
@@ -81,10 +86,13 @@ impl Config {
     /// Construct a config object suitable for a hbit-herc20 swap.
     pub const fn hbit_herc20() -> Self {
         Config {
+            protocol: Protocol::HbitHerc20,
             alpha_required_confirmations: BITCOIN_CONFIRMATIONS,
             beta_required_confirmations: ETHEREUM_CONFIRMATIONS,
             alpha_average_block_time: BITCOIN_BLOCK_TIME_SECS,
             beta_average_block_time: ETHEREUM_BLOCK_TIME_SECS,
+            alpha_mine_deploy_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
+            beta_mine_deploy_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
             alpha_mine_fund_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
             beta_mine_fund_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
             alpha_mine_redeem_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
@@ -109,6 +117,16 @@ impl Config {
         self.period_to_act_with_user_interaction()
     }
 
+    /// The duration of time it takes to broadcast the alpha deploy transaction.
+    pub const fn broadcast_alpha_deploy_transaction(&self) -> Duration {
+        self.period_to_act_with_user_interaction()
+    }
+
+    /// The duration of time it takes to broadcast the beta deploy transaction.
+    pub const fn broadcast_beta_deploy_transaction(&self) -> Duration {
+        self.period_to_act_in_software()
+    }
+
     /// The duration of time it takes to broadcast the alpha fund transaction.
     pub const fn broadcast_alpha_fund_transaction(&self) -> Duration {
         self.period_to_act_with_user_interaction()
@@ -127,6 +145,24 @@ impl Config {
     /// The duration of time it takes to broadcast the beta redeem transaction.
     pub const fn broadcast_beta_redeem_transaction(&self) -> Duration {
         self.period_to_act_with_user_interaction()
+    }
+
+    /// The duration of time we should wait to ensure that the alpha deploy
+    /// transaction has been mined into the blockchain.
+    pub const fn mine_alpha_deploy_transaction(&self) -> Duration {
+        let n = self.alpha_mine_deploy_within_n_blocks;
+        let block_time = self.alpha_average_block_time;
+
+        time_to_mine_n_blocks(n, block_time)
+    }
+
+    /// The duration of time we should wait to ensure that the beta deploy
+    /// transaction has been mined into the blockchain.
+    pub const fn mine_beta_deploy_transaction(&self) -> Duration {
+        let n = self.beta_mine_deploy_within_n_blocks;
+        let block_time = self.beta_average_block_time;
+
+        time_to_mine_n_blocks(n, block_time)
     }
 
     /// The duration of time we should wait to ensure that the alpha fund
@@ -194,6 +230,11 @@ impl Config {
     pub const fn period_to_act_with_user_interaction(&self) -> Duration {
         Duration::minutes(self.act_with_user_interaction as i64)
     }
+
+    /// Gets the protocol for this config object.
+    pub const fn protocol(&self) -> Protocol {
+        self.protocol
+    }
 }
 
 // Time to mine N blocks is governed by a Poisson distribution. We do not,
@@ -220,8 +261,9 @@ const fn time_to_mine_n_blocks(n: u8, average_block_time_secs: u16) -> Duration 
     // average block time an actor waits longer than time T, this will cause the
     // swap to abort. Therefore we double the time T.
     //
-    // TODO: Define an acceptable probability threshold and actually do the math to
-    // calculate this time window.
+    // In the future we could define an acceptable probability threshold and
+    // actually do the math to calculate this time window. This adds however a lot
+    // of complexity for minimal benefit.
 
     let acceptable = t as i64 * 2;
 
@@ -257,4 +299,10 @@ impl fmt::Display for Config {
 
         write!(f, "{}", pretty)
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Protocol {
+    Herc20Hbit,
+    HbitHerc20,
 }
