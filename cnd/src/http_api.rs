@@ -19,6 +19,7 @@ mod peers;
 mod problem;
 mod protocol;
 mod swaps;
+mod tokens;
 
 pub use self::{
     halbit::Halbit,
