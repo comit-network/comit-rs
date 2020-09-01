@@ -2,7 +2,7 @@
 //!
 //! The COMIT protocols rely on two expiry times in order for the swap to be
 //! atomic. One expiry for the alpha ledger and one for the beta ledger. The
-//! beta ledger expiry time must not elapse the alpha ledger expiry time.
+//! beta ledger expiry time must not elapse before the alpha ledger expiry time.
 
 mod config;
 
