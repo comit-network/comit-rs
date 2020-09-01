@@ -369,7 +369,8 @@ pub struct AlphaExpiry(Timestamp);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BetaExpiry(Timestamp);
 
-macro_rules! impl_from {
+// Implement From<Foo> for the wrapped types to the inner type.
+macro_rules! impl_from_wrapped {
     ($from:tt, $target:tt) => {
         impl From<$from> for $target {
             fn from(f: $from) -> Self {
@@ -378,12 +379,13 @@ macro_rules! impl_from {
         }
     };
 }
-impl_from!(AlphaOffset, Duration);
-impl_from!(BetaOffset, Duration);
-impl_from!(AlphaExpiry, Timestamp);
-impl_from!(BetaExpiry, Timestamp);
+impl_from_wrapped!(AlphaOffset, Duration);
+impl_from_wrapped!(BetaOffset, Duration);
+impl_from_wrapped!(AlphaExpiry, Timestamp);
+impl_from_wrapped!(BetaExpiry, Timestamp);
 
-macro_rules! impl_from_nested {
+// Implement From<Foo> for the inner types to the wrapped type.
+macro_rules! impl_from_inner {
     ($from:tt, $target:tt) => {
         impl From<$from> for $target {
             fn from(f: $from) -> Self {
@@ -392,10 +394,10 @@ macro_rules! impl_from_nested {
         }
     };
 }
-impl_from_nested!(Duration, AlphaOffset);
-impl_from_nested!(Duration, BetaOffset);
-impl_from_nested!(Timestamp, AlphaExpiry);
-impl_from_nested!(Timestamp, BetaExpiry);
+impl_from_inner!(Duration, AlphaOffset);
+impl_from_inner!(Duration, BetaOffset);
+impl_from_inner!(Timestamp, AlphaExpiry);
+impl_from_inner!(Timestamp, BetaExpiry);
 
 impl fmt::Display for AlphaOffset {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
