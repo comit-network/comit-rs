@@ -67,6 +67,10 @@ impl Orderbook {
         &self.orderpool
     }
 
+    pub fn clear_own_orders(&mut self) {
+        self.orderpool.clear_own_orders();
+    }
+
     fn my_poll<BIE>(
         &mut self,
         _: &mut Context<'_>,
