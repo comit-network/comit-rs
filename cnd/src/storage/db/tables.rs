@@ -427,7 +427,7 @@ impl Order {
 pub fn all_open_btc_dai_orders(conn: &SqliteConnection) -> Result<Vec<(Order, BtcDaiOrder)>> {
     let orders = orders::table
         .inner_join(btc_dai_orders::table)
-        .filter(orders::open.add(orders::settling).ge(0))
+        .filter(orders::open.add(orders::settling).gt(0))
         .load::<(Order, BtcDaiOrder)>(conn)?;
 
     Ok(orders)
