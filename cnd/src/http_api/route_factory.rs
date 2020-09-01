@@ -3,7 +3,7 @@ use crate::{
     http_api,
     http_api::{
         dial_addr, halbit_herc20, hbit_herc20, herc20_halbit, herc20_hbit, info, markets, orders,
-        peers, swaps,
+        peers, swaps, tokens,
     },
     Facade, LocalSwapId,
 };
@@ -157,6 +157,7 @@ pub fn create(facade: Facade, settings: &Settings) -> BoxedFilter<(impl Reply,)>
         .or(orders::get_single(facade.clone()))
         .or(orders::list_open(facade.clone()))
         .or(orders::cancel(facade.clone()))
+        .or(tokens::list(settings.clone()))
         .or(markets::get_btc_dai(facade))
         .or(post_dial_addr)
         .recover(http_api::unpack_problem)
