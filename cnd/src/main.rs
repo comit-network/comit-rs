@@ -135,7 +135,6 @@ fn main() -> anyhow::Result<()> {
     let mut runtime = runtime::Builder::new()
         .enable_all()
         .threaded_scheduler()
-        .thread_stack_size(1024 * 1024 * 8) // the default is 2MB but that causes a segfault for some reason
         .build()?;
 
     let bitcoin_connector = {
