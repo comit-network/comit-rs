@@ -51,22 +51,8 @@ export type HbitPayload = {
  * The payload returned when fetching one swap on the `/swaps/:id` endpoint
  */
 
-export interface SwapResponse extends Entity {
-    properties: Properties;
-    entities: (LedgerState | LedgerParameters)[];
-    actions: SwapAction[];
-    /**
-     * links for this swap, contains a self reference
-     */
-    links: Link[];
-}
-
-/**
- * Element of the array in the payload returned when fetching all swaps on the `/swaps/` endpoint
- */
-export interface SwapElementResponse extends EmbeddedRepresentationSubEntity {
-    properties: Properties;
-    entities: (LedgerState | LedgerParameters)[];
+export interface SwapEntity extends Entity {
+    properties: SwapProperties;
     actions: SwapAction[];
     /**
      * links for this swap, contains a self reference
@@ -77,136 +63,95 @@ export interface SwapElementResponse extends EmbeddedRepresentationSubEntity {
 /**
  * The properties of a swap
  */
-export interface Properties {
-    /**
-     * The status this swap is currently in.
-     */
-    status: SwapStatus;
+export interface SwapProperties {
     /**
      * The role in which you are participating in this swap.
      */
     role: "Alice" | "Bob";
+    /**
+     * The linear sequence of events related to this swap as observed by cnd.
+     */
+    events: SwapEvent[];
+    alpha: LockProtocol;
+    beta: LockProtocol;
 }
 
-/**
- * The overall status of a swap
- */
-export enum SwapStatus {
-    Created = "CREATED",
-    InProgress = "IN_PROGRESS",
-    Swapped = "SWAPPED",
-    NotSwapped = "NOT_SWAPPED",
-}
+export type LockProtocol = HbitProtocol | Herc20Protocol | HalbitProtocol;
 
-/**
- * The parameters of a given ledger
- */
-export interface LedgerParameters extends EmbeddedRepresentationSubEntity {
-    /**
-     * The relation of these ledger parameters to the parent object (*SwapProperties).
-     */
-    rel: ["alpha" | "beta"];
-    /**
-     * Human readable title.
-     */
-    title: "Parameters of the Alpha Ledger" | "Parameters of the Beta Ledger";
-    /**
-     * Class of this sub-entity to facilitate parsing.
-     */
-    class: ["parameters"];
-    properties: Hbit | Herc20 | Halbit;
-}
-
-export interface Hbit {
+export interface HbitProtocol {
     protocol: "hbit";
-    quantity: string; // In Satoshi.
+    asset: Amount;
 }
 
-export interface Herc20 {
+export interface Herc20Protocol {
     protocol: "herc20";
-    quantity: string; // In Wei.
-    contract_address: string;
+    asset: Amount;
 }
 
-export interface Halbit {
+export interface HalbitProtocol {
     protocol: "halbit";
-    quantity: string; // In Satoshi.
-}
-//
-/**
- * The detailed description of the ledger state.
- */
-export interface LedgerState extends EmbeddedRepresentationSubEntity {
-    /**
-     * The relation of this ledger state to the parent object (*SwapProperties).
-     */
-    rel: ["alpha" | "beta"];
-    /**
-     * Human readable title.
-     */
-    title: "State of the Alpha Ledger" | "State of the Beta Ledger";
-    /**
-     * Class of this sub-entity to facilitate parsing.
-     */
-    class: ["state"];
-    properties: {
-        events: LedgerEvent;
-        status: EscrowStatus;
-    };
+    asset: Amount;
 }
 
-/**
- * The ledger events related to a given step.
- */
-export type LedgerEvent = {
-    [k in Step]: string;
-};
+export type SwapEvent =
+    | HbitFundedEvent
+    | HbitRedeemedEvent
+    | HbitRefundedEvent
+    | Herc20DeployedEvent
+    | Herc20FundedEvent
+    | Herc20RedeemedEvent
+    | Herc20RefundedEvent
+    | HalbitFundedEvent
+    | HalbitRedeemedEvent
+    | HalbitRefundedEvent;
 
-/**
- * The status of the escrow (htlc, lightning invoice, etc) on the ledger.
- */
-export enum EscrowStatus {
-    /**
-     * The escrow does not exist yet.
-     */
-    None = "NONE",
-    /**
-     * The escrow has been initialized.
-     *
-     * Initialization is a step that does not endure any cost to the user.
-     */
-    Initialized = "INITIALIZED",
-    /**
-     * The escrow has been deployed.
-     *
-     * Deployment is a step that endures some, relatively small, cost to the user due to computation needed on the blockchain.
-     */
-    Deployed = "DEPLOYED",
-    /**
-     * The escrow has been funded.
-     *
-     * Funding is a step where all the assets to be sold are sent and locked in the escrow.
-     */
-    Funded = "FUNDED",
-    /**
-     * The assets have been redeemed from the escrow.
-     *
-     * Redemption is a step where all the assets to be acquired are received from the escrow.
-     */
-    Redeemed = "REDEEMED",
-    /**
-     * The assets have been refunded from the escrow.
-     *
-     * Refunding is a step where all the assets to be sold are received back from the escrow, meaning the swap has been aborted.
-     */
-    Refunded = "REFUNDED",
-    /**
-     * An incorrect amount of assets have been sent to the escrow.
-     *
-     * To protect the user, if an incorrect amount of asset have been sent to the escrow, cnd will not propose redemption
-     * as an option and only the refund actions will be available down the line.
-     */
-    IncorrectlyFunded = "INCORRECTLY_FUNDED",
+export type SwapEventKind = SwapEvent["name"]; // Oh yeah, type system magic baby!
+
+export interface HbitFundedEvent {
+    name: "hbit_funded";
+    tx: string;
+}
+
+export interface HbitRedeemedEvent {
+    name: "hbit_redeemed";
+    tx: string;
+}
+
+export interface HbitRefundedEvent {
+    name: "hbit_refunded";
+    tx: string;
+}
+
+export interface Herc20DeployedEvent {
+    name: "herc20_deployed";
+    tx: string;
+}
+
+export interface Herc20FundedEvent {
+    name: "herc20_funded";
+    tx: string;
+}
+
+export interface Herc20RedeemedEvent {
+    name: "herc20_redeemed";
+    tx: string;
+}
+
+export interface Herc20RefundedEvent {
+    name: "herc20_refunded";
+    tx: string;
+}
+
+export interface HalbitFundedEvent {
+    name: "halbit_funded";
+}
+
+export interface HalbitRedeemedEvent {
+    name: "halbit_redeemed";
+}
+
+export interface HalbitRefundedEvent {
+    name: "halbit_refunded";
 }
 
 /**
@@ -215,19 +160,13 @@ export enum EscrowStatus {
  * Not all steps are needed for all protocols and ledgers.
  * E.g. for Han Bitcoin the steps are: fund, redeem (or refund)
  */
-export enum Step {
-    Init = "init",
-    Deploy = "deploy",
-    Fund = "fund",
-    Redeem = "redeem",
-    Refund = "refund",
-}
+export type ActionKind = "init" | "fund" | "deploy" | "redeem" | "refund";
 
 /**
  * An action that is available for the given swap.
  */
 export interface SwapAction extends Action {
-    name: Step;
+    name: ActionKind;
 }
 
 export enum Position {

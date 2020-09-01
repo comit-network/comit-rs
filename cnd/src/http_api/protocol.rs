@@ -1,36 +1,36 @@
-use crate::{halbit, hbit, herc20, Role, Secret, SecretHash, Timestamp};
+use crate::{
+    asset, ethereum, halbit, hbit, herc20, http_api::amount::Amount, Role, Secret, SecretHash,
+    Timestamp,
+};
+use comit::asset::Erc20Quantity;
 use serde::Serialize;
-use std::collections::HashMap;
 
 #[derive(Debug, Serialize)]
-pub struct Herc20 {
-    pub protocol: String,
-    pub quantity: String, // In Wei.
-    pub token_contract: String,
+#[serde(rename_all = "lowercase", tag = "protocol")]
+pub enum Protocol {
+    Hbit { asset: Amount },
+    Herc20 { asset: Amount },
+    Halbit { asset: Amount },
 }
 
-#[derive(Debug, Serialize)]
-pub struct Halbit {
-    pub protocol: String,
-    pub quantity: String, // In Satoshi.
-}
+impl Protocol {
+    pub fn hbit(btc: asset::Bitcoin) -> Self {
+        Protocol::Hbit {
+            asset: Amount::btc(btc),
+        }
+    }
 
-#[derive(Debug, Serialize)]
-pub struct Hbit {
-    pub protocol: String,
-    pub quantity: String, // In Satoshi.
-}
+    pub fn halbit(btc: asset::Bitcoin) -> Self {
+        Protocol::Halbit {
+            asset: Amount::btc(btc),
+        }
+    }
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-enum EscrowStatus {
-    None,
-    Initialized,
-    Deployed,
-    Funded,
-    Redeemed,
-    Refunded,
-    IncorrectlyFunded,
+    pub fn herc20_dai(dai: Erc20Quantity) -> Self {
+        Protocol::Herc20 {
+            asset: Amount::dai(dai),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Hash)]
@@ -43,12 +43,8 @@ pub enum ActionName {
     Refund,
 }
 
-pub trait AlphaEvents {
-    fn alpha_events(&self) -> Option<LedgerEvents>;
-}
-
-pub trait BetaEvents {
-    fn beta_events(&self) -> Option<LedgerEvents>;
+pub trait Events {
+    fn events(&self) -> Vec<SwapEvent>;
 }
 
 /// Get the underlying ledger used by the alpha protocol.
@@ -82,141 +78,160 @@ pub trait GetRole {
     fn get_role(&self) -> Role;
 }
 
-pub trait AlphaParams {
-    type Output: Serialize;
-    fn alpha_params(&self) -> Self::Output;
+pub trait AlphaProtocol {
+    fn alpha_protocol(&self) -> Protocol;
 }
 
-pub trait BetaParams {
-    type Output: Serialize;
-    fn beta_params(&self) -> Self::Output;
+pub trait BetaProtocol {
+    fn beta_protocol(&self) -> Protocol;
 }
 
-#[derive(Debug, Serialize)]
-pub struct LedgerEvents {
-    events: HashMap<ActionName, String>,
-    status: EscrowStatus,
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(tag = "name", rename_all = "snake_case")]
+pub enum SwapEvent {
+    HbitFunded { tx: bitcoin::Txid },
+    HbitIncorrectlyFunded { tx: bitcoin::Txid },
+    HbitRedeemed { tx: bitcoin::Txid },
+    HbitRefunded { tx: bitcoin::Txid },
+    Herc20Deployed { tx: ethereum::Hash },
+    Herc20Funded { tx: ethereum::Hash },
+    Herc20IncorrectlyFunded { tx: ethereum::Hash },
+    Herc20Redeemed { tx: ethereum::Hash },
+    Herc20Refunded { tx: ethereum::Hash },
+
+    // TODO: Seriously reconsider this naming + the whole halbit protocol design in general. The
+    // event-based design here should allow us to name this whatever and hence make it more
+    // descriptive.
+    HalbitFunded,
+    HalbitIncorrectlyFunded,
+    HalbitRedeemed,
+    HalbitRefunded,
 }
 
-impl LedgerEvents {
-    fn new(status: EscrowStatus, events: HashMap<ActionName, String>) -> Self {
-        Self { events, status }
-    }
-}
-
-impl From<herc20::State> for LedgerEvents {
-    fn from(state: herc20::State) -> Self {
+impl From<&herc20::State> for Vec<SwapEvent> {
+    fn from(state: &herc20::State) -> Self {
         match state {
-            herc20::State::None => LedgerEvents::new(EscrowStatus::None, HashMap::new()),
+            herc20::State::None => vec![],
             herc20::State::Deployed {
                 deploy_transaction, ..
-            } => {
-                let mut transactions = HashMap::new();
-                transactions.insert(ActionName::Deploy, format!("{}", deploy_transaction.hash));
-                LedgerEvents::new(EscrowStatus::Deployed, transactions)
-            }
+            } => vec![SwapEvent::Herc20Deployed {
+                tx: deploy_transaction.hash,
+            }],
             herc20::State::Funded {
                 deploy_transaction,
                 fund_transaction,
                 ..
-            } => {
-                let mut transactions = HashMap::new();
-                transactions.insert(ActionName::Deploy, format!("{}", deploy_transaction.hash));
-                transactions.insert(ActionName::Fund, format!("{}", fund_transaction.hash));
-                LedgerEvents::new(EscrowStatus::Funded, transactions)
-            }
+            } => vec![
+                SwapEvent::Herc20Deployed {
+                    tx: deploy_transaction.hash,
+                },
+                SwapEvent::Herc20Funded {
+                    tx: fund_transaction.hash,
+                },
+            ],
             herc20::State::IncorrectlyFunded {
                 deploy_transaction,
                 fund_transaction,
                 ..
-            } => {
-                let mut transactions = HashMap::new();
-                transactions.insert(ActionName::Deploy, format!("{}", deploy_transaction.hash));
-                transactions.insert(ActionName::Fund, format!("{}", fund_transaction.hash));
-                LedgerEvents::new(EscrowStatus::IncorrectlyFunded, transactions)
-            }
+            } => vec![
+                SwapEvent::Herc20Deployed {
+                    tx: deploy_transaction.hash,
+                },
+                SwapEvent::Herc20IncorrectlyFunded {
+                    tx: fund_transaction.hash,
+                },
+            ],
             herc20::State::Redeemed {
                 deploy_transaction,
                 fund_transaction,
                 redeem_transaction,
                 ..
-            } => {
-                let mut transactions = HashMap::new();
-                transactions.insert(ActionName::Deploy, format!("{}", deploy_transaction.hash));
-                transactions.insert(ActionName::Fund, format!("{}", fund_transaction.hash));
-                transactions.insert(ActionName::Redeem, format!("{}", redeem_transaction.hash));
-                LedgerEvents::new(EscrowStatus::Redeemed, transactions)
-            }
+            } => vec![
+                SwapEvent::Herc20Deployed {
+                    tx: deploy_transaction.hash,
+                },
+                SwapEvent::Herc20Funded {
+                    tx: fund_transaction.hash,
+                },
+                SwapEvent::Herc20Redeemed {
+                    tx: redeem_transaction.hash,
+                },
+            ],
             herc20::State::Refunded {
                 deploy_transaction,
                 fund_transaction,
                 refund_transaction,
                 ..
-            } => {
-                let mut transactions = HashMap::new();
-                transactions.insert(ActionName::Deploy, format!("{}", deploy_transaction.hash));
-                transactions.insert(ActionName::Fund, format!("{}", fund_transaction.hash));
-                transactions.insert(ActionName::Refund, format!("{}", refund_transaction.hash));
-                LedgerEvents::new(EscrowStatus::Refunded, transactions)
-            }
+            } => vec![
+                SwapEvent::Herc20Deployed {
+                    tx: deploy_transaction.hash,
+                },
+                SwapEvent::Herc20Funded {
+                    tx: fund_transaction.hash,
+                },
+                SwapEvent::Herc20Refunded {
+                    tx: refund_transaction.hash,
+                },
+            ],
         }
     }
 }
 
-impl From<hbit::State> for LedgerEvents {
-    fn from(state: hbit::State) -> Self {
+impl From<&hbit::State> for Vec<SwapEvent> {
+    fn from(state: &hbit::State) -> Self {
         match state {
-            hbit::State::None => LedgerEvents::new(EscrowStatus::None, HashMap::new()),
+            hbit::State::None => vec![],
             hbit::State::Funded {
                 fund_transaction, ..
-            } => {
-                let mut transactions = HashMap::new();
-                transactions.insert(ActionName::Fund, fund_transaction.txid().to_string());
-                LedgerEvents::new(EscrowStatus::Funded, transactions)
-            }
+            } => vec![SwapEvent::HbitFunded {
+                tx: fund_transaction.txid(),
+            }],
             hbit::State::IncorrectlyFunded {
                 fund_transaction, ..
-            } => {
-                let mut transactions = HashMap::new();
-                transactions.insert(ActionName::Fund, fund_transaction.txid().to_string());
-                LedgerEvents::new(EscrowStatus::IncorrectlyFunded, transactions)
-            }
+            } => vec![
+                SwapEvent::HbitFunded {
+                    tx: fund_transaction.txid(),
+                },
+                SwapEvent::HbitIncorrectlyFunded {
+                    tx: fund_transaction.txid(),
+                },
+            ],
             hbit::State::Redeemed {
                 fund_transaction,
                 redeem_transaction,
                 ..
-            } => {
-                let mut transactions = HashMap::new();
-                transactions.insert(ActionName::Fund, fund_transaction.txid().to_string());
-                transactions.insert(ActionName::Redeem, redeem_transaction.txid().to_string());
-                LedgerEvents::new(EscrowStatus::Redeemed, transactions)
-            }
+            } => vec![
+                SwapEvent::HbitFunded {
+                    tx: fund_transaction.txid(),
+                },
+                SwapEvent::HbitRedeemed {
+                    tx: redeem_transaction.txid(),
+                },
+            ],
             hbit::State::Refunded {
                 fund_transaction,
                 refund_transaction,
                 ..
-            } => {
-                let mut transactions = HashMap::new();
-                transactions.insert(ActionName::Fund, fund_transaction.txid().to_string());
-                transactions.insert(ActionName::Refund, refund_transaction.txid().to_string());
-                LedgerEvents::new(EscrowStatus::Refunded, transactions)
-            }
+            } => vec![
+                SwapEvent::HbitFunded {
+                    tx: fund_transaction.txid(),
+                },
+                SwapEvent::HbitRefunded {
+                    tx: refund_transaction.txid(),
+                },
+            ],
         }
     }
 }
 
-impl From<halbit::State> for LedgerEvents {
-    fn from(state: halbit::State) -> Self {
+impl From<&halbit::State> for Vec<SwapEvent> {
+    fn from(state: &halbit::State) -> Self {
         match state {
-            halbit::State::None => LedgerEvents::new(EscrowStatus::None, HashMap::new()),
-            halbit::State::Opened(_) => {
-                LedgerEvents::new(EscrowStatus::Initialized, HashMap::new())
-            }
-            halbit::State::Accepted(_) => LedgerEvents::new(EscrowStatus::Funded, HashMap::new()),
-            halbit::State::Settled(_) => LedgerEvents::new(EscrowStatus::Redeemed, HashMap::new()),
-            halbit::State::Cancelled(_) => {
-                LedgerEvents::new(EscrowStatus::Refunded, HashMap::new())
-            }
+            halbit::State::None => vec![],
+            halbit::State::Opened(_) => vec![],
+            halbit::State::Accepted(_) => vec![SwapEvent::HalbitFunded],
+            halbit::State::Settled(_) => vec![SwapEvent::HalbitFunded, SwapEvent::HalbitRedeemed],
+            halbit::State::Cancelled(_) => vec![SwapEvent::HalbitFunded, SwapEvent::HalbitRefunded],
         }
     }
 }
@@ -256,5 +271,68 @@ impl<AC, BC, AF, BF> GetRole for AliceSwap<AC, BC, AF, BF> {
 impl<AC, BC, AF, BF> GetRole for BobSwap<AC, BC, AF, BF> {
     fn get_role(&self) -> Role {
         Role::Bob
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::asset::ethereum::FromWei;
+
+    #[test]
+    fn hbit_protocol_serializes_correctly() {
+        let protocol = Protocol::hbit(asset::Bitcoin::from_sat(10_000));
+
+        let result = serde_json::to_string_pretty(&protocol).unwrap();
+
+        assert_eq!(
+            result,
+            r#"{
+  "protocol": "hbit",
+  "asset": {
+    "currency": "BTC",
+    "value": "10000",
+    "decimals": 8
+  }
+}"#
+        )
+    }
+
+    #[test]
+    fn halbit_protocol_serializes_correctly() {
+        let protocol = Protocol::halbit(asset::Bitcoin::from_sat(10_000));
+
+        let result = serde_json::to_string_pretty(&protocol).unwrap();
+
+        assert_eq!(
+            result,
+            r#"{
+  "protocol": "halbit",
+  "asset": {
+    "currency": "BTC",
+    "value": "10000",
+    "decimals": 8
+  }
+}"#
+        )
+    }
+
+    #[test]
+    fn herc20_protocol_serializes_correctly() {
+        let protocol = Protocol::herc20_dai(Erc20Quantity::from_wei(1_000_000_000_000_000u64));
+
+        let result = serde_json::to_string_pretty(&protocol).unwrap();
+
+        assert_eq!(
+            result,
+            r#"{
+  "protocol": "herc20",
+  "asset": {
+    "currency": "DAI",
+    "value": "1000000000000000",
+    "decimals": 18
+  }
+}"#
+        )
     }
 }

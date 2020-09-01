@@ -14,8 +14,8 @@ use crate::{
         action::ActionResponseBody,
         problem,
         protocol::{
-            ActionName, AlphaAbsoluteExpiry, AlphaEvents, AlphaLedger, AlphaParams,
-            BetaAbsoluteExpiry, BetaEvents, BetaLedger, BetaParams, GetRole, Ledger, LedgerEvents,
+            ActionName, AlphaAbsoluteExpiry, AlphaLedger, AlphaProtocol, BetaAbsoluteExpiry,
+            BetaLedger, BetaProtocol, Events, GetRole, Ledger, Protocol, SwapEvent,
         },
         route_factory, Http,
     },
@@ -74,10 +74,9 @@ async fn make_swap_entity<S>(
 ) -> anyhow::Result<siren::Entity>
 where
     S: GetRole
-        + AlphaParams
-        + BetaParams
-        + AlphaEvents
-        + BetaEvents
+        + AlphaProtocol
+        + BetaProtocol
+        + Events
         + DeployAction
         + InitAction
         + FundAction
@@ -89,29 +88,28 @@ where
         + AlphaAbsoluteExpiry
         + BetaAbsoluteExpiry,
 {
-    let role = swap.get_role();
+    let entity = create_swap_entity(id, &swap)?;
 
-    let mut entity = create_swap_entity(id, role)?;
-    add_params(&mut entity, &swap)?;
-
-    match (swap.alpha_events(), swap.beta_events()) {
-        (Some(alpha), Some(beta)) => {
-            add_events(&mut entity, alpha, beta)?;
-
-            match next_available_action(&swap, facade).await? {
-                None => Ok(entity),
-                Some(action) => {
-                    let siren_action = make_siren_action(id, action);
-                    Ok(entity.with_action(siren_action))
-                }
-            }
+    match next_available_action(&swap, facade).await? {
+        None => Ok(entity),
+        Some(action) => {
+            let siren_action = make_siren_action(id, action);
+            Ok(entity.with_action(siren_action))
         }
-        _ => Ok(entity),
     }
 }
 
-fn create_swap_entity(id: LocalSwapId, role: Role) -> anyhow::Result<siren::Entity> {
-    let swap_resource = SwapResource { role: Http(role) };
+fn create_swap_entity<S>(id: LocalSwapId, swap: &S) -> anyhow::Result<siren::Entity>
+where
+    S: GetRole + Events + AlphaProtocol + BetaProtocol,
+{
+    let swap_resource = SwapResource {
+        role: Http(swap.get_role()),
+        events: swap.events(), /* TODO: These events should be sorted by timestamp but we are not
+                                * recording any ... */
+        alpha: swap.alpha_protocol(),
+        beta: swap.beta_protocol(),
+    };
     let entity = siren::Entity::default()
         .with_class_member("swap")
         .with_properties(swap_resource)?
@@ -121,55 +119,6 @@ fn create_swap_entity(id: LocalSwapId, role: Role) -> anyhow::Result<siren::Enti
         ));
 
     Ok(entity)
-}
-
-fn add_params<S>(entity: &mut siren::Entity, swap: &S) -> anyhow::Result<()>
-where
-    S: AlphaParams + BetaParams,
-{
-    let alpha_params = swap.alpha_params();
-    let alpha_params_sub = siren::SubEntity::from_entity(
-        siren::Entity::default()
-            .with_class_member("parameters")
-            .with_properties(alpha_params)?,
-        &["alpha"],
-    );
-    entity.push_sub_entity(alpha_params_sub);
-
-    let beta_params = swap.beta_params();
-    let beta_params_sub = siren::SubEntity::from_entity(
-        siren::Entity::default()
-            .with_class_member("parameters")
-            .with_properties(beta_params)?,
-        &["beta"],
-    );
-    entity.push_sub_entity(beta_params_sub);
-
-    Ok(())
-}
-
-fn add_events(
-    entity: &mut siren::Entity,
-    alpha_events: LedgerEvents,
-    beta_events: LedgerEvents,
-) -> anyhow::Result<()> {
-    let alpha_state_sub = siren::SubEntity::from_entity(
-        siren::Entity::default()
-            .with_class_member("state")
-            .with_properties(alpha_events)?,
-        &["alpha"],
-    );
-    entity.push_sub_entity(alpha_state_sub);
-
-    let beta_state_sub = siren::SubEntity::from_entity(
-        siren::Entity::default()
-            .with_class_member("state")
-            .with_properties(beta_events)?,
-        &["beta"],
-    );
-    entity.push_sub_entity(beta_state_sub);
-
-    Ok(())
 }
 
 async fn next_available_action<S>(swap: &S, facade: Facade) -> anyhow::Result<Option<ActionName>>
@@ -257,19 +206,12 @@ impl std::fmt::Display for ActionName {
     }
 }
 
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-enum SwapStatus {
-    Created,
-    InProgress,
-    Swapped,
-    NotSwapped,
-}
-
 #[derive(Debug, Serialize)]
 struct SwapResource {
     pub role: Http<Role>,
+    pub events: Vec<SwapEvent>,
+    pub alpha: Protocol,
+    pub beta: Protocol,
 }
 
 #[allow(clippy::needless_pass_by_value)]

@@ -1,22 +1,15 @@
+import { Cnd, Swap, Wallets as SdkWallets } from "comit-sdk";
 import {
-    Cnd,
-    LedgerParameters,
-    Step,
-    Swap,
-    Wallets as SdkWallets,
-} from "comit-sdk";
-import {
-    EscrowStatus,
+    ActionKind,
     HalbitHerc20Payload,
     HbitHerc20Payload,
     Herc20HalbitPayload,
     Herc20HbitPayload,
-    LedgerState,
     OpenOrdersEntity,
     OrderEntity,
     Position,
-    SwapResponse,
-    SwapStatus,
+    SwapEntity,
+    SwapEventKind,
 } from "../payload";
 import { Logger } from "log4js";
 import { CndConfigFile, E2ETestActorConfig } from "../config";
@@ -40,7 +33,7 @@ import {
 } from "../wallets";
 import { defaultLedgerDescriptionForLedger } from "./defaults";
 import pTimeout from "p-timeout";
-import { Entity, Link } from "comit-sdk/dist/src/cnd/siren";
+import { Entity } from "comit-sdk/dist/src/cnd/siren";
 import { BitcoindWallet, BitcoinWallet } from "../wallets/bitcoin";
 import { EthereumWallet, Web3EthereumWallet } from "../wallets/ethereum";
 import { LightningWallet } from "../wallets/lightning";
@@ -419,43 +412,6 @@ export class Actor {
         return this.cnd.executeSirenAction(action);
     }
 
-    /**
-     * Wait until a swap is created on bobs end
-     */
-    public async assertSwapCreatedFromOrder(orderUrl: string) {
-        if (this.name === "bob") {
-            // Since Alice has taken the swap, the order created by Bob should have an associated swap in the navigational link
-            const bobGetOrderResponse = await this.cnd.fetch<Entity>(orderUrl);
-
-            expect(bobGetOrderResponse.status).toEqual(200);
-            const linkToBobSwap = bobGetOrderResponse.data.links.find(
-                (link: Link) => link.rel.includes("swap")
-            );
-            expect(linkToBobSwap).toBeDefined();
-
-            // The link the Bobs swap should return 200
-            // "GET /swaps/934dd090-f8eb-4244-9aba-78e23d3f79eb HTTP/1.1"
-            const bobSwapResponse = await this.cnd.fetch<Entity>(
-                linkToBobSwap.href
-            );
-
-            expect(bobSwapResponse.status).toEqual(200);
-
-            this.swap = new Swap(
-                this.cnd,
-                linkToBobSwap.href,
-                new SdkWallets({
-                    ethereum: this.wallets.ethereum.inner,
-                    bitcoin: this.wallets.bitcoin.inner,
-                })
-            );
-        } else {
-            throw new Error(
-                `assertSwapCreated does not support the actor ${this.name} yet`
-            );
-        }
-    }
-
     private async setStartingBalances() {
         switch (this.name) {
             case "alice": {
@@ -501,7 +457,7 @@ export class Actor {
         return `http://${socket}`;
     }
 
-    public async pollCndUntil<T = SwapResponse>(
+    public async pollCndUntil<T>(
         location: string,
         predicate: (body: T) => boolean
     ): Promise<T> {
@@ -518,26 +474,7 @@ export class Actor {
         }
     }
 
-    public async pollSwapResponse(
-        swapUrl: string,
-        iteration: number = 0
-    ): Promise<SwapResponse> {
-        if (iteration > 5) {
-            throw new Error(`Could not retrieve Swap ${swapUrl}`);
-        }
-        iteration++;
-
-        try {
-            return this.cnd
-                .fetch<SwapResponse>(swapUrl)
-                .then((response) => response.data);
-        } catch (error) {
-            await sleep(1000);
-            return this.pollSwapResponse(swapUrl, iteration);
-        }
-    }
-
-    public async assertAndExecuteNextAction(expectedActionName: string) {
+    public async assertAndExecuteNextAction(expectedActionName: ActionKind) {
         if (!this.swap) {
             throw new Error("Cannot do anything on non-existent swap");
         }
@@ -567,216 +504,46 @@ export class Actor {
             this.swap.self,
             transaction
         );
-        switch (action.name) {
-            case "deploy":
-                await this.assertDeployed();
-                break;
-            case "fund":
-                await this.assertFunded();
-                break;
-            case "redeem":
-                await this.assertRedeemed();
-                break;
-            case "refund":
-                await this.assertRefunded();
+
+        const swapProperties = await this.getSwapResponse().then(
+            (e) => e.properties
+        );
+        const event = nextExpectedEvent(
+            swapProperties.role,
+            expectedActionName,
+            swapProperties.alpha.protocol,
+            swapProperties.beta.protocol
+        );
+
+        if (event === null) {
+            return;
         }
-    }
 
-    public async getSwapResponse(): Promise<SwapResponse> {
-        return this.cnd
-            .fetch<SwapResponse>(this.swap.self)
-            .then((response) => response.data);
-    }
+        await pTimeout(
+            (async () => {
+                while (true) {
+                    const swapEntity = await this.getSwapResponse();
 
-    public async cryptoRole(): Promise<"Alice" | "Bob"> {
-        return this.getSwapResponse().then(
-            (swapResponse) => swapResponse.properties.role
+                    if (
+                        swapEntity.properties.events
+                            .map((e) => e.name)
+                            .includes(event)
+                    ) {
+                        return;
+                    }
+
+                    await sleep(500);
+                }
+            })(),
+            30_000,
+            `event '${event}' expected but never found`
         );
     }
 
-    /**
-     * Assertions against cnd API Only
-     */
-
-    public async assertAlphaDeployed() {
-        await this.assertLedgerStatus("alpha", EscrowStatus.Deployed);
-        await this.assertLedgerEventPresence("alpha", Step.Deploy);
-    }
-
-    public async assertBetaDeployed() {
-        await this.assertLedgerStatus("beta", EscrowStatus.Deployed);
-        await this.assertLedgerEventPresence("beta", Step.Deploy);
-    }
-
-    public async assertAlphaFunded(): Promise<void> {
-        await this.assertLedgerStatus("alpha", EscrowStatus.Funded);
-        await this.assertLedgerEventPresence("alpha", Step.Fund);
-    }
-
-    public async assertBetaFunded() {
-        await this.assertLedgerStatus("beta", EscrowStatus.Funded);
-        await this.assertLedgerEventPresence("beta", Step.Fund);
-    }
-
-    public async assertAlphaRedeemed() {
-        await this.assertLedgerStatus("alpha", EscrowStatus.Redeemed);
-        await this.assertLedgerEventPresence("alpha", Step.Redeem);
-    }
-
-    public async assertBetaRedeemed() {
-        await this.assertLedgerStatus("beta", EscrowStatus.Redeemed);
-        await this.assertLedgerEventPresence("beta", Step.Redeem);
-    }
-
-    public async assertAlphaRefunded() {
-        await this.assertLedgerStatus("alpha", EscrowStatus.Refunded);
-        await this.assertLedgerEventPresence("alpha", Step.Refund);
-    }
-
-    public async assertBetaRefunded() {
-        await this.assertLedgerStatus("beta", EscrowStatus.Refunded);
-        await this.assertLedgerEventPresence("beta", Step.Refund);
-    }
-
-    private async assertDeployed() {
-        const role = await this.cryptoRole();
-        switch (role) {
-            case "Alice":
-                await this.actors.alice.assertAlphaDeployed();
-                if (this.actors.bob.cndInstance.isRunning()) {
-                    await this.actors.bob.assertAlphaDeployed();
-                }
-                break;
-            case "Bob":
-                if (this.actors.alice.cndInstance.isRunning()) {
-                    await this.actors.alice.assertBetaDeployed();
-                }
-                await this.actors.bob.assertBetaDeployed();
-                break;
-        }
-    }
-
-    private async assertFunded() {
-        const role = await this.cryptoRole();
-        switch (role) {
-            case "Alice":
-                await this.actors.alice.assertAlphaFunded();
-                if (this.actors.bob.cndInstance.isRunning()) {
-                    await this.actors.bob.assertAlphaFunded();
-                }
-                break;
-            case "Bob":
-                if (this.actors.alice.cndInstance.isRunning()) {
-                    await this.actors.alice.assertBetaFunded();
-                }
-                await this.actors.bob.assertBetaFunded();
-                break;
-        }
-    }
-
-    private async assertRedeemed() {
-        const role = await this.cryptoRole();
-        switch (role) {
-            case "Alice":
-                await this.actors.alice.assertBetaRedeemed();
-                if (this.actors.bob.cndInstance.isRunning()) {
-                    await this.actors.bob.assertBetaRedeemed();
-                }
-                break;
-            case "Bob":
-                if (this.actors.alice.cndInstance.isRunning()) {
-                    await this.actors.alice.assertAlphaRedeemed();
-                }
-                await this.actors.bob.assertAlphaRedeemed();
-                break;
-        }
-    }
-
-    private async assertRefunded() {
-        const role = await this.cryptoRole();
-        switch (role) {
-            case "Alice":
-                await this.actors.alice.assertAlphaRefunded();
-                if (this.actors.bob.cndInstance.isRunning()) {
-                    await this.actors.bob.assertAlphaRefunded();
-                }
-                break;
-            case "Bob":
-                if (this.actors.alice.cndInstance.isRunning()) {
-                    await this.actors.alice.assertBetaRefunded();
-                }
-                await this.actors.bob.assertBetaRefunded();
-                break;
-        }
-    }
-
-    private async assertLedgerStatus(
-        ledgerRel: "alpha" | "beta",
-        status: EscrowStatus
-    ): Promise<void> {
-        await this.pollCndUntil(this.swap.self, (swapResponse) => {
-            for (const entity of swapResponse.entities) {
-                const ledgerState = entity as LedgerState;
-                if (
-                    ledgerState.class.includes("state") &&
-                    ledgerState.rel.includes(ledgerRel)
-                ) {
-                    return ledgerState.properties.status === status;
-                }
-            }
-        });
-    }
-
-    private async assertLedgerEventPresence(
-        ledgerRel: "alpha" | "beta",
-        step: Step
-    ): Promise<void> {
-        await this.pollCndUntil(this.swap.self, (swapResponse) => {
-            let protocol;
-            for (const entity of swapResponse.entities) {
-                const ledgerParameters = entity as LedgerParameters;
-                if (
-                    ledgerParameters.class.includes("parameters") &&
-                    ledgerParameters.rel.includes(ledgerRel)
-                ) {
-                    protocol = ledgerParameters.properties.protocol;
-                    break;
-                }
-            }
-
-            // No events are set for halbit
-            if (protocol === "halbit") {
-                return true;
-            }
-
-            for (const entity of swapResponse.entities) {
-                const ledgerState = entity as LedgerState;
-                if (
-                    ledgerState.class.includes("state") &&
-                    ledgerState.rel.includes(ledgerRel)
-                ) {
-                    return !!ledgerState.properties.events[step];
-                }
-            }
-        });
-    }
-
-    /**
-     * Assertions against Ledgers
-     */
-
-    public async assertSwapped() {
-        this.logger.debug("Checking if cnd reports status 'SWAPPED'");
-
-        while (true) {
-            await sleep(200);
-            const entity = await this.swap.fetchDetails();
-            if (entity.properties.status === SwapStatus.Swapped) {
-                break;
-            }
-        }
-
-        await this.assertBalancesAfterSwap();
+    public async getSwapResponse(): Promise<SwapEntity> {
+        return this.cnd
+            .fetch<SwapEntity>(this.swap.self)
+            .then((response) => response.data);
     }
 
     public async assertBalancesAfterSwap() {
@@ -862,10 +629,6 @@ export class Actor {
         if (this.swap) {
             const swapResponse = await this.getSwapResponse();
 
-            this.logger.debug(
-                "swap status: %s",
-                swapResponse.properties.status
-            );
             this.logger.debug("swap details: ", JSON.stringify(swapResponse));
 
             this.logger.debug(
@@ -1042,6 +805,62 @@ function newLightningWallet(
             throw new Error(
                 `Cannot initialize Lightning wallet for actor: '${actor}'`
             );
+        }
+    }
+}
+
+/**
+ * Computes the event that we are expecting to see.
+ */
+function nextExpectedEvent(
+    role: "Alice" | "Bob",
+    action: ActionKind,
+    alphaProtocol: "hbit" | "halbit" | "herc20",
+    betaProtocol: "hbit" | "halbit" | "herc20"
+): SwapEventKind {
+    switch (action) {
+        case "init": {
+            return null;
+        }
+        // "deploy" can only mean we are waiting for "herc20_deployed"
+        case "deploy": {
+            return "herc20_deployed";
+        }
+
+        // Alice is always funding and refunding on the alpha ledger, likewise Bob on the beta ledger
+        case "fund":
+        case "refund": {
+            switch (role) {
+                case "Alice": {
+                    // @ts-ignore: Sad that TypeScript can't infer that.
+                    return `${alphaProtocol}_${action}ed`;
+                }
+                case "Bob": {
+                    // @ts-ignore: Sad that TypeScript can't infer that.
+                    return `${betaProtocol}_${action}ed`;
+                }
+                default:
+                    throw new Error(
+                        `Who is ${role}? We expected either Alice or Bob!`
+                    );
+            }
+        }
+        // Alice is always redeeming on the beta ledger, likewise Bob on the alpha ledger
+        case "redeem": {
+            switch (role) {
+                case "Alice": {
+                    // @ts-ignore: Sad that TypeScript can't infer that.
+                    return `${betaProtocol}_${action}ed`;
+                }
+                case "Bob": {
+                    // @ts-ignore: Sad that TypeScript can't infer that.
+                    return `${alphaProtocol}_${action}ed`;
+                }
+                default:
+                    throw new Error(
+                        `Who is ${role}? We expected either Alice or Bob!`
+                    );
+            }
         }
     }
 }

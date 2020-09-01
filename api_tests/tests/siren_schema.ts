@@ -11,7 +11,7 @@ import * as sirenJsonSchema from "../siren.schema.json";
 import * as rootJsonSchema from "../root.schema.json";
 import { siren } from "comit-sdk";
 import axios from "axios";
-import { SwapResponse } from "../src/payload";
+import { SwapEntity } from "../src/payload";
 
 describe("Siren Schema", () => {
     it(
@@ -59,15 +59,13 @@ describe("Siren Schema", () => {
 
             // For now we just assert that the document returned by "/swaps/:id" is a valid siren object.
 
-            const responseAlice = await alice.cnd.fetch<SwapResponse>(
+            const responseAlice = await alice.cnd.fetch<SwapEntity>(
                 alice.swap.self
             );
             expect(responseAlice.status).toEqual(200);
             expect(responseAlice.data).toMatchSchema(sirenJsonSchema);
 
-            const responseBob = await bob.cnd.fetch<SwapResponse>(
-                bob.swap.self
-            );
+            const responseBob = await bob.cnd.fetch<SwapEntity>(bob.swap.self);
             expect(responseBob.status).toEqual(200);
             expect(responseBob.data).toMatchSchema(sirenJsonSchema);
         })
