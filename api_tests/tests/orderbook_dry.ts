@@ -227,3 +227,18 @@ test(
         );
     })
 );
+
+test(
+    "given_an_order_when_cancelled_then_it_is_no_longer_returned_in_open_orders",
+    twoActorTest(async ({ alice, bob }) => {
+        await alice.connect(bob);
+        const href = await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
+
+        const order = await alice.fetchOrder(href);
+        await alice.executeSirenAction(order, "cancel");
+
+        await expect(
+            alice.listOpenOrders().then((o) => o.entities)
+        ).resolves.toHaveLength(0);
+    })
+);
