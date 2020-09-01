@@ -4,7 +4,7 @@ use crate::{
         db::{
             schema::{
                 btc_dai_orders, halbits, hbits, herc20s, order_hbit_params, order_herc20_params,
-                orders, secret_hashes, swap_contexts, swaps,
+                order_swaps, orders, secret_hashes, swap_contexts, swaps,
             },
             wrapper_types::{
                 custom_sql_types::{Text, U32},
@@ -364,7 +364,7 @@ impl InsertableHbit {
 #[derive(Associations, Clone, Copy, Debug, Identifiable, Queryable, PartialEq)]
 #[table_name = "orders"]
 pub struct Order {
-    id: i32,
+    pub id: i32,
     pub order_id: Text<OrderId>,
     pub position: Text<Position>,
     pub created_at: i64,
@@ -646,6 +646,44 @@ impl InsertableOrderHerc20Params {
 
     pub fn insert(self, conn: &SqliteConnection) -> Result<()> {
         diesel::insert_into(order_herc20_params::table)
+            .values(self)
+            .execute(conn)?;
+
+        Ok(())
+    }
+}
+
+/// A join table that tracks, which swaps resulted out of which order.
+///
+/// It is a common join-table naming convention to name these after the two
+/// tables that are being associated: In our case, we are associating
+/// potentially multiple swaps with a single order, hence the name "OrderSwaps".
+#[derive(Associations, Clone, Copy, Debug, Queryable, PartialEq)]
+#[belongs_to(Order)]
+#[belongs_to(Swap)]
+#[table_name = "order_swaps"]
+pub struct OrderSwap {
+    pub order_id: i32,
+    pub swap_id: i32,
+}
+
+#[derive(Insertable, Clone, Copy, Debug)]
+#[table_name = "order_swaps"]
+pub struct InsertableOrderSwap {
+    pub order_id: i32,
+    pub swap_id: i32,
+}
+
+impl InsertableOrderSwap {
+    pub fn new(swap_pk: i32, order_pk: i32) -> Self {
+        Self {
+            order_id: order_pk,
+            swap_id: swap_pk,
+        }
+    }
+
+    pub fn insert(self, conn: &SqliteConnection) -> Result<()> {
+        diesel::insert_into(order_swaps::table)
             .values(self)
             .execute(conn)?;
 

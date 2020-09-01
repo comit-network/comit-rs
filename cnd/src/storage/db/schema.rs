@@ -116,6 +116,14 @@ table! {
     }
 }
 
+table! {
+    order_swaps {
+        id -> Integer,
+        order_id -> Integer,
+        swap_id -> Integer,
+    }
+}
+
 allow_tables_to_appear_in_same_query!(swaps, halbits);
 allow_tables_to_appear_in_same_query!(swaps, herc20s);
 allow_tables_to_appear_in_same_query!(swaps, hbits);
