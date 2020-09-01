@@ -4,8 +4,14 @@ use crate::{
     order::{Denomination, SwapProtocol},
     BtcDaiOrder, OrderId, Position,
 };
+use anyhow::Result;
 use libp2p::PeerId;
-use std::{collections::HashMap, iter, iter::FromIterator, ops::AddAssign};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    iter,
+    iter::FromIterator,
+    ops::AddAssign,
+};
 use time::OffsetDateTime;
 
 /// A collection of orders gathered from several makers.
@@ -105,6 +111,46 @@ impl OrderPool {
             .map(|orders| orders.values())
             .into_iter()
             .flatten()
+    }
+
+    /// Notify the OrderPool that we successfully setup a swap with a given
+    /// quantity for one of our orders.
+    ///
+    /// While this was in progress, the OrderPool had "reserved" a certain
+    /// quantity for this order. Now that we setup a swap successfully, we can
+    /// clear this reservation and actually update the amount of the order.
+    pub fn notify_swap_setup_successful(
+        &mut self,
+        order_id: OrderId,
+        quantity: asset::Bitcoin,
+    ) -> Result<()> {
+        if let Some(reserved_quantity) = self.reserved_quantities.get_mut(&order_id) {
+            if *reserved_quantity < quantity {
+                anyhow::bail!(
+                    "attempted to un-reserve {} but only {} were reserved",
+                    reserved_quantity,
+                    *reserved_quantity
+                );
+            }
+
+            *reserved_quantity -= quantity;
+        } else {
+            tracing::warn!("we never reserved anything for order {}", order_id);
+        }
+
+        if let Some(our_orders) = self.inner.get_mut(&self.me) {
+            if let Entry::Occupied(mut entry) = our_orders.entry(order_id) {
+                let order = entry.get_mut();
+
+                if order.quantity == quantity {
+                    entry.remove();
+                } else {
+                    order.quantity -= quantity;
+                }
+            }
+        }
+
+        Ok(())
     }
 
     pub fn is_ours(&self, id: OrderId) -> bool {
@@ -442,6 +488,25 @@ mod tests {
         assert_that(&matches_1)
             .matching_contains(|m| m.price == dai(9000) && m.quantity == btc(0.5));
         assert_that(&matches_2).has_length(0);
+    }
+
+    #[test]
+    fn given_a_match_when_notified_about_successful_swap_then_removes_order_from_pool() {
+        let mut pool = OrderPool::new(PeerId::random());
+
+        let our_order = BtcDaiOrder::buy(btc(0.5), dai(9000), hbit_herc20());
+        pool.publish(our_order.clone());
+        pool.receive(PeerId::random(), vec![BtcDaiOrder::sell(
+            btc(0.5),
+            dai(9000),
+            hbit_herc20(),
+        )]);
+        pool.matches();
+
+        pool.notify_swap_setup_successful(our_order.id, btc(0.5))
+            .unwrap();
+
+        assert_that(&pool.ours().next()).is_none();
     }
 
     fn hbit_herc20() -> SwapProtocol {

@@ -353,6 +353,16 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<setup_swap::BehaviourOutEvent<S
                     .spawn(save_data_and_start_swap.map_err(|e: anyhow::Error| {
                         tracing::error!("{}", e);
                     }));
+                if let Err(e) = self
+                    .orderbook
+                    .orderpool_mut()
+                    .notify_swap_setup_successful(order_id, hbit_params.asset)
+                {
+                    tracing::error!(
+                        "failed to notify orderpool about successful swap setup: {:#}",
+                        e
+                    );
+                }
             }
             setup_swap::BehaviourOutEvent::AlreadyHaveRoleParams { peer, .. } => tracing::error!(
                 "Already have role dependent parameters from this peer: {}",

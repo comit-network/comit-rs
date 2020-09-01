@@ -211,3 +211,19 @@ test(
         );
     })
 );
+
+test(
+    "given_an_order_when_it_fully_matches_and_swap_is_setup_then_order_is_removed_from_the_market",
+    twoActorTest(async ({ alice, bob }) => {
+        await alice.connect(bob);
+        await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
+        await bob.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
+
+        await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
+
+        await bob.pollCndUntil<MarketEntity>(
+            "/markets/BTC-DAI",
+            (market) => market.entities.length === 0
+        );
+    })
+);
