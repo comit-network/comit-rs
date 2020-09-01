@@ -41,7 +41,6 @@ fn expiry_offsets(config: &Config) -> (AlphaOffset, BetaOffset) {
 
     // Alpha expiry must be at least 'safety window' time after beta expiry.
     let minimum_safe = beta_offset + config.bobs_safety_window();
-
     let alpha_offset = cmp::max(minimum_safe, bob_needs);
 
     (alpha_offset.into(), beta_offset.into())
@@ -342,7 +341,6 @@ fn period_for_bob_to_complete(config: &Config, current_state: BobState) -> Durat
             Protocol::Herc20Hbit => state.next_herc20_hbit(),
             Protocol::HbitHerc20 => state.next_hbit_herc20(),
         };
-
         let transition_period = state.transition_period(config);
 
         period_to_complete(config, next_state, acc + transition_period)
