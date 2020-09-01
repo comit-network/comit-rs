@@ -230,15 +230,15 @@ where
         }
     }
 
-    fn protocol(&self) -> Protocol {
-        self.config.protocol()
-    }
-
     fn next_action_and_state_for_bob(&self, current_state: BobState) -> (BobAction, BobState) {
         match self.protocol() {
             Protocol::Herc20Hbit => current_state.next_herc20_hbit(),
             Protocol::HbitHerc20 => current_state.next_hbit_herc20(),
         }
+    }
+
+    fn protocol(&self) -> Protocol {
+        self.config.protocol()
     }
 
     /// True if Alice has time to complete a swap (i.e. transition to done)
