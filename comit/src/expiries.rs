@@ -516,8 +516,9 @@ impl AliceState {
         match self {
             None => (Start, Started),
             Started => (FundAlpha, FundAlphaTransactionBroadcast),
-            DeployAlphaTransactionBroadcast => unreachable!("hbit-herc20 no deploy for Alice"),
-            AlphaDeployed => unreachable!("hbit-herc20 no deploy for Alice"),
+            DeployAlphaTransactionBroadcast | AlphaDeployed => {
+                unreachable!("hbit-herc20 no deploy for Alice")
+            }
             FundAlphaTransactionBroadcast => (WaitForAlphaFundTransactionFinality, AlphaFunded),
             AlphaFunded => (WaitForBetaFundTransactionFinality, BetaFunded),
             BetaFunded => (RedeemBeta, RedeemBetaTransactionBroadcast),
@@ -666,8 +667,9 @@ impl BobState {
         match self {
             Started => (WaitForAlphaFundTransactionFinality, AlphaFunded),
             AlphaFunded => (FundBeta, FundBetaTransactionBroadcast),
-            DeployBetaTransactionBroadcast => unreachable!("herc20-hbit no deploy for Bob"),
-            BetaDeployed => unreachable!("herc20-hbit no deploy for Bob"),
+            DeployBetaTransactionBroadcast | BetaDeployed => {
+                unreachable!("herc20-hbit no deploy for Bob")
+            }
             FundBetaTransactionBroadcast => (WaitForBetaFundTransactionFinality, BetaFunded),
             BetaFunded => (
                 WaitForBetaRedeemTransactionBroadcast,
