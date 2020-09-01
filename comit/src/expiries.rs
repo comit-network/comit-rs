@@ -139,12 +139,13 @@ where
         }
 
         let funded = current_state.has_broadcast_fund_transaction();
-        let redeemed = current_state.has_broadcast_redeem_transaction();
 
+        // After alpha expiry has elapsed it is no longer safe for Alice to redeem but
+        // she may have already broadcast the redeem transaction. This could happen if
+        // the redeem transaction takes longer than expected to reach finality.
         if self.alpha_expiry_has_elapsed().await {
-            if redeemed {
-                let (next_action, _state) = self.next_action_and_state_for_alice(current_state);
-                return next_action;
+            if current_state.has_broadcast_redeem_transaction() {
+                return AliceAction::WaitForBetaRedeemTransactionFinality;
             }
 
             if funded {
@@ -163,6 +164,7 @@ where
 
         if !(alice_can_complete && bob_can_complete) {
             if funded {
+                // We know here that expiry has not yet elapsed.
                 return AliceAction::WaitToRefund;
             }
             return AliceAction::Abort;
@@ -185,17 +187,16 @@ where
         }
 
         let funded = current_state.has_broadcast_fund_transaction();
-        let redeemed = current_state.has_broadcast_redeem_transaction();
 
         if self.beta_expiry_has_elapsed().await {
-            if redeemed {
-                let (next_action, _state) = self.next_action_and_state_for_bob(current_state);
-                return next_action;
+            if current_state.has_broadcast_redeem_transaction() {
+                return BobAction::WaitForAlphaRedeemTransactionFinality;
             }
 
             if funded {
                 return BobAction::Refund;
             }
+
             return BobAction::Abort;
         };
 
@@ -208,12 +209,8 @@ where
         let bob_can_complete = self.bob_can_complete(current_state).await;
 
         if !(alice_can_complete && bob_can_complete) {
-            // let both_parties_can_complete =
-            // self.alice_can_complete(current_state.into()).await     && self.
-            // bob_can_complete(current_state).await;
-
-            // if !both_parties_can_complete {
             if funded {
+                // We know here that expiry has not yet elapsed.
                 return BobAction::WaitToRefund;
             }
             return BobAction::Abort;
