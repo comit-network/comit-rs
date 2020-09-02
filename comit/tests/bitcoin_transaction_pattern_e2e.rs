@@ -1,4 +1,4 @@
-use bitcoin::{Amount, Network};
+use bitcoin::Amount;
 use bitcoincore_rpc::RpcApi;
 use chrono::offset::Utc;
 use comit::btsieve::bitcoin::{watch_for_created_outpoint, BitcoindConnector};
@@ -23,7 +23,7 @@ async fn bitcoin_transaction_pattern_e2e_test() {
     url.set_port(Some(container.get_host_port(18443).unwrap() as u16))
         .unwrap();
 
-    let connector = BitcoindConnector::new(url, Network::Regtest).unwrap();
+    let connector = BitcoindConnector::new(url).unwrap();
 
     let target_address = client.get_new_address(None, None).unwrap();
 

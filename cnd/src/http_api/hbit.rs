@@ -16,7 +16,7 @@ pub struct Hbit {
     #[serde(with = "asset::bitcoin::sats_as_string")]
     pub amount: asset::Bitcoin,
     pub final_identity: Http<bitcoin::Address>,
-    pub network: Http<bitcoin::Network>,
+    pub network: ledger::Bitcoin,
     pub absolute_expiry: u32,
 }
 
@@ -25,7 +25,7 @@ impl From<Hbit> for CreatedSwap {
         CreatedSwap {
             amount: p.amount,
             final_identity: p.final_identity.0,
-            network: p.network.0.into(),
+            network: p.network,
             absolute_expiry: p.absolute_expiry,
         }
     }
@@ -110,7 +110,7 @@ impl FinalizedAsFunder {
             identity::Bitcoin::from_secret_key(&*crate::SECP, &transient_refund_sk);
 
         Params {
-            network: self.network.into(),
+            network: self.network,
             asset: self.asset,
             redeem_identity: self.transient_redeem_identity,
             refund_identity: transient_refund_identity,
@@ -155,7 +155,7 @@ impl FinalizedAsRedeemer {
             identity::Bitcoin::from_secret_key(&*crate::SECP, &transient_redeem_sk);
 
         Params {
-            network: self.network.into(),
+            network: self.network,
             asset: self.asset,
             redeem_identity: transient_redeem_identity,
             refund_identity: self.transient_refund_identity,

@@ -27,7 +27,7 @@ pub struct Herc20 {
 pub struct Hbit {
     pub amount: Http<asset::Bitcoin>,
     pub final_identity: Http<bitcoin::Address>,
-    pub network: Http<bitcoin::Network>,
+    pub network: Http<ledger::Bitcoin>,
     pub absolute_expiry: u32,
 }
 

@@ -152,7 +152,7 @@ where
         block_times.push(current.header.time);
     }
 
-    block_times.sort();
+    block_times.sort_unstable();
     let median = block_times[5];
 
     Ok(Timestamp::from(median))

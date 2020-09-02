@@ -9,14 +9,14 @@ use crate::{
         bitcoin::{watch_for_created_outpoint, watch_for_spent_outpoint},
         BlockByHash, LatestBlock,
     },
-    htlc_location, identity,
+    htlc_location, identity, ledger,
     timestamp::Timestamp,
     transaction, Secret, SecretHash,
 };
 use bitcoin::{
     hashes::{hash160, Hash},
     secp256k1::{Secp256k1, SecretKey, Signing},
-    Address, Block, BlockHash, Network, Transaction,
+    Address, Block, BlockHash, Transaction,
 };
 use blockchain_contracts::bitcoin::{rfc003::bitcoin_htlc::BitcoinHtlc, witness::UnlockParameters};
 use chrono::{DateTime, Utc};
@@ -216,7 +216,7 @@ where
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Params {
-    pub network: Network,
+    pub network: ledger::Bitcoin,
     pub asset: asset::Bitcoin,
     pub redeem_identity: identity::Bitcoin,
     pub refund_identity: identity::Bitcoin,
@@ -327,7 +327,7 @@ impl From<Params> for BitcoinHtlc {
 
 impl Params {
     pub fn compute_address(&self) -> Address {
-        BitcoinHtlc::from(*self).compute_address(self.network)
+        BitcoinHtlc::from(*self).compute_address(self.network.into())
     }
 }
 

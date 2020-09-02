@@ -372,7 +372,7 @@ impl IntoFinalized for Halbit {
     fn into_finalized(self, state: Self::State) -> anyhow::Result<Self::Finalized> {
         Ok(halbit::Finalized {
             asset: self.amount.0.into(),
-            network: self.network.0.into(),
+            network: self.network.0,
             refund_identity: self.refund_identity.ok_or(NoRefundIdentity)?.0,
             redeem_identity: self.redeem_identity.ok_or(NoRedeemIdentity)?.0,
             cltv_expiry: self.cltv_expiry.0.into(),
@@ -390,7 +390,7 @@ impl IntoFinalizedAsFunder for Hbit {
     ) -> anyhow::Result<hbit::FinalizedAsFunder> {
         let finalized = hbit::FinalizedAsFunder {
             asset: self.amount.0.into(),
-            network: self.network.0.into(),
+            network: self.network.0,
             transient_redeem_identity: self.transient_identity.ok_or(NoRedeemIdentity)?.0,
             transient_refund_identity: seed
                 .derive_swap_seed(swap_id)
@@ -413,7 +413,7 @@ impl IntoFinalizedAsRedeemer for Hbit {
     ) -> anyhow::Result<hbit::FinalizedAsRedeemer> {
         let finalized = hbit::FinalizedAsRedeemer {
             asset: self.amount.0.into(),
-            network: self.network.0.into(),
+            network: self.network.0,
             transient_redeem_identity: seed
                 .derive_swap_seed(swap_id)
                 .derive_transient_redeem_identity(),

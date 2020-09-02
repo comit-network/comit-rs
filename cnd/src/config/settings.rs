@@ -172,6 +172,7 @@ mod tests {
         config::{file, Bitcoind, Geth, Lnd, Tokens, DAI_MAINNET},
         ethereum::ChainId,
     };
+    use comit::ledger;
     use spectral::prelude::*;
     use std::net::IpAddr;
 
@@ -259,7 +260,7 @@ mod tests {
             .is_ok()
             .map(|settings| &settings.bitcoin)
             .is_equal_to(Bitcoin {
-                network: bitcoin::Network::Bitcoin,
+                network: ledger::Bitcoin::Mainnet,
                 bitcoind: Bitcoind {
                     node_url: "http://localhost:8332".parse().unwrap(),
                 },
@@ -269,9 +270,9 @@ mod tests {
     #[test]
     fn bitcoin_defaults_network_only() {
         let defaults = vec![
-            (bitcoin::Network::Bitcoin, "http://localhost:8332"),
-            (bitcoin::Network::Testnet, "http://localhost:18332"),
-            (bitcoin::Network::Regtest, "http://localhost:18443"),
+            (ledger::Bitcoin::Mainnet, "http://localhost:8332"),
+            (ledger::Bitcoin::Testnet, "http://localhost:18332"),
+            (ledger::Bitcoin::Regtest, "http://localhost:18443"),
         ];
 
         for (network, url) in defaults {
@@ -327,14 +328,14 @@ mod tests {
         assert_that(&settings)
             .is_ok()
             .map(|settings| &settings.lightning)
-            .is_equal_to(Lightning::new(bitcoin::Network::Bitcoin))
+            .is_equal_to(Lightning::new(ledger::Bitcoin::Mainnet))
     }
 
     #[test]
     fn lightning_lnd_section_defaults() {
         let config_file = File {
             lightning: Some(file::Lightning {
-                network: bitcoin::Network::Regtest,
+                network: ledger::Bitcoin::Regtest,
                 lnd: None,
             }),
             ..File::default()
@@ -346,8 +347,8 @@ mod tests {
             .is_ok()
             .map(|settings| &settings.lightning)
             .is_equal_to(Lightning {
-                network: bitcoin::Network::Regtest,
-                lnd: Lnd::new(bitcoin::Network::Regtest),
+                network: ledger::Bitcoin::Regtest,
+                lnd: Lnd::new(ledger::Bitcoin::Regtest),
             })
     }
 
@@ -355,7 +356,7 @@ mod tests {
     fn error_on_http_url_for_lnd() {
         let config_file = File {
             lightning: Some(file::Lightning {
-                network: bitcoin::Network::Regtest,
+                network: ledger::Bitcoin::Regtest,
                 lnd: Some(file::Lnd {
                     rest_api_url: "http://localhost:8000/".parse().unwrap(),
                     dir: Default::default(),

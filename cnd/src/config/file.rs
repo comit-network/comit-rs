@@ -3,6 +3,7 @@ use crate::{
     ethereum,
     ethereum::ChainId,
 };
+use comit::ledger;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -29,8 +30,7 @@ pub struct File {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Bitcoin {
-    #[serde(with = "crate::config::serde_bitcoin_network")]
-    pub network: bitcoin::Network,
+    pub network: ledger::Bitcoin,
     pub bitcoind: Option<Bitcoind>,
 }
 
@@ -48,7 +48,7 @@ pub struct Tokens {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Lightning {
-    pub network: bitcoin::Network,
+    pub network: ledger::Bitcoin,
     pub lnd: Option<Lnd>,
 }
 
@@ -264,7 +264,7 @@ dir = "/foo/bar"
                 level: Some(Level::Debug),
             }),
             bitcoin: Some(Bitcoin {
-                network: bitcoin::Network::Regtest,
+                network: ledger::Bitcoin::Regtest,
                 bitcoind: Some(Bitcoind {
                     node_url: "http://localhost:18443".parse().unwrap(),
                 }),
@@ -283,7 +283,7 @@ dir = "/foo/bar"
                 }),
             }),
             lightning: Some(Lightning {
-                network: bitcoin::Network::Regtest,
+                network: ledger::Bitcoin::Regtest,
                 lnd: Some(Lnd {
                     rest_api_url: "https://localhost:8080".parse().unwrap(),
                     dir: PathBuf::from("/foo/bar"),
@@ -335,19 +335,19 @@ dir = "/foo/bar"
 
         let expected = vec![
             Bitcoin {
-                network: bitcoin::Network::Bitcoin,
+                network: ledger::Bitcoin::Mainnet,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:8332").unwrap(),
                 }),
             },
             Bitcoin {
-                network: bitcoin::Network::Testnet,
+                network: ledger::Bitcoin::Testnet,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:18332").unwrap(),
                 }),
             },
             Bitcoin {
-                network: bitcoin::Network::Regtest,
+                network: ledger::Bitcoin::Regtest,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:18443").unwrap(),
                 }),

@@ -1,4 +1,4 @@
-use crate::{asset, ledger};
+use crate::asset;
 use std::{fmt, str::FromStr};
 
 pub mod custom_sql_types;
@@ -93,73 +93,5 @@ impl FromStr for Erc20Amount {
 impl fmt::Display for Erc20Amount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0.to_wei_dec())
-    }
-}
-
-/// A wrapper type for Bitcoin networks.
-///
-/// This is then wrapped in the db::custom_sql_types::Text to be stored in DB
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum BitcoinNetwork {
-    Mainnet,
-    Testnet,
-    Regtest,
-}
-
-#[derive(Debug, Clone, Copy, thiserror::Error)]
-#[error("Unknown variant")]
-pub struct UnknownVariant;
-
-impl FromStr for BitcoinNetwork {
-    type Err = UnknownVariant;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "mainnet" => Ok(Self::Mainnet),
-            "testnet" => Ok(Self::Testnet),
-            "regtest" => Ok(Self::Regtest),
-            _ => Err(UnknownVariant),
-        }
-    }
-}
-
-impl fmt::Display for BitcoinNetwork {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            Self::Mainnet => "mainnet",
-            Self::Testnet => "testnet",
-            Self::Regtest => "regtest",
-        };
-        write!(f, "{}", s)
-    }
-}
-
-impl From<ledger::Bitcoin> for BitcoinNetwork {
-    fn from(bitcoin: ledger::Bitcoin) -> Self {
-        match bitcoin {
-            ledger::Bitcoin::Mainnet => BitcoinNetwork::Mainnet,
-            ledger::Bitcoin::Testnet => BitcoinNetwork::Testnet,
-            ledger::Bitcoin::Regtest => BitcoinNetwork::Regtest,
-        }
-    }
-}
-
-impl From<BitcoinNetwork> for ledger::Bitcoin {
-    fn from(network: BitcoinNetwork) -> Self {
-        match network {
-            BitcoinNetwork::Mainnet => ledger::Bitcoin::Mainnet,
-            BitcoinNetwork::Testnet => ledger::Bitcoin::Testnet,
-            BitcoinNetwork::Regtest => ledger::Bitcoin::Regtest,
-        }
-    }
-}
-
-impl From<bitcoin::Network> for BitcoinNetwork {
-    fn from(bitcoin: bitcoin::Network) -> Self {
-        match bitcoin {
-            bitcoin::Network::Bitcoin => BitcoinNetwork::Mainnet,
-            bitcoin::Network::Testnet => BitcoinNetwork::Testnet,
-            bitcoin::Network::Regtest => BitcoinNetwork::Regtest,
-        }
     }
 }
