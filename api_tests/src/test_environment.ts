@@ -219,7 +219,7 @@ export default class TestEnvironment extends NodeEnvironment {
         const config = await this.startLedger(lockDir, geth, async (geth) => {
             const rpcUrl = geth.rpcUrl;
             const devAccountKey = geth.devAccountKey();
-            const erc20Wallet = await Web3EthereumWallet.new_instance(
+            const erc20Wallet = await Web3EthereumWallet.newInstance(
                 devAccountKey,
                 rpcUrl,
                 this.logger,
@@ -268,7 +268,7 @@ export default class TestEnvironment extends NodeEnvironment {
         const { alice, bob } = this.global.lndWallets;
 
         const alicePeers = await alice.listPeers();
-        const bobPubkey = await bob.inner.getPubkey();
+        const bobPubkey = await bob.getPubkey();
 
         if (!alicePeers.find((peer) => peer.pubKey === bobPubkey)) {
             await alice.connectPeer(bob);

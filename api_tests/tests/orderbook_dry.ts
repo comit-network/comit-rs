@@ -4,7 +4,7 @@
  */
 import { twoActorTest, oneActorTest } from "../src/actor_test";
 import { MarketEntity, Currency, OrderEntity, Position } from "../src/payload";
-import { Problem } from "comit-sdk";
+import { Problem } from "../src/cnd/axios_rfc7807_middleware";
 
 test(
     "given_two_connected_nodes_when_other_node_publishes_order_then_it_is_returned_in_the_market",

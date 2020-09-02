@@ -1,4 +1,3 @@
-import { Cnd, Swap, Wallets as SdkWallets } from "comit-sdk";
 import {
     ActionKind,
     HalbitHerc20Payload,
@@ -33,12 +32,14 @@ import {
 } from "../wallets";
 import { defaultLedgerDescriptionForLedger } from "./defaults";
 import pTimeout from "p-timeout";
-import { Entity } from "comit-sdk/dist/src/cnd/siren";
 import { BitcoindWallet, BitcoinWallet } from "../wallets/bitcoin";
 import { EthereumWallet, Web3EthereumWallet } from "../wallets/ethereum";
 import { LightningWallet } from "../wallets/lightning";
 import { merge } from "lodash";
 import { AxiosResponse } from "axios";
+import { Cnd } from "../cnd/cnd";
+import { Swap } from "../swap";
+import { Entity } from "../cnd/siren";
 
 declare var global: HarnessGlobal;
 
@@ -157,9 +158,9 @@ export class Actor {
         this.swap = new Swap(
             this.cnd,
             location,
-            new SdkWallets({
-                ethereum: this.wallets.ethereum.inner,
-                lightning: this.wallets.lightning.inner,
+            new Wallets({
+                ethereum: this.wallets.ethereum,
+                lightning: this.wallets.lightning,
             })
         );
     }
@@ -196,9 +197,9 @@ export class Actor {
         this.swap = new Swap(
             this.cnd,
             location,
-            new SdkWallets({
-                ethereum: this.wallets.ethereum.inner,
-                lightning: this.wallets.lightning.inner,
+            new Wallets({
+                ethereum: this.wallets.ethereum,
+                lightning: this.wallets.lightning,
             })
         );
     }
@@ -235,9 +236,9 @@ export class Actor {
         this.swap = new Swap(
             this.cnd,
             location,
-            new SdkWallets({
-                ethereum: this.wallets.ethereum.inner,
-                bitcoin: this.wallets.bitcoin.inner,
+            new Wallets({
+                ethereum: this.wallets.ethereum,
+                bitcoin: this.wallets.bitcoin,
             })
         );
     }
@@ -274,9 +275,9 @@ export class Actor {
         this.swap = new Swap(
             this.cnd,
             location,
-            new SdkWallets({
-                bitcoin: this.wallets.bitcoin.inner,
-                ethereum: this.wallets.ethereum.inner,
+            new Wallets({
+                bitcoin: this.wallets.bitcoin,
+                ethereum: this.wallets.ethereum,
             })
         );
     }
@@ -375,8 +376,8 @@ export class Actor {
             price: weiPerSat.toString(10),
             swap: {
                 role: this.name,
-                bitcoin_address: await this.wallets.bitcoin.address(),
-                ethereum_address: this.wallets.ethereum.account(),
+                bitcoin_address: await this.wallets.bitcoin.getAddress(),
+                ethereum_address: this.wallets.ethereum.getAccount(),
             },
         });
 
@@ -725,9 +726,9 @@ export class Actor {
         this.swap = new Swap(
             this.cnd,
             response.entities[0].href,
-            new SdkWallets({
-                ethereum: this.wallets.ethereum.inner,
-                bitcoin: this.wallets.bitcoin.inner,
+            new Wallets({
+                ethereum: this.wallets.ethereum,
+                bitcoin: this.wallets.bitcoin,
             })
         );
     }
@@ -777,7 +778,7 @@ async function newEthereumWallet(
 ): Promise<EthereumWallet> {
     const ethereumConfig = ledgerConfig.ethereum;
     return ethereumConfig
-        ? Web3EthereumWallet.new_instance(
+        ? Web3EthereumWallet.newInstance(
               ethereumConfig.dev_account_key,
               ethereumConfig.rpc_url,
               logger,

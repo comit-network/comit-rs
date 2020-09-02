@@ -1,19 +1,34 @@
 import { promises as asyncFs } from "fs";
-import { EthereumWallet as EthereumWalletSdk } from "comit-sdk";
-import { ethers } from "ethers";
+import { BigNumber, Contract, ethers } from "ethers";
 import { Wallet } from "./index";
 import { sleep } from "../utils";
 import { Logger } from "log4js";
 import { lock } from "proper-lockfile";
 import { Asset } from "../asset";
 import path from "path";
+import erc20 from "../../ethereum_abi/erc20.json";
+import { EventFragment, FunctionFragment } from "ethers/lib/utils";
 
 export interface EthereumWallet extends Wallet {
-    inner: EthereumWalletSdk;
-
-    account(): string;
+    getAccount(): string;
     deployErc20TokenContract(): Promise<string>;
     getTransactionStatus(txid: string): Promise<number>;
+
+    deployContract(
+        data: string,
+        amount: BigNumber,
+        gasLimit: string,
+        chainId: number
+    ): Promise<ethers.providers.TransactionReceipt>;
+
+    callContract(
+        data: string,
+        contractAddress: string,
+        gasLimit: string,
+        chainId: number
+    ): Promise<ethers.providers.TransactionReceipt>;
+
+    assertNetwork(expectedChainId: number): Promise<void>;
 }
 
 export class Web3EthereumWallet implements EthereumWallet {
@@ -21,14 +36,14 @@ export class Web3EthereumWallet implements EthereumWallet {
 
     private constructor(
         private readonly ethereumDevAccount: ethers.Wallet,
+        private readonly wallet: ethers.Wallet,
         private readonly logger: Logger,
         private readonly ethereumLockDir: string,
-        private readonly jsonRpcProvider: ethers.providers.JsonRpcProvider,
-        public readonly inner: EthereumWalletSdk,
+        private readonly provider: ethers.providers.JsonRpcProvider,
         public readonly chainId: number
     ) {}
 
-    public static async new_instance(
+    public static async newInstance(
         devAccountKey: string,
         rpcUrl: string,
         logger: Logger,
@@ -41,13 +56,12 @@ export class Web3EthereumWallet implements EthereumWallet {
             devAccountKey,
             ""
         );
-        const inner = new EthereumWalletSdk(rpcUrl);
         return new Web3EthereumWallet(
             ethereumDevAccount,
+            ethers.Wallet.createRandom(),
             logger,
             ethereumLockDir,
             provider,
-            inner,
             chainId
         );
     }
@@ -66,7 +80,7 @@ export class Web3EthereumWallet implements EthereumWallet {
     }
 
     private async mintErc20(asset: Asset): Promise<void> {
-        let toAddress = this.inner.getAccount();
+        let toAddress = this.getAccount();
 
         const functionIdentifier = "40c10f19";
         toAddress = toAddress.replace(/^0x/, "").padStart(64, "0");
@@ -122,11 +136,11 @@ export class Web3EthereumWallet implements EthereumWallet {
         );
 
         try {
-            tx.nonce = await this.jsonRpcProvider.getTransactionCount(
+            tx.nonce = await this.provider.getTransactionCount(
                 this.ethereumDevAccount.address
             );
             const signedTx = await this.ethereumDevAccount.signTransaction(tx);
-            const transactionResponse = await this.jsonRpcProvider.sendTransaction(
+            const transactionResponse = await this.provider.sendTransaction(
                 signedTx
             );
 
@@ -136,7 +150,7 @@ export class Web3EthereumWallet implements EthereumWallet {
                 " sent, waiting to be confirmed."
             );
 
-            const transactionReceipt = await this.jsonRpcProvider.waitForTransaction(
+            const transactionReceipt = await this.provider.waitForTransaction(
                 transactionResponse.hash,
                 1
             );
@@ -167,7 +181,7 @@ export class Web3EthereumWallet implements EthereumWallet {
             minimumExpectedBalance.toString()
         ).mul(2);
         await this.sendTransaction({
-            to: this.account(),
+            to: this.getAccount(),
             value,
             gasLimit: 21000,
             chainId: this.chainId,
@@ -179,11 +193,12 @@ export class Web3EthereumWallet implements EthereumWallet {
             throw new Error("Failed to mint Ether");
         }
 
-        this.logger.info("Minted", asset.quantity, "ether for", this.account());
-    }
-
-    public account(): string {
-        return this.inner.getAccount();
+        this.logger.info(
+            "Minted",
+            asset.quantity,
+            "ether for",
+            this.getAccount()
+        );
     }
 
     public async deployErc20TokenContract(): Promise<string> {
@@ -198,7 +213,7 @@ export class Web3EthereumWallet implements EthereumWallet {
 
         const transactionResponse = await this.sendTransaction(tx);
 
-        const transactionReceipt = await this.jsonRpcProvider.waitForTransaction(
+        const transactionReceipt = await this.provider.waitForTransaction(
             transactionResponse.transactionHash,
             1
         );
@@ -209,14 +224,15 @@ export class Web3EthereumWallet implements EthereumWallet {
         let balance = BigInt(0);
         switch (asset.name) {
             case "ether":
-                balance = await this.inner
+                balance = await this.wallet
                     .getBalance()
                     .then((balance) => BigInt(balance.toString()));
                 break;
             case "erc20":
-                balance = await this.inner
-                    .getErc20Balance(asset.tokenContract, 0)
-                    .then((balance) => BigInt(balance.toString(10)));
+                balance = await this.getErc20Balance(
+                    asset.tokenContract,
+                    0
+                ).then((balance) => BigInt(balance.toString()));
                 break;
             default:
                 throw new Error(
@@ -227,7 +243,7 @@ export class Web3EthereumWallet implements EthereumWallet {
     }
 
     public async getBlockchainTime(): Promise<number> {
-        const block = await this.jsonRpcProvider.send("eth_getBlockByNumber", [
+        const block = await this.provider.send("eth_getBlockByNumber", [
             "latest",
             false,
         ]);
@@ -236,19 +252,100 @@ export class Web3EthereumWallet implements EthereumWallet {
     }
 
     public async getTransactionStatus(txid: string): Promise<number> {
-        let transaction = await this.jsonRpcProvider.getTransaction(txid);
+        let transaction = await this.provider.getTransaction(txid);
 
         // Note that TransactionResponse.wait throws an Error if the transaction is failed
         // Hence we are going for a more manual method.
         do {
             await sleep(100);
-            transaction = await this.jsonRpcProvider.getTransaction(txid);
+            transaction = await this.provider.getTransaction(txid);
         } while (transaction.confirmations === 0);
 
-        const transactionReceipt = await this.jsonRpcProvider.getTransactionReceipt(
+        const transactionReceipt = await this.provider.getTransactionReceipt(
             txid
         );
         return transactionReceipt.status;
+    }
+
+    public getAccount(): string {
+        return this.wallet.address;
+    }
+
+    public async getErc20Balance(
+        contractAddress: string,
+        decimals?: number
+    ): Promise<BigNumber> {
+        const abi = erc20 as (FunctionFragment | EventFragment)[];
+        const contract = new Contract(contractAddress, abi, this.provider);
+
+        let dec;
+        if (decimals === undefined) {
+            try {
+                dec = await contract.decimals();
+            } catch (e) {
+                // decimals() not present on token contract, defaulting to 18
+                dec = 18;
+            }
+        } else {
+            dec = decimals;
+        }
+
+        const strBalance = await contract.balanceOf(this.getAccount());
+        const intBalance = BigNumber.from(strBalance);
+        return intBalance.div(BigNumber.from(10).pow(dec));
+    }
+
+    async deployContract(
+        data: string,
+        amount: BigNumber,
+        gasLimit: string,
+        chainId: number
+    ): Promise<ethers.providers.TransactionReceipt> {
+        await this.assertNetwork(chainId);
+        const value = BigNumber.from(amount.toString());
+        const transaction: ethers.providers.TransactionRequest = {
+            data,
+            value,
+            gasLimit,
+        };
+        return this.sendTransaction(transaction);
+    }
+
+    async callContract(
+        data: string,
+        contractAddress: string,
+        gasLimit: string,
+        chainId: number
+    ): Promise<ethers.providers.TransactionReceipt> {
+        await this.assertNetwork(chainId);
+        const transaction: ethers.providers.TransactionRequest = {
+            data,
+            to: contractAddress,
+            gasLimit,
+        };
+        return this.sendTransaction(transaction);
+    }
+
+    public async getTransactionReceipt(
+        transactionId: string
+    ): Promise<ethers.providers.TransactionReceipt> {
+        return this.provider.getTransactionReceipt(transactionId);
+    }
+
+    public async getTransaction(
+        transactionId: string
+    ): Promise<ethers.providers.TransactionResponse> {
+        return this.provider.getTransaction(transactionId);
+    }
+
+    async assertNetwork(expectedChainId: number): Promise<void> {
+        const actualNetwork = await this.provider.getNetwork();
+
+        if (actualNetwork.chainId !== expectedChainId) {
+            return Promise.reject(
+                `This wallet is connected to the chain with chainId: ${expectedChainId}  and cannot perform actions on chain with chainId ${actualNetwork.chainId}`
+            );
+        }
     }
 }
 

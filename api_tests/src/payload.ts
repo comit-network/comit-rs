@@ -1,11 +1,3 @@
-import {
-    Action,
-    EmbeddedRepresentationSubEntity,
-    Entity,
-    Link,
-} from "comit-sdk/dist/src/cnd/siren";
-import { Peer } from "comit-sdk";
-
 /**
  * Payloads for the `/swaps/` REST API.
  */
@@ -13,6 +5,14 @@ import { Peer } from "comit-sdk";
 /*
  * The payload for POST requests to create a swap on the cnd REST API.
  */
+import { Peer } from "./cnd/cnd";
+import {
+    Action,
+    EmbeddedRepresentationSubEntity,
+    Entity,
+    Link,
+} from "./cnd/siren";
+
 interface Payload<A, B> {
     alpha: A;
     beta: B;

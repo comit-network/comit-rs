@@ -4,7 +4,6 @@ import * as path from "path";
 import { promises as asyncFs } from "fs";
 import getPort from "get-port";
 import waitForLogMessage from "../wait_for_log_message";
-import { Lnd } from "comit-sdk";
 import { Logger } from "log4js";
 import { LightningNodeConfig, LedgerInstance } from "./index";
 import findCacheDir from "find-cache-dir";
@@ -12,6 +11,7 @@ import download from "download";
 import { platform } from "os";
 import { lock } from "proper-lockfile";
 import { crashListener } from "../crash_listener";
+import { Lnd } from "../wallets/lnd";
 
 export class LndInstance implements LedgerInstance {
     private process: ChildProcess;

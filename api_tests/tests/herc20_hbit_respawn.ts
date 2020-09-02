@@ -5,7 +5,7 @@
 
 import { twoActorTest } from "../src/actor_test";
 import { sleep } from "../src/utils";
-import { Position } from "../src/payload";
+import { Position } from "../src/cnd/payload";
 
 describe("herc20-hbit-respawn", () => {
     it(

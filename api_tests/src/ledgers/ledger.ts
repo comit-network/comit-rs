@@ -1,6 +1,4 @@
-import { Ledger as LedgerSdk } from "comit-sdk";
-
-export interface Ledger extends LedgerSdk {
+export interface Ledger {
     name: LedgerKind;
     [k: string]: any;
 }

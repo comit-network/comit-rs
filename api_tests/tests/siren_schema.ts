@@ -9,9 +9,9 @@ import { sleep } from "../src/utils";
 import "../src/schema_matcher";
 import * as sirenJsonSchema from "../siren.schema.json";
 import * as rootJsonSchema from "../root.schema.json";
-import { siren } from "comit-sdk";
 import axios from "axios";
 import { SwapEntity } from "../src/payload";
+import * as siren from "../src/cnd/siren";
 
 describe("Siren Schema", () => {
     it(

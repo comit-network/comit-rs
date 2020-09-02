@@ -1,4 +1,4 @@
-import { BitcoinNetwork as Network } from "comit-sdk";
+import { Network } from "../wallets/bitcoin";
 
 export interface BitcoinNodeConfig {
     network: Network;
