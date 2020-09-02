@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
-bitcoin = { version = "0.23.0", features = ["rand", "use-serde"] }
+bitcoin = { version = "0.23", features = ["rand", "use-serde"] }
 chrono = "0.4"
 clarity = "0.1"
 comit = { git = "https://github.com/comit-network/comit-rs", package = "comit", rev = "2a5020205dec357fbf85d16bec08864ac9c8af80" }
@@ -16,10 +16,10 @@ conquer-once = "0.2"
 csv = "1.1"
 derivative = "2.1"
 directories = "2.0"
-ethabi = "2.0.0"
-ethereum-types = "0.9.0"
-futures = "0.3.5"
-futures-timer = "3.0.2"
+ethabi = "2.0"
+ethereum-types = "0.9"
+futures = "0.3"
+futures-timer = "3.0"
 hex = "0.4"
 libp2p = { version = "0.21", default-features = false, features = ["tcp-tokio", "secio", "yamux", "mplex", "dns", "gossipsub", "request-response"] }
 log = "0.4"
@@ -39,7 +39,7 @@ strum_macros = "0.18"
 thiserror = "1.0"
 tokio = { version = "0.2", features = ["macros", "time"] }
 toml = "0.5"
-tracing = "0.1.15"
+tracing = "0.1"
 tracing-log = "0.1"
 tracing-subscriber = "0.2"
 url = { version = "2", features = ["serde"] }
