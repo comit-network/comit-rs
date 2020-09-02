@@ -3,7 +3,12 @@
  * @cndConfigOverride ethereum.tokens.dai = 0x0000000000000000000000000000000000000000
  */
 import { twoActorTest, oneActorTest } from "../src/actor_test";
-import { MarketEntity, Currency, OrderEntity, Position } from "../src/payload";
+import {
+    MarketEntity,
+    Currency,
+    OrderEntity,
+    Position,
+} from "../src/cnd/payload";
 import { Problem } from "../src/cnd/axios_rfc7807_middleware";
 
 test(
@@ -174,7 +179,6 @@ test(
         await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
 
         const order = await alice.fetchOrder(href);
-        // @ts-ignore `client` is private
         const cancelAttempt = alice.cnd.client.delete(
             `/orders/${order.properties.id}`
         );

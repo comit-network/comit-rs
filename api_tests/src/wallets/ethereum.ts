@@ -1,7 +1,6 @@
 import { promises as asyncFs } from "fs";
 import { BigNumber, Contract, ethers } from "ethers";
 import { Wallet } from "./index";
-import { sleep } from "../utils";
 import { Logger } from "log4js";
 import { lock } from "proper-lockfile";
 import { Asset } from "../asset";
@@ -12,22 +11,18 @@ import { EventFragment, FunctionFragment } from "ethers/lib/utils";
 export interface EthereumWallet extends Wallet {
     getAccount(): string;
     deployErc20TokenContract(): Promise<string>;
-    getTransactionStatus(txid: string): Promise<number>;
-
     deployContract(
         data: string,
         amount: BigNumber,
         gasLimit: string,
         chainId: number
     ): Promise<ethers.providers.TransactionReceipt>;
-
     callContract(
         data: string,
         contractAddress: string,
         gasLimit: string,
         chainId: number
     ): Promise<ethers.providers.TransactionReceipt>;
-
     assertNetwork(expectedChainId: number): Promise<void>;
 }
 
@@ -35,7 +30,7 @@ export class Web3EthereumWallet implements EthereumWallet {
     public MaximumFee = 0;
 
     private constructor(
-        private readonly ethereumDevAccount: ethers.Wallet,
+        private readonly devAccount: ethers.Wallet,
         private readonly wallet: ethers.Wallet,
         private readonly logger: Logger,
         private readonly ethereumLockDir: string,
@@ -99,7 +94,7 @@ export class Web3EthereumWallet implements EthereumWallet {
             data,
         };
 
-        await this.sendTransaction(tx);
+        await this.sendDevAccountTransaction(tx);
 
         this.logger.info(
             "Minted",
@@ -111,7 +106,7 @@ export class Web3EthereumWallet implements EthereumWallet {
         );
     }
 
-    private async sendTransaction(
+    private async sendDevAccountTransaction(
         tx: ethers.providers.TransactionRequest
     ): Promise<ethers.providers.TransactionReceipt> {
         const lockFile = path.join(
@@ -136,41 +131,46 @@ export class Web3EthereumWallet implements EthereumWallet {
         );
 
         try {
-            tx.nonce = await this.provider.getTransactionCount(
-                this.ethereumDevAccount.address
-            );
-            const signedTx = await this.ethereumDevAccount.signTransaction(tx);
-            const transactionResponse = await this.provider.sendTransaction(
-                signedTx
-            );
-
-            this.logger.debug(
-                "Transaction: ",
-                transactionResponse.hash,
-                " sent, waiting to be confirmed."
-            );
-
-            const transactionReceipt = await this.provider.waitForTransaction(
-                transactionResponse.hash,
-                1
-            );
-            if (!transactionReceipt.status) {
-                throw new Error(
-                    `Transaction ${transactionReceipt.transactionHash} failed with status 1`
-                );
-            }
-            this.logger.debug(
-                "Transaction: ",
-                transactionReceipt.transactionHash,
-                " confirmed in block: ",
-                transactionReceipt.blockHash
-            );
-            return transactionReceipt;
+            return await this.sendTransaction(tx, this.devAccount);
         } finally {
             await release();
         }
 
         this.logger.debug("Lock for ethereum-dev-account account released.");
+    }
+
+    private async sendTransaction(
+        tx: ethers.providers.TransactionRequest,
+        wallet: ethers.Wallet
+    ) {
+        tx.nonce = await this.provider.getTransactionCount(wallet.address);
+        const signedTx = await wallet.signTransaction(tx);
+        const transactionResponse = await this.provider.sendTransaction(
+            signedTx
+        );
+
+        this.logger.debug(
+            "Transaction: ",
+            transactionResponse.hash,
+            " sent, waiting to be confirmed."
+        );
+
+        const transactionReceipt = await this.provider.waitForTransaction(
+            transactionResponse.hash,
+            1
+        );
+        if (transactionReceipt.status === 0) {
+            throw new Error(
+                `Transaction ${transactionReceipt.transactionHash} failed`
+            );
+        }
+        this.logger.debug(
+            "Transaction: ",
+            transactionReceipt.transactionHash,
+            " confirmed in block: ",
+            transactionReceipt.blockHash
+        );
+        return transactionReceipt;
     }
 
     private async mintEther(asset: Asset): Promise<void> {
@@ -180,7 +180,7 @@ export class Web3EthereumWallet implements EthereumWallet {
         const value = ethers.BigNumber.from(
             minimumExpectedBalance.toString()
         ).mul(2);
-        await this.sendTransaction({
+        await this.sendDevAccountTransaction({
             to: this.getAccount(),
             value,
             gasLimit: 21000,
@@ -211,7 +211,7 @@ export class Web3EthereumWallet implements EthereumWallet {
             chainId: this.chainId,
         };
 
-        const transactionResponse = await this.sendTransaction(tx);
+        const transactionResponse = await this.sendDevAccountTransaction(tx);
 
         const transactionReceipt = await this.provider.waitForTransaction(
             transactionResponse.transactionHash,
@@ -249,22 +249,6 @@ export class Web3EthereumWallet implements EthereumWallet {
         ]);
 
         return block.timestamp;
-    }
-
-    public async getTransactionStatus(txid: string): Promise<number> {
-        let transaction = await this.provider.getTransaction(txid);
-
-        // Note that TransactionResponse.wait throws an Error if the transaction is failed
-        // Hence we are going for a more manual method.
-        do {
-            await sleep(100);
-            transaction = await this.provider.getTransaction(txid);
-        } while (transaction.confirmations === 0);
-
-        const transactionReceipt = await this.provider.getTransactionReceipt(
-            txid
-        );
-        return transactionReceipt.status;
     }
 
     public getAccount(): string {
@@ -308,7 +292,7 @@ export class Web3EthereumWallet implements EthereumWallet {
             value,
             gasLimit,
         };
-        return this.sendTransaction(transaction);
+        return this.sendTransaction(transaction, this.wallet);
     }
 
     async callContract(
@@ -323,19 +307,7 @@ export class Web3EthereumWallet implements EthereumWallet {
             to: contractAddress,
             gasLimit,
         };
-        return this.sendTransaction(transaction);
-    }
-
-    public async getTransactionReceipt(
-        transactionId: string
-    ): Promise<ethers.providers.TransactionReceipt> {
-        return this.provider.getTransactionReceipt(transactionId);
-    }
-
-    public async getTransaction(
-        transactionId: string
-    ): Promise<ethers.providers.TransactionResponse> {
-        return this.provider.getTransaction(transactionId);
+        return this.sendTransaction(transaction, this.wallet);
     }
 
     async assertNetwork(expectedChainId: number): Promise<void> {

@@ -5,10 +5,12 @@ import actionToHttpRequest, {
 import { problemResponseInterceptor } from "./axios_rfc7807_middleware";
 import { Action } from "./siren";
 import {
-    HbitHerc20RequestBody,
-    Herc20HbitRequestBody,
-    SwapRequest,
-} from "./swaps_payload";
+    CreateBtcDaiOrderPayload,
+    HalbitHerc20Payload,
+    HbitHerc20Payload,
+    Herc20HalbitPayload,
+    Herc20HbitPayload,
+} from "./payload";
 
 interface GetInfo {
     id: string;
@@ -36,7 +38,7 @@ export interface Peer {
  * Facilitates access to the [COMIT network daemon (cnd)](@link https://github.com/comit-network/comit-rs) REST API.
  */
 export class Cnd {
-    private readonly client: AxiosInstance;
+    public readonly client: AxiosInstance;
 
     public constructor(cndUrl: string) {
         this.client = axios.create({
@@ -63,6 +65,11 @@ export class Cnd {
         return info.id;
     }
 
+    public async dial(other: Cnd) {
+        const addr = await other.getPeerListenAddresses();
+        await this.client.post("dial", { addresses: addr });
+    }
+
     /**
      * Get the address on which cnd is listening for peer-to-peer/COMIT messages.
      *
@@ -76,19 +83,6 @@ export class Cnd {
         }
 
         return info.listen_addresses;
-    }
-
-    /**
-     * Sends a swap request to cnd.
-     *
-     * @param swap The details of the swap to initiate.
-     * @returns The URL of the swap request on the cnd REST API.
-     * @throws A {@link Problem} from the cnd REST API or an {@link Error}.
-     */
-    public async postSwap(swap: SwapRequest): Promise<string> {
-        const response = await this.client.post("swaps/rfc003", swap);
-
-        return response.headers.location;
     }
 
     /**
@@ -119,28 +113,36 @@ export class Cnd {
         return this.client.request(request);
     }
 
-    /**
-     * Post a swap request on the REST API route of cnd `/swaps/herc20/hbit`
-     * @param body The body to set in the request. The design being not yet finalised it is optional and of type `any`
-     * @return The location of the swap (href) as returned by the REST API in the location header.
-     */
-    public async createHerc20Hbit(
-        body: Herc20HbitRequestBody
-    ): Promise<string> {
+    public async createHerc20Hbit(body: Herc20HbitPayload): Promise<string> {
         const response = await this.client.post("swaps/herc20/hbit", body);
 
         return response.headers.location;
     }
 
-    /**
-     * Post a swap request on the REST API route of cnd `/swaps/hbit/herc20`
-     * @param body The body to set in the request. The design being not yet finalised it is optional and of type `any`
-     * @return The location of the swap (href) as returned by the REST API in the location header.
-     */
-    public async createHbitHerc20(
-        body: HbitHerc20RequestBody
-    ): Promise<string> {
+    public async createHbitHerc20(body: HbitHerc20Payload): Promise<string> {
         const response = await this.client.post("swaps/hbit/herc20", body);
+
+        return response.headers.location;
+    }
+
+    public async createHalbitHerc20(
+        body: HalbitHerc20Payload
+    ): Promise<string> {
+        const response = await this.client.post("swaps/halbit/herc20", body);
+
+        return response.headers.location;
+    }
+
+    public async createHerc20Halbit(
+        body: Herc20HalbitPayload
+    ): Promise<string> {
+        const response = await this.client.post("swaps/herc20/halbit", body);
+
+        return response.headers.location;
+    }
+
+    public async createBtcDaiOrder(order: CreateBtcDaiOrderPayload) {
+        const response = await this.client.post("/orders/BTC-DAI", order);
 
         return response.headers.location;
     }

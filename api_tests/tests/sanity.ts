@@ -28,7 +28,7 @@ describe("Sanity", () => {
     it(
         "returns-invalid-body-for-bad-json-herc20-halbit",
         oneActorTest(async ({ alice }) => {
-            const promise = alice.createHerc20Halbit({
+            const promise = alice.cnd.createHerc20Halbit({
                 // @ts-ignore
                 garbage: true,
             });
@@ -43,7 +43,7 @@ describe("Sanity", () => {
     it(
         "returns-invalid-body-for-bad-json-halbit-herc20",
         oneActorTest(async ({ alice }) => {
-            const promise = alice.createHalbitHerc20({
+            const promise = alice.cnd.createHalbitHerc20({
                 // @ts-ignore
                 garbage: true,
             });
@@ -58,7 +58,7 @@ describe("Sanity", () => {
     it(
         "returns-invalid-body-for-bad-json-herc20-hbit",
         oneActorTest(async ({ alice }) => {
-            const promise = alice.createHerc20Hbit({
+            const promise = alice.cnd.createHerc20Hbit({
                 // @ts-ignore
                 garbage: true,
             });
@@ -73,7 +73,7 @@ describe("Sanity", () => {
     it(
         "returns-invalid-body-for-bad-json-hbit-herc20",
         oneActorTest(async ({ alice }) => {
-            const promise = alice.createHbitHerc20({
+            const promise = alice.cnd.createHbitHerc20({
                 // @ts-ignore
                 garbage: true,
             });
@@ -124,10 +124,10 @@ describe("Sanity", () => {
             };
 
             await expect(
-                alice.createHerc20Halbit(bodies.alice)
+                alice.cnd.createHerc20Halbit(bodies.alice)
             ).rejects.toMatchObject(expectedProblem);
             await expect(
-                bob.createHerc20Halbit(bodies.bob)
+                bob.cnd.createHerc20Halbit(bodies.bob)
             ).rejects.toMatchObject(expectedProblem);
         })
     );
@@ -145,10 +145,10 @@ describe("Sanity", () => {
             };
 
             await expect(
-                alice.createHalbitHerc20(bodies.alice)
+                alice.cnd.createHalbitHerc20(bodies.alice)
             ).rejects.toMatchObject(expectedProblem);
             await expect(
-                bob.createHalbitHerc20(bodies.bob)
+                bob.cnd.createHalbitHerc20(bodies.bob)
             ).rejects.toMatchObject(expectedProblem);
         })
     );

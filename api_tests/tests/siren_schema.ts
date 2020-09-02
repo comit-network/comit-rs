@@ -10,7 +10,7 @@ import "../src/schema_matcher";
 import * as sirenJsonSchema from "../siren.schema.json";
 import * as rootJsonSchema from "../root.schema.json";
 import axios from "axios";
-import { SwapEntity } from "../src/payload";
+import { SwapEntity } from "../src/cnd/payload";
 import * as siren from "../src/cnd/siren";
 
 describe("Siren Schema", () => {

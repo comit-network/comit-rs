@@ -1,8 +1,8 @@
 import { Action } from "../src/action";
-import { Step, SwapAction } from "../src/cnd/swaps_payload";
 import { Swap } from "../src/swap";
+import { SwapAction } from "../src/cnd/payload";
 
-const swapAction: SwapAction = { name: Step.Redeem, href: "/redeem" };
+const swapAction: SwapAction = { name: "redeem", href: "/redeem" };
 
 describe("Action", () => {
     it("has the same name than the swap action used to construct", () => {

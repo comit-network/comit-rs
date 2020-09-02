@@ -4,6 +4,7 @@ import { BitcoinWallet } from "./bitcoin";
 import { sleep } from "../utils";
 import {
     AddressType,
+    Channel,
     GetInfoResponse,
     Invoice,
     OpenStatusUpdate,
@@ -19,11 +20,10 @@ import { Lnd } from "./lnd";
 export interface LightningWallet extends Wallet {
     readonly p2pSocket: string;
 
-    address(): Promise<string>;
+    newFundingAddress(): Promise<string>;
     getPubkey(): Promise<string>;
     connectPeer(toWallet: LightningWallet): Promise<any>;
     listPeers(): Promise<Peer[]>;
-    getChannels(): Promise<any>;
     openChannel(toWallet: LightningWallet, quantity: number): Promise<void>;
     addInvoice(
         sats: string
@@ -31,22 +31,19 @@ export interface LightningWallet extends Wallet {
         rHash: string;
         paymentRequest: string;
     }>;
-    syncedToChain(): Promise<boolean>;
-
+    isSyncedToChain(): Promise<boolean>;
     sendPayment(
         publicKey: string,
         satAmount: string,
         secretHash: string,
         finalCltvDelta: number
     ): Promise<() => Promise<SendResponse>>;
-
     addHoldInvoice(
         satAmount: string,
         secretHash: string,
         expiry: number,
         cltvExpiry: number
     ): Promise<string>;
-
     settleInvoice(secret: string): Promise<void>;
 
     /**
@@ -105,7 +102,7 @@ export class LndWallet implements LightningWallet {
 
         await this.bitcoinWallet.mintToAddress(
             minimumExpectedBalance,
-            await this.address()
+            await this.newFundingAddress()
         );
 
         await pollUntilMinted(
@@ -115,7 +112,7 @@ export class LndWallet implements LightningWallet {
         );
     }
 
-    public async address(): Promise<string> {
+    public async newFundingAddress(): Promise<string> {
         return this.lnd.lnrpc
             .newAddress({ type: AddressType.NESTED_PUBKEY_HASH })
             .then((r) => r.address);
@@ -160,14 +157,13 @@ export class LndWallet implements LightningWallet {
         return response.peers ? response.peers : [];
     }
 
-    // @ts-ignore: dependency versions don't match ...
-    public async getChannels() {
+    public async getChannels(): Promise<Channel[]> {
         const listChannelsResponse = await this.lnd.lnrpc.listChannels();
 
         return listChannelsResponse.channels;
     }
 
-    public async syncedToChain(): Promise<boolean> {
+    public async isSyncedToChain(): Promise<boolean> {
         return this.lnd.lnrpc.getInfo().then((r) => r.syncedToChain);
     }
 
@@ -175,8 +171,8 @@ export class LndWallet implements LightningWallet {
         // First, need to check everyone is sync'd to the chain
 
         while (
-            !(await this.syncedToChain()) ||
-            !(await toWallet.syncedToChain())
+            !(await this.isSyncedToChain()) ||
+            !(await toWallet.isSyncedToChain())
         ) {
             this.logger.info(`One of the lnd node is not yet synced, waiting.`);
             await sleep(500);

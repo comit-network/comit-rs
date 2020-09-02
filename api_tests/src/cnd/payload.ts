@@ -5,13 +5,8 @@
 /*
  * The payload for POST requests to create a swap on the cnd REST API.
  */
-import { Peer } from "./cnd/cnd";
-import {
-    Action,
-    EmbeddedRepresentationSubEntity,
-    Entity,
-    Link,
-} from "./cnd/siren";
+import { Peer } from "./cnd";
+import { Action, EmbeddedRepresentationSubEntity, Entity, Link } from "./siren";
 
 interface Payload<A, B> {
     alpha: A;
@@ -225,4 +220,15 @@ export interface OpenOrderEntity extends EmbeddedRepresentationSubEntity {
 
 export interface OpenOrdersEntity extends Entity {
     entities: OpenOrderEntity[];
+}
+
+export interface CreateBtcDaiOrderPayload {
+    position: Position;
+    quantity: string;
+    price: string;
+    swap: {
+        role: string;
+        bitcoin_address: string;
+        ethereum_address: string;
+    };
 }

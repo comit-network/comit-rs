@@ -1,122 +1,65 @@
 import crypto from "crypto";
-import { bip32, networks } from "bitcoinjs-lib";
 import { Logger } from "log4js";
 import BitcoinRpcClient from "bitcoin-core";
 import { toBitcoin, toSatoshi } from "satoshi-bitcoin";
 import { pollUntilMinted, Wallet } from "./index";
 import { BitcoinNodeConfig } from "../ledgers";
 import { Asset } from "../asset";
-import axios, { AxiosInstance, Method } from "axios";
+import axios, { AxiosError, AxiosInstance, Method } from "axios";
 
 export interface BitcoinWallet extends Wallet {
     mintToAddress(
         minimumExpectedBalance: bigint,
         toAddress: string
     ): Promise<void>;
-
     getAddress(): Promise<string>;
-
     getBalance(): Promise<number>;
-
     sendToAddress(
         address: string,
         satoshis: number,
         network: Network
     ): Promise<string>;
-
     broadcastTransaction(
         transactionHex: string,
         network: Network
     ): Promise<string>;
 
     getFee(): string;
-
-    getTransaction(transactionId: string): Promise<BitcoinTransaction>;
 }
 
 export class BitcoindWallet implements BitcoinWallet {
     public static async newInstance(config: BitcoinNodeConfig, logger: Logger) {
-        const hdKey = bip32.fromSeed(crypto.randomBytes(32), networks.regtest);
-        const derivationPath = "44h/1h/0h/0/*";
-        let walletDescriptor = `wpkh(${hdKey.toBase58()}/${derivationPath})`;
-
-        const walletName = hdKey.fingerprint.toString("hex");
-        const url = config.rpcUrl;
+        const walletName = crypto.randomBytes(32).toString("hex");
         const auth = {
             username: config.username,
             password: config.password,
         };
 
-        const client = axios.create({
-            baseURL: url,
-            method: "post" as Method,
-            auth,
-        });
-
-        const walletExists = await client
-            .request({
-                data: {
-                    jsonrpc: "1.0",
-                    method: "listwallets",
-                },
-            })
-            .then((res) => res.data.result.includes(walletName));
-
-        if (!walletExists) {
-            await client.request({
-                data: {
-                    jsonrpc: "1.0",
-                    method: "createwallet",
-                    params: [walletName],
-                },
-            });
-        }
-
-        // Ask bitcoind for a checksum if none was provided with the descriptor
-        if (!hasChecksum(walletDescriptor)) {
-            const checksum = await client
-                .request({
-                    data: {
-                        jsonrpc: "1.0",
-                        method: "getdescriptorinfo",
-                        params: [walletDescriptor],
-                    },
-                })
-                .then((res) => res.data.result.checksum);
-            walletDescriptor = `${walletDescriptor}#${checksum}`;
-        }
-
-        const walletClient = axios.create({
-            baseURL: `${url}/wallet/${walletName}`,
-            method: "post" as Method,
-            auth,
-        });
-
-        await walletClient.request({
+        await newAxiosClient(config.rpcUrl, auth, logger).request({
             data: {
                 jsonrpc: "1.0",
-                method: "importmulti",
-                params: [
-                    [{ desc: walletDescriptor, timestamp: 0, range: 0 }],
-                    { rescan: true },
-                ],
+                method: "createwallet",
+                params: [walletName],
             },
         });
 
-        const rpcClientArgs = {
+        logger.info("Name of generated Bitcoin wallet:", walletName);
+
+        const minerClient = new BitcoinRpcClient({
             network: config.network,
             port: config.rpcPort,
             host: config.host,
             username: config.username,
             password: config.password,
-        };
-
-        const minerClient = new BitcoinRpcClient({
-            ...rpcClientArgs,
             wallet: config.minerWallet,
         });
+        const walletClient = newAxiosClient(
+            `${config.rpcUrl}/wallet/${walletName}`,
+            auth,
+            logger
+        );
 
-        return new BitcoindWallet(minerClient, logger, client);
+        return new BitcoindWallet(minerClient, logger, walletClient);
     }
 
     public MaximumFee = 100000;
@@ -252,29 +195,6 @@ export class BitcoindWallet implements BitcoinWallet {
         return "150";
     }
 
-    public async getTransaction(
-        transactionId: string
-    ): Promise<BitcoinTransaction> {
-        const res = await this.rpcClient.request({
-            data: {
-                jsonrpc: "1.0",
-                method: "getrawtransaction",
-                params: [transactionId, true],
-            },
-        });
-        return res.data.result;
-    }
-
-    public async close(): Promise<void> {
-        await this.rpcClient.request({
-            data: {
-                jsonrpc: "1.0",
-                method: "unloadwallet",
-                params: [],
-            },
-        });
-    }
-
     private async assertNetwork(network: Network): Promise<void> {
         const res = await this.rpcClient.request({
             data: { jsonrpc: "1.0", method: "getblockchaininfo", params: [] },
@@ -288,13 +208,25 @@ export class BitcoindWallet implements BitcoinWallet {
     }
 }
 
-export type Network = "main" | "test" | "regtest";
+function newAxiosClient(
+    baseUrl: string,
+    auth: { password: string; username: string },
+    logger: Logger
+) {
+    const client = axios.create({
+        baseURL: baseUrl,
+        method: "post" as Method,
+        auth,
+    });
+    client.interceptors.response.use(
+        (response) => response,
+        (error) => jsonRpcResponseInterceptor(logger, error)
+    );
 
-function hasChecksum(descriptor: string): boolean {
-    const [, checksum] = descriptor.split("#", 2);
-
-    return !!checksum && checksum.length === 8;
+    return client;
 }
+
+export type Network = "main" | "test" | "regtest";
 
 /**
  * A simplied representation of a Bitcoin transaction
@@ -303,4 +235,29 @@ export interface BitcoinTransaction {
     hex: string;
     txid: string;
     confirmations: number;
+}
+
+async function jsonRpcResponseInterceptor(
+    logger: Logger,
+    error: AxiosError
+): Promise<AxiosError> {
+    const response = error.response;
+
+    if (!response) {
+        return Promise.reject(error);
+    }
+
+    const body = response.data;
+
+    if (!body.error) {
+        return Promise.reject(error);
+    }
+
+    logger.error("JSON-RPC request failed. Original request:", error.config);
+
+    return Promise.reject(
+        `JSON-RPC request '${
+            JSON.parse(error.config.data).method
+        }' failed with '${body.error.message}'`
+    );
 }

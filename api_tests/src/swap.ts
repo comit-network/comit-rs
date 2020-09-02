@@ -3,9 +3,9 @@ import { Action } from "./action";
 import { LedgerAction } from "./cnd/action_payload";
 import { Cnd } from "./cnd/cnd";
 import { Action as SirenAction, Field } from "./cnd/siren";
-import { SwapResponse } from "./cnd/swaps_payload";
 import { AllWallets, Wallets } from "./wallets";
 import { BigNumber } from "ethers";
+import { SwapEntity } from "./cnd/payload";
 
 export class WalletError extends Error {
     constructor(
@@ -40,7 +40,7 @@ export class Swap {
      */
     public async nextAction(): Promise<Action | null> {
         const actions = await this.cnd
-            .fetch<SwapResponse>(this.self)
+            .fetch<SwapEntity>(this.self)
             .then((response) => response.data.actions);
 
         if (!actions || actions.length === 0) {

@@ -1,5 +1,5 @@
-import { Step, SwapAction } from "./cnd/swaps_payload";
 import { Swap } from "./swap";
+import { SwapAction } from "./cnd/payload";
 
 /**
  * An executable action.
@@ -7,7 +7,7 @@ import { Swap } from "./swap";
 export class Action {
     constructor(private action: SwapAction, private swap: Swap) {}
 
-    get name(): Step {
+    get name(): string {
         return this.action.name;
     }
 
