@@ -1,3 +1,6 @@
+mod action;
+mod amount;
+mod dial_addr;
 pub mod halbit;
 mod halbit_herc20;
 pub mod hbit;
@@ -6,18 +9,13 @@ pub mod herc20;
 mod herc20_halbit;
 mod herc20_hbit;
 mod info;
-mod orders;
-mod route_factory;
-mod serde_peer_id;
-#[macro_use]
-mod impl_serialize_http;
-mod action;
-mod amount;
-mod dial_addr;
 mod markets;
+mod orders;
 mod peers;
 mod problem;
 mod protocol;
+mod route_factory;
+mod serde_peer_id;
 mod swaps;
 mod tokens;
 
@@ -33,14 +31,12 @@ pub use self::{
 pub const PATH: &str = "swaps";
 
 use crate::{
-    actions::lnd::Chain, asset, ethereum::ChainId, htlc_location, identity, ledger,
-    storage::CreatedSwap, transaction, LocalSwapId, Role,
+    actions::lnd::Chain, asset, ethereum::ChainId, identity, ledger, storage::CreatedSwap,
+    transaction, LocalSwapId, Role,
 };
 use chrono::Utc;
 use libp2p::{Multiaddr, PeerId};
-use serde::{
-    de::Error as _, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer,
-};
+use serde::{de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     convert::{TryFrom, TryInto},
     ops::Deref,
@@ -160,7 +156,6 @@ impl Serialize for Http<Chain> {
     }
 }
 
-impl_serialize_type_with_fields!(htlc_location::Bitcoin { "txid" => txid, "vout" => vout });
 impl Serialize for Http<identity::Ethereum> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -483,10 +478,7 @@ mod tests {
         http_api::{Http, HttpAsset, HttpLedger},
         ledger, transaction,
     };
-    use ::bitcoin::{
-        hashes::{hex::FromHex, sha256d},
-        OutPoint, Script, TxIn,
-    };
+    use ::bitcoin::{OutPoint, Script, TxIn};
     use libp2p::PeerId;
     use std::str::FromStr;
 
@@ -619,30 +611,6 @@ mod tests {
         assert_eq!(
             &ethereum_identity_serialized,
             r#""0x0707070707070707070707070707070707070707""#
-        );
-    }
-
-    #[test]
-    fn http_htlc_location_serializes_correctly_to_json() {
-        let bitcoin_htlc_location = OutPoint {
-            txid: sha256d::Hash::from_hex(
-                "ad067ee417ee5518122374307d1fa494c67e30c75d38c7061d944b59e56fe024",
-            )
-            .unwrap()
-            .into(),
-            vout: 1u32,
-        };
-        // Ethereum HtlcLocation matches Ethereum Identity, so it is already being
-        // tested elsewhere.
-
-        let bitcoin_htlc_location = Http(bitcoin_htlc_location);
-
-        let bitcoin_htlc_location_serialized =
-            serde_json::to_string(&bitcoin_htlc_location).unwrap();
-
-        assert_eq!(
-            &bitcoin_htlc_location_serialized,
-            r#"{"txid":"ad067ee417ee5518122374307d1fa494c67e30c75d38c7061d944b59e56fe024","vout":1}"#
         );
     }
 
