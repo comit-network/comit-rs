@@ -1,5 +1,5 @@
 use crate::{
-    http_api::{problem, Http},
+    http_api::{problem, serde_peer_id},
     Facade,
 };
 use libp2p::{Multiaddr, PeerId};
@@ -12,7 +12,7 @@ pub async fn get_info(facade: Facade) -> Result<impl Reply, Rejection> {
     let listen_addresses = facade.swarm.listen_addresses().await.to_vec();
 
     Ok(warp::reply::json(&InfoResource {
-        id: Http(peer_id),
+        id: peer_id,
         listen_addresses,
     }))
 }
@@ -25,7 +25,7 @@ pub async fn get_info_siren(facade: Facade) -> Result<impl Reply, Rejection> {
     Ok(warp::reply::json(
         &siren::Entity::default()
             .with_properties(&InfoResource {
-                id: Http(peer_id),
+                id: peer_id,
                 listen_addresses,
             })
             .map_err(anyhow::Error::from)
@@ -39,6 +39,7 @@ pub async fn get_info_siren(facade: Facade) -> Result<impl Reply, Rejection> {
 
 #[derive(Serialize, Debug)]
 struct InfoResource {
-    id: Http<PeerId>,
+    #[serde(with = "serde_peer_id")]
+    id: PeerId,
     listen_addresses: Vec<Multiaddr>,
 }

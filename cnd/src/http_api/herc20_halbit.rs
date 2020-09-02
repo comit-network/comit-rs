@@ -31,7 +31,7 @@ pub async fn post_swap(
     };
     let digest = swap_digest::herc20_halbit(body.clone());
     let (peer, address_hint) = body.peer.into_peer_with_address_hint();
-    let role = body.role.0;
+    let role = body.role;
 
     facade
         .initiate_communication(swap_id, role, digest, identities, peer, address_hint)

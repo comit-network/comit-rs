@@ -2,7 +2,7 @@
 //! HTTP-API.
 
 use libp2p::PeerId;
-use serde::Serializer;
+use serde::{de::Error, Deserialize, Deserializer, Serializer};
 
 pub fn serialize<S>(peer_id: &PeerId, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -10,6 +10,16 @@ where
 {
     let string = peer_id.to_string();
     serializer.serialize_str(&string)
+}
+
+pub fn deserialize<'de, D>(deserializer: D) -> Result<PeerId, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let string = String::deserialize(deserializer)?;
+    let peer_id = string.parse().map_err(D::Error::custom)?;
+
+    Ok(peer_id)
 }
 
 #[cfg(test)]

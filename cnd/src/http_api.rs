@@ -30,18 +30,11 @@ pub use self::{
 
 pub const PATH: &str = "swaps";
 
-use crate::{
-    actions::lnd::Chain, asset, ethereum::ChainId, identity, ledger, storage::CreatedSwap,
-    transaction, LocalSwapId, Role,
-};
+use crate::{asset, ethereum::ChainId, identity, ledger, storage::CreatedSwap, LocalSwapId, Role};
 use chrono::Utc;
 use libp2p::{Multiaddr, PeerId};
-use serde::{de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
-use std::{
-    convert::{TryFrom, TryInto},
-    ops::Deref,
-    str::FromStr,
-};
+use serde::{Deserialize, Serialize};
+use std::convert::{TryFrom, TryInto};
 
 /// Object representing the data of a POST request for creating a swap.
 #[derive(Deserialize, Clone, Debug)]
@@ -49,7 +42,7 @@ pub struct PostBody<A, B> {
     pub alpha: A,
     pub beta: B,
     pub peer: DialInformation,
-    pub role: Http<Role>,
+    pub role: Role,
 }
 
 impl<A, B> PostBody<A, B> {
@@ -72,139 +65,19 @@ impl<A, B> PostBody<A, B> {
             beta,
             peer: body.peer.into(),
             address_hint: None,
-            role: body.role.0,
+            role: body.role,
             start_of_swap,
         }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Http<I>(pub I);
-
-impl<I> From<I> for Http<I> {
-    fn from(inner: I) -> Self {
-        Http(inner)
-    }
-}
-
-impl<I> Deref for Http<I> {
-    type Target = I;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl Serialize for Http<Role> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.0.to_string())
-    }
-}
-
-impl<'de> Deserialize<'de> for Http<Role> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let role = String::deserialize(deserializer)?;
-        let role =
-            Role::from_str(role.as_str()).map_err(<D as Deserializer<'de>>::Error::custom)?;
-
-        Ok(Http(role))
-    }
-}
-
-impl Serialize for Http<transaction::Bitcoin> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.0.txid().to_string())
-    }
-}
-
-impl Serialize for Http<transaction::Ethereum> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.0.hash.serialize(serializer)
-    }
-}
-
-impl Serialize for Http<identity::Bitcoin> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let public_key = bitcoin::PublicKey::from(self.0);
-        serializer.serialize_str(&public_key.to_string())
-    }
-}
-
-impl Serialize for Http<Chain> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match &self.0 {
-            Chain::Bitcoin => serializer.serialize_str("bitcoin"),
-        }
-    }
-}
-
-impl Serialize for Http<identity::Ethereum> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.0.serialize(serializer)
-    }
-}
-
-impl Serialize for Http<PeerId> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.0.to_base58()[..])
-    }
-}
-
-impl<'de> Deserialize<'de> for Http<PeerId> {
-    fn deserialize<D>(deserializer: D) -> Result<Http<PeerId>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let value = String::deserialize(deserializer)?;
-        let peer_id = value.parse().map_err(D::Error::custom)?;
-
-        Ok(Http(peer_id))
-    }
-}
-
-impl<'de> Deserialize<'de> for Http<bitcoin::Address> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let address = String::deserialize(deserializer)?;
-        let address = bitcoin::Address::from_str(address.as_str())
-            .map_err(<D as Deserializer<'de>>::Error::custom)?;
-
-        Ok(Http(address))
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(untagged)]
 pub enum DialInformation {
-    JustPeerId(Http<PeerId>),
+    JustPeerId(#[serde(with = "serde_peer_id")] PeerId),
     WithAddressHint {
-        peer_id: Http<PeerId>,
+        #[serde(with = "serde_peer_id")]
+        peer_id: PeerId,
         address_hint: Multiaddr,
     },
 }
@@ -212,11 +85,11 @@ pub enum DialInformation {
 impl DialInformation {
     fn into_peer_with_address_hint(self) -> (PeerId, Option<Multiaddr>) {
         match self {
-            DialInformation::JustPeerId(inner) => (inner.0, None),
+            DialInformation::JustPeerId(inner) => (inner, None),
             DialInformation::WithAddressHint {
                 peer_id,
                 address_hint,
-            } => (peer_id.0, Some(address_hint)),
+            } => (peer_id, Some(address_hint)),
         }
     }
 }
@@ -224,8 +97,8 @@ impl DialInformation {
 impl From<DialInformation> for PeerId {
     fn from(dial_information: DialInformation) -> Self {
         match dial_information {
-            DialInformation::JustPeerId(inner) => inner.0,
-            DialInformation::WithAddressHint { peer_id, .. } => peer_id.0,
+            DialInformation::JustPeerId(inner) => inner,
+            DialInformation::WithAddressHint { peer_id, .. } => peer_id,
         }
     }
 }
@@ -473,14 +346,10 @@ mod tests {
     use crate::{
         asset,
         asset::ethereum::FromWei,
-        bitcoin::PublicKey,
-        ethereum::{Address, ChainId, Hash, U256},
-        http_api::{Http, HttpAsset, HttpLedger},
-        ledger, transaction,
+        ethereum::{ChainId, U256},
+        http_api::{HttpAsset, HttpLedger},
+        ledger,
     };
-    use ::bitcoin::{OutPoint, Script, TxIn};
-    use libp2p::PeerId;
-    use std::str::FromStr;
 
     #[test]
     fn http_asset_serializes_correctly_to_json() {
@@ -553,76 +422,5 @@ mod tests {
             .unwrap();
 
         assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn http_transaction_serializes_correctly_to_json() {
-        let bitcoin_tx = transaction::Bitcoin {
-            version: 1,
-            lock_time: 0,
-            input: vec![TxIn {
-                previous_output: OutPoint::null(),
-                script_sig: Script::new(),
-                sequence: 0,
-                witness: vec![],
-            }],
-            output: vec![],
-        };
-        let ethereum_tx = transaction::Ethereum {
-            hash: Hash::from([1u8; 32]),
-            ..transaction::Ethereum::default()
-        };
-
-        let bitcoin_tx = Http(bitcoin_tx);
-        let ethereum_tx = Http(ethereum_tx);
-
-        let bitcoin_tx_serialized = serde_json::to_string(&bitcoin_tx).unwrap();
-        let ethereum_tx_serialized = serde_json::to_string(&ethereum_tx).unwrap();
-
-        assert_eq!(
-            &bitcoin_tx_serialized,
-            r#""e6634b155d7d472f60629d168f612781efa9f48e256c5aa3f9ddd2fa181fdedf""#
-        );
-        assert_eq!(
-            &ethereum_tx_serialized,
-            r#""0x0101010101010101010101010101010101010101010101010101010101010101""#
-        );
-    }
-
-    #[test]
-    fn http_identity_serializes_correctly_to_json() {
-        let bitcoin_identity: PublicKey =
-            "02ef606e64a51b07373f81e042887e8e9c3806f0ff3fe3711df18beba8b82d82e6"
-                .parse()
-                .unwrap();
-
-        let ethereum_identity = Address::from([7u8; 20]);
-
-        let bitcoin_identity = Http(bitcoin_identity);
-        let ethereum_identity = Http(ethereum_identity);
-
-        let bitcoin_identity_serialized = serde_json::to_string(&bitcoin_identity).unwrap();
-        let ethereum_identity_serialized = serde_json::to_string(&ethereum_identity).unwrap();
-
-        assert_eq!(
-            &bitcoin_identity_serialized,
-            r#""02ef606e64a51b07373f81e042887e8e9c3806f0ff3fe3711df18beba8b82d82e6""#
-        );
-        assert_eq!(
-            &ethereum_identity_serialized,
-            r#""0x0707070707070707070707070707070707070707""#
-        );
-    }
-
-    #[test]
-    fn http_peer_id_serializes_correctly_to_json() {
-        let peer_id = PeerId::from_str("QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY").unwrap();
-        let peer_id = Http(peer_id);
-
-        let serialized = serde_json::to_string(&peer_id).unwrap();
-        assert_eq!(
-            serialized,
-            r#""QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY""#
-        );
     }
 }

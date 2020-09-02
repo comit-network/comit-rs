@@ -1,4 +1,4 @@
-use crate::{http_api::Http, Facade};
+use crate::{http_api::serde_peer_id, Facade};
 use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
 use warp::{Rejection, Reply};
@@ -10,7 +10,7 @@ pub async fn get_peers(facade: Facade) -> Result<impl Reply, Rejection> {
         .connected_peers()
         .await
         .map(|(peer, addresses)| Peer {
-            id: Http(peer),
+            id: peer,
             endpoints: addresses,
         })
         .collect();
@@ -25,6 +25,7 @@ pub struct PeersResource {
 
 #[derive(Serialize, Debug)]
 pub struct Peer {
-    id: Http<PeerId>,
+    #[serde(with = "serde_peer_id")]
+    id: PeerId,
     endpoints: Vec<Multiaddr>,
 }
