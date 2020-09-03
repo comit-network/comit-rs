@@ -45,7 +45,7 @@ uuid = { version = "0.8", features = ["serde", "v4"] }
 [dev-dependencies]
 atty = "0.2"
 bitcoincore-rpc = "0.11"
-libp2p = { version = "0.24", default-features = false, features = ["secio", "yamux"] }
+libp2p = { version = "0.24", default-features = false, features = ["yamux"] }
 log = { version = "0.4", features = ["serde"] }
 proptest = "0.10"
 spectral = { version = "0.6", default-features = false }
@@ -59,4 +59,4 @@ tracing-subscriber = "0.2"
 
 [features]
 default = []
-test = ["libp2p/secio", "libp2p/yamux"]
+test = ["libp2p/yamux", "libp2p/noise"]

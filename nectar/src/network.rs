@@ -634,7 +634,8 @@ mod transport {
         },
         dns::{DnsConfig, DnsErr},
         mplex::MplexConfig,
-        secio::{SecioConfig, SecioError},
+        noise,
+        noise::{NoiseConfig, X25519Spec},
         tcp::TokioTcpConfig,
         yamux, PeerId,
     };
@@ -644,7 +645,7 @@ mod transport {
         (PeerId, StreamMuxerBox),
         TransportTimeoutError<
             EitherError<
-                EitherError<DnsErr<std::io::Error>, UpgradeError<SecioError>>,
+                EitherError<DnsErr<std::io::Error>, UpgradeError<noise::NoiseError>>,
                 UpgradeError<EitherError<std::io::Error, std::io::Error>>,
             >,
         >,
@@ -656,12 +657,15 @@ mod transport {
     /// - authentication via secio
     /// - multiplexing via yamux or mplex
     pub fn build_transport(keypair: libp2p::identity::Keypair) -> anyhow::Result<NectarTransport> {
+        let dh_keys = noise::Keypair::<X25519Spec>::new().into_authentic(&keypair)?;
+        let noise = NoiseConfig::xx(dh_keys).into_authenticated();
+
         let transport = TokioTcpConfig::new().nodelay(true);
         let transport = DnsConfig::new(transport)?;
 
         let transport = transport
             .upgrade(Version::V1)
-            .authenticate(SecioConfig::new(keypair))
+            .authenticate(noise)
             .multiplex(SelectUpgrade::new(
                 yamux::Config::default(),
                 MplexConfig::new(),

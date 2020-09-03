@@ -3,8 +3,8 @@ use libp2p::{
     core::{
         muxing::StreamMuxerBox, transport::memory::MemoryTransport, upgrade::Version, Executor,
     },
-    identity::Keypair,
-    secio::SecioConfig,
+    identity,
+    noise::{self, NoiseConfig, X25519Spec},
     swarm::{IntoProtocolsHandler, NetworkBehaviour, ProtocolsHandler, SwarmBuilder, SwarmEvent},
     yamux::Config,
     Multiaddr, PeerId, Swarm, Transport,
@@ -32,7 +32,7 @@ pub struct Actor<B: NetworkBehaviour> {
 pub async fn new_connected_swarm_pair<B, F>(behaviour_fn: F) -> (Actor<B>, Actor<B>)
 where
     B: NetworkBehaviour,
-    F: Fn(PeerId, Keypair) -> B + Clone,
+    F: Fn(PeerId, identity::Keypair) -> B + Clone,
     <<<B as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as ProtocolsHandler>::InEvent: Clone,
 <B as NetworkBehaviour>::OutEvent: Debug{
     let (swarm, addr, peer_id) = new_swarm(behaviour_fn.clone());
@@ -54,13 +54,18 @@ where
     (alice, bob)
 }
 
-pub fn new_swarm<B: NetworkBehaviour, F: Fn(PeerId, Keypair) -> B>(behaviour_fn: F) -> (Swarm<B>, Multiaddr, PeerId) where <<<B as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as ProtocolsHandler>::InEvent: Clone{
-    let keypair = Keypair::generate_ed25519();
-    let peer_id = PeerId::from(keypair.public());
+pub fn new_swarm<B: NetworkBehaviour, F: Fn(PeerId, identity::Keypair) -> B>(behaviour_fn: F) -> (Swarm<B>, Multiaddr, PeerId) where <<<B as NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as ProtocolsHandler>::InEvent: Clone{
+    let id_keys = identity::Keypair::generate_ed25519();
+    let peer_id = PeerId::from(id_keys.public());
+
+    let dh_keys = noise::Keypair::<X25519Spec>::new()
+        .into_authentic(&id_keys)
+        .expect("failed to create dh_keys");
+    let noise = NoiseConfig::xx(dh_keys).into_authenticated();
 
     let transport = MemoryTransport::default()
         .upgrade(Version::V1)
-        .authenticate(SecioConfig::new(keypair.clone()))
+        .authenticate(noise)
         .multiplex(Config::default())
         .map(|(peer, muxer), _| (peer, StreamMuxerBox::new(muxer)))
         .timeout(Duration::from_secs(5))
@@ -68,7 +73,7 @@ pub fn new_swarm<B: NetworkBehaviour, F: Fn(PeerId, Keypair) -> B>(behaviour_fn:
 
     let mut swarm: Swarm<B> = SwarmBuilder::new(
         transport,
-        behaviour_fn(peer_id.clone(), keypair),
+        behaviour_fn(peer_id.clone(), id_keys),
         peer_id.clone(),
     )
     .executor(Box::new(GlobalSpawnTokioExecutor))
