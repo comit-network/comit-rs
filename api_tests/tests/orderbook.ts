@@ -9,7 +9,7 @@ import { Position } from "../src/payload";
 
 describe("orderbook", () => {
     it(
-        "btc_dai_buy_order",
+        "herc20-hbit",
         twoActorTest(async ({ alice, bob }) => {
             await alice.connect(bob);
 
@@ -35,7 +35,7 @@ describe("orderbook", () => {
     );
 
     it(
-        "btc_dai_sell_order",
+        "hbit-herc20",
         twoActorTest(async ({ alice, bob }) => {
             await alice.connect(bob);
 
