@@ -6,8 +6,8 @@ import {
     BitcoinNodeConfig,
     EthereumNodeConfig,
 } from "./ledgers";
-import { ActorName } from "./actors/actor";
 import { Logger } from "log4js";
+import { ActorName } from "./actors";
 
 export interface CndConfigFile {
     http_api: HttpApi;
@@ -80,7 +80,7 @@ export class E2ETestActorConfig {
         }
 
         switch (this.name) {
-            case "alice": {
+            case "Alice": {
                 if (ledgerConfig.aliceLnd) {
                     config.lightning = lightningConnector(
                         ledgerConfig.aliceLnd
@@ -88,13 +88,13 @@ export class E2ETestActorConfig {
                 }
                 break;
             }
-            case "bob": {
+            case "Bob": {
                 if (ledgerConfig.bobLnd) {
                     config.lightning = lightningConnector(ledgerConfig.bobLnd);
                 }
                 break;
             }
-            case "carol":
+            case "Carol":
                 {
                     this.logger.warn(
                         "generating lnd config for carol is not supported at this stage"

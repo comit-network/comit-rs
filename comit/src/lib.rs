@@ -105,7 +105,6 @@ pub enum LockProtocol {
     Serialize,
     Deserialize,
 )]
-#[serde(rename_all = "lowercase")]
 pub enum Role {
     Alice,
     Bob,
