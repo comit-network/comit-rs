@@ -6,7 +6,6 @@ use crate::{
     },
     asset,
     ethereum::ChainId,
-    http_api::Http,
     identity, transaction, RelativeTime, Secret, SecretHash, Timestamp,
 };
 use comit::ledger;
@@ -48,7 +47,7 @@ pub enum ActionResponseBody {
         secret_hash: SecretHash,
         expiry: RelativeTime,
         cltv_expiry: RelativeTime,
-        chain: Http<Chain>,
+        chain: Chain,
         network: ledger::Bitcoin,
         self_public_key: identity::Lightning,
     },
@@ -58,13 +57,13 @@ pub enum ActionResponseBody {
         amount: asset::Bitcoin,
         secret_hash: SecretHash,
         final_cltv_delta: RelativeTime,
-        chain: Http<Chain>,
+        chain: Chain,
         network: ledger::Bitcoin,
         self_public_key: identity::Lightning,
     },
     LndSettleInvoice {
         secret: Secret,
-        chain: Http<Chain>,
+        chain: Chain,
         network: ledger::Bitcoin,
         self_public_key: identity::Lightning,
     },
@@ -152,7 +151,7 @@ impl From<lnd::AddHoldInvoice> for ActionResponseBody {
             secret_hash,
             expiry,
             cltv_expiry,
-            chain: Http(chain),
+            chain,
             network,
             self_public_key,
         }
@@ -194,7 +193,7 @@ impl From<lnd::SendPayment> for ActionResponseBody {
             amount,
             secret_hash,
             network,
-            chain: chain.into(),
+            chain,
             final_cltv_delta,
             self_public_key,
         }
@@ -212,7 +211,7 @@ impl From<lnd::SettleInvoice> for ActionResponseBody {
 
         ActionResponseBody::LndSettleInvoice {
             secret,
-            chain: chain.into(),
+            chain,
             network,
             self_public_key,
         }

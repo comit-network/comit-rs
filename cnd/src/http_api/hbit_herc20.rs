@@ -25,7 +25,7 @@ pub async fn post_swap(
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
 
-    let role = body.role.0;
+    let role = body.role;
     let transient_identity = facade
         .storage
         .derive_transient_identity(swap_id, role, Side::Alpha);

@@ -99,6 +99,7 @@ pub mod ethereum {
 
 pub mod lnd {
     use crate::{asset, identity, ledger, timestamp::RelativeTime, Secret, SecretHash};
+    use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub struct AddHoldInvoice {
@@ -139,7 +140,8 @@ pub mod lnd {
     }
 
     /// The underlying chain i.e., layer 1, targeted by LND.
-    #[derive(Debug, Clone, Copy, PartialEq)]
+    #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+    #[serde(rename_all = "lowercase")]
     pub enum Chain {
         Bitcoin,
     }

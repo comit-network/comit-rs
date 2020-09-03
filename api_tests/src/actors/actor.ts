@@ -24,7 +24,7 @@ import {
 import { CndInstance } from "../cnd/cnd_instance";
 import { Ledger, LedgerKind } from "../ledgers/ledger";
 import { HarnessGlobal, LedgerConfig, sleep } from "../utils";
-import { Actors } from "./index";
+import { ActorName, Actors } from "./index";
 import {
     newBitcoinStubWallet,
     newEthereumStubWallet,
@@ -41,8 +41,6 @@ import { merge } from "lodash";
 import { AxiosResponse } from "axios";
 
 declare var global: HarnessGlobal;
-
-export type ActorName = "alice" | "bob" | "carol";
 
 export class Actor {
     public static defaultActionConfig = {
@@ -314,7 +312,7 @@ export class Actor {
         switch (position) {
             case Position.Buy: {
                 switch (this.name) {
-                    case "alice": {
+                    case "Alice": {
                         this.alphaAsset = daiAsset;
                         this.betaAsset = btcAsset;
                         this.alphaLedger = {
@@ -325,7 +323,7 @@ export class Actor {
                         };
                         break;
                     }
-                    case "bob": {
+                    case "Bob": {
                         this.alphaAsset = btcAsset;
                         this.alphaLedger = {
                             name: LedgerKind.Bitcoin,
@@ -341,7 +339,7 @@ export class Actor {
             }
             case Position.Sell: {
                 switch (this.name) {
-                    case "alice": {
+                    case "Alice": {
                         this.alphaAsset = btcAsset;
                         this.betaAsset = daiAsset;
                         this.alphaLedger = {
@@ -352,7 +350,7 @@ export class Actor {
                         };
                         break;
                     }
-                    case "bob": {
+                    case "Bob": {
                         this.alphaAsset = daiAsset;
                         this.betaAsset = btcAsset;
                         this.alphaLedger = {
@@ -376,7 +374,7 @@ export class Actor {
             quantity: sats.toString(10),
             price: weiPerSat.toString(10),
             swap: {
-                role: this.name, // TODO: don't abuse name for role,
+                role: this.name,
                 bitcoin_address: await this.wallets.bitcoin.address(),
                 ethereum_address: this.wallets.ethereum.account(),
             },
@@ -414,7 +412,7 @@ export class Actor {
 
     private async setStartingBalances() {
         switch (this.name) {
-            case "alice": {
+            case "Alice": {
                 // Alice purchases beta asset with alpha asset
                 await this.setStartingBalance([
                     this.alphaAsset,
@@ -429,7 +427,7 @@ export class Actor {
                 );
                 break;
             }
-            case "bob": {
+            case "Bob": {
                 // Bob purchases alpha asset with beta asset
                 await this.setStartingBalance([
                     this.betaAsset,
@@ -795,10 +793,10 @@ function newLightningWallet(
     logger: Logger
 ): LightningWallet {
     switch (actor) {
-        case "alice": {
+        case "Alice": {
             return lightningWallets.alice || newLightningStubWallet(logger);
         }
-        case "bob": {
+        case "Bob": {
             return lightningWallets.bob || newLightningStubWallet(logger);
         }
         default: {

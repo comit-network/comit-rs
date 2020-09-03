@@ -17,7 +17,7 @@ use crate::{
             ActionName, AlphaAbsoluteExpiry, AlphaLedger, AlphaProtocol, BetaAbsoluteExpiry,
             BetaLedger, BetaProtocol, Events, GetRole, Ledger, Protocol, SwapEvent,
         },
-        route_factory, Http,
+        route_factory,
     },
     storage::{Load, LoadAll},
     DeployAction, Facade, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role,
@@ -104,7 +104,7 @@ where
     S: GetRole + Events + AlphaProtocol + BetaProtocol,
 {
     let swap_resource = SwapResource {
-        role: Http(swap.get_role()),
+        role: swap.get_role(),
         events: swap.events(), /* TODO: These events should be sorted by timestamp but we are not
                                 * recording any ... */
         alpha: swap.alpha_protocol(),
@@ -208,7 +208,7 @@ impl std::fmt::Display for ActionName {
 
 #[derive(Debug, Serialize)]
 struct SwapResource {
-    pub role: Http<Role>,
+    pub role: Role,
     pub events: Vec<SwapEvent>,
     pub alpha: Protocol,
     pub beta: Protocol,
