@@ -1,6 +1,7 @@
-use crate::{asset, ethereum::ChainId, hbit, herc20, identity, Role, SecretHash, Timestamp};
+use crate::{
+    asset, ethereum::ChainId, hbit, herc20, identity, ledger, Role, SecretHash, Timestamp,
+};
 use anyhow::Result;
-use bitcoin::Network;
 use futures::prelude::*;
 use libp2p::{
     core::upgrade,
@@ -389,7 +390,7 @@ pub struct CommonParams {
     pub ethereum_absolute_expiry: u32,
     pub bitcoin_absolute_expiry: u32,
     pub ethereum_chain_id: ChainId,
-    pub bitcoin_network: Network,
+    pub bitcoin_network: ledger::Bitcoin,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
@@ -539,7 +540,7 @@ mod tests {
             ethereum_absolute_expiry: 0,
             bitcoin_absolute_expiry: 0,
             ethereum_chain_id: ChainId::GETH_DEV,
-            bitcoin_network: Network::Regtest,
+            bitcoin_network: ledger::Bitcoin::Regtest,
         };
 
         let alice_context = 1;

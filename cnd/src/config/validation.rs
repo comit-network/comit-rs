@@ -4,6 +4,7 @@ use crate::{
 };
 use anyhow::Context;
 use async_trait::async_trait;
+use comit::ledger;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -48,8 +49,8 @@ pub trait FetchNetworkId<S>: Send + Sync + 'static {
 }
 
 #[async_trait]
-impl FetchNetworkId<bitcoin::Network> for BitcoindConnector {
-    async fn network_id(&self) -> anyhow::Result<bitcoin::Network> {
+impl FetchNetworkId<ledger::Bitcoin> for BitcoindConnector {
+    async fn network_id(&self) -> anyhow::Result<ledger::Bitcoin> {
         let chain = self.chain_info().await?.chain;
 
         Ok(chain)

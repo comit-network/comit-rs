@@ -153,12 +153,12 @@ impl Default for Network {
     }
 }
 
-impl From<Network> for ::bitcoin::Network {
+impl From<Network> for ledger::Bitcoin {
     fn from(network: Network) -> Self {
         match network {
-            Network::Main => ::bitcoin::Network::Bitcoin,
-            Network::Test => ::bitcoin::Network::Testnet,
-            Network::Dev => ::bitcoin::Network::Regtest,
+            Network::Main => ledger::Bitcoin::Mainnet,
+            Network::Test => ledger::Bitcoin::Testnet,
+            Network::Dev => ledger::Bitcoin::Regtest,
         }
     }
 }

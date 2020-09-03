@@ -44,7 +44,7 @@ impl Finalized {
         let expiry = INVOICE_EXPIRY_SECS;
         let cltv_expiry = self.cltv_expiry;
         let chain = Chain::Bitcoin;
-        let network = bitcoin::Network::from(self.network);
+        let network = self.network;
         let self_public_key = self.redeem_identity;
 
         AddHoldInvoice {
@@ -63,7 +63,7 @@ impl Finalized {
         let amount = self.asset;
         let final_cltv_delta = self.cltv_expiry;
         let chain = Chain::Bitcoin;
-        let network = bitcoin::Network::from(self.network);
+        let network = self.network;
         let self_public_key = self.refund_identity;
 
         SendPayment {
@@ -79,7 +79,7 @@ impl Finalized {
 
     pub fn build_redeem_action(&self, secret: Secret) -> SettleInvoice {
         let chain = Chain::Bitcoin;
-        let network = bitcoin::Network::from(self.network);
+        let network = self.network;
         let self_public_key = self.redeem_identity;
 
         SettleInvoice {

@@ -1,5 +1,4 @@
 mod file;
-mod serde_bitcoin_network;
 mod settings;
 mod validation;
 
@@ -16,6 +15,7 @@ pub use self::{
     settings::{AllowedOrigins, Settings},
     validation::validate_connection_to_network,
 };
+use comit::ledger;
 
 static BITCOIND_RPC_MAINNET: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:8332"));
 static BITCOIND_RPC_TESTNET: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:18332"));
@@ -73,8 +73,7 @@ impl Default for Network {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Bitcoin {
-    #[serde(with = "crate::config::serde_bitcoin_network")]
-    pub network: bitcoin::Network,
+    pub network: ledger::Bitcoin,
     pub bitcoind: Bitcoind,
 }
 
@@ -84,7 +83,7 @@ pub struct Bitcoind {
 }
 
 impl Bitcoin {
-    fn new(network: bitcoin::Network) -> Self {
+    fn new(network: ledger::Bitcoin) -> Self {
         Self {
             network,
             bitcoind: Bitcoind::new(network),
@@ -93,7 +92,7 @@ impl Bitcoin {
 
     fn from_file(bitcoin: file::Bitcoin, comit_network: Option<comit::Network>) -> Result<Self> {
         if let Some(comit_network) = comit_network {
-            let inferred = bitcoin::Network::from(comit_network);
+            let inferred = ledger::Bitcoin::from(comit_network);
             if inferred != bitcoin.network {
                 anyhow::bail!(
                     "inferred Bitcoin network {} from CLI argument {} but config file says {}",
@@ -112,11 +111,11 @@ impl Bitcoin {
 }
 
 impl Bitcoind {
-    fn new(network: bitcoin::Network) -> Self {
+    fn new(network: ledger::Bitcoin) -> Self {
         let node_url = match network {
-            bitcoin::Network::Bitcoin => BITCOIND_RPC_MAINNET.clone(),
-            bitcoin::Network::Testnet => BITCOIND_RPC_TESTNET.clone(),
-            bitcoin::Network::Regtest => BITCOIND_RPC_REGTEST.clone(),
+            ledger::Bitcoin::Mainnet => BITCOIND_RPC_MAINNET.clone(),
+            ledger::Bitcoin::Testnet => BITCOIND_RPC_TESTNET.clone(),
+            ledger::Bitcoin::Regtest => BITCOIND_RPC_REGTEST.clone(),
         };
 
         Bitcoind { node_url }
@@ -240,12 +239,12 @@ fn dai_address_from_chain_id(id: ChainId) -> Result<ethereum::Address> {
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Lightning {
-    pub network: bitcoin::Network,
+    pub network: ledger::Bitcoin,
     pub lnd: Lnd,
 }
 
 impl Lightning {
-    fn new(network: bitcoin::Network) -> Self {
+    fn new(network: ledger::Bitcoin) -> Self {
         Self {
             network,
             lnd: Lnd::new(network),
@@ -257,7 +256,7 @@ impl Lightning {
         comit_network: Option<comit::Network>,
     ) -> Result<Self> {
         if let Some(comit_network) = comit_network {
-            let inferred = bitcoin::Network::from(comit_network);
+            let inferred = ledger::Bitcoin::from(comit_network);
             if inferred != lightning.network {
                 anyhow::bail!(
                     "inferred Lightning network {} from CLI argument {} but config file says {}",
@@ -299,11 +298,11 @@ pub struct Lnd {
 }
 
 impl Lnd {
-    fn new(network: bitcoin::Network) -> Self {
+    fn new(network: ledger::Bitcoin) -> Self {
         Self::from_url_dir_and_network(LND_URL.clone(), default_lnd_dir(), network)
     }
 
-    fn from_file(file: file::Lnd, network: bitcoin::Network) -> Result<Self> {
+    fn from_file(file: file::Lnd, network: ledger::Bitcoin) -> Result<Self> {
         let rest_api_url = assert_lnd_url_https(file.rest_api_url)?;
 
         Ok(Self::from_url_dir_and_network(
@@ -313,11 +312,7 @@ impl Lnd {
         ))
     }
 
-    fn from_url_dir_and_network(
-        rest_api_url: Url,
-        dir: PathBuf,
-        network: bitcoin::Network,
-    ) -> Self {
+    fn from_url_dir_and_network(rest_api_url: Url, dir: PathBuf, network: ledger::Bitcoin) -> Self {
         Lnd {
             rest_api_url,
             dir: dir.clone(),
@@ -343,11 +338,11 @@ fn default_lnd_cert_path(lnd_dir: PathBuf) -> PathBuf {
     lnd_dir.join("tls.cert")
 }
 
-fn default_lnd_readonly_macaroon_path(lnd_dir: PathBuf, network: bitcoin::Network) -> PathBuf {
+fn default_lnd_readonly_macaroon_path(lnd_dir: PathBuf, network: ledger::Bitcoin) -> PathBuf {
     let network_dir = match network {
-        bitcoin::Network::Bitcoin => "mainnet",
-        bitcoin::Network::Testnet => "testnet",
-        bitcoin::Network::Regtest => "regtest",
+        ledger::Bitcoin::Mainnet => "mainnet",
+        ledger::Bitcoin::Testnet => "testnet",
+        ledger::Bitcoin::Regtest => "regtest",
     };
     lnd_dir
         .join("data")
@@ -433,7 +428,7 @@ mod tests {
         );
 
         let expected = file::Lightning {
-            network: bitcoin::Network::Regtest,
+            network: ledger::Bitcoin::Regtest,
             lnd: Some(file::Lnd {
                 rest_api_url: LND_URL.clone(),
                 dir: PathBuf::from("/path/to/lnd"),
@@ -447,7 +442,7 @@ mod tests {
     fn given_network_on_cli_when_config_disagrees_then_error() {
         let comit_network = comit::Network::Main;
         let config_file = file::Bitcoin {
-            network: bitcoin::Network::Testnet,
+            network: ledger::Bitcoin::Testnet,
             bitcoind: None,
         };
 
@@ -459,7 +454,7 @@ mod tests {
     #[test]
     fn given_no_network_on_cli_then_use_config() {
         let config_file = file::Bitcoin {
-            network: bitcoin::Network::Testnet,
+            network: ledger::Bitcoin::Testnet,
             bitcoind: None,
         };
 
@@ -468,14 +463,14 @@ mod tests {
         assert_that(&result)
             .is_ok()
             .map(|b| &b.network)
-            .is_equal_to(bitcoin::Network::Testnet);
+            .is_equal_to(ledger::Bitcoin::Testnet);
     }
 
     #[test]
     fn given_network_on_cli_when_config_specifies_the_same_then_ok() {
         let comit_network = comit::Network::Main;
         let config_file = file::Bitcoin {
-            network: bitcoin::Network::Bitcoin,
+            network: ledger::Bitcoin::Mainnet,
             bitcoind: None,
         };
 

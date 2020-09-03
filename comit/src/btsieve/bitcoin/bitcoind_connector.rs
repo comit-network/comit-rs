@@ -1,7 +1,10 @@
-use crate::btsieve::{BlockByHash, LatestBlock};
+use crate::{
+    btsieve::{BlockByHash, LatestBlock},
+    ledger,
+};
 use anyhow::Context;
 use async_trait::async_trait;
-use bitcoin::{consensus::deserialize, BlockHash, Network};
+use bitcoin::{consensus::deserialize, BlockHash};
 use futures::TryFutureExt;
 use reqwest::{Client, Url};
 use serde::{de, export::fmt, Deserialize, Deserializer};
@@ -10,7 +13,7 @@ use serde::{de, export::fmt, Deserialize, Deserializer};
 pub struct ChainInfo {
     bestblockhash: BlockHash,
     #[serde(deserialize_with = "deserialize_bitcoind_values")]
-    pub chain: Network,
+    pub chain: ledger::Bitcoin,
 }
 
 #[derive(Debug)]
@@ -21,7 +24,7 @@ pub struct BitcoindConnector {
 }
 
 impl BitcoindConnector {
-    pub fn new(base_url: Url, _network: Network) -> anyhow::Result<Self> {
+    pub fn new(base_url: Url) -> anyhow::Result<Self> {
         Ok(Self {
             chaininfo_url: base_url.join("rest/chaininfo.json")?,
             raw_block_by_hash_url: base_url.join("rest/block/")?,
@@ -92,14 +95,14 @@ impl BlockByHash for BitcoindConnector {
     }
 }
 
-pub fn deserialize_bitcoind_values<'de, D>(deserializer: D) -> Result<bitcoin::Network, D::Error>
+pub fn deserialize_bitcoind_values<'de, D>(deserializer: D) -> Result<ledger::Bitcoin, D::Error>
 where
     D: Deserializer<'de>,
 {
     struct Visitor;
 
     impl<'de> de::Visitor<'de> for Visitor {
-        type Value = bitcoin::Network;
+        type Value = ledger::Bitcoin;
 
         fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
             formatter.write_str("a bitcoin network")
@@ -110,9 +113,9 @@ where
             E: de::Error,
         {
             match v {
-                "main" => Ok(bitcoin::Network::Bitcoin),
-                "test" => Ok(bitcoin::Network::Testnet),
-                "regtest" => Ok(bitcoin::Network::Regtest),
+                "main" => Ok(ledger::Bitcoin::Mainnet),
+                "test" => Ok(ledger::Bitcoin::Testnet),
+                "regtest" => Ok(ledger::Bitcoin::Regtest),
                 unknown => Err(E::custom(format!("unknown bitcoin network {}", unknown))),
             }
         }
@@ -136,6 +139,7 @@ fn decode_response(response_text: String) -> anyhow::Result<bitcoin::Block> {
 mod tests {
 
     use super::*;
+    use crate::ledger::Bitcoin;
     use bitcoin::hashes::sha256d;
     use spectral::prelude::*;
 
@@ -149,7 +153,7 @@ mod tests {
     #[test]
     fn constructor_does_not_fail_for_base_urls() {
         for base_url in base_urls() {
-            let result = BitcoindConnector::new(base_url, Network::Regtest);
+            let result = BitcoindConnector::new(base_url);
 
             assert!(result.is_ok());
         }
@@ -158,7 +162,7 @@ mod tests {
     #[test]
     fn given_different_base_urls_correct_sub_urls_are_built() {
         for base_url in base_urls() {
-            let connector = BitcoindConnector::new(base_url, Network::Regtest).unwrap();
+            let connector = BitcoindConnector::new(base_url).unwrap();
 
             let chaininfo_url = connector.chaininfo_url.clone();
             assert_eq!(
@@ -183,7 +187,7 @@ mod tests {
   }
   "#;
         let info = serde_json::from_str::<ChainInfo>(chain_info).unwrap();
-        assert_eq!(info.chain, Network::Testnet);
+        assert_eq!(info.chain, Bitcoin::Testnet);
 
         let chain_info = r#"{
     "chain": "main",
@@ -191,7 +195,7 @@ mod tests {
   }
   "#;
         let info = serde_json::from_str::<ChainInfo>(chain_info).unwrap();
-        assert_eq!(info.chain, Network::Bitcoin);
+        assert_eq!(info.chain, Bitcoin::Mainnet);
 
         let chain_info = r#"{
     "chain": "regtest",
@@ -199,7 +203,7 @@ mod tests {
   }
   "#;
         let info = serde_json::from_str::<ChainInfo>(chain_info).unwrap();
-        assert_eq!(info.chain, Network::Regtest);
+        assert_eq!(info.chain, Bitcoin::Regtest);
     }
 
     #[test]

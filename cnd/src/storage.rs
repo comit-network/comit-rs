@@ -9,7 +9,6 @@ use crate::{
 };
 use anyhow::Context;
 use async_trait::async_trait;
-use bitcoin::Network;
 use diesel::{BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 use std::sync::Arc;
 
@@ -306,7 +305,7 @@ impl IntoParams for hbit::Params {
         };
 
         Ok(hbit::Params {
-            network: Network::Regtest,
+            network: hbit.network.0,
             asset: hbit.amount.0.into(),
             redeem_identity: redeem,
             refund_identity: refund,

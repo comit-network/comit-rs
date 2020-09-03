@@ -8,7 +8,7 @@ use crate::{
             },
             wrapper_types::{
                 custom_sql_types::{Text, U32},
-                BitcoinNetwork, Erc20Amount, Satoshis,
+                Erc20Amount, Satoshis,
             },
             Sqlite,
         },
@@ -18,7 +18,7 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use chrono::NaiveDateTime;
-use comit::{asset::Erc20Quantity, ethereum, ethereum::ChainId, OrderId, Position};
+use comit::{asset::Erc20Quantity, ethereum, ethereum::ChainId, ledger, OrderId, Position};
 use diesel::{prelude::*, RunQueryDsl};
 use libp2p::PeerId;
 use std::ops::Add;
@@ -249,7 +249,7 @@ pub struct Halbit {
     id: i32,
     swap_id: i32,
     pub amount: Text<Satoshis>,
-    pub network: Text<BitcoinNetwork>,
+    pub network: Text<ledger::Bitcoin>,
     pub chain: String,
     pub cltv_expiry: U32,
     pub redeem_identity: Option<Text<lightning::PublicKey>>,
@@ -262,7 +262,7 @@ pub struct Halbit {
 pub struct InsertableHalbit {
     pub swap_id: i32,
     pub amount: Text<Satoshis>,
-    pub network: Text<BitcoinNetwork>,
+    pub network: Text<ledger::Bitcoin>,
     pub chain: String,
     pub cltv_expiry: U32,
     pub redeem_identity: Option<Text<lightning::PublicKey>>,
@@ -293,7 +293,7 @@ impl IntoInsertable for halbit::CreatedSwap {
         InsertableHalbit {
             swap_id,
             amount: Text(self.asset.into()),
-            network: Text(self.network.into()),
+            network: Text(self.network),
             chain: "bitcoin".to_string(), // We currently only support Lightning on top of Bitcoin.
             cltv_expiry: U32(self.cltv_expiry),
             redeem_identity,
@@ -310,7 +310,7 @@ pub struct Hbit {
     id: i32,
     swap_id: i32,
     pub amount: Text<Satoshis>,
-    pub network: Text<BitcoinNetwork>,
+    pub network: Text<ledger::Bitcoin>,
     pub expiry: U32,
     pub final_identity: Text<bitcoin::Address>,
     pub transient_identity: Option<Text<bitcoin::PublicKey>>,
@@ -322,7 +322,7 @@ pub struct Hbit {
 pub struct InsertableHbit {
     pub swap_id: i32,
     pub amount: Text<Satoshis>,
-    pub network: Text<BitcoinNetwork>,
+    pub network: Text<ledger::Bitcoin>,
     pub expiry: U32,
     // TODO: Rename to make it obvious that this is OUR final address
     pub final_identity: Text<bitcoin::Address>,
@@ -335,7 +335,7 @@ impl InsertableHbit {
     pub fn new(
         swap_fk: i32,
         asset: asset::Bitcoin,
-        network: bitcoin::Network,
+        network: ledger::Bitcoin,
         expiry: u32,
         final_identity: bitcoin::Address,
         transient_identity: bitcoin::PublicKey,
@@ -344,7 +344,7 @@ impl InsertableHbit {
         Self {
             swap_id: swap_fk,
             amount: Text(asset.into()),
-            network: Text(network.into()),
+            network: Text(network),
             expiry: expiry.into(),
             final_identity: Text(final_identity),
             transient_identity: Some(Text(transient_identity)),
@@ -539,7 +539,7 @@ impl InsertableBtcDaiOrder {
 pub struct OrderHbitParams {
     id: i32,
     pub order_id: i32,
-    pub network: Text<::bitcoin::Network>,
+    pub network: Text<ledger::Bitcoin>,
     pub side: Text<Side>,
     pub our_final_address: Text<::bitcoin::Address>,
     pub expiry_offset: i64,
@@ -559,7 +559,7 @@ impl OrderHbitParams {
 #[table_name = "order_hbit_params"]
 pub struct InsertableOrderHbitParams {
     pub order_id: i32,
-    pub network: Text<::bitcoin::Network>,
+    pub network: Text<ledger::Bitcoin>,
     pub side: Text<Side>,
     pub our_final_address: Text<::bitcoin::Address>,
     pub expiry_offset: i64,
@@ -568,7 +568,7 @@ pub struct InsertableOrderHbitParams {
 impl InsertableOrderHbitParams {
     pub fn new(
         order_fk: i32,
-        network: ::bitcoin::Network,
+        network: ledger::Bitcoin,
         our_final_address: ::bitcoin::Address,
         expiry_offset: i64,
         side: Side,
@@ -704,7 +704,7 @@ impl IntoInsertable for hbit::CreatedSwap {
         InsertableHbit {
             swap_id,
             amount: Text(self.amount.into()),
-            network: Text(self.network.into()),
+            network: Text(self.network),
             expiry: U32(self.absolute_expiry),
             final_identity: Text(self.final_identity.into()),
             // We always retrieve the transient identity from the other party

@@ -1,6 +1,6 @@
 use crate::ethereum::ChainId;
 use fmt::Display;
-use serde::{de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// The ledger network kind. We define this as a cross blockchain domain term.
@@ -14,7 +14,20 @@ pub enum Kind {
     Devnet,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    strum_macros::Display,
+    strum_macros::EnumString,
+)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
 pub enum Bitcoin {
     Mainnet,
     Testnet,
@@ -49,18 +62,6 @@ impl Default for Bitcoin {
     }
 }
 
-impl Display for Bitcoin {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            Bitcoin::Mainnet => "mainnet",
-            Bitcoin::Testnet => "testnet",
-            Bitcoin::Regtest => "regtest",
-        };
-
-        write!(f, "{}", s)
-    }
-}
-
 impl From<Bitcoin> for ::bitcoin::Network {
     fn from(bitcoin: Bitcoin) -> ::bitcoin::Network {
         match bitcoin {
@@ -78,43 +79,6 @@ impl From<::bitcoin::Network> for Bitcoin {
             bitcoin::Network::Testnet => Bitcoin::Testnet,
             bitcoin::Network::Regtest => Bitcoin::Regtest,
         }
-    }
-}
-
-impl Serialize for Bitcoin {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let str = match self {
-            Bitcoin::Mainnet => "mainnet",
-            Bitcoin::Testnet => "testnet",
-            Bitcoin::Regtest => "regtest",
-        };
-
-        serializer.serialize_str(str)
-    }
-}
-
-impl<'de> Deserialize<'de> for Bitcoin {
-    fn deserialize<D>(deserializer: D) -> Result<Bitcoin, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let network = match String::deserialize(deserializer)?.as_str() {
-            "mainnet" => Bitcoin::Mainnet,
-            "testnet" => Bitcoin::Testnet,
-            "regtest" => Bitcoin::Regtest,
-
-            network => {
-                return Err(<D as Deserializer<'de>>::Error::custom(format!(
-                    "not regtest: {}",
-                    network
-                )))
-            }
-        };
-
-        Ok(network)
     }
 }
 
@@ -177,14 +141,6 @@ impl Default for Ethereum {
 mod tests {
     use super::*;
     use spectral::prelude::*;
-
-    #[test]
-    fn valid_ledger_pair() {
-        let a = Ethereum::from(1);
-        let b = Bitcoin::Mainnet;
-
-        assert!(is_valid_ledger_pair(a, b))
-    }
 
     #[test]
     fn bitcoin_serializes_as_expected() {

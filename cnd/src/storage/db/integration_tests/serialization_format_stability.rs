@@ -8,14 +8,14 @@ use crate::{
     storage::db::wrapper_types::{Erc20Amount, Ether, Satoshis},
     LockProtocol, SecretHash,
 };
-use comit::Position;
+use comit::{ledger, Position};
 use std::{fmt, str::FromStr};
 
 #[test]
 fn bitcoin_network() {
-    roundtrip_test::<bitcoin::Network>("bitcoin");
-    roundtrip_test::<bitcoin::Network>("testnet");
-    roundtrip_test::<bitcoin::Network>("regtest");
+    roundtrip_test::<ledger::Bitcoin>("mainnet");
+    roundtrip_test::<ledger::Bitcoin>("testnet");
+    roundtrip_test::<ledger::Bitcoin>("regtest");
 }
 
 #[test]

@@ -62,7 +62,6 @@ mod ethereum {
     pub use comit::ethereum::*;
 }
 mod bitcoin {
-    pub use ::bitcoin::Network;
     pub use comit::bitcoin::{Address, PublicKey};
 }
 mod lightning {
@@ -140,7 +139,7 @@ fn main() -> anyhow::Result<()> {
 
     let bitcoin_connector = {
         let config::Bitcoin { bitcoind, network } = &settings.bitcoin;
-        let connector = BitcoindConnector::new(bitcoind.node_url.clone(), *network)?;
+        let connector = BitcoindConnector::new(bitcoind.node_url.clone())?;
 
         runtime.block_on(async {
             match validate_connection_to_network(&connector, *network).await {

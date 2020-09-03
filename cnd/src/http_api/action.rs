@@ -9,6 +9,7 @@ use crate::{
     http_api::Http,
     identity, transaction, RelativeTime, Secret, SecretHash, Timestamp,
 };
+use comit::ledger;
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
@@ -18,11 +19,11 @@ pub enum ActionResponseBody {
     BitcoinSendAmountToAddress {
         to: bitcoin::Address,
         amount: String,
-        network: Http<bitcoin::Network>,
+        network: ledger::Bitcoin,
     },
     BitcoinBroadcastSignedTransaction {
         hex: String,
-        network: Http<bitcoin::Network>,
+        network: ledger::Bitcoin,
         #[serde(skip_serializing_if = "Option::is_none")]
         min_median_block_time: Option<Timestamp>,
     },
@@ -48,7 +49,7 @@ pub enum ActionResponseBody {
         expiry: RelativeTime,
         cltv_expiry: RelativeTime,
         chain: Http<Chain>,
-        network: Http<bitcoin::Network>,
+        network: ledger::Bitcoin,
         self_public_key: identity::Lightning,
     },
     LndSendPayment {
@@ -58,13 +59,13 @@ pub enum ActionResponseBody {
         secret_hash: SecretHash,
         final_cltv_delta: RelativeTime,
         chain: Http<Chain>,
-        network: Http<bitcoin::Network>,
+        network: ledger::Bitcoin,
         self_public_key: identity::Lightning,
     },
     LndSettleInvoice {
         secret: Secret,
         chain: Http<Chain>,
-        network: Http<bitcoin::Network>,
+        network: ledger::Bitcoin,
         self_public_key: identity::Lightning,
     },
 }
@@ -89,7 +90,7 @@ impl<T: Into<Vec<u8>>> From<T> for EthereumData {
 impl ActionResponseBody {
     pub fn bitcoin_broadcast_signed_transaction(
         transaction: &transaction::Bitcoin,
-        network: bitcoin::Network,
+        network: ledger::Bitcoin,
     ) -> Self {
         let min_median_block_time = if transaction.lock_time == 0 {
             None
@@ -102,7 +103,7 @@ impl ActionResponseBody {
 
         ActionResponseBody::BitcoinBroadcastSignedTransaction {
             hex: ::bitcoin::consensus::encode::serialize_hex(transaction),
-            network: Http(network),
+            network,
             min_median_block_time,
         }
     }
@@ -118,7 +119,7 @@ impl From<bitcoin::SendToAddress> for ActionResponseBody {
         ActionResponseBody::BitcoinSendAmountToAddress {
             to,
             amount: amount.as_sat().to_string(),
-            network: Http(network),
+            network,
         }
     }
 }
@@ -152,7 +153,7 @@ impl From<lnd::AddHoldInvoice> for ActionResponseBody {
             expiry,
             cltv_expiry,
             chain: Http(chain),
-            network: Http(network),
+            network,
             self_public_key,
         }
     }
@@ -192,7 +193,7 @@ impl From<lnd::SendPayment> for ActionResponseBody {
             to_public_key,
             amount,
             secret_hash,
-            network: network.into(),
+            network,
             chain: chain.into(),
             final_cltv_delta,
             self_public_key,
@@ -212,7 +213,7 @@ impl From<lnd::SettleInvoice> for ActionResponseBody {
         ActionResponseBody::LndSettleInvoice {
             secret,
             chain: chain.into(),
-            network: network.into(),
+            network,
             self_public_key,
         }
     }
@@ -297,17 +298,17 @@ mod test {
             ActionResponseBody::from(SendToAddress {
                 to: to.clone().into(),
                 amount,
-                network: bitcoin::Network::Bitcoin,
+                network: ledger::Bitcoin::Mainnet,
             }),
             ActionResponseBody::from(SendToAddress {
                 to: to.clone().into(),
                 amount,
-                network: bitcoin::Network::Testnet,
+                network: ledger::Bitcoin::Testnet,
             }),
             ActionResponseBody::from(SendToAddress {
                 to: to.into(),
                 amount,
-                network: bitcoin::Network::Regtest,
+                network: ledger::Bitcoin::Regtest,
             }),
         ];
 

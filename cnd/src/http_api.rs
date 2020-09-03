@@ -179,40 +179,6 @@ impl Serialize for Http<PeerId> {
     }
 }
 
-impl Serialize for Http<bitcoin::Network> {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(match self.0 {
-            bitcoin::Network::Bitcoin => "mainnet",
-            bitcoin::Network::Testnet => "testnet",
-            bitcoin::Network::Regtest => "regtest",
-        })
-    }
-}
-
-impl<'de> Deserialize<'de> for Http<bitcoin::Network> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let network = match String::deserialize(deserializer)?.as_str() {
-            "mainnet" => bitcoin::Network::Bitcoin,
-            "testnet" => bitcoin::Network::Testnet,
-            "regtest" => bitcoin::Network::Regtest,
-            network => {
-                return Err(<D as Deserializer<'de>>::Error::custom(format!(
-                    "unknown network {}",
-                    network
-                )))
-            }
-        };
-
-        Ok(Http(network))
-    }
-}
-
 impl<'de> Deserialize<'de> for Http<PeerId> {
     fn deserialize<D>(deserializer: D) -> Result<Http<PeerId>, D::Error>
     where
@@ -308,9 +274,9 @@ pub enum HttpLedgerParams {
     Ethereum(EthereumLedgerParams),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct BitcoinLedgerParams {
-    network: Http<bitcoin::Network>,
+    network: ledger::Bitcoin,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
@@ -401,15 +367,13 @@ impl From<ledger::Ethereum> for EthereumLedgerParams {
 
 impl From<BitcoinLedgerParams> for ledger::Bitcoin {
     fn from(params: BitcoinLedgerParams) -> Self {
-        params.network.0.into()
+        params.network
     }
 }
 
 impl From<ledger::Bitcoin> for BitcoinLedgerParams {
     fn from(bitcoin: ledger::Bitcoin) -> Self {
-        Self {
-            network: Http(bitcoin.into()),
-        }
+        Self { network: bitcoin }
     }
 }
 
