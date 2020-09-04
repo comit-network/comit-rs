@@ -528,7 +528,7 @@ dependencies = [
 [[package]]
 name = "comit"
 version = "0.1.0"
-source = "git+https://github.com/comit-network/comit-rs/?rev=cc450c425b52e060371d0384a759cd0eab13396c#cc450c425b52e060371d0384a759cd0eab13396c"
+source = "git+https://github.com/comit-network/comit-rs/?rev=76854090bb542ab55c5649c98ad1bc887bf5c764#76854090bb542ab55c5649c98ad1bc887bf5c764"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -560,7 +560,7 @@ dependencies = [
  "strum 0.19.2",
  "strum_macros 0.19.2",
  "thiserror",
- "time 0.2.16",
+ "time 0.2.17",
  "tokio",
  "tracing",
  "tracing-futures",
@@ -597,6 +597,12 @@ name = "conquer-util"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "654fb2472cc369d311c547103a1fa81d467bef370ae7a0680f65939895b1182a"
+
+[[package]]
+name = "const_fn"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce90df4c658c62f12d78f7508cf92f9173e5184a539c10bfe54a3107b3ffd0f2"
 
 [[package]]
 name = "constant_time_eq"
@@ -775,7 +781,7 @@ dependencies = [
 [[package]]
 name = "digest"
 version = "0.1.0"
-source = "git+https://github.com/comit-network/comit-rs/?rev=cc450c425b52e060371d0384a759cd0eab13396c#cc450c425b52e060371d0384a759cd0eab13396c"
+source = "git+https://github.com/comit-network/comit-rs/?rev=76854090bb542ab55c5649c98ad1bc887bf5c764#76854090bb542ab55c5649c98ad1bc887bf5c764"
 dependencies = [
  "digest-macro-derive",
  "hex 0.4.2",
@@ -802,7 +808,7 @@ dependencies = [
 [[package]]
 name = "digest-macro-derive"
 version = "0.1.0"
-source = "git+https://github.com/comit-network/comit-rs/?rev=cc450c425b52e060371d0384a759cd0eab13396c#cc450c425b52e060371d0384a759cd0eab13396c"
+source = "git+https://github.com/comit-network/comit-rs/?rev=76854090bb542ab55c5649c98ad1bc887bf5c764#76854090bb542ab55c5649c98ad1bc887bf5c764"
 dependencies = [
  "hex 0.4.2",
  "proc-macro2 1.0.19",
@@ -2049,7 +2055,7 @@ dependencies = [
  "tempdir",
  "testcontainers",
  "thiserror",
- "time 0.2.16",
+ "time 0.2.17",
  "tokio",
  "toml",
  "tracing",
@@ -3808,11 +3814,11 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.2.16"
+version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a51cadc5b1eec673a685ff7c33192ff7b7603d0b75446fb354939ee615acb15"
+checksum = "ca7ec98a72285d12e0febb26f0847b12d54be24577618719df654c66cadab55d"
 dependencies = [
- "cfg-if",
+ "const_fn",
  "libc",
  "serde 1.0.114",
  "standback",

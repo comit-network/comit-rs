@@ -64,10 +64,10 @@ pub async fn trade(
 
     swarm
         .orderbook
-        .publish(initial_sell_order.to_order_comit_order(maker.swap_protocol(Position::Buy))?);
+        .publish(initial_sell_order.to_comit_order(maker.swap_protocol(Position::Buy)));
     swarm
         .orderbook
-        .publish(initial_buy_order.to_order_comit_order(maker.swap_protocol(Position::Sell))?);
+        .publish(initial_buy_order.to_comit_order(maker.swap_protocol(Position::Sell)));
 
     let update_interval = Duration::from_secs(15u64);
 
@@ -86,10 +86,7 @@ pub async fn trade(
 
     let mut history = History::new(settings.data.dir.join("history.csv").as_path())?;
 
-    let bitcoin_connector = Arc::new(BitcoindConnector::new(
-        settings.bitcoin.bitcoind.node_url,
-        settings.bitcoin.network,
-    )?);
+    let bitcoin_connector = Arc::new(BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?);
     let ethereum_connector = Arc::new(Web3Connector::new(settings.ethereum.node_url));
 
     respawn_swaps(
@@ -347,20 +344,13 @@ fn handle_rate_update(
                     new_sell_order,
                     new_buy_order,
                 })) => {
-                    match (
-                        new_sell_order.to_order_comit_order(maker.swap_protocol(Position::Sell)),
-                        new_buy_order.to_order_comit_order(maker.swap_protocol(Position::Buy)),
-                    ) {
-                        (Ok(sell), Ok(buy)) => {
-                            swarm.orderbook.publish(sell);
-                            swarm.orderbook.publish(buy);
-                            swarm.orderbook.clear_own_orders();
-                        }
-                        // todo: This messy error handling code will be removed when we move to
-                        // price quantity order model in nectar
-                        (e1, e2) => tracing::error!("Could not update rate: {:?}, {:?}", e1, e2),
-                    }
+                    swarm.publish(
+                        new_sell_order.to_comit_order(maker.swap_protocol(Position::Sell)),
+                    );
+                    swarm.publish(new_buy_order.to_comit_order(maker.swap_protocol(Position::Buy)));
+                    swarm.clear_own_orders();
                 }
+
                 Ok(None) => (),
                 Err(e) => tracing::warn!("Rate update yielded error: {}", e),
             }
@@ -383,13 +373,9 @@ fn handle_btc_balance_update(
     match btc_balance_update {
         Ok(btc_balance) => match maker.update_bitcoin_balance(btc_balance) {
             Ok(Some(new_sell_order)) => {
-                match new_sell_order.to_order_comit_order(maker.swap_protocol(Position::Sell)) {
-                    Ok(order) => {
-                        swarm.orderbook.clear_own_orders();
-                        swarm.orderbook.publish(order);
-                    }
-                    Err(e) => tracing::error!("Could not handle btc update: {}", e),
-                }
+                let order = new_sell_order.to_comit_order(maker.swap_protocol(Position::Sell));
+                swarm.orderbook.clear_own_orders();
+                swarm.orderbook.publish(order);
             }
             Ok(None) => (),
             Err(e) => tracing::warn!("Bitcoin balance update yielded error: {}", e),
@@ -412,13 +398,9 @@ fn handle_dai_balance_update(
     match dai_balance_update {
         Ok(dai_balance) => match maker.update_dai_balance(dai_balance) {
             Ok(Some(new_buy_order)) => {
-                match new_buy_order.to_order_comit_order(maker.swap_protocol(Position::Buy)) {
-                    Ok(order) => {
-                        swarm.orderbook.clear_own_orders();
-                        swarm.orderbook.publish(order);
-                    }
-                    Err(e) => tracing::error!("Could not handle dai balance update: {}", e),
-                }
+                let order = new_buy_order.to_comit_order(maker.swap_protocol(Position::Buy));
+                swarm.orderbook.clear_own_orders();
+                swarm.orderbook.publish(order);
             }
             Ok(None) => (),
             Err(e) => tracing::warn!("Dai balance update yielded error: {}", e),

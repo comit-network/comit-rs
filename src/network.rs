@@ -1,5 +1,5 @@
 use crate::swap::{Database, SwapParams};
-use crate::{bitcoin, ethereum, ethereum::dai, order::BtcDaiOrderForm, swap::SwapKind, SwapId};
+use crate::{bitcoin, ethereum, order::BtcDaiOrderForm, swap::SwapKind, SwapId};
 use ::bitcoin::hashes::{sha256, Hash, HashEngine};
 use chrono::{NaiveDateTime, Utc};
 use comit::{
@@ -264,21 +264,12 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::Be
                 let bitcoin_identity =
                     identity::Bitcoin::from_secret_key(&crate::SECP, &bitcoin_transient_sk);
 
-                let erc20_quantity = quantity.as_sat() * price;
+                let erc20_quantity = quantity * price.clone();
 
                 let form = BtcDaiOrderForm {
                     position: our_position,
-                    base: bitcoin::Asset {
-                        amount: quantity.into(),
-                        network: self.bitcoin_network(),
-                    },
-                    quote: dai::Asset {
-                        amount: dai::Amount::from(erc20_quantity.clone()),
-                        chain: ethereum::Chain::Local {
-                            chain_id: u32::from(self.ethereum_chain_id()),
-                            dai_contract_address: token_contract,
-                        },
-                    },
+                    quantity,
+                    price,
                 };
 
                 let (role_dependant_params, common_params, swap_protocol) = match swap_protocol {
@@ -309,11 +300,11 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::Be
                                         token_contract,
                                         quantity: erc20_quantity,
                                     },
-                                    bitcoin: quantity,
+                                    bitcoin: quantity.to_inner(),
                                     ethereum_absolute_expiry,
                                     bitcoin_absolute_expiry,
                                     ethereum_chain_id: self.ethereum_chain_id(),
-                                    bitcoin_network: self.bitcoin_network(),
+                                    bitcoin_network: self.bitcoin_network().into(),
                                 },
                                 comit::network::setup_swap::SwapProtocol::HbitHerc20,
                             ),
@@ -328,11 +319,11 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::Be
                                         token_contract,
                                         quantity: erc20_quantity,
                                     },
-                                    bitcoin: quantity,
+                                    bitcoin: quantity.to_inner(),
                                     ethereum_absolute_expiry,
                                     bitcoin_absolute_expiry,
                                     ethereum_chain_id: self.ethereum_chain_id(),
-                                    bitcoin_network: self.bitcoin_network(),
+                                    bitcoin_network: self.bitcoin_network().into(),
                                 },
                                 comit::network::setup_swap::SwapProtocol::HbitHerc20,
                             ),
@@ -366,11 +357,11 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::Be
                                         token_contract,
                                         quantity: erc20_quantity,
                                     },
-                                    bitcoin: quantity,
+                                    bitcoin: quantity.to_inner(),
                                     ethereum_absolute_expiry,
                                     bitcoin_absolute_expiry,
                                     ethereum_chain_id: self.ethereum_chain_id(),
-                                    bitcoin_network: self.bitcoin_network(),
+                                    bitcoin_network: self.bitcoin_network().into(),
                                 },
                                 comit::network::setup_swap::SwapProtocol::Herc20Hbit,
                             ),
@@ -384,11 +375,11 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::Be
                                         token_contract,
                                         quantity: erc20_quantity,
                                     },
-                                    bitcoin: quantity,
+                                    bitcoin: quantity.to_inner(),
                                     ethereum_absolute_expiry,
                                     bitcoin_absolute_expiry,
                                     ethereum_chain_id: self.ethereum_chain_id(),
-                                    bitcoin_network: self.bitcoin_network(),
+                                    bitcoin_network: self.bitcoin_network().into(),
                                 },
                                 comit::network::setup_swap::SwapProtocol::Herc20Hbit,
                             ),

@@ -24,10 +24,7 @@ pub async fn resume_only(
         settings.data.dir.join("history.csv").as_path(),
     )?));
 
-    let bitcoin_connector = Arc::new(BitcoindConnector::new(
-        settings.bitcoin.bitcoind.node_url,
-        settings.bitcoin.network,
-    )?);
+    let bitcoin_connector = Arc::new(BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?);
     let ethereum_connector = Arc::new(Web3Connector::new(settings.ethereum.node_url));
 
     respawn_swaps(

@@ -239,7 +239,7 @@ impl From<Params> for hbit::Params {
 
         hbit::Params {
             shared: hbit::SharedParams {
-                network,
+                network: network.into(),
                 asset: asset.into(),
                 redeem_identity,
                 refund_identity,
@@ -254,7 +254,7 @@ impl From<Params> for hbit::Params {
 impl From<hbit::Params> for Params {
     fn from(params: hbit::Params) -> Self {
         Params {
-            network: params.shared.network,
+            network: params.shared.network.into(),
             asset: params.shared.asset.into(),
             redeem_identity: params.shared.redeem_identity,
             refund_identity: params.shared.refund_identity,
