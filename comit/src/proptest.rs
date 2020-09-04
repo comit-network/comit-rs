@@ -37,7 +37,7 @@ pub mod asset {
 
 pub mod order {
     use super::*;
-    use crate::{BtcDaiOrder, OrderId, Position};
+    use crate::{BtcDaiOrder, OrderId, Position, Price, Quantity};
 
     pub fn position() -> impl Strategy<Value = Position> {
         prop_oneof![Just(Position::Buy), Just(Position::Sell)]
@@ -58,8 +58,8 @@ pub mod order {
             BtcDaiOrder::new_test(
                 id,
                 position,
-                quantity,
-                price,
+                Quantity::new(quantity),
+                Price::from_wei_per_sat(price),
                 swap_protocol,
                 created_at
             )

@@ -1,6 +1,8 @@
 use crate::{
+    asset,
     asset::ethereum::{Error, FromWei, TryFromWei},
     ethereum::{Address, U256},
+    order::{Price, Quantity},
 };
 use num::{pow::Pow, BigUint, Num, Zero};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
@@ -37,30 +39,30 @@ impl Erc20Quantity {
         self.0.to_bytes_le()
     }
 
-    #[cfg(test)]
-    pub fn meaningless_test_value() -> Self {
-        Erc20Quantity::from_wei(1_000u32)
+    pub fn checked_mul(self, factor: u64) -> Option<Self> {
+        let result = Self(self.0 * factor);
+
+        if result > Self::max_value() {
+            return None;
+        }
+
+        Some(result)
     }
 }
 
-impl Mul<Erc20Quantity> for u64 {
+impl Mul<Price<asset::Bitcoin, Erc20Quantity>> for Quantity<asset::Bitcoin> {
     type Output = Erc20Quantity;
 
-    fn mul(self, rhs: Erc20Quantity) -> Self::Output {
-        let sats = self;
-        let value = Erc20Quantity(rhs.0 * sats);
+    fn mul(self, rhs: Price<asset::Bitcoin, Erc20Quantity>) -> Self::Output {
+        let wei_per_sat = rhs.wei_per_sat().0;
+        let sat = self.sats();
+
+        let value = Erc20Quantity(wei_per_sat * sat);
 
         debug_assert!(value <= Erc20Quantity::max_value());
 
         value
     }
-}
-
-#[cfg(test)]
-pub fn dai(dai: u64) -> Erc20Quantity {
-    let factor = BigUint::from(10u32).pow(18u32);
-
-    Erc20Quantity(dai * factor)
 }
 
 impl FromWei<U256> for Erc20Quantity {

@@ -1,8 +1,6 @@
 use crate::{
-    asset,
-    asset::Erc20Quantity,
-    order::{Denomination, SwapProtocol},
-    BtcDaiOrder, OrderId, Position,
+    asset, asset::Erc20Quantity, order::SwapProtocol, BtcDaiOrder, OrderId, Position, Price,
+    Quantity,
 };
 use anyhow::Result;
 use libp2p::PeerId;
@@ -122,8 +120,10 @@ impl OrderPool {
     pub fn notify_swap_setup_successful(
         &mut self,
         order_id: OrderId,
-        quantity: asset::Bitcoin,
+        quantity: Quantity<asset::Bitcoin>,
     ) -> Result<()> {
+        let quantity = quantity.to_inner();
+
         if let Some(reserved_quantity) = self.reserved_quantities.get_mut(&order_id) {
             if *reserved_quantity < quantity {
                 anyhow::bail!(
@@ -142,10 +142,10 @@ impl OrderPool {
             if let Entry::Occupied(mut entry) = our_orders.entry(order_id) {
                 let order = entry.get_mut();
 
-                if order.quantity == quantity {
+                if order.quantity.to_inner() == quantity {
                     entry.remove();
                 } else {
-                    order.quantity -= quantity;
+                    order.quantity = Quantity::new(order.quantity.to_inner() - quantity);
                 }
             }
         }
@@ -213,13 +213,13 @@ impl OrderPool {
                     self.reserved_quantities
                         .entry(ours.id)
                         .or_default()
-                        .add_assign(quantity);
+                        .add_assign(quantity.to_inner());
 
                     // TODO: We should reset this once we receive orders again from them
                     self.reserved_quantities
                         .entry(theirs.id)
                         .or_default()
-                        .add_assign(quantity);
+                        .add_assign(quantity.to_inner());
                 }
             }
         }
@@ -235,8 +235,8 @@ fn make_reference_point(left: &BtcDaiOrder, right: &BtcDaiOrder) -> OffsetDateTi
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Match {
     pub peer: PeerId,
-    pub price: Erc20Quantity,
-    pub quantity: asset::Bitcoin,
+    pub price: Price<asset::Bitcoin, Erc20Quantity>,
+    pub quantity: Quantity<asset::Bitcoin>,
     pub ours: OrderId,
     pub theirs: OrderId,
     pub our_position: Position,
@@ -250,7 +250,7 @@ pub struct Match {
 
 impl Match {
     pub fn quote(&self) -> Erc20Quantity {
-        self.quantity.as_sat() * self.price.clone()
+        self.quantity * self.price.clone()
     }
 }
 
@@ -261,15 +261,11 @@ fn match_orders(
     reserved_left: &asset::Bitcoin,
     reserved_right: &asset::Bitcoin,
 ) -> Option<InternalMatch> {
-    use Denomination::WeiPerSat;
     use Position::*;
 
-    let price_left = left.price(WeiPerSat);
-    let price_right = right.price(WeiPerSat);
-
     let price = match (left.position, right.position) {
-        (Sell, Buy) if price_left <= price_right => price_left,
-        (Buy, Sell) if price_left >= price_right => price_right,
+        (Sell, Buy) if left.price <= right.price => &left.price,
+        (Buy, Sell) if left.price >= right.price => &right.price,
         (Sell, Sell) | (Buy, Buy) => {
             tracing::trace!("orders with the same position don't match");
             return None;
@@ -278,9 +274,9 @@ fn match_orders(
             tracing::trace!(
                 "{}ing at {} and {}ing at {} does not match",
                 left.position,
-                price_left,
+                left.price.wei_per_sat(),
                 right.position,
-                price_right
+                right.price.wei_per_sat()
             );
             return None;
         }
@@ -297,8 +293,8 @@ fn match_orders(
         return None;
     }
 
-    let remaining_left = left.quantity - *reserved_left;
-    let remaining_right = right.quantity - *reserved_right;
+    let remaining_left = left.quantity.to_inner() - *reserved_left;
+    let remaining_right = right.quantity.to_inner() - *reserved_right;
 
     if remaining_left == asset::Bitcoin::ZERO || remaining_right == asset::Bitcoin::ZERO {
         tracing::trace!("cannot fill order because of existing reserved funds");
@@ -307,23 +303,27 @@ fn match_orders(
 
     let quantity = remaining_left;
 
-    tracing::trace!("matched with {} at price {}", quantity, price);
+    tracing::trace!("matched with {} at price {}", quantity, price.wei_per_sat());
 
-    Some(InternalMatch { price, quantity })
+    Some(InternalMatch {
+        price: price.clone(),
+        quantity: Quantity::new(quantity),
+    })
 }
 
 // TODO: Find better name
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct InternalMatch {
-    pub price: Erc20Quantity,
-    pub quantity: asset::Bitcoin,
+    pub price: Price<asset::Bitcoin, Erc20Quantity>,
+    pub quantity: Quantity<asset::Bitcoin>,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{
-        asset::{bitcoin::btc, ethereum::dai},
+        asset::Bitcoin,
+        order::{btc, dai_per_btc},
         proptest,
     };
     use spectral::prelude::*;
@@ -331,46 +331,46 @@ mod tests {
 
     #[test]
     fn given_two_orders_with_same_price_then_should_match() {
-        let buy = BtcDaiOrder::buy(btc(1.0), dai(9000), herc20_hbit());
-        let sell = BtcDaiOrder::sell(btc(1.0), dai(9000), herc20_hbit());
+        let buy = BtcDaiOrder::buy(btc(1.0), dai_per_btc(9000), herc20_hbit());
+        let sell = BtcDaiOrder::sell(btc(1.0), dai_per_btc(9000), herc20_hbit());
 
-        let r#match = match_orders(&buy, &sell, &btc(0.0), &btc(0.0));
+        let r#match = match_orders(&buy, &sell, &Bitcoin::ZERO, &Bitcoin::ZERO);
 
         assert_that(&r#match).is_some().is_equal_to(&InternalMatch {
-            price: dai(9000),
+            price: dai_per_btc(9000),
             quantity: btc(1.0),
         });
     }
 
     #[test]
     fn given_two_sell_orders_then_should_not_match() {
-        let sell_1 = BtcDaiOrder::sell(btc(1.0), dai(9000), herc20_hbit());
-        let sell_2 = BtcDaiOrder::sell(btc(1.0), dai(9000), herc20_hbit());
+        let sell_1 = BtcDaiOrder::sell(btc(1.0), dai_per_btc(9000), herc20_hbit());
+        let sell_2 = BtcDaiOrder::sell(btc(1.0), dai_per_btc(9000), herc20_hbit());
 
-        let r#match = match_orders(&sell_1, &sell_2, &btc(0.0), &btc(0.0));
+        let r#match = match_orders(&sell_1, &sell_2, &Bitcoin::ZERO, &Bitcoin::ZERO);
 
         assert_that(&r#match).is_none();
     }
 
     #[test]
     fn given_sell_for_9000_when_buy_for_8500_then_no_match() {
-        let sell = BtcDaiOrder::sell(btc(1.0), dai(9000), herc20_hbit());
-        let buy = BtcDaiOrder::buy(btc(1.0), dai(8500), herc20_hbit());
+        let sell = BtcDaiOrder::sell(btc(1.0), dai_per_btc(9000), herc20_hbit());
+        let buy = BtcDaiOrder::buy(btc(1.0), dai_per_btc(8500), herc20_hbit());
 
-        let r#match = match_orders(&sell, &buy, &btc(0.0), &btc(0.0));
+        let r#match = match_orders(&sell, &buy, &Bitcoin::ZERO, &Bitcoin::ZERO);
 
         assert_that(&r#match).is_none();
     }
 
     #[test]
     fn given_sell_for_8500_when_buy_for_9000_then_match_at_8500() {
-        let sell = BtcDaiOrder::sell(btc(1.0), dai(8500), herc20_hbit());
-        let buy = BtcDaiOrder::buy(btc(1.0), dai(9000), herc20_hbit());
+        let sell = BtcDaiOrder::sell(btc(1.0), dai_per_btc(8500), herc20_hbit());
+        let buy = BtcDaiOrder::buy(btc(1.0), dai_per_btc(9000), herc20_hbit());
 
-        let r#match = match_orders(&sell, &buy, &btc(0.0), &btc(0.0));
+        let r#match = match_orders(&sell, &buy, &Bitcoin::ZERO, &Bitcoin::ZERO);
 
         assert_that(&r#match).is_some().is_equal_to(&InternalMatch {
-            price: dai(8500),
+            price: dai_per_btc(8500),
             quantity: btc(1.0),
         });
     }
@@ -378,66 +378,70 @@ mod tests {
     // only temporary until we take care of partial matching properly
     #[test]
     fn given_different_quantities_then_no_match() {
-        let sell = BtcDaiOrder::sell(btc(0.5), dai(9000), herc20_hbit());
-        let buy = BtcDaiOrder::buy(btc(1.0), dai(9000), herc20_hbit());
+        let sell = BtcDaiOrder::sell(btc(0.5), dai_per_btc(9000), herc20_hbit());
+        let buy = BtcDaiOrder::buy(btc(1.0), dai_per_btc(9000), herc20_hbit());
 
-        let r#match = match_orders(&sell, &buy, &btc(0.0), &btc(0.0));
+        let r#match = match_orders(&sell, &buy, &Bitcoin::ZERO, &Bitcoin::ZERO);
 
         assert_that(&r#match).is_none();
     }
 
     #[test]
     fn given_reserved_quantity_then_only_matches_remaining_quantity() {
-        let sell = BtcDaiOrder::sell(btc(1.0), dai(9000), herc20_hbit());
-        let buy = BtcDaiOrder::buy(btc(1.0), dai(9000), herc20_hbit());
+        let sell = BtcDaiOrder::sell(btc(1.0), dai_per_btc(9000), herc20_hbit());
+        let buy = BtcDaiOrder::buy(btc(1.0), dai_per_btc(9000), herc20_hbit());
 
-        let r#match = match_orders(&sell, &buy, &btc(0.5), &btc(0.0));
+        let r#match = match_orders(&sell, &buy, &btc(0.5).to_inner(), &Bitcoin::ZERO);
 
         assert_that(&r#match).is_some().is_equal_to(&InternalMatch {
-            price: dai(9000),
+            price: dai_per_btc(9000),
             quantity: btc(0.5),
         });
     }
 
     #[test]
     fn given_whole_order_reserved_then_no_match() {
-        let sell = BtcDaiOrder::sell(btc(1.0), dai(9000), herc20_hbit());
-        let buy = BtcDaiOrder::buy(btc(1.0), dai(9000), herc20_hbit());
+        let sell = BtcDaiOrder::sell(btc(1.0), dai_per_btc(9000), herc20_hbit());
+        let buy = BtcDaiOrder::buy(btc(1.0), dai_per_btc(9000), herc20_hbit());
 
-        let r#match = match_orders(&sell, &buy, &btc(1.0), &btc(0.0));
+        let r#match = match_orders(&sell, &buy, &Bitcoin::ONE, &Bitcoin::ZERO);
 
         assert_that(&r#match).is_none();
     }
 
     #[test]
     fn given_different_swap_protocols_then_no_match() {
-        let sell = BtcDaiOrder::sell(btc(1.0), dai(9000), herc20_hbit());
-        let buy = BtcDaiOrder::buy(btc(1.0), dai(9000), hbit_herc20());
+        let sell = BtcDaiOrder::sell(btc(1.0), dai_per_btc(9000), herc20_hbit());
+        let buy = BtcDaiOrder::buy(btc(1.0), dai_per_btc(9000), hbit_herc20());
 
-        let r#match = match_orders(&sell, &buy, &btc(0.0), &btc(0.0));
+        let r#match = match_orders(&sell, &buy, &Bitcoin::ZERO, &Bitcoin::ZERO);
 
         assert_that(&r#match).is_none();
     }
 
     #[test]
     fn given_same_swap_protocols_with_different_parameters_then_no_match() {
-        let sell = BtcDaiOrder::sell(btc(1.0), dai(9000), SwapProtocol::HbitHerc20 {
+        let sell = BtcDaiOrder::sell(btc(1.0), dai_per_btc(9000), SwapProtocol::HbitHerc20 {
             hbit_expiry_offset: 2.hours().into(),
             herc20_expiry_offset: 1.hours().into(),
         });
-        let buy = BtcDaiOrder::buy(btc(1.0), dai(9000), SwapProtocol::HbitHerc20 {
+        let buy = BtcDaiOrder::buy(btc(1.0), dai_per_btc(9000), SwapProtocol::HbitHerc20 {
             hbit_expiry_offset: 3.hours().into(),
             herc20_expiry_offset: 1.hours().into(),
         });
 
-        let r#match = match_orders(&sell, &buy, &btc(0.0), &btc(0.0));
+        let r#match = match_orders(&sell, &buy, &Bitcoin::ZERO, &Bitcoin::ZERO);
 
         assert_that(&r#match).is_none();
     }
 
     #[test]
     fn make_reference_point_picks_the_more_recent_one() {
-        let proto = BtcDaiOrder::buy(Default::default(), Erc20Quantity::zero(), hbit_herc20());
+        let proto = BtcDaiOrder::buy(
+            Quantity::new(Bitcoin::ZERO),
+            Price::from_wei_per_sat(Erc20Quantity::zero()),
+            hbit_herc20(),
+        );
 
         let first = {
             let mut order = proto.clone();
@@ -475,10 +479,10 @@ mod tests {
     fn orderpool_does_not_emit_the_same_match_twice() {
         let mut pool = OrderPool::new(PeerId::random());
 
-        pool.publish(BtcDaiOrder::buy(btc(0.5), dai(9000), hbit_herc20()));
+        pool.publish(BtcDaiOrder::buy(btc(0.5), dai_per_btc(9000), hbit_herc20()));
         pool.receive(PeerId::random(), vec![BtcDaiOrder::sell(
             btc(0.5),
-            dai(9000),
+            dai_per_btc(9000),
             hbit_herc20(),
         )]);
 
@@ -486,7 +490,7 @@ mod tests {
         let matches_2 = pool.matches();
 
         assert_that(&matches_1)
-            .matching_contains(|m| m.price == dai(9000) && m.quantity == btc(0.5));
+            .matching_contains(|m| m.price == dai_per_btc(9000) && m.quantity == btc(0.5));
         assert_that(&matches_2).has_length(0);
     }
 
@@ -494,11 +498,11 @@ mod tests {
     fn given_a_match_when_notified_about_successful_swap_then_removes_order_from_pool() {
         let mut pool = OrderPool::new(PeerId::random());
 
-        let our_order = BtcDaiOrder::buy(btc(0.5), dai(9000), hbit_herc20());
+        let our_order = BtcDaiOrder::buy(btc(0.5), dai_per_btc(9000), hbit_herc20());
         pool.publish(our_order.clone());
         pool.receive(PeerId::random(), vec![BtcDaiOrder::sell(
             btc(0.5),
-            dai(9000),
+            dai_per_btc(9000),
             hbit_herc20(),
         )]);
         pool.matches();

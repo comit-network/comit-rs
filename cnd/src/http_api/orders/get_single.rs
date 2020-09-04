@@ -1,5 +1,5 @@
 use crate::{
-    http_api::{orders::make_order_entity, problem},
+    http_api::{make_order_entity, problem},
     Facade,
 };
 use anyhow::Result;

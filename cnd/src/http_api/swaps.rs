@@ -11,13 +11,9 @@
 
 use crate::{
     http_api::{
-        action::ActionResponseBody,
-        problem,
-        protocol::{
-            ActionName, AlphaAbsoluteExpiry, AlphaLedger, AlphaProtocol, BetaAbsoluteExpiry,
-            BetaLedger, BetaProtocol, Events, GetRole, Ledger, Protocol, SwapEvent,
-        },
-        route_factory,
+        action::ActionResponseBody, problem, route_factory, ActionName, AlphaAbsoluteExpiry,
+        AlphaLedger, AlphaProtocol, BetaAbsoluteExpiry, BetaLedger, BetaProtocol, Events, GetRole,
+        Ledger, Protocol, SwapEvent,
     },
     storage::{Load, LoadAll},
     DeployAction, Facade, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role,

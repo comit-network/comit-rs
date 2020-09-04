@@ -1,7 +1,7 @@
 use crate::{
     expiries::{AlphaOffset, BetaOffset},
     order::SwapProtocol,
-    BtcDaiOrder,
+    BtcDaiOrder, Price, Quantity,
 };
 use futures::{AsyncRead, AsyncWrite};
 use libp2p::{
@@ -427,8 +427,8 @@ impl wire::BtcDaiOrder {
             position,
             swap_protocol: swap_protocol.into_model(),
             created_at,
-            quantity,
-            price,
+            quantity: Quantity::new(quantity),
+            price: Price::from_wei_per_sat(price),
         }
     }
 
@@ -447,8 +447,9 @@ impl wire::BtcDaiOrder {
             position,
             swap_protocol: wire::SwapProtocol::from_model(swap_protocol),
             created_at,
-            quantity,
-            price,
+            quantity: quantity.to_inner(),
+            price: price.wei_per_sat(), /* This is consistent with how we convert into the wire
+                                         * model above. */
         }
     }
 }
@@ -491,6 +492,23 @@ impl wire::SwapProtocol {
                 herc20_expiry_offset: Duration::from(herc20_expiry_offset).whole_seconds(),
                 hbit_expiry_offset: Duration::from(hbit_expiry_offset).whole_seconds(),
             },
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::proptest;
+
+    proptest::proptest! {
+        #[test]
+        fn conversions_to_and_from_wire_model_are_consistent(
+            order in proptest::order::btc_dai_order(),
+        ) {
+            let round_tripped = wire::BtcDaiOrder::from_model(order.clone()).into_model();
+
+            assert_eq!(order, round_tripped);
         }
     }
 }

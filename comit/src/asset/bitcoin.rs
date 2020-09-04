@@ -9,6 +9,7 @@ pub struct Bitcoin(Amount);
 
 impl Bitcoin {
     pub const ZERO: Bitcoin = Bitcoin(Amount::ZERO);
+    pub const ONE: Bitcoin = Bitcoin(Amount::ONE_BTC);
 
     pub fn from_sat(sat: u64) -> Bitcoin {
         Bitcoin(Amount::from_sat(sat))
@@ -21,11 +22,6 @@ impl Bitcoin {
     pub fn to_le_bytes(self) -> [u8; 8] {
         self.0.as_sat().to_le_bytes()
     }
-}
-
-#[cfg(test)]
-pub fn btc(btc: f64) -> Bitcoin {
-    Bitcoin(Amount::from_btc(btc).unwrap())
 }
 
 impl From<Bitcoin> for Amount {
