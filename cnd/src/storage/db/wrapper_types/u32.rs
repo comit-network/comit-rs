@@ -1,55 +1,13 @@
-use crate::{RelativeTime, Timestamp};
+use crate::ethereum;
+use comit::{RelativeTime, Timestamp};
 use diesel::{
     backend::Backend,
-    deserialize::{self, FromSql},
-    serialize::{self, Output, ToSql},
+    deserialize, serialize,
+    serialize::Output,
     sql_types,
+    types::{FromSql, ToSql},
 };
-use std::{convert::TryFrom, fmt, ops::Deref, str::FromStr};
-
-/// Custom diesel new-type that works as long as T implements `Display` and
-/// `FromStr`.
-#[derive(Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
-#[sql_type = "sql_types::Text"]
-pub struct Text<T>(pub T);
-
-impl<T> Deref for Text<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<DB, T> ToSql<sql_types::Text, DB> for Text<T>
-where
-    DB: Backend,
-    String: ToSql<sql_types::Text, DB>,
-    T: fmt::Display + fmt::Debug,
-{
-    fn to_sql<W>(&self, out: &mut Output<'_, W, DB>) -> serialize::Result
-    where
-        W: std::io::Write,
-    {
-        let s = self.0.to_string();
-        s.to_sql(out)
-    }
-}
-
-impl<DB, T> FromSql<sql_types::Text, DB> for Text<T>
-where
-    DB: Backend,
-    String: FromSql<sql_types::Text, DB>,
-    T: FromStr,
-    <T as FromStr>::Err: std::error::Error + Send + Sync + 'static,
-{
-    fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
-        let s = String::from_sql(bytes)?;
-        let parsed = T::from_str(s.as_ref())?;
-
-        Ok(Text(parsed))
-    }
-}
+use std::convert::TryFrom;
 
 // Custom diesel new type for enforcing storage of a u32
 #[derive(Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
@@ -81,6 +39,12 @@ where
         let id = u32::try_from(number)?;
 
         Ok(U32(id))
+    }
+}
+
+impl From<U32> for ethereum::ChainId {
+    fn from(u: U32) -> Self {
+        ethereum::ChainId::from(u.0)
     }
 }
 

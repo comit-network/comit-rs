@@ -1,7 +1,11 @@
 use crate::asset;
 use std::{fmt, str::FromStr};
 
-pub mod custom_sql_types;
+mod text;
+mod u32;
+
+pub use self::{text::Text, u32::U32};
+use comit::{asset::Erc20Quantity, Price, Quantity};
 
 /// A wrapper type for representing satoshis
 ///
@@ -33,6 +37,12 @@ impl From<asset::Bitcoin> for Satoshis {
 impl From<Satoshis> for asset::Bitcoin {
     fn from(value: Satoshis) -> asset::Bitcoin {
         asset::Bitcoin::from_sat(value.0)
+    }
+}
+
+impl From<Text<Satoshis>> for Quantity<asset::Bitcoin> {
+    fn from(s: Text<Satoshis>) -> Self {
+        Quantity::new(s.0.into())
     }
 }
 
@@ -93,5 +103,28 @@ impl FromStr for Erc20Amount {
 impl fmt::Display for Erc20Amount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0.to_wei_dec())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct WeiPerSat(asset::Erc20Quantity);
+
+impl FromStr for WeiPerSat {
+    type Err = crate::asset::ethereum::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        asset::Erc20Quantity::from_wei_dec_str(s).map(Self)
+    }
+}
+
+impl fmt::Display for WeiPerSat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.to_wei_dec())
+    }
+}
+
+impl From<Text<WeiPerSat>> for Price<asset::Bitcoin, Erc20Quantity> {
+    fn from(rate: Text<WeiPerSat>) -> Self {
+        Price::from_wei_per_sat((rate.0).0)
     }
 }

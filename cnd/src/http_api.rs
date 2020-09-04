@@ -88,10 +88,10 @@ impl From<(tables::Order, tables::BtcDaiOrder)> for OrderProperties {
         let (order, btc_dai_order) = tuple;
 
         Self {
-            id: order.order_id.0,
-            position: order.position.0,
-            price: Amount::from(Price::from_wei_per_sat(btc_dai_order.price.0.into())),
-            quantity: Amount::from(Quantity::new(btc_dai_order.quantity.0.into())),
+            id: order.order_id,
+            position: order.position,
+            price: Amount::from(btc_dai_order.price),
+            quantity: Amount::from(btc_dai_order.quantity),
             state: State::new(
                 order.open,
                 order.closed,
