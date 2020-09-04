@@ -1,15 +1,15 @@
 use crate::{
     http_api::{problem, serde_peer_id},
-    Facade,
+    network::Swarm,
 };
 use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
 use warp::{Rejection, Reply};
 
 /// Basic HTTP GET request on the root endpoint.
-pub async fn get_info(facade: Facade) -> Result<impl Reply, Rejection> {
-    let peer_id = facade.swarm.local_peer_id();
-    let listen_addresses = facade.swarm.listen_addresses().await.to_vec();
+pub async fn get_info(swarm: Swarm) -> Result<impl Reply, Rejection> {
+    let peer_id = swarm.local_peer_id();
+    let listen_addresses = swarm.listen_addresses().await.to_vec();
 
     Ok(warp::reply::json(&InfoResource {
         id: peer_id,
@@ -18,9 +18,9 @@ pub async fn get_info(facade: Facade) -> Result<impl Reply, Rejection> {
 }
 
 /// HTTP GET request, for a siren document, on the root endpoint.
-pub async fn get_info_siren(facade: Facade) -> Result<impl Reply, Rejection> {
-    let peer_id = facade.swarm.local_peer_id();
-    let listen_addresses = facade.swarm.listen_addresses().await.to_vec();
+pub async fn get_info_siren(swarm: Swarm) -> Result<impl Reply, Rejection> {
+    let peer_id = swarm.local_peer_id();
+    let listen_addresses = swarm.listen_addresses().await.to_vec();
 
     Ok(warp::reply::json(
         &siren::Entity::default()

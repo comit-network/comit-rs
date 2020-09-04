@@ -42,7 +42,7 @@ pub struct ForSwap<T> {
     pub data: T,
 }
 
-/// Type representing the storage layer.
+/// A facade for the storage layer.
 #[derive(Debug, Clone)]
 pub struct Storage {
     pub db: Sqlite,
@@ -53,19 +53,13 @@ pub struct Storage {
 }
 
 impl Storage {
-    pub fn new(
-        db: Sqlite,
-        seed: RootSeed,
-        herc20_states: Arc<herc20::States>,
-        halbit_states: Arc<halbit::States>,
-        hbit_states: Arc<hbit::States>,
-    ) -> Self {
+    pub fn new(db: Sqlite, seed: RootSeed) -> Self {
         Self {
             db,
             seed,
-            herc20_states,
-            halbit_states,
-            hbit_states,
+            herc20_states: Arc::new(herc20::States::default()),
+            halbit_states: Arc::new(halbit::States::default()),
+            hbit_states: Arc::new(hbit::States::default()),
         }
     }
 
@@ -96,9 +90,6 @@ impl Storage {
         Self::new(
             Sqlite::test(),
             RootSeed::new_random(&mut rand::thread_rng()).unwrap(),
-            Arc::new(herc20::States::default()),
-            Arc::new(halbit::States::default()),
-            Arc::new(hbit::States::default()),
         )
     }
 }

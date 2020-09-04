@@ -30,7 +30,7 @@ pub async fn new<C>(
     role: Role,
     side: Side,
     states: Arc<States>,
-    connector: Arc<C>,
+    connector: impl AsRef<C>,
 ) where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {

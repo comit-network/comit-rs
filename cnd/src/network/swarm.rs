@@ -146,7 +146,7 @@ impl Swarm {
         self.inner.lock().await.orderbook.cancel(order_id);
     }
 
-    pub async fn dial_addr(&mut self, addr: Multiaddr) -> anyhow::Result<()> {
+    pub async fn dial_addr(&self, addr: Multiaddr) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
         let _ = libp2p::Swarm::dial_addr(&mut *guard, addr)?;
         Ok(())

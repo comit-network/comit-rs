@@ -1,11 +1,14 @@
 use crate::{
     config::{AllowedOrigins, Settings},
+    connectors::Connectors,
     http_api,
     http_api::{
         dial_addr, halbit_herc20, hbit_herc20, herc20_halbit, herc20_hbit, info, markets, orders,
         peers, swaps, tokens,
     },
-    Facade, LocalSwapId,
+    network::Swarm,
+    storage::Storage,
+    LocalSwapId,
 };
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
@@ -13,12 +16,22 @@ pub fn swap_path(id: LocalSwapId) -> String {
     format!("/{}/{}", http_api::PATH, id)
 }
 
-pub fn create(facade: Facade, settings: &Settings) -> BoxedFilter<(impl Reply,)> {
+pub fn create(
+    swarm: Swarm,
+    storage: Storage,
+    connectors: Connectors,
+    settings: &Settings,
+) -> BoxedFilter<(impl Reply,)> {
     let swaps = warp::path(http_api::PATH);
-    let facade_filter = warp::any().map({
-        let facade = facade.clone();
-        move || facade.clone()
+    let swarm_filter = warp::any().map({
+        let swarm = swarm.clone();
+        move || swarm.clone()
     });
+    let storage_filter = warp::any().map({
+        let storage = storage.clone();
+        move || storage.clone()
+    });
+    let connectors = warp::any().map(move || connectors.clone());
 
     let cors = warp::cors()
         .allow_methods(vec!["GET", "POST"])
@@ -35,60 +48,65 @@ pub fn create(facade: Facade, settings: &Settings) -> BoxedFilter<(impl Reply,)>
 
     let get_info = warp::get()
         .and(warp::path::end())
-        .and(facade_filter.clone())
+        .and(swarm_filter.clone())
         .and_then(info::get_info);
 
     let get_info_siren = warp::get()
         .and(warp::path::end())
         .and(warp::header::exact("accept", "application/vnd.siren+json"))
-        .and(facade_filter.clone())
+        .and(swarm_filter.clone())
         .and_then(info::get_info_siren);
 
     let get_peers = warp::get()
         .and(warp::path("peers"))
         .and(warp::path::end())
-        .and(facade_filter.clone())
+        .and(swarm_filter.clone())
         .and_then(peers::get_peers);
 
     let herc20_halbit = warp::post()
         .and(warp::path!("swaps" / "herc20" / "halbit"))
         .and(warp::path::end())
         .and(warp::body::json())
-        .and(facade_filter.clone())
+        .and(storage_filter.clone())
+        .and(swarm_filter.clone())
         .and_then(herc20_halbit::post_swap);
 
     let halbit_herc20 = warp::post()
         .and(warp::path!("swaps" / "halbit" / "herc20"))
         .and(warp::path::end())
         .and(warp::body::json())
-        .and(facade_filter.clone())
+        .and(storage_filter.clone())
+        .and(swarm_filter.clone())
         .and_then(halbit_herc20::post_swap);
 
     let herc20_hbit = warp::post()
         .and(warp::path!("swaps" / "herc20" / "hbit"))
         .and(warp::path::end())
         .and(warp::body::json())
-        .and(facade_filter.clone())
+        .and(storage_filter.clone())
+        .and(swarm_filter.clone())
         .and_then(herc20_hbit::post_swap);
 
     let hbit_herc20 = warp::post()
         .and(warp::path!("swaps" / "hbit" / "herc20"))
         .and(warp::path::end())
         .and(warp::body::json())
-        .and(facade_filter.clone())
+        .and(storage_filter.clone())
+        .and(swarm_filter.clone())
         .and_then(hbit_herc20::post_swap);
 
     let get_swap = swaps
         .and(warp::get())
         .and(warp::path::param())
         .and(warp::path::end())
-        .and(facade_filter.clone())
+        .and(storage_filter.clone())
+        .and(connectors)
         .and_then(swaps::get_swap);
 
     let get_swaps = warp::get()
         .and(swaps)
         .and(warp::path::end())
-        .and(facade_filter.clone())
+        .and(storage_filter.clone())
         .and_then(swaps::get_swaps);
 
     let action_init = swaps
@@ -96,7 +114,7 @@ pub fn create(facade: Facade, settings: &Settings) -> BoxedFilter<(impl Reply,)>
         .and(warp::path::param::<LocalSwapId>())
         .and(warp::path("init"))
         .and(warp::path::end())
-        .and(facade_filter.clone())
+        .and(storage_filter.clone())
         .and_then(swaps::action_init);
 
     let action_fund = swaps
@@ -104,7 +122,7 @@ pub fn create(facade: Facade, settings: &Settings) -> BoxedFilter<(impl Reply,)>
         .and(warp::path::param::<LocalSwapId>())
         .and(warp::path("fund"))
         .and(warp::path::end())
-        .and(facade_filter.clone())
+        .and(storage_filter.clone())
         .and_then(swaps::action_fund);
 
     let action_deploy = swaps
@@ -112,7 +130,7 @@ pub fn create(facade: Facade, settings: &Settings) -> BoxedFilter<(impl Reply,)>
         .and(warp::path::param::<LocalSwapId>())
         .and(warp::path("deploy"))
         .and(warp::path::end())
-        .and(facade_filter.clone())
+        .and(storage_filter.clone())
         .and_then(swaps::action_deploy);
 
     let action_redeem = swaps
@@ -120,7 +138,7 @@ pub fn create(facade: Facade, settings: &Settings) -> BoxedFilter<(impl Reply,)>
         .and(warp::path::param::<LocalSwapId>())
         .and(warp::path("redeem"))
         .and(warp::path::end())
-        .and(facade_filter.clone())
+        .and(storage_filter.clone())
         .and_then(swaps::action_redeem);
 
     let action_refund = swaps
@@ -128,14 +146,14 @@ pub fn create(facade: Facade, settings: &Settings) -> BoxedFilter<(impl Reply,)>
         .and(warp::path::param::<LocalSwapId>())
         .and(warp::path("refund"))
         .and(warp::path::end())
-        .and(facade_filter.clone())
+        .and(storage_filter)
         .and_then(swaps::action_refund);
 
     let post_dial_addr = warp::post()
         .and(warp::path!("dial"))
         .and(warp::path::end())
         .and(warp::body::json())
-        .and(facade_filter)
+        .and(swarm_filter)
         .and_then(dial_addr::post_dial_addr);
 
     preflight_cors_route
@@ -153,12 +171,16 @@ pub fn create(facade: Facade, settings: &Settings) -> BoxedFilter<(impl Reply,)>
         .or(action_refund)
         .or(hbit_herc20)
         .or(herc20_hbit)
-        .or(orders::make_btc_dai(facade.clone(), settings.clone()))
-        .or(orders::get_single(facade.clone()))
-        .or(orders::list_open(facade.clone()))
-        .or(orders::cancel(facade.clone()))
+        .or(orders::make_btc_dai(
+            storage.clone(),
+            swarm.clone(),
+            settings.clone(),
+        ))
+        .or(orders::get_single(storage.clone()))
+        .or(orders::list_open(storage.clone()))
+        .or(orders::cancel(storage, swarm.clone()))
         .or(tokens::list(settings.clone()))
-        .or(markets::get_btc_dai(facade))
+        .or(markets::get_btc_dai(swarm))
         .or(post_dial_addr)
         .recover(http_api::unpack_problem)
         .with(warp::log("http"))

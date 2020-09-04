@@ -12,7 +12,7 @@
     clippy::dbg_macro
 )]
 #![forbid(unsafe_code)]
-#![type_length_limit = "1049374"] // Regressed with Rust 1.46.0 :(
+#![type_length_limit = "1049479"] // Regressed with Rust 1.46.0 :(
 
 #[macro_use]
 extern crate diesel;
@@ -31,7 +31,6 @@ mod actions;
 mod cli;
 mod config;
 mod connectors;
-mod facade;
 mod file_lock;
 mod fs;
 mod halbit;
@@ -62,7 +61,7 @@ mod ethereum {
     pub use comit::ethereum::*;
 }
 mod bitcoin {
-    pub use comit::bitcoin::{Address, PublicKey};
+    pub use comit::bitcoin::*;
 }
 mod lightning {
     pub use comit::lightning::PublicKey;
@@ -76,7 +75,6 @@ use self::{
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
     config::{validate_connection_to_network, Settings},
     connectors::Connectors,
-    facade::Facade,
     file_lock::TryLockExclusive,
     local_swap_id::LocalSwapId,
     network::{Swarm, SwarmWorker},
@@ -92,7 +90,7 @@ use comit::{
 };
 use conquer_once::Lazy;
 use rand::rngs::OsRng;
-use std::{env, process, sync::Arc};
+use std::{env, process};
 use structopt::StructOpt;
 use tokio::{net::TcpListener, runtime};
 
@@ -154,10 +152,7 @@ fn main() -> anyhow::Result<()> {
 
         const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
 
-        Arc::new(btsieve::bitcoin::Cache::new(
-            connector,
-            BITCOIN_BLOCK_CACHE_CAPACITY,
-        ))
+        btsieve::bitcoin::Cache::new(connector, BITCOIN_BLOCK_CACHE_CAPACITY)
     };
 
     let ethereum_connector = {
@@ -178,11 +173,11 @@ fn main() -> anyhow::Result<()> {
         const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
         const ETHEREUM_RECEIPT_CACHE_CAPACITY: usize = 720;
 
-        Arc::new(btsieve::ethereum::Cache::new(
+        btsieve::ethereum::Cache::new(
             connector,
             ETHEREUM_BLOCK_CACHE_CAPACITY,
             ETHEREUM_RECEIPT_CACHE_CAPACITY,
-        ))
+        )
     };
 
     let lnd_connector_params = LndConnectorParams::new(
@@ -199,31 +194,14 @@ fn main() -> anyhow::Result<()> {
     })
     .ok();
 
-    let connectors = Connectors {
-        bitcoin: Arc::clone(&bitcoin_connector),
-        ethereum: Arc::clone(&ethereum_connector),
-    };
-
-    let herc20_states = Arc::new(herc20::States::default());
-    let halbit_states = Arc::new(halbit::States::default());
-    let hbit_states = Arc::new(hbit::States::default());
-
-    let storage = Storage::new(
-        database,
-        seed,
-        herc20_states.clone(),
-        halbit_states.clone(),
-        hbit_states.clone(),
-    );
+    let connectors = Connectors::new(bitcoin_connector, ethereum_connector);
+    let storage = Storage::new(database, seed);
 
     let protocol_spawner = ProtocolSpawner::new(
-        Arc::clone(&ethereum_connector),
-        Arc::clone(&bitcoin_connector),
+        connectors.clone(),
         lnd_connector_params,
         runtime.handle().clone(),
-        Arc::clone(&herc20_states),
-        Arc::clone(&halbit_states),
-        Arc::clone(&hbit_states),
+        storage.clone(),
     );
 
     let swarm = Swarm::new(
@@ -234,19 +212,19 @@ fn main() -> anyhow::Result<()> {
         protocol_spawner.clone(),
     )?;
 
-    let facade = Facade {
-        swarm: swarm.clone(),
-        storage: storage.clone(),
-        connectors,
-    };
-
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;
-    match runtime.block_on(respawn(storage, protocol_spawner)) {
+    match runtime.block_on(respawn(storage.clone(), protocol_spawner)) {
         Ok(()) => {}
         Err(e) => tracing::warn!("failed to respawn swaps: {:?}", e),
     };
 
-    runtime.spawn(make_http_api_worker(settings, facade, http_api_listener));
+    runtime.spawn(make_http_api_worker(
+        settings,
+        swarm.clone(),
+        storage,
+        connectors,
+        http_api_listener,
+    ));
     runtime.spawn(make_network_api_worker(swarm));
 
     ::std::thread::park();
@@ -280,10 +258,12 @@ async fn bind_http_api_socket(settings: &Settings) -> anyhow::Result<tokio::net:
 /// Construct the worker that is going to process HTTP API requests.
 async fn make_http_api_worker(
     settings: Settings,
-    facade: Facade,
+    swarm: Swarm,
+    storage: Storage,
+    connectors: Connectors,
     incoming_requests: tokio::net::TcpListener,
 ) {
-    let routes = http_api::create_routes(facade, &settings);
+    let routes = http_api::create_routes(swarm, storage, connectors, &settings);
 
     match incoming_requests.local_addr() {
         Ok(socket) => {

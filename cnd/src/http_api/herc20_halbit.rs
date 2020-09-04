@@ -4,21 +4,22 @@ mod bob;
 use crate::{
     halbit, herc20,
     http_api::{problem, Halbit, Herc20, PostBody},
-    network::{swap_digest, Identities},
-    storage::Save,
-    Facade, LocalSwapId,
+    network::{swap_digest, Identities, Swarm},
+    storage::{Save, Storage},
+    LocalSwapId,
 };
 use warp::{http::StatusCode, Rejection, Reply};
 
 pub async fn post_swap(
     body: PostBody<Herc20, Halbit>,
-    facade: Facade,
+    storage: Storage,
+    swarm: Swarm,
 ) -> Result<impl Reply, Rejection> {
     let swap_id = LocalSwapId::default();
     let reply = warp::reply::reply();
 
     let swap = body.to_created_swap::<herc20::CreatedSwap, halbit::CreatedSwap>(swap_id);
-    facade
+    storage
         .save(swap)
         .await
         .map_err(problem::from_anyhow)
@@ -33,7 +34,7 @@ pub async fn post_swap(
     let (peer, address_hint) = body.peer.into_peer_with_address_hint();
     let role = body.role;
 
-    facade
+    swarm
         .initiate_communication(swap_id, role, digest, identities, peer, address_hint)
         .await
         .map(|_| {

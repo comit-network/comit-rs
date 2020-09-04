@@ -1,23 +1,22 @@
 use crate::{
     http_api::{make_order_entity, problem, OrderProperties},
-    storage::all_open_btc_dai_orders,
-    Facade,
+    storage::{all_open_btc_dai_orders, Storage},
 };
 use anyhow::Result;
 use futures::TryFutureExt;
 use warp::{Filter, Rejection, Reply};
 
 /// The warp filter for listing all open orders.
-pub fn route(facade: Facade) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+pub fn route(storage: Storage) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::get().and(warp::path!("orders")).and_then(move || {
-        handler(facade.clone())
+        handler(storage.clone())
             .map_err(problem::from_anyhow)
             .map_err(warp::reject::custom)
     })
 }
 
-async fn handler(facade: Facade) -> Result<impl Reply> {
-    let db = &facade.storage.db;
+async fn handler(storage: Storage) -> Result<impl Reply> {
+    let db = &storage.db;
     let orders = db
         .do_in_transaction(|conn| all_open_btc_dai_orders(conn))
         .await?;
