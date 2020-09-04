@@ -13,7 +13,7 @@ use crate::{
     storage::{tables, BtcDaiOrder, Order},
 };
 use anyhow::Result;
-use comit::{asset::Erc20Quantity, OrderId, Position};
+use comit::{OrderId, Position, Price};
 use serde::{Serialize, Serializer};
 use warp::http::Method;
 
@@ -35,7 +35,7 @@ impl From<(tables::Order, tables::BtcDaiOrder)> for OrderProperties {
         Self {
             id: order.order_id.0,
             position: order.position.0,
-            price: Amount::dai(100_000_000 * Erc20Quantity::from(btc_dai_order.price.0)), /* TODO: Consolidate this with logic in BtcDaiOrder model */
+            price: Amount::from(Price::from_wei_per_sat(btc_dai_order.price.0.into())),
             quantity: Amount::btc(btc_dai_order.quantity.0.into()),
             state: State::new(
                 order.open,

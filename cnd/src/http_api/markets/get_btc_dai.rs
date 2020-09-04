@@ -3,7 +3,7 @@ use crate::{
     http_api::{amount::Amount, problem, serde_peer_id},
 };
 use anyhow::{Context, Result};
-use comit::{order::Denomination, OrderId, Position};
+use comit::{OrderId, Position};
 use futures::TryFutureExt;
 use libp2p::PeerId;
 use serde::Serialize;
@@ -28,8 +28,8 @@ async fn handler(facade: Facade) -> Result<impl Reply> {
         let market_item = siren::Entity::default()
             .with_properties(MarketItem {
                 id: order.id,
-                quantity: Amount::btc(order.quantity),
-                price: Amount::dai(order.price(Denomination::WeiPerBtc)),
+                quantity: Amount::from(order.quantity),
+                price: Amount::from(order.price),
                 ours: maker == local_peer_id,
                 maker,
                 position: order.position,

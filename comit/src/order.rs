@@ -1,12 +1,11 @@
 use crate::{
-    asset,
-    asset::Erc20Quantity,
+    asset::{Bitcoin, Erc20Quantity},
     expiries,
     expiries::{AlphaOffset, BetaOffset},
     Role,
 };
 use serde::{Deserialize, Serialize};
-use std::{fmt::Display, str::FromStr};
+use std::{fmt::Display, marker::PhantomData, str::FromStr};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -49,26 +48,22 @@ pub struct BtcDaiOrder {
     pub position: Position,
     pub swap_protocol: SwapProtocol,
     pub created_at: OffsetDateTime,
-    pub quantity: asset::Bitcoin,
-    /// The price of this order in WEI per SATOSHI.
-    ///
-    /// TOOD: For documentation purposes, this should probably be a dedicated
-    /// type. Remove `pub(crate)` once that is fixed.
-    pub(crate) price: Erc20Quantity,
+    pub quantity: Quantity<Bitcoin>,
+    pub price: Price<Bitcoin, Erc20Quantity>,
 }
 
 impl BtcDaiOrder {
     pub fn buy(
-        quantity: asset::Bitcoin,
-        price: Erc20Quantity,
+        quantity: Quantity<Bitcoin>,
+        price: Price<Bitcoin, Erc20Quantity>,
         swap_protocol: SwapProtocol,
     ) -> Self {
         Self::new(Position::Buy, quantity, price, swap_protocol)
     }
 
     pub fn sell(
-        quantity: asset::Bitcoin,
-        price: Erc20Quantity,
+        quantity: Quantity<Bitcoin>,
+        price: Price<Bitcoin, Erc20Quantity>,
         swap_protocol: SwapProtocol,
     ) -> Self {
         Self::new(Position::Sell, quantity, price, swap_protocol)
@@ -76,8 +71,8 @@ impl BtcDaiOrder {
 
     pub fn new(
         position: Position,
-        quantity: asset::Bitcoin,
-        price: Erc20Quantity,
+        quantity: Quantity<Bitcoin>,
+        price: Price<Bitcoin, Erc20Quantity>,
         swap_protocol: SwapProtocol,
     ) -> BtcDaiOrder {
         Self {
@@ -89,18 +84,84 @@ impl BtcDaiOrder {
             created_at: OffsetDateTime::now_utc(),
         }
     }
+}
 
-    /// Returns the price of this order in the given denomination.
+/// A newtype representing a quantity in a certain base currency B.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Quantity<B> {
+    value: B,
+}
+
+impl Quantity<Bitcoin> {
+    pub fn new(value: Bitcoin) -> Self {
+        Self { value }
+    }
+
+    pub fn sats(&self) -> u64 {
+        self.value.as_sat()
+    }
+
+    /// The [`Bitcoin`] type encapsulates sats and btc well, hence we can just
+    /// provide access to the inner value here.
+    pub fn to_inner(&self) -> Bitcoin {
+        self.value
+    }
+}
+
+#[cfg(test)]
+pub fn btc(btc: f64) -> Quantity<Bitcoin> {
+    Quantity::new(Bitcoin::from_sat(
+        bitcoin::Amount::from_btc(btc).unwrap().as_sat(),
+    ))
+}
+
+/// A newtype representing the price of one unit of the base currency B in the
+/// quote currency Q.
+///
+/// The core idea around of this type is to enforce the unit of the rate when
+/// doing calculations. We achieve that by adding "loud" constructors and
+/// accessors for combinations of base and quote currency.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Price<B, Q> {
+    value: Q,
+    _base: PhantomData<B>,
+}
+
+impl Price<Bitcoin, Erc20Quantity> {
+    /// Constructs a new instance of Price where the rate is given in WEI/SAT.
     ///
-    /// The field `price` holds the value in WEI per SATOSHI, hence we need to
-    /// multiply it by 100_000_000 to get WEI per BTC.
-    pub fn price(&self, denom: Denomination) -> Erc20Quantity {
-        let price = self.price.clone();
-        match denom {
-            Denomination::WeiPerSat => price,
-            Denomination::WeiPerBtc => 100_000_000 * price,
+    /// This is how we store the data internally and hence we don't need to do
+    /// any conversions.
+    pub fn from_wei_per_sat(rate: Erc20Quantity) -> Self {
+        Price {
+            value: rate,
+            _base: PhantomData,
         }
     }
+
+    pub fn wei_per_sat(&self) -> Erc20Quantity {
+        self.value.clone()
+    }
+
+    pub fn wei_per_btc(&self) -> Erc20Quantity {
+        self.value
+            .clone()
+            .checked_mul(100_000_000)
+            .expect("the price of bitcoin to not go through the roof")
+    }
+}
+
+#[cfg(test)]
+pub fn dai_per_btc(dai: u64) -> Price<Bitcoin, Erc20Quantity> {
+    use crate::asset::ethereum::TryFromWei;
+
+    let dai_precision = 18u32;
+    let btc_precision = 8;
+
+    let factor = num::BigUint::from(10u32).pow(dai_precision - btc_precision);
+    let rate = Erc20Quantity::try_from_wei(dai * factor).unwrap();
+
+    Price::from_wei_per_sat(rate)
 }
 
 #[cfg(test)]
@@ -108,8 +169,8 @@ impl BtcDaiOrder {
     pub fn new_test(
         id: OrderId,
         position: Position,
-        quantity: asset::Bitcoin,
-        price: Erc20Quantity,
+        quantity: Quantity<Bitcoin>,
+        price: Price<Bitcoin, Erc20Quantity>,
         swap_protocol: SwapProtocol,
         created_at: OffsetDateTime,
     ) -> BtcDaiOrder {
@@ -122,12 +183,6 @@ impl BtcDaiOrder {
             created_at,
         }
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Denomination {
-    WeiPerBtc,
-    WeiPerSat,
 }
 
 /// The position of the maker for this order. A BTC/DAI buy order,
@@ -299,5 +354,14 @@ mod tests {
 
             assert_eq!(computed_role, role);
         }
+    }
+
+    #[test]
+    fn dai_per_btc_turns_into_wei_per_sat() {
+        // 1 BTC : 9_000 DAI = 1 BTC : 9_000_000_000_000_000_000_000 WEI = 100_000_000
+        // SAT : 9_000_000_000_000_000_000_000 WEI = 1 SAT : 90_000_000_000_000 WEI
+        let wei_per_sat = Erc20Quantity::from_wei_dec_str("90000000000000").unwrap();
+
+        assert_eq!(dai_per_btc(9000), Price::from_wei_per_sat(wei_per_sat))
     }
 }

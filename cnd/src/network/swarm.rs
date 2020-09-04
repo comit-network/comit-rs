@@ -309,7 +309,7 @@ async fn handle_new_match(
             token_contract: order_herc20.token_contract.0,
             quantity: erc20_quantity,
         },
-        bitcoin: hbit_quantity,
+        bitcoin: hbit_quantity.to_inner(),
         ethereum_absolute_expiry: ethereum_absolute_expiry.timestamp() as u32,
         bitcoin_absolute_expiry: bitcoin_absolute_expiry.timestamp() as u32,
         ethereum_chain_id: u32::from(order_herc20.chain_id).into(),

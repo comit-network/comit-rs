@@ -20,7 +20,7 @@ use comit::{
         swap_digest::SwapDigest,
         Identities, SharedSwapId, WhatAliceLearnedFromBob, WhatBobLearnedFromAlice,
     },
-    orderpool, LockProtocol, Never, OrderId, Role, SecretHash, Side,
+    orderpool, LockProtocol, Never, OrderId, Quantity, Role, SecretHash, Side,
 };
 use futures::{channel::mpsc, SinkExt, TryFutureExt};
 use libp2p::{identity::Keypair, NetworkBehaviour, PeerId};
@@ -356,7 +356,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<setup_swap::BehaviourOutEvent<S
                 if let Err(e) = self
                     .orderbook
                     .orderpool_mut()
-                    .notify_swap_setup_successful(order_id, hbit_params.asset)
+                    .notify_swap_setup_successful(order_id, Quantity::new(hbit_params.asset))
                 {
                     tracing::error!(
                         "failed to notify orderpool about successful swap setup: {:#}",

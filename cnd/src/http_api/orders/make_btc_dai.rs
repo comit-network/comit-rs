@@ -19,10 +19,7 @@ use crate::{
     Facade, Role,
 };
 use anyhow::Result;
-use comit::{
-    order::{Denomination, SwapProtocol},
-    BtcDaiOrder, Position, Side,
-};
+use comit::{order::SwapProtocol, BtcDaiOrder, Position, Price, Quantity, Side};
 use diesel::SqliteConnection;
 use futures::TryFutureExt;
 use serde::Deserialize;
@@ -49,8 +46,8 @@ async fn handler(body: Body, facade: Facade, settings: Settings) -> Result<impl 
 
     let order = BtcDaiOrder::new(
         body.position,
-        body.quantity,
-        body.price,
+        Quantity::new(body.quantity),
+        Price::from_wei_per_sat(body.price),
         SwapProtocol::new(body.swap.role, body.position),
     );
     let order_id = order.id;
@@ -96,8 +93,8 @@ fn save_order(
         InsertableOrder::new(order.id, order.position, order.created_at, 100, 0, 0, 0, 0);
 
     let insertable_btc_dai_order = {
-        let quantity = order.quantity;
-        let price = order.price(Denomination::WeiPerSat);
+        let quantity = order.quantity.to_inner();
+        let price = order.price.wei_per_sat();
 
         move |order_fk| InsertableBtcDaiOrder::new(order_fk, quantity, price)
     };

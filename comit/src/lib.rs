@@ -60,7 +60,7 @@ pub mod export {
 
 pub use self::{
     network::SharedSwapId,
-    order::{BtcDaiOrder, OrderId, Position},
+    order::{BtcDaiOrder, OrderId, Position, Price, Quantity},
     secret::Secret,
     secret_hash::SecretHash,
     timestamp::{RelativeTime, Timestamp},

@@ -1,4 +1,5 @@
 use crate::{asset, asset::Erc20Quantity};
+use comit::{Price, Quantity};
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
@@ -24,6 +25,18 @@ impl Amount {
             value,
             decimals: 18,
         }
+    }
+}
+
+impl From<Quantity<asset::Bitcoin>> for Amount {
+    fn from(quantity: Quantity<asset::Bitcoin>) -> Self {
+        Amount::btc(quantity.to_inner())
+    }
+}
+
+impl From<Price<asset::Bitcoin, Erc20Quantity>> for Amount {
+    fn from(price: Price<asset::Bitcoin, Erc20Quantity>) -> Self {
+        Amount::dai(price.wei_per_btc())
     }
 }
 
