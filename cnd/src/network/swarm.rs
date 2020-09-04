@@ -131,13 +131,13 @@ impl Swarm {
         self.inner.lock().await.orderbook.publish(order);
     }
 
-    pub async fn btc_dai_market_safe_expiries(&self) -> Vec<(PeerId, BtcDaiOrder)> {
+    pub async fn btc_dai_market(&self) -> Vec<(PeerId, BtcDaiOrder)> {
         self.inner
             .lock()
             .await
             .orderbook
             .orderpool()
-            .safe_expiries()
+            .executable_orders()
             .map(|(maker, order)| (maker.clone(), order.clone()))
             .collect()
     }
