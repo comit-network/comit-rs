@@ -24,7 +24,7 @@ async fn handler(swarm: Swarm) -> Result<impl Reply> {
     let mut orders = siren::Entity::default();
     let local_peer_id = swarm.local_peer_id();
 
-    for (maker, order) in swarm.btc_dai_market().await {
+    for (maker, order) in swarm.btc_dai_market_safe_expiries().await {
         let market_item = siren::Entity::default()
             .with_properties(MarketItem {
                 id: order.id,
