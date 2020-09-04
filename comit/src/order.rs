@@ -89,22 +89,22 @@ impl BtcDaiOrder {
 /// A newtype representing a quantity in a certain base currency B.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Quantity<B> {
-    value: B,
+    inner: B,
 }
 
 impl Quantity<Bitcoin> {
     pub fn new(value: Bitcoin) -> Self {
-        Self { value }
+        Self { inner: value }
     }
 
     pub fn sats(&self) -> u64 {
-        self.value.as_sat()
+        self.inner.as_sat()
     }
 
     /// The [`Bitcoin`] type encapsulates sats and btc well, hence we can just
     /// provide access to the inner value here.
     pub fn to_inner(&self) -> Bitcoin {
-        self.value
+        self.inner
     }
 }
 
@@ -123,7 +123,7 @@ pub fn btc(btc: f64) -> Quantity<Bitcoin> {
 /// accessors for combinations of base and quote currency.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Price<B, Q> {
-    value: Q,
+    inner: Q,
     _base: PhantomData<B>,
 }
 
@@ -134,17 +134,17 @@ impl Price<Bitcoin, Erc20Quantity> {
     /// any conversions.
     pub fn from_wei_per_sat(rate: Erc20Quantity) -> Self {
         Price {
-            value: rate,
+            inner: rate,
             _base: PhantomData,
         }
     }
 
     pub fn wei_per_sat(&self) -> Erc20Quantity {
-        self.value.clone()
+        self.inner.clone()
     }
 
     pub fn wei_per_btc(&self) -> Erc20Quantity {
-        self.value
+        self.inner
             .clone()
             .checked_mul(100_000_000)
             .expect("the price of bitcoin to not go through the roof")
