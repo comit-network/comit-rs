@@ -1,6 +1,6 @@
 use crate::{
     facade::Facade,
-    http_api::{amount::Amount, problem, serde_peer_id},
+    http_api::{problem, serde_peer_id, Amount},
 };
 use anyhow::{Context, Result};
 use comit::{OrderId, Position};

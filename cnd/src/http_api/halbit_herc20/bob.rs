@@ -2,12 +2,8 @@ use crate::{
     actions::{ethereum, lnd},
     asset,
     http_api::{
-        halbit, herc20,
-        protocol::{
-            AlphaAbsoluteExpiry, AlphaLedger, AlphaProtocol, BetaAbsoluteExpiry, BetaLedger,
-            BetaProtocol, Events, Ledger, Protocol, SwapEvent,
-        },
-        ActionNotFound, BobSwap,
+        halbit, herc20, ActionNotFound, AlphaAbsoluteExpiry, AlphaLedger, AlphaProtocol,
+        BetaAbsoluteExpiry, BetaLedger, BetaProtocol, BobSwap, Events, Ledger, Protocol, SwapEvent,
     },
     DeployAction, FundAction, InitAction, RedeemAction, RefundAction, Timestamp,
 };

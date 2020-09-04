@@ -1,12 +1,8 @@
 use crate::{
     actions::bitcoin::BroadcastSignedTransaction,
     http_api::{
-        hbit, herc20,
-        protocol::{
-            AlphaAbsoluteExpiry, AlphaLedger, AlphaProtocol, BetaAbsoluteExpiry, BetaLedger,
-            BetaProtocol, Events, Ledger, Protocol, SwapEvent,
-        },
-        ActionNotFound, AliceSwap,
+        hbit, herc20, ActionNotFound, AliceSwap, AlphaAbsoluteExpiry, AlphaLedger, AlphaProtocol,
+        BetaAbsoluteExpiry, BetaLedger, BetaProtocol, Events, Ledger, Protocol, SwapEvent,
     },
     DeployAction, FundAction, InitAction, RedeemAction, RefundAction, Timestamp,
 };
