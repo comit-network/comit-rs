@@ -9,11 +9,12 @@ mod wallet_info;
 mod withdraw;
 
 use crate::{
+    bitcoin,
     config::{File, Settings},
     ethereum::{self, dai, ether},
-    network::Taker,
+    history,
+    network::ActivePeer,
     swap::SwapKind,
-    {bitcoin, history},
 };
 use chrono::{DateTime, Utc};
 use num::BigUint;
@@ -127,7 +128,7 @@ pub fn into_history_trade(
         .into();
 
     Trade {
-        utc_start_timestamp: history::UtcDateTime::from_utc_naive(&swap.utc_start_of_swap),
+        utc_start_timestamp: history::UtcDateTime::from(swap.start_of_swap),
         utc_final_timestamp: final_timestamp,
         base_symbol: Symbol::Btc,
         quote_symbol: Symbol::Dai,
@@ -143,15 +144,15 @@ pub fn into_history_trade(
 #[derive(Debug, Clone)]
 pub struct FinishedSwap {
     pub swap: SwapKind,
-    pub taker: Taker,
+    pub peer: ActivePeer,
     pub final_timestamp: DateTime<Utc>,
 }
 
 impl FinishedSwap {
-    pub fn new(swap: SwapKind, taker: Taker, final_timestamp: DateTime<Utc>) -> Self {
+    pub fn new(swap: SwapKind, taker: ActivePeer, final_timestamp: DateTime<Utc>) -> Self {
         Self {
             swap,
-            taker,
+            peer: taker,
             final_timestamp,
         }
     }

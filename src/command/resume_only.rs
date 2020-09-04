@@ -103,7 +103,7 @@ fn handle_finished_swap(
 ) {
     {
         let trade = into_history_trade(
-            finished_swap.taker.peer_id(),
+            finished_swap.peer.peer_id(),
             finished_swap.swap.clone(),
             #[cfg(not(test))]
             finished_swap.final_timestamp,
@@ -124,8 +124,8 @@ fn handle_finished_swap(
     let swap_id = finished_swap.swap.swap_id();
 
     let _ = db
-        .remove_active_taker(&finished_swap.taker)
-        .map_err(|error| tracing::error!("Unable to remove from active takers: {}", error));
+        .remove_active_peer(&finished_swap.peer)
+        .map_err(|error| tracing::error!("Unable to remove from active peers: {}", error));
 
     let _ = db
         .remove_swap(&swap_id)

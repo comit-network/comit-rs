@@ -1,38 +1,38 @@
 use crate::{
-    bitcoin,
-    ethereum::{self, dai},
-    order::{BtcDaiOrder, Position},
-    swap::{hbit, herc20, SwapKind, SwapParams},
-    Seed,
+    bitcoin, ethereum, ethereum::dai, order::BtcDaiOrderForm, swap::SwapKind, Seed, SwapId,
 };
 use ::bitcoin::hashes::{sha256, Hash, HashEngine};
-use chrono::Utc;
+
 use comit::{
-    asset, identity,
+    identity,
     network::{
-        self,
-        orderbook::{self, take_order, OrderId},
-        Comit, Identities, LocalData, Orderbook, RemoteData,
+        orderbook,
+        protocols::setup_swap::{BobParams, RoleDependentParams},
+        setup_swap,
+        setup_swap::{AliceParams, CommonParams},
     },
-    SharedSwapId, Timestamp,
+    order::SwapProtocol,
+    orderpool::Match,
+    BtcDaiOrder, Position, Role, Secret, SecretHash,
 };
 use futures::Future;
 use libp2p::{
-    identity::ed25519,
-    request_response::ResponseChannel,
-    swarm::{NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters},
+    identity::{ed25519, Keypair},
+    swarm::{NetworkBehaviourAction, PollParameters},
     NetworkBehaviour, PeerId,
 };
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::VecDeque,
     pin::Pin,
     str::FromStr,
+    sync::Arc,
     task::{Context, Poll},
 };
 
-use crate::swap::Database;
-use std::sync::Arc;
+use crate::swap::{Database, SwapParams};
+use chrono::{NaiveDateTime, Utc};
+use time::{Duration, OffsetDateTime};
 
 #[derive(derivative::Derivative)]
 #[derivative(Debug)]
@@ -46,6 +46,8 @@ impl Swarm {
     pub fn new(
         seed: &Seed,
         settings: &crate::config::Settings,
+        bitcoin_wallet: Arc<bitcoin::Wallet>,
+        ethereum_wallet: Arc<ethereum::Wallet>,
         database: Arc<Database>,
     ) -> anyhow::Result<Self> {
         use anyhow::Context as _;
@@ -53,9 +55,16 @@ impl Swarm {
         let local_key_pair = derive_key_pair(seed);
         let local_peer_id = PeerId::from(local_key_pair.public());
 
-        let transport = transport::build_transport(local_key_pair)?;
+        let transport = transport::build_transport(local_key_pair.clone())?;
 
-        let behaviour = Nectar::new(local_peer_id.clone(), database);
+        let behaviour = Nectar::new(
+            local_peer_id.clone(),
+            local_key_pair,
+            settings.ethereum.chain.dai_contract_address(),
+            bitcoin_wallet,
+            ethereum_wallet,
+            database,
+        );
 
         let mut swarm =
             libp2p::swarm::SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
@@ -78,158 +87,139 @@ impl Swarm {
         &mut self.inner
     }
 
-    pub fn publish(&mut self, order: PublishOrder) -> anyhow::Result<()> {
-        tracing::info!("Publishing new order: {}", order.0);
-        self.inner.make(order)
+    pub fn publish(&mut self, order: BtcDaiOrder) {
+        tracing::info!("Publishing new order");
+        self.inner.publish(order);
     }
 
-    pub async fn confirm(&mut self, order: TakenOrder) -> anyhow::Result<()> {
-        self.inner.confirm(order).await
-    }
-
-    pub fn deny(&mut self, order: TakenOrder) {
-        self.inner.deny(order)
-    }
-
-    /// Save the swap identities and send them to the taker
-    pub fn set_swap_identities(
+    pub fn setup_swap(
         &mut self,
-        swap_metadata: SwapMetadata,
-        bitcoin_transient_sk: ::bitcoin::secp256k1::SecretKey,
-        ethereum_identity: identity::Ethereum,
-    ) {
-        self.inner
-            .set_swap_identities(swap_metadata, bitcoin_transient_sk, ethereum_identity)
+        to: &PeerId,
+        to_send: RoleDependentParams,
+        common: CommonParams,
+        swap_protocol: comit::network::setup_swap::SwapProtocol,
+        swap_id: SwapId,
+        match_ref_point: OffsetDateTime,
+    ) -> anyhow::Result<()> {
+        tracing::info!("Sending setup swap message");
+        self.inner.setup_swap.send(
+            to,
+            to_send,
+            common,
+            swap_protocol,
+            SetupSwapContext {
+                swap_id,
+                match_ref_point,
+            },
+        )?;
+        Ok(())
+    }
+
+    pub fn clear_own_orders(&mut self) {
+        tracing::info!("Cancelling all current orders");
+        self.inner.orderbook.clear_own_orders();
     }
 }
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Event {
-    TakeRequest(TakenOrder),
-    SetSwapIdentities(SwapMetadata),
     SpawnSwap(SwapKind),
+    OrderMatch {
+        form: BtcDaiOrderForm,
+        to: PeerId,
+        to_send: RoleDependentParams,
+        common: CommonParams,
+        swap_protocol: comit::network::setup_swap::SwapProtocol,
+        swap_id: SwapId,
+        match_ref_point: OffsetDateTime,
+    },
 }
 
-#[derive(Debug)]
-pub struct SwapMetadata {
+#[derive(Debug, Copy, Clone)]
+pub struct SetupSwapContext {
     swap_id: SwapId,
-    taker_peer_id: PeerId,
+    match_ref_point: OffsetDateTime,
 }
 
-impl SwapMetadata {
-    pub fn swap_id(&self) -> SwapId {
-        self.swap_id
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct SwapId {
-    inner: crate::SwapId,
-    shared: SharedSwapId,
-}
-
-impl SwapId {
-    pub fn new(shared: SharedSwapId) -> Self {
-        Self {
-            inner: crate::SwapId::default(),
-            shared,
-        }
-    }
-}
-
-impl From<SwapId> for crate::SwapId {
-    fn from(from: SwapId) -> Self {
-        from.inner
-    }
-}
-
-/// A `NetworkBehaviour` that delegates to the `Orderbook` and `Comit` behaviours.
+/// A `NetworkBehaviour` that delegates to the `Orderbook` and `SetupSwap`
+/// behaviours.
 #[derive(NetworkBehaviour)]
 #[behaviour(out_event = "Event", poll_method = "poll")]
 #[allow(missing_debug_implementations)]
 pub struct Nectar {
-    comit: Comit,
-    orderbook: Orderbook,
+    orderbook: orderbook::Orderbook,
+    setup_swap: setup_swap::SetupSwap<SetupSwapContext>,
     #[behaviour(ignore)]
     events: VecDeque<Event>,
     #[behaviour(ignore)]
-    local_peer_id: PeerId,
-    #[behaviour(ignore)]
-    takers: HashMap<OrderId, PeerId>,
-    #[behaviour(ignore)]
     database: Arc<Database>,
+    /// The address of the DAI ERC20 token contract on the current Ethereum
+    /// network.
     #[behaviour(ignore)]
-    order_ids: HashMap<SharedSwapId, OrderId>,
+    dai_contract_address: ethereum::Address,
     #[behaviour(ignore)]
-    local_identities: HashMap<SharedSwapId, LocalIdentities>,
+    bitcoin_wallet: Arc<bitcoin::Wallet>,
+    #[behaviour(ignore)]
+    ethereum_wallet: Arc<ethereum::Wallet>,
 }
 
 impl Nectar {
-    fn new(local_peer_id: PeerId, database: Arc<Database>) -> Self {
+    fn new(
+        local_peer_id: PeerId,
+        local_key_pair: Keypair,
+        dai_contract_address: ethereum::Address,
+        bitcoin_wallet: Arc<bitcoin::Wallet>,
+        ethereum_wallet: Arc<ethereum::Wallet>,
+        database: Arc<Database>,
+    ) -> Self {
         Self {
-            comit: Comit::default(),
-            orderbook: Orderbook::new(local_peer_id.clone()),
+            orderbook: comit::network::Orderbook::new(local_peer_id, local_key_pair),
+            setup_swap: Default::default(),
             events: VecDeque::new(),
-            local_peer_id,
-            takers: HashMap::new(),
+            dai_contract_address,
+            bitcoin_wallet,
+            ethereum_wallet,
             database,
-            order_ids: HashMap::new(),
-            local_identities: HashMap::new(),
         }
     }
 
-    fn make(&mut self, order: PublishOrder) -> anyhow::Result<()> {
-        let order_id = OrderId::random();
-        let order = order.into_orderbook_order(order_id, self.local_peer_id.clone());
-        let _ = self.orderbook.make(order)?;
-
-        Ok(())
+    fn publish(&mut self, order: BtcDaiOrder) {
+        self.orderbook.publish(order);
     }
 
-    async fn confirm(&mut self, order: TakenOrder) -> anyhow::Result<()> {
-        self.database
-            .insert_active_taker(order.taker.clone())
-            .await?;
-
-        self.orderbook
-            .confirm(order.id, order.confirmation_channel, order.taker.peer_id());
-
-        Ok(())
+    fn seed(&self) -> Seed {
+        // todo: see if there is a better place to store the seed so it doesnt have to
+        // be pulled from bitcoin wallet
+        self.bitcoin_wallet.seed()
     }
 
-    fn deny(&mut self, order: TakenOrder) {
-        self.orderbook
-            .deny(order.taker.peer_id(), order.id, order.confirmation_channel)
+    fn derive_secret_hash(&self, swap_id: SwapId) -> SecretHash {
+        let secret: Secret =
+            Self::sha256_with_seed(self.seed(), &[b"SECRET", swap_id.as_bytes()]).into();
+        SecretHash::new(secret)
     }
 
-    /// Save the swap identities and send them to the taker
-    fn set_swap_identities(
-        &mut self,
-        SwapMetadata {
-            swap_id,
-            taker_peer_id,
-        }: SwapMetadata,
-        bitcoin_transient_sk: ::bitcoin::secp256k1::SecretKey,
-        ethereum_identity: identity::Ethereum,
-    ) {
-        self.local_identities.insert(
-            swap_id.shared,
-            LocalIdentities::new(bitcoin_transient_sk, ethereum_identity),
-        );
+    fn sha256_with_seed(seed: Seed, slices: &[&[u8]]) -> [u8; 32] {
+        let mut engine = sha256::HashEngine::default();
 
-        let bitcoin_identity =
-            identity::Bitcoin::from_secret_key(&crate::SECP, &bitcoin_transient_sk);
+        engine.input(&seed.bytes());
+        engine.input(b"TRANSIENT_KEY");
+        for slice in slices {
+            engine.input(slice);
+        }
 
-        let identities = Identities {
-            bitcoin_identity: Some(bitcoin_identity),
-            ethereum_identity: Some(ethereum_identity),
-            lightning_identity: None,
-        };
-        let local_data = LocalData::for_bob(identities);
+        let hash = sha256::Hash::from_engine(engine);
 
-        self.comit
-            .communicate(taker_peer_id, swap_id.shared, local_data);
+        hash.into_inner()
+    }
+
+    fn ethereum_chain_id(&self) -> ethereum::ChainId {
+        self.ethereum_wallet.chain_id()
+    }
+
+    fn bitcoin_network(&self) -> bitcoin::Network {
+        self.bitcoin_wallet.network
     }
 
     fn poll<BIE>(
@@ -246,29 +236,27 @@ impl Nectar {
     }
 }
 
-struct LocalIdentities {
-    bitcoin: ::bitcoin::secp256k1::SecretKey,
-    ethereum: identity::Ethereum,
-}
-
-impl LocalIdentities {
-    fn new(bitcoin: ::bitcoin::secp256k1::SecretKey, ethereum: identity::Ethereum) -> Self {
-        Self { bitcoin, ethereum }
-    }
-}
-
-impl NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> for Nectar {
-    fn inject_event(&mut self, event: orderbook::BehaviourOutEvent) {
+impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::BehaviourOutEvent>
+    for Nectar
+{
+    fn inject_event(&mut self, event: ::comit::network::orderbook::BehaviourOutEvent) {
         match event {
-            orderbook::BehaviourOutEvent::TakeOrderRequest {
-                peer_id: taker_peer_id,
-                response_channel,
-                order_id,
-            } => {
-                let taker = Taker::new(taker_peer_id);
+            orderbook::BehaviourOutEvent::OrderMatch(Match {
+                peer,
+                price,
+                quantity,
+                our_position,
+                swap_protocol,
+                match_reference_point,
+                ours,
+                ..
+            }) => {
+                let taker = ActivePeer {
+                    peer_id: peer.clone(),
+                };
                 let ongoing_trade_with_taker_exists = match self
                     .database
-                    .contains_active_taker(&taker)
+                    .contains_active_peer(&taker)
                 {
                     Ok(res) => res,
                     Err(e) => {
@@ -276,7 +264,7 @@ impl NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> for Nectar {
                             "could not determine if taker has ongoing trade: {}; taker: {}, order: {}",
                             e,
                             taker.peer_id(),
-                            order_id,
+                            ours,
                         );
                         return;
                     }
@@ -286,192 +274,285 @@ impl NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> for Nectar {
                     tracing::warn!(
                         "ignoring take order request from taker with ongoing trade, taker: {:?}, order: {}",
                         taker.peer_id(),
-                        order_id,
+                        ours,
                     );
                     return;
                 }
 
-                let order = match self.orderbook.get_order(&order_id) {
-                    Some(order) => order,
-                    None => {
-                        tracing::warn!(
-                            "unexpected take order request, taker: {}, order: {}",
-                            taker.peer_id(),
-                            order_id,
-                        );
-                        return;
+                let token_contract = self.dai_contract_address;
+                let swap_id = SwapId::default();
+                let secret_hash = self.derive_secret_hash(swap_id);
+
+                let ethereum_identity = self.ethereum_wallet.account();
+                let bitcoin_identity = identity::Bitcoin::from_secret_key(
+                    &crate::SECP,
+                    &self.bitcoin_wallet.derive_transient_sk(swap_id),
+                );
+
+                let erc20_quantity = quantity.as_sat() * price;
+
+                let form = BtcDaiOrderForm {
+                    position: our_position,
+                    base: bitcoin::Asset {
+                        amount: quantity.into(),
+                        network: self.bitcoin_network(),
+                    },
+                    quote: dai::Asset {
+                        amount: dai::Amount::from(erc20_quantity.clone()),
+                        chain: ethereum::Chain::Local {
+                            chain_id: u32::from(self.ethereum_chain_id()),
+                            dai_contract_address: token_contract,
+                        },
+                    },
+                };
+
+                let (role_dependant_params, common_params, swap_protocol) = match swap_protocol {
+                    SwapProtocol::HbitHerc20 {
+                        hbit_expiry_offset,
+                        herc20_expiry_offset,
+                    } => {
+                        // todo: do checked addition
+                        #[allow(clippy::cast_sign_loss)]
+                        #[allow(clippy::cast_possible_truncation)]
+                        let ethereum_absolute_expiry = (match_reference_point
+                            + Duration::from(herc20_expiry_offset))
+                        .timestamp() as u32;
+                        #[allow(clippy::cast_sign_loss)]
+                        #[allow(clippy::cast_possible_truncation)]
+                        let bitcoin_absolute_expiry = (match_reference_point
+                            + Duration::from(hbit_expiry_offset))
+                        .timestamp() as u32;
+
+                        match our_position {
+                            Position::Buy => (
+                                RoleDependentParams::Bob(BobParams {
+                                    bitcoin_identity,
+                                    ethereum_identity,
+                                }),
+                                CommonParams {
+                                    erc20: comit::asset::Erc20 {
+                                        token_contract,
+                                        quantity: erc20_quantity,
+                                    },
+                                    bitcoin: quantity,
+                                    ethereum_absolute_expiry,
+                                    bitcoin_absolute_expiry,
+                                    ethereum_chain_id: self.ethereum_chain_id(),
+                                    bitcoin_network: self.bitcoin_network(),
+                                },
+                                comit::network::setup_swap::SwapProtocol::HbitHerc20,
+                            ),
+                            Position::Sell => (
+                                RoleDependentParams::Alice(AliceParams {
+                                    bitcoin_identity,
+                                    ethereum_identity,
+                                    secret_hash,
+                                }),
+                                CommonParams {
+                                    erc20: comit::asset::Erc20 {
+                                        token_contract,
+                                        quantity: erc20_quantity,
+                                    },
+                                    bitcoin: quantity,
+                                    ethereum_absolute_expiry,
+                                    bitcoin_absolute_expiry,
+                                    ethereum_chain_id: self.ethereum_chain_id(),
+                                    bitcoin_network: self.bitcoin_network(),
+                                },
+                                comit::network::setup_swap::SwapProtocol::HbitHerc20,
+                            ),
+                        }
+                    }
+                    SwapProtocol::Herc20Hbit {
+                        hbit_expiry_offset,
+                        herc20_expiry_offset,
+                    } => {
+                        // todo: do checked addition
+                        #[allow(clippy::cast_sign_loss)]
+                        #[allow(clippy::cast_possible_truncation)]
+                        let ethereum_absolute_expiry = (match_reference_point
+                            + Duration::from(herc20_expiry_offset))
+                        .timestamp() as u32;
+                        #[allow(clippy::cast_sign_loss)]
+                        #[allow(clippy::cast_possible_truncation)]
+                        let bitcoin_absolute_expiry = (match_reference_point
+                            + Duration::from(hbit_expiry_offset))
+                        .timestamp() as u32;
+
+                        match our_position {
+                            Position::Buy => (
+                                RoleDependentParams::Alice(AliceParams {
+                                    bitcoin_identity,
+                                    ethereum_identity,
+                                    secret_hash,
+                                }),
+                                CommonParams {
+                                    erc20: comit::asset::Erc20 {
+                                        token_contract,
+                                        quantity: erc20_quantity,
+                                    },
+                                    bitcoin: quantity,
+                                    ethereum_absolute_expiry,
+                                    bitcoin_absolute_expiry,
+                                    ethereum_chain_id: self.ethereum_chain_id(),
+                                    bitcoin_network: self.bitcoin_network(),
+                                },
+                                comit::network::setup_swap::SwapProtocol::Herc20Hbit,
+                            ),
+                            Position::Sell => (
+                                RoleDependentParams::Bob(BobParams {
+                                    bitcoin_identity,
+                                    ethereum_identity,
+                                }),
+                                CommonParams {
+                                    erc20: comit::asset::Erc20 {
+                                        token_contract,
+                                        quantity: erc20_quantity,
+                                    },
+                                    bitcoin: quantity,
+                                    ethereum_absolute_expiry,
+                                    bitcoin_absolute_expiry,
+                                    ethereum_chain_id: self.ethereum_chain_id(),
+                                    bitcoin_network: self.bitcoin_network(),
+                                },
+                                comit::network::setup_swap::SwapProtocol::Herc20Hbit,
+                            ),
+                        }
                     }
                 };
 
-                self.takers.insert(order_id, taker.peer_id.clone());
-
-                let taken_order = TakenOrder::new(order, taker, response_channel);
-                self.events.push_back(Event::TakeRequest(taken_order))
+                self.events.push_back(Event::OrderMatch {
+                    form,
+                    to: peer,
+                    to_send: role_dependant_params,
+                    common: common_params,
+                    swap_protocol,
+                    swap_id,
+                    match_ref_point: match_reference_point,
+                });
             }
-            orderbook::BehaviourOutEvent::TakeOrderConfirmation {
-                order_id,
-                shared_swap_id,
-                peer_id: taker_peer_id,
-            } => {
-                let swap_id = SwapId::new(shared_swap_id);
-
-                self.order_ids.insert(swap_id.shared, order_id);
-
-                self.events
-                    .push_back(Event::SetSwapIdentities(SwapMetadata {
-                        swap_id,
-                        taker_peer_id,
-                    }))
-            }
-            orderbook::BehaviourOutEvent::Failed { peer_id, order_id } => tracing::warn!(
-                "take order request failed, peer: {}, order: {}",
-                peer_id,
-                order_id,
-            ),
         }
     }
 }
 
-impl NetworkBehaviourEventProcess<network::comit::BehaviourOutEvent> for Nectar {
-    fn inject_event(&mut self, event: network::comit::BehaviourOutEvent) {
+impl
+    libp2p::swarm::NetworkBehaviourEventProcess<
+        ::comit::network::setup_swap::BehaviourOutEvent<SetupSwapContext>,
+    > for Nectar
+{
+    fn inject_event(
+        &mut self,
+        event: ::comit::network::setup_swap::BehaviourOutEvent<SetupSwapContext>,
+    ) {
         match event {
-            network::comit::BehaviourOutEvent::SwapFinalized {
-                shared_swap_id,
-                remote_data,
-            } => {
-                let (secret_hash, taker_bitcoin_identity, taker_ethereum_identity) =
-                    match remote_data {
-                        RemoteData {
-                            secret_hash: Some(secret_hash),
-                            bitcoin_identity: Some(bitcoin_identity),
-                            ethereum_identity: Some(ethereum_identity),
-                            ..
-                        } => (secret_hash, bitcoin_identity, ethereum_identity),
-                        _ => {
-                            tracing::warn!(
-                                "incorrect remote data received from taker, shared_swap_id: {}, remote_data: {:?}",
-                                shared_swap_id,
-                                remote_data
-                            );
-                            return;
-                        }
-                    };
+            ::comit::network::setup_swap::BehaviourOutEvent::ExecutableSwap(exec_swap) => {
+                let swap_id = exec_swap.context.swap_id;
 
-                let (maker_bitcoin_transient_sk, maker_ethereum_identity) =
-                    match self.local_identities.remove(&shared_swap_id) {
-                        Some(LocalIdentities { bitcoin, ethereum }) => (bitcoin, ethereum),
-                        _ => {
-                            tracing::warn!(
-                                "could not find identities for shared_swap_id: {}",
-                                shared_swap_id,
-                            );
-                            return;
-                        }
-                    };
+                let start_of_swap = chrono::DateTime::from_utc(
+                    NaiveDateTime::from_timestamp(exec_swap.context.match_ref_point.timestamp(), 0),
+                    Utc,
+                );
 
-                let order = match self.order_ids.get(&shared_swap_id) {
-                    Some(order_id) => match self.orderbook.get_order(order_id) {
-                        Some(order) => order,
-                        None => {
-                            tracing::warn!("could not find order with id: {}", order_id);
-                            return;
-                        }
-                    },
-                    None => {
-                        tracing::warn!(
-                            "could not find order_id corresponding to shared_swap_id: {}",
-                            shared_swap_id
-                        );
-                        return;
-                    }
-                };
-
-                let taker = match self.takers.get(&order.id) {
-                    Some(taker_peer_id) => Taker::new(taker_peer_id.clone()),
-                    None => {
-                        tracing::warn!("unknown taker for order: {}", order.id,);
-                        return;
-                    }
-                };
-
-                let swap = match order.position {
-                    // Bob is buying (=redeeming) bitcoin (funding DAI on beta, redeeming bitcoin on alpha)
-                    comit::network::Position::Buy => {
-                        let redeem_identity = identity::Bitcoin::from_secret_key(
-                            &crate::SECP,
-                            &maker_bitcoin_transient_sk,
-                        );
-                        let hbit_params = hbit::Params::new(
-                            hbit::SharedParams {
-                                asset: order.bitcoin_amount,
-                                redeem_identity,
-                                refund_identity: taker_bitcoin_identity,
-                                expiry: order.bitcoin_absolute_expiry.into(),
-                                secret_hash,
-                                network: order.bitcoin_ledger.into(),
-                            },
-                            maker_bitcoin_transient_sk,
-                        );
-
-                        let herc20_params = herc20::Params {
-                            asset: asset::Erc20::new(order.token_contract, order.ethereum_amount),
-                            redeem_identity: taker_ethereum_identity,
-                            refund_identity: maker_ethereum_identity,
-                            expiry: order.ethereum_absolute_expiry.into(),
-                            secret_hash,
-                            chain_id: order.ethereum_ledger.chain_id,
-                        };
-
+                let transient_sk = self.bitcoin_wallet.derive_transient_sk(swap_id);
+                let swap_kind = match (exec_swap.our_role, exec_swap.swap_protocol) {
+                    // Sell
+                    (Role::Alice, setup_swap::SwapProtocol::HbitHerc20) => {
                         SwapKind::HbitHerc20(SwapParams {
-                            hbit_params,
-                            herc20_params,
-                            secret_hash,
-                            utc_start_of_swap: Utc::now().naive_utc(),
-                            swap_id: crate::SwapId::default(),
-                            taker,
+                            hbit_params: crate::swap::hbit::Params::new(
+                                exec_swap.hbit,
+                                transient_sk,
+                            ),
+                            herc20_params: crate::swap::herc20::Params {
+                                asset: exec_swap.herc20.asset.clone(),
+                                redeem_identity: exec_swap.herc20.refund_identity,
+                                refund_identity: exec_swap.herc20.redeem_identity,
+                                expiry: exec_swap.herc20.expiry,
+                                secret_hash: exec_swap.herc20.secret_hash,
+                                chain_id: exec_swap.herc20.chain_id,
+                            },
+                            secret_hash: exec_swap.hbit.secret_hash,
+                            start_of_swap,
+                            swap_id,
+                            taker: ActivePeer {
+                                peer_id: exec_swap.peer_id,
+                            },
                         })
                     }
-                    // Bob is selling (=funding) bitcoin (funding bitcoin on beta, redeeming DAI on alpha)
-                    comit::network::Position::Sell => {
-                        let refund_identity = identity::Bitcoin::from_secret_key(
-                            &crate::SECP,
-                            &maker_bitcoin_transient_sk,
-                        );
-
-                        let hbit_params = hbit::Params::new(
-                            hbit::SharedParams {
-                                asset: order.bitcoin_amount,
-                                redeem_identity: taker_bitcoin_identity,
-                                refund_identity,
-                                expiry: order.bitcoin_absolute_expiry.into(),
-                                secret_hash,
-                                network: order.bitcoin_ledger.into(),
+                    // Buy
+                    (Role::Bob, setup_swap::SwapProtocol::HbitHerc20) => {
+                        SwapKind::HbitHerc20(SwapParams {
+                            hbit_params: crate::swap::hbit::Params::new(
+                                exec_swap.hbit,
+                                transient_sk,
+                            ),
+                            herc20_params: crate::swap::herc20::Params {
+                                asset: exec_swap.herc20.asset.clone(),
+                                redeem_identity: exec_swap.herc20.redeem_identity,
+                                refund_identity: exec_swap.herc20.refund_identity,
+                                expiry: exec_swap.herc20.expiry,
+                                secret_hash: exec_swap.herc20.secret_hash,
+                                chain_id: exec_swap.herc20.chain_id,
                             },
-                            maker_bitcoin_transient_sk,
-                        );
-
-                        let herc20_params = herc20::Params {
-                            asset: asset::Erc20::new(order.token_contract, order.ethereum_amount),
-                            redeem_identity: maker_ethereum_identity,
-                            refund_identity: taker_ethereum_identity,
-                            expiry: order.ethereum_absolute_expiry.into(),
-                            secret_hash,
-                            chain_id: order.ethereum_ledger.chain_id,
-                        };
-
+                            secret_hash: exec_swap.hbit.secret_hash,
+                            start_of_swap,
+                            swap_id,
+                            taker: ActivePeer {
+                                peer_id: exec_swap.peer_id,
+                            },
+                        })
+                    }
+                    // Buy
+                    (Role::Alice, setup_swap::SwapProtocol::Herc20Hbit) => {
                         SwapKind::Herc20Hbit(SwapParams {
-                            hbit_params,
-                            herc20_params,
-                            secret_hash,
-                            utc_start_of_swap: Utc::now().naive_utc(),
-                            swap_id: crate::SwapId::default(),
-                            taker,
+                            hbit_params: crate::swap::hbit::Params::new(
+                                exec_swap.hbit,
+                                transient_sk,
+                            ),
+                            herc20_params: crate::swap::herc20::Params {
+                                asset: exec_swap.herc20.asset.clone(),
+                                redeem_identity: exec_swap.herc20.redeem_identity,
+                                refund_identity: exec_swap.herc20.refund_identity,
+                                expiry: exec_swap.herc20.expiry,
+                                secret_hash: exec_swap.herc20.secret_hash,
+                                chain_id: exec_swap.herc20.chain_id,
+                            },
+                            secret_hash: exec_swap.hbit.secret_hash,
+                            start_of_swap,
+                            swap_id,
+                            taker: ActivePeer {
+                                peer_id: exec_swap.peer_id,
+                            },
+                        })
+                    }
+                    // Sell
+                    (Role::Bob, setup_swap::SwapProtocol::Herc20Hbit) => {
+                        SwapKind::Herc20Hbit(SwapParams {
+                            hbit_params: crate::swap::hbit::Params::new(
+                                exec_swap.hbit,
+                                transient_sk,
+                            ),
+                            herc20_params: crate::swap::herc20::Params {
+                                asset: exec_swap.herc20.asset.clone(),
+                                redeem_identity: exec_swap.herc20.redeem_identity,
+                                refund_identity: exec_swap.herc20.refund_identity,
+                                expiry: exec_swap.herc20.expiry,
+                                secret_hash: exec_swap.herc20.secret_hash,
+                                chain_id: exec_swap.herc20.chain_id,
+                            },
+                            secret_hash: exec_swap.hbit.secret_hash,
+                            start_of_swap,
+                            swap_id,
+                            taker: ActivePeer {
+                                peer_id: exec_swap.peer_id,
+                            },
                         })
                     }
                 };
-
-                self.events.push_back(Event::SpawnSwap(swap));
+                self.events.push_back(Event::SpawnSwap(swap_kind));
             }
+            ::comit::network::setup_swap::BehaviourOutEvent::AlreadyHaveRoleParams {
+                peer, ..
+            } => tracing::error!("already received role params from {}", peer),
         }
     }
 }
@@ -486,67 +567,20 @@ impl libp2p::core::Executor for TokioExecutor {
     }
 }
 
-#[derive(Debug)]
-pub struct TakenOrder {
-    pub id: OrderId,
-    pub inner: BtcDaiOrder,
-    pub taker: Taker,
-    confirmation_channel: ResponseChannel<take_order::Response>,
-}
-
-impl TakenOrder {
-    fn new(
-        order: comit::network::orderbook::Order,
-        taker: Taker,
-        confirmation_channel: ResponseChannel<take_order::Response>,
-    ) -> Self {
-        let base = bitcoin::Asset {
-            amount: order.bitcoin_amount.into(),
-            network: order.bitcoin_ledger.into(),
-        };
-        let chain = ethereum::Chain::new(order.ethereum_ledger.chain_id, order.token_contract);
-        let quote = dai::Asset {
-            amount: order.ethereum_amount.into(),
-            chain,
-        };
-        let inner = BtcDaiOrder {
-            position: order.position.into(),
-            base,
-            quote,
-        };
-
-        Self {
-            id: order.id,
-            inner,
-            taker,
-            confirmation_channel,
-        }
-    }
-}
-
+/// This type is used to track peers that have a swap ongoing
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct Taker {
-    peer_id: PeerId,
+pub struct ActivePeer {
+    pub(crate) peer_id: PeerId,
 }
 
-impl Taker {
-    pub fn new(peer_id: PeerId) -> Taker {
-        Taker { peer_id }
-    }
-
+impl ActivePeer {
     pub fn peer_id(&self) -> PeerId {
         self.peer_id.clone()
     }
 }
 
-impl From<TakenOrder> for BtcDaiOrder {
-    fn from(order: TakenOrder) -> Self {
-        order.inner
-    }
-}
-
 #[cfg(test)]
-impl crate::StaticStub for Taker {
+impl crate::StaticStub for ActivePeer {
     fn static_stub() -> Self {
         Self {
             peer_id: PeerId::random(),
@@ -554,45 +588,7 @@ impl crate::StaticStub for Taker {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct PublishOrder(BtcDaiOrder);
-
-impl PublishOrder {
-    fn into_orderbook_order(self, id: OrderId, maker: PeerId) -> comit::network::orderbook::Order {
-        // No special logic for expiry generation, other than setting
-        // the asset that will be alpha to be longer than the asset
-        // that will be beta
-        let twelve_hours = 12 * 60 * 60;
-        let beta_expiry = Timestamp::now().plus(twelve_hours);
-        let alpha_expiry = beta_expiry.plus(twelve_hours);
-
-        let (bitcoin_absolute_expiry, ethereum_absolute_expiry) = match self.0.position {
-            Position::Buy => (alpha_expiry, beta_expiry),
-            Position::Sell => (beta_expiry, alpha_expiry),
-        };
-
-        comit::network::orderbook::Order {
-            id,
-            maker: maker.into(),
-            position: self.0.position.into(),
-            bitcoin_amount: self.0.base.amount.into(),
-            bitcoin_ledger: self.0.base.network.into(),
-            bitcoin_absolute_expiry: bitcoin_absolute_expiry.into(),
-            ethereum_amount: self.0.quote.amount.into(),
-            token_contract: self.0.quote.chain.dai_contract_address(),
-            ethereum_ledger: comit::ledger::Ethereum::new(self.0.quote.chain.chain_id()),
-            ethereum_absolute_expiry: ethereum_absolute_expiry.into(),
-        }
-    }
-}
-
-impl From<BtcDaiOrder> for PublishOrder {
-    fn from(order: BtcDaiOrder) -> Self {
-        Self(order)
-    }
-}
-
-impl Serialize for Taker {
+impl Serialize for ActivePeer {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -602,7 +598,7 @@ impl Serialize for Taker {
     }
 }
 
-impl<'de> Deserialize<'de> for Taker {
+impl<'de> Deserialize<'de> for ActivePeer {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where
         D: Deserializer<'de>,
@@ -610,7 +606,7 @@ impl<'de> Deserialize<'de> for Taker {
         let string = String::deserialize(deserializer)?;
         let peer_id = PeerId::from_str(&string).map_err(D::Error::custom)?;
 
-        Ok(Taker { peer_id })
+        Ok(ActivePeer { peer_id })
     }
 }
 
@@ -682,7 +678,7 @@ mod arbitrary {
     use libp2p::multihash;
     use quickcheck::{Arbitrary, Gen};
 
-    impl Arbitrary for Taker {
+    impl Arbitrary for ActivePeer {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let mut bytes = [0u8; 32];
             for byte in bytes.iter_mut() {
@@ -690,7 +686,7 @@ mod arbitrary {
             }
             let peer_id =
                 PeerId::from_multihash(multihash::wrap(multihash::Code::Sha2_256, &bytes)).unwrap();
-            Taker { peer_id }
+            ActivePeer { peer_id }
         }
     }
 }

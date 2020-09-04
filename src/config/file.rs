@@ -210,7 +210,7 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                 }),
             }),
             ethereum: Some(Ethereum {
-                chain_id: ChainId::regtest(),
+                chain_id: ChainId::GETH_DEV,
                 node_url: Some("http://localhost:8545".parse().unwrap()),
                 local_dai_contract_address: Some(
                     "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
@@ -260,7 +260,7 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                 }),
             }),
             ethereum: Some(Ethereum {
-                chain_id: ChainId::regtest(),
+                chain_id: ChainId::GETH_DEV,
                 node_url: Some("http://localhost:8545".parse().unwrap()),
                 local_dai_contract_address: Some(
                     "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
@@ -395,7 +395,7 @@ local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
 
         let expected = vec![
             Ethereum {
-                chain_id: ChainId::regtest(),
+                chain_id: ChainId::GETH_DEV,
                 node_url: Some(Url::parse("http://example.com:8545").unwrap()),
                 local_dai_contract_address: Some(
                     "0x31F42841c2db5173425b5223809CF3A38FEde360"
@@ -404,12 +404,12 @@ local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
                 ),
             },
             Ethereum {
-                chain_id: ChainId::ropsten(),
+                chain_id: ChainId::ROPSTEN,
                 node_url: Some(Url::parse("http://example.com:8545").unwrap()),
                 local_dai_contract_address: None,
             },
             Ethereum {
-                chain_id: ChainId::mainnet(),
+                chain_id: ChainId::MAINNET,
                 node_url: Some(Url::parse("http://example.com:8545").unwrap()),
                 local_dai_contract_address: None,
             },

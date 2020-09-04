@@ -1,5 +1,5 @@
 use bitcoin::{secp256k1::SecretKey, Block, BlockHash};
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use comit::asset;
 
 pub use comit::{
@@ -55,7 +55,7 @@ pub struct Funded {
 pub async fn watch_for_funded<C>(
     connector: &C,
     params: &SharedParams,
-    utc_start_of_swap: NaiveDateTime,
+    utc_start_of_swap: DateTime<Utc>,
 ) -> anyhow::Result<Funded>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,

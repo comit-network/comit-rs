@@ -1,5 +1,5 @@
 use crate::swap::{hbit, herc20};
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use comit::{
     btsieve,
     btsieve::{BlockByHash, LatestBlock},
@@ -17,7 +17,7 @@ pub async fn hbit_herc20_alice<A, EC>(
     hbit_params: hbit::Params,
     herc20_params: herc20::Params,
     secret: Secret,
-    utc_start_of_swap: NaiveDateTime,
+    utc_start_of_swap: DateTime<Utc>,
 ) -> anyhow::Result<()>
 where
     A: hbit::ExecuteFund + herc20::ExecuteRedeem + hbit::ExecuteRefund,
@@ -52,7 +52,7 @@ async fn hbit_herc20_happy_alice<A, EC>(
     hbit_params: hbit::Params,
     herc20_params: herc20::Params,
     secret: Secret,
-    utc_start_of_swap: NaiveDateTime,
+    utc_start_of_swap: DateTime<Utc>,
 ) -> Result<(), HbitHerc20AliceError>
 where
     A: hbit::ExecuteFund + herc20::ExecuteRedeem,
@@ -99,7 +99,7 @@ pub async fn hbit_herc20_bob<B, BC, EC>(
     ethereum_connector: &EC,
     hbit_params: hbit::Params,
     herc20_params: herc20::Params,
-    utc_start_of_swap: NaiveDateTime,
+    utc_start_of_swap: DateTime<Utc>,
 ) -> anyhow::Result<()>
 where
     B: herc20::ExecuteDeploy + herc20::ExecuteFund + hbit::ExecuteRedeem + herc20::ExecuteRefund,
@@ -135,7 +135,7 @@ async fn hbit_herc20_happy_bob<B, BC, EC>(
     ethereum_connector: &EC,
     hbit_params: hbit::Params,
     herc20_params: herc20::Params,
-    utc_start_of_swap: NaiveDateTime,
+    utc_start_of_swap: DateTime<Utc>,
 ) -> Result<(), HbitHerc20BobError>
 where
     B: herc20::ExecuteDeploy + herc20::ExecuteFund + hbit::ExecuteRedeem,

@@ -54,8 +54,8 @@ impl Chain {
     pub fn chain_id(&self) -> ChainId {
         use Chain::*;
         match self {
-            Mainnet => ChainId::mainnet(),
-            Ropsten => ChainId::ropsten(),
+            Mainnet => ChainId::MAINNET,
+            Ropsten => ChainId::ROPSTEN,
             Rinkeby => ChainId::from(4),
             Kovan => ChainId::from(42),
             Local { chain_id, .. } => ChainId::from(*chain_id),
@@ -73,14 +73,20 @@ impl crate::StaticStub for Chain {
 pub mod ether {
     use crate::float_maths::multiply_pow_ten;
     use anyhow::Context;
-    use comit::asset::ethereum::{FromWei, TryFromWei};
-    use comit::asset::Ether;
-    use comit::ethereum::U256;
+    use comit::{
+        asset::{
+            ethereum::{FromWei, TryFromWei},
+            Ether,
+        },
+        ethereum::U256,
+    };
     use num::{BigUint, Num};
     use num256::Uint256;
-    use std::convert::{TryFrom, TryInto};
-    use std::fmt;
-    use std::str::FromStr;
+    use std::{
+        convert::{TryFrom, TryInto},
+        fmt,
+        str::FromStr,
+    };
 
     const WEI_IN_ETHER_EXP: u16 = 18;
 

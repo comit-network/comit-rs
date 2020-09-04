@@ -229,6 +229,6 @@ mod test {
 
         let chain_id = client.chain_id().await.unwrap();
 
-        assert_eq!(chain_id, ChainId::regtest())
+        assert_eq!(chain_id, ChainId::GETH_DEV)
     }
 }

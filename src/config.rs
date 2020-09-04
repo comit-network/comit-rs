@@ -145,7 +145,7 @@ mod tests {
                 }),
             }),
             ethereum: Some(file::Ethereum {
-                chain_id: ChainId::mainnet(),
+                chain_id: ChainId::MAINNET,
                 node_url: Some("http://localhost:8545/".parse().unwrap()),
                 local_dai_contract_address: None,
             }),

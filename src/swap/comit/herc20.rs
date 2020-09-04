@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 
 pub use comit::{
     actions::ethereum::*,
@@ -20,7 +20,7 @@ pub trait ExecuteFund {
         &self,
         params: Params,
         deploy_event: Deployed,
-        utc_start_of_swap: NaiveDateTime,
+        utc_start_of_swap: DateTime<Utc>,
     ) -> anyhow::Result<Funded>;
 }
 
@@ -31,7 +31,7 @@ pub trait ExecuteRedeem {
         params: Params,
         secret: Secret,
         deploy_event: Deployed,
-        utc_start_of_swap: NaiveDateTime,
+        utc_start_of_swap: DateTime<Utc>,
     ) -> anyhow::Result<Redeemed>;
 }
 
@@ -41,7 +41,7 @@ pub trait ExecuteRefund {
         &self,
         params: Params,
         deploy_event: Deployed,
-        utc_start_of_swap: NaiveDateTime,
+        utc_start_of_swap: DateTime<Utc>,
     ) -> anyhow::Result<Refunded>;
 }
 
@@ -54,7 +54,7 @@ pub struct Funded {
 pub async fn watch_for_funded<C>(
     connector: &C,
     params: Params,
-    utc_start_of_swap: NaiveDateTime,
+    utc_start_of_swap: DateTime<Utc>,
     deployed: Deployed,
 ) -> anyhow::Result<Funded>
 where

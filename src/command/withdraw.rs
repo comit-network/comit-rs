@@ -83,7 +83,7 @@ mod tests {
         let ethereum_wallet = crate::ethereum::Wallet::new(
             seed,
             ethereum_blockchain.node_url.clone(),
-            ethereum::Chain::new(ChainId::regtest(), ethereum_blockchain.token_contract()),
+            ethereum::Chain::new(ChainId::GETH_DEV, ethereum_blockchain.token_contract()),
         )
         .await
         .unwrap();
@@ -93,7 +93,7 @@ mod tests {
             .mint_ether(
                 ethereum_address,
                 ether::Amount::from_ether_str("10").unwrap(),
-                ChainId::regtest(),
+                ChainId::GETH_DEV,
             )
             .await
             .unwrap();
@@ -104,7 +104,7 @@ mod tests {
                     quantity: Erc20Quantity::from_wei(10_000_000_000_000_000_000u64),
                     token_contract: ethereum_blockchain.token_contract(),
                 },
-                ChainId::regtest(),
+                ChainId::GETH_DEV,
             )
             .await
             .unwrap();
