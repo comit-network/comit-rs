@@ -1088,9 +1088,9 @@
   integrity sha512-tHq6qdbT9U1IRSGf14CL0pUlULksvY9OZ+5eEgl1N7t+OA3tGvNpxJCzuKQlsNgCVwbAs670L1vcVQi8j9HjnA==
 
 "@types/node@*", "@types/node@^14.6":
-  version "14.6.3"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.6.3.tgz#cc4f979548ca4d8e7b90bc0180052ab99ee64224"
-  integrity sha512-pC/hkcREG6YfDfui1FBmj8e20jFU5Exjw4NYDm8kEdrW+mOh0T1Zve8DWKnS7ZIZvgncrctcNCXF4Q2I+loyww==
+  version "14.6.4"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.6.4.tgz#a145cc0bb14ef9c4777361b7bbafa5cf8e3acb5a"
+  integrity sha512-Wk7nG1JSaMfMpoMJDKUsWYugliB2Vy55pdjLpmLixeyMi7HizW2I/9QoxsPCkXl3dO+ZOVqPumKaDUv5zJu2uQ==
 
 "@types/node@10.12.18":
   version "10.12.18"
@@ -2503,10 +2503,10 @@ ethers@^4.0.38:
     uuid "2.0.1"
     xmlhttprequest "1.8.0"
 
-ethers@^5.0.9:
-  version "5.0.9"
-  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.9.tgz#ce77cc0fc5b83c57c607e4fd79edcd9bc46dc511"
-  integrity sha512-jv2ULxAKRlJv0zrhpUvYcwwITFghoJOEhOqSJhLBT3TnZyF/lmAS3tC8nejIlwxzOJw7LCyde8U+BwTzZdFDrQ==
+ethers@^5.0.10:
+  version "5.0.10"
+  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.10.tgz#ee8a2cf81c4884826697c80c74a26f33514373c7"
+  integrity sha512-w5VgwFsEJpsuXzJh+jTpEi48D0IlgtDLE7w753SRH7PqbITZvu2R63cbp9GQIh+lw7GqpcDo/BvRQiJhpQz3kw==
   dependencies:
     "@ethersproject/abi" "^5.0.3"
     "@ethersproject/abstract-provider" "^5.0.3"
