@@ -7,7 +7,7 @@
  *
  * It is a replacement for a negotiation/order protocol that takes care of this in a real application.
  */
-import { Actor } from "./actors/actor";
+import { CndActor } from "./actors/cnd_actor";
 import {
     HalbitHerc20Payload,
     Herc20HalbitPayload,
@@ -29,8 +29,8 @@ interface SwapSettings {
 
 export default class SwapFactory {
     public static async newSwap(
-        alice: Actor,
-        bob: Actor,
+        alice: CndActor,
+        bob: CndActor,
         settings: SwapSettings = { instantRefund: false }
     ): Promise<{
         herc20Halbit: {
@@ -190,7 +190,7 @@ export default class SwapFactory {
     }
 }
 
-async function makePeer(actor: Actor): Promise<Peer> {
+async function makePeer(actor: CndActor): Promise<Peer> {
     return {
         peer_id: await actor.cnd.getPeerId(),
         address_hint: await actor.cnd

@@ -1,7 +1,7 @@
 import { ActorName, Actors } from "./actors";
 import pTimeout from "p-timeout";
 import { HarnessGlobal } from "./environment";
-import { Actor } from "./actors/actor";
+import { CndActor } from "./actors/cnd_actor";
 import ProvidesCallback = jest.ProvidesCallback;
 
 declare var global: HarnessGlobal;
@@ -28,15 +28,15 @@ async function createActors(
     testName: string,
     actorNames: ActorName[]
 ): Promise<Actors> {
-    const actorsMap = new Map<string, Actor>();
+    const actorsMap = new Map<string, CndActor>();
 
-    const listPromises: Promise<Actor>[] = [];
+    const listPromises: Promise<CndActor>[] = [];
     for (const name of actorNames) {
         const cndLogFile = global.getLogFile([testName, `cnd-${name}.log`]);
         const actorLogger = global.getLogger([testName, name]);
 
         listPromises.push(
-            Actor.newInstance(
+            CndActor.newInstance(
                 name,
                 global.ledgerConfigs,
                 global.cargoTargetDir,

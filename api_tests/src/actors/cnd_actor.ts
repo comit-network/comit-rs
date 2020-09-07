@@ -44,7 +44,10 @@ import { HarnessGlobal, LedgerConfig } from "../environment";
 
 declare var global: HarnessGlobal;
 
-export class Actor {
+/**
+ * An actor that uses cnd to perform to participate in the COMIT network.
+ */
+export class CndActor {
     public static async newInstance(
         name: ActorName,
         ledgerConfig: LedgerConfig,
@@ -83,7 +86,7 @@ export class Actor {
             lightning: newLightningWallet(lndWallets, name, logger),
         });
 
-        return new Actor(logger, cndInstance, wallets, name);
+        return new CndActor(logger, cndInstance, wallets, name);
     }
 
     public actors: Actors;
@@ -113,7 +116,7 @@ export class Actor {
         this.expectedBalanceChanges = new Map();
     }
 
-    public async connect(other: Actor) {
+    public async connect(other: CndActor) {
         await this.cnd.dial(other.cnd);
 
         const otherPeerId = await other.cnd.getPeerId();

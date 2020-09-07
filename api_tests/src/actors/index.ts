@@ -1,19 +1,19 @@
-import { Actor } from "./actor";
+import { CndActor } from "./cnd_actor";
 
 export type ActorName = "Alice" | "Bob";
 
 export class Actors {
-    constructor(private readonly actors: Map<string, Actor>) {}
+    constructor(private readonly actors: Map<string, CndActor>) {}
 
-    get alice(): Actor {
+    get alice(): CndActor {
         return this.getActorByName("Alice");
     }
 
-    get bob(): Actor {
+    get bob(): CndActor {
         return this.getActorByName("Bob");
     }
 
-    public getActorByName(name: ActorName): Actor {
+    public getActorByName(name: ActorName): CndActor {
         const maybeActor = this.actors.get(name);
 
         if (!maybeActor) {
