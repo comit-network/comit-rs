@@ -6,38 +6,14 @@ import { problemResponseInterceptor } from "../axios_rfc7807_middleware";
 import { Action } from "./siren";
 import {
     CreateBtcDaiOrderPayload,
+    GetInfoResponse,
     HalbitHerc20Payload,
     HbitHerc20Payload,
     Herc20HalbitPayload,
     Herc20HbitPayload,
 } from "./payload";
 
-interface GetInfo {
-    id: string;
-    listen_addresses: string[]; // multiaddresses
-}
-
-export interface Ledger {
-    name: string;
-    chain_id?: number;
-    network?: string;
-}
-
-export interface Asset {
-    name: string;
-    quantity: string;
-    token_contract?: string;
-}
-
-export interface Peer {
-    peer_id: string;
-    address_hint?: string;
-}
-
-/**
- * Facilitates access to the [COMIT network daemon (cnd)](@link https://github.com/comit-network/comit-rs) REST API.
- */
-export class Cnd {
+export default class CndClient {
     public readonly client: AxiosInstance;
 
     public constructor(cndUrl: string) {
@@ -65,7 +41,7 @@ export class Cnd {
         return info.id;
     }
 
-    public async dial(other: Cnd) {
+    public async dial(other: CndClient) {
         const addr = await other.getPeerListenAddresses();
         await this.client.post("dial", { addresses: addr });
     }
@@ -147,7 +123,7 @@ export class Cnd {
         return response.headers.location;
     }
 
-    private async getInfo(): Promise<GetInfo> {
+    private async getInfo(): Promise<GetInfoResponse> {
         const response = await this.client.get("/");
 
         return response.data;

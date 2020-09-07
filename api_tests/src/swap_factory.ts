@@ -16,9 +16,9 @@ import {
     HalbitPayload,
     Herc20Payload,
     HbitPayload,
-} from "./cnd/payload";
+    Peer,
+} from "./cnd_client/payload";
 import { defaultExpiries, nowExpiries } from "./actors/defaults";
-import { Peer } from "./cnd/cnd";
 import { HarnessGlobal } from "./environment";
 
 declare var global: HarnessGlobal;

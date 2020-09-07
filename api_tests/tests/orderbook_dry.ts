@@ -8,7 +8,7 @@ import {
     Currency,
     OrderEntity,
     Position,
-} from "../src/cnd/payload";
+} from "../src/cnd_client/payload";
 import { Problem } from "../src/axios_rfc7807_middleware";
 
 test(

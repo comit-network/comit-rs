@@ -9,7 +9,7 @@ import {
     Position,
     SwapEntity,
     SwapEventKind,
-} from "../cnd/payload";
+} from "../cnd_client/payload";
 import { Logger } from "log4js";
 import { CndConfigFile, E2ETestActorConfig } from "../config";
 import {
@@ -37,9 +37,9 @@ import { EthereumWallet, Web3EthereumWallet } from "../wallets/ethereum";
 import { LightningWallet } from "../wallets/lightning";
 import { merge } from "lodash";
 import { AxiosResponse } from "axios";
-import { Cnd } from "../cnd/cnd";
+import CndClient from "../cnd_client";
 import { Swap } from "../swap";
-import { Entity } from "../cnd/siren";
+import { Entity } from "../cnd_client/siren";
 import { HarnessGlobal, LedgerConfig } from "../environment";
 
 declare var global: HarnessGlobal;
@@ -93,7 +93,7 @@ export class Actor {
 
     public actors: Actors;
 
-    readonly cnd: Cnd;
+    readonly cnd: CndClient;
     public swap: Swap;
 
     public alphaLedger: Ledger;
@@ -112,7 +112,7 @@ export class Actor {
         public readonly name: ActorName
     ) {
         const socket = cndInstance.getConfigFile().http_api.socket;
-        this.cnd = new Cnd(`http://${socket}`);
+        this.cnd = new CndClient(`http://${socket}`);
 
         this.startingBalances = new Map();
         this.expectedBalanceChanges = new Map();

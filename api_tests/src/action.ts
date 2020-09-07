@@ -1,5 +1,5 @@
 import { Swap } from "./swap";
-import { SwapAction } from "./cnd/payload";
+import { SwapAction } from "./cnd_client/payload";
 
 /**
  * An executable action.

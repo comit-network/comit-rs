@@ -5,8 +5,12 @@
 /*
  * The payload for POST requests to create a swap on the cnd REST API.
  */
-import { Peer } from "./cnd";
 import { Action, EmbeddedRepresentationSubEntity, Entity, Link } from "./siren";
+
+export interface Peer {
+    peer_id: string;
+    address_hint?: string;
+}
 
 interface Payload<A, B> {
     alpha: A;
@@ -231,4 +235,9 @@ export interface CreateBtcDaiOrderPayload {
         bitcoin_address: string;
         ethereum_address: string;
     };
+}
+
+export interface GetInfoResponse {
+    id: string;
+    listen_addresses: string[]; // multiaddresses
 }
