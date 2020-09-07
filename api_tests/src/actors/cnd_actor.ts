@@ -43,14 +43,13 @@ export class CndActor {
     readonly cnd: CndClient;
     public swap: Swap;
 
-    public alphaLedger: Ledger;
-    public alphaAsset: Asset;
+    private alphaLedger: Ledger;
+    private alphaAsset: Asset;
+    private betaLedger: Ledger;
+    private betaAsset: Asset;
 
-    public betaLedger: Ledger;
-    public betaAsset: Asset;
-
-    public readonly startingBalances: Map<assetAsKey, bigint>;
-    public readonly expectedBalanceChanges: Map<assetAsKey, bigint>;
+    private readonly startingBalances: Map<assetAsKey, bigint>;
+    private readonly expectedBalanceChanges: Map<assetAsKey, bigint>;
 
     public constructor(
         public readonly logger: Logger,
