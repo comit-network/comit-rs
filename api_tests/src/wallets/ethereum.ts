@@ -229,10 +229,7 @@ export class Web3EthereumWallet implements EthereumWallet {
                     .then((balance) => BigInt(balance.toString()));
                 break;
             case "erc20":
-                balance = await this.getErc20Balance(
-                    asset.tokenContract,
-                    0
-                ).then((balance) => BigInt(balance.toString()));
+                balance = await this.getErc20Balance(asset.tokenContract, 0);
                 break;
             default:
                 throw new Error(
@@ -258,7 +255,7 @@ export class Web3EthereumWallet implements EthereumWallet {
     public async getErc20Balance(
         contractAddress: string,
         decimals?: number
-    ): Promise<BigNumber> {
+    ): Promise<bigint> {
         const abi = erc20 as (FunctionFragment | EventFragment)[];
         const contract = new Contract(contractAddress, abi, this.provider);
 
@@ -276,7 +273,9 @@ export class Web3EthereumWallet implements EthereumWallet {
 
         const strBalance = await contract.balanceOf(this.getAccount());
         const intBalance = BigNumber.from(strBalance);
-        return intBalance.div(BigNumber.from(10).pow(dec));
+        const balance = intBalance.div(BigNumber.from(10).pow(dec));
+
+        return BigInt(balance.toString());
     }
 
     async deployContract(
