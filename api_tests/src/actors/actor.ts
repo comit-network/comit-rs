@@ -45,11 +45,6 @@ import { HarnessGlobal, LedgerConfig } from "../environment";
 declare var global: HarnessGlobal;
 
 export class Actor {
-    public static defaultActionConfig = {
-        maxTimeoutSecs: 20,
-        tryIntervalSecs: 1,
-    };
-
     public static async newInstance(
         name: ActorName,
         ledgerConfig: LedgerConfig,
@@ -484,12 +479,10 @@ export class Actor {
                         return { action, transaction };
                     }
 
-                    await sleep(
-                        Actor.defaultActionConfig.tryIntervalSecs * 1000
-                    );
+                    await sleep(1000);
                 }
             })(),
-            Actor.defaultActionConfig.maxTimeoutSecs * 1000,
+            20 * 1000,
             `action '${expectedActionName}' not found`
         );
 
