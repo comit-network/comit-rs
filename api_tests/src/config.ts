@@ -2,11 +2,10 @@ import * as tmp from "tmp";
 import { LedgerConfig } from "./utils";
 import getPort from "get-port";
 import {
-    LightningNodeConfig,
     BitcoinNodeConfig,
     EthereumNodeConfig,
+    LightningNodeConfig,
 } from "./ledgers";
-import { Logger } from "log4js";
 import { ActorName } from "./actors";
 
 export interface CndConfigFile {
@@ -26,20 +25,14 @@ export interface HttpApi {
 export class E2ETestActorConfig {
     public readonly data: string;
 
-    public static async for(name: ActorName, logger: Logger) {
-        return new E2ETestActorConfig(
-            await getPort(),
-            await getPort(),
-            name,
-            logger
-        );
+    public static async for(name: ActorName) {
+        return new E2ETestActorConfig(await getPort(), await getPort(), name);
     }
 
     constructor(
         public readonly httpApiPort: number,
         public readonly comitPort: number,
-        public readonly name: ActorName,
-        private readonly logger: Logger
+        public readonly name: ActorName
     ) {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;
@@ -94,13 +87,6 @@ export class E2ETestActorConfig {
                 }
                 break;
             }
-            case "Carol":
-                {
-                    this.logger.warn(
-                        "generating lnd config for carol is not supported at this stage"
-                    );
-                }
-                break;
         }
 
         return config;

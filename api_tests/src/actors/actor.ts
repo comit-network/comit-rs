@@ -59,7 +59,7 @@ export class Actor {
         ethereumLockDir: string,
         lndWallets: { alice?: LightningWallet; bob?: LightningWallet }
     ) {
-        const actorConfig = await E2ETestActorConfig.for(name, logger);
+        const actorConfig = await E2ETestActorConfig.for(name);
         const generatedConfig = actorConfig.generateCndConfigFile(ledgerConfig);
         const finalConfig = merge(generatedConfig, configOverrides);
 

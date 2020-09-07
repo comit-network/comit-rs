@@ -1,6 +1,6 @@
 import { Actor } from "./actor";
 
-export type ActorName = "Alice" | "Bob" | "Carol";
+export type ActorName = "Alice" | "Bob";
 
 export class Actors {
     constructor(private readonly actors: Map<string, Actor>) {}
@@ -11,10 +11,6 @@ export class Actors {
 
     get bob(): Actor {
         return this.getActorByName("Bob");
-    }
-
-    get carol(): Actor {
-        return this.getActorByName("Carol");
     }
 
     public getActorByName(name: ActorName): Actor {
