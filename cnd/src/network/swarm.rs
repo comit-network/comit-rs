@@ -137,7 +137,7 @@ impl Swarm {
             .await
             .orderbook
             .orderpool()
-            .executable_orders()
+            .all()
             .map(|(maker, order)| (maker.clone(), order.clone()))
             .collect()
     }
