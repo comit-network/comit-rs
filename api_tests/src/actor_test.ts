@@ -88,13 +88,7 @@ async function createActors(
         actorsMap.set(actor.name, actor);
     }
 
-    const actors = new Actors(actorsMap);
-
-    for (const name of actorNames) {
-        actorsMap.get(name).actors = actors;
-    }
-
-    return actors;
+    return new Actors(actorsMap);
 }
 
 async function newCndActor(name: ActorName, testName: string) {

@@ -22,7 +22,7 @@ import {
 import { CndInstance } from "../environment/cnd_instance";
 import { Ledger, LedgerKind } from "../ledger";
 import { sleep } from "../utils";
-import { ActorName, Actors } from "./index";
+import { ActorName } from "./index";
 import { Wallets } from "../wallets";
 import { defaultLedgerDescriptionForLedger } from "./defaults";
 import pTimeout from "p-timeout";
@@ -38,8 +38,6 @@ declare var global: HarnessGlobal;
  * An actor that uses cnd to perform to participate in the COMIT network.
  */
 export class CndActor {
-    public actors: Actors;
-
     readonly cnd: CndClient;
     public swap: Swap;
 
