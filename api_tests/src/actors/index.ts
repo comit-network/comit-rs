@@ -22,4 +22,16 @@ export class Actors {
 
         return maybeActor;
     }
+
+    public async stop() {
+        for (const actor of this.actors.values()) {
+            await actor.stop();
+        }
+    }
+
+    public async dumpState() {
+        for (const actor of this.actors.values()) {
+            await actor.dumpState();
+        }
+    }
 }

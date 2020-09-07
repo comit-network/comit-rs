@@ -25,7 +25,11 @@ declare var global: HarnessGlobal;
 export function oneActorTest(
     testFn: (actors: Actors) => Promise<void>
 ): ProvidesCallback {
-    return nActorTest(["Alice"], testFn);
+    return nActorTest(
+        async () =>
+            new Actors(new Map([["Alice", await newCndActor("Alice")]])),
+        testFn
+    );
 }
 
 /*
@@ -34,7 +38,19 @@ export function oneActorTest(
 export function twoActorTest(
     testFn: (actors: Actors) => Promise<void>
 ): ProvidesCallback {
-    return nActorTest(["Alice", "Bob"], testFn);
+    const alice = newCndActor("Alice");
+    const bob = newCndActor("Bob");
+
+    return nActorTest(
+        async () =>
+            new Actors(
+                new Map([
+                    ["Alice", await alice],
+                    ["Bob", await bob],
+                ])
+            ),
+        testFn
+    );
 }
 
 /*
@@ -42,56 +58,33 @@ export function twoActorTest(
  * after the test, regardless if the test succeeded or failed.
  */
 function nActorTest(
-    actorNames: ["Alice"] | ["Alice", "Bob"],
+    makeActors: () => Promise<Actors>,
     testFn: (actors: Actors) => Promise<void>
 ): ProvidesCallback {
     return async (done) => {
-        const name = jasmine.currentTestName;
-        if (!name.match(/[A-z0-9\-]+/)) {
-            // We use the test name as a file name for the log and hence need to restrict it.
-            throw new Error(
-                `Testname '${name}' is invalid. Only A-z, 0-9 and dashes are allowed.`
-            );
-        }
-
-        const actors = await createActors(name, actorNames);
+        const actors = await makeActors();
 
         try {
             await pTimeout(testFn(actors), 120_000);
         } catch (e) {
-            for (const actorName of actorNames) {
-                await actors.getActorByName(actorName).dumpState();
-            }
+            await actors.dumpState();
             throw e;
         } finally {
-            for (const actorName of actorNames) {
-                const actor = actors.getActorByName(actorName);
-                await actor.stop();
-            }
+            await actors.stop();
         }
         done();
     };
 }
 
-async function createActors(
-    testName: string,
-    actorNames: ActorName[]
-): Promise<Actors> {
-    const actorsMap = new Map<string, CndActor>();
-
-    const listPromises: Promise<CndActor>[] = [];
-    for (const name of actorNames) {
-        listPromises.push(newCndActor(name, testName));
-    }
-    const createdActors = await Promise.all(listPromises);
-    for (const actor of createdActors) {
-        actorsMap.set(actor.name, actor);
+async function newCndActor(name: ActorName) {
+    const testName = jasmine.currentTestName;
+    if (!testName.match(/[A-z0-9\-]+/)) {
+        // We use the test name as a file name for the log and hence need to restrict it.
+        throw new Error(
+            `Testname '${testName}' is invalid. Only A-z, 0-9 and dashes are allowed.`
+        );
     }
 
-    return new Actors(actorsMap);
-}
-
-async function newCndActor(name: ActorName, testName: string) {
     const ledgerConfig = global.ledgerConfigs;
     const logger = global.getLogger([testName, name]);
 
