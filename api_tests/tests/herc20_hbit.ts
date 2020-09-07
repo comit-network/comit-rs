@@ -5,12 +5,12 @@
 
 import SwapFactory from "../src/swap_factory";
 import { sleep } from "../src/utils";
-import { twoActorTest } from "../src/actor_test";
+import { startAliceAndBob } from "../src/actor_test";
 
 describe("herc20-hbit", () => {
     it(
         "herc20-hbit-alice-redeems-bob-redeems",
-        twoActorTest(async ({ alice, bob }) => {
+        startAliceAndBob(async ([alice, bob]) => {
             const bodies = (await SwapFactory.newSwap(alice, bob)).herc20Hbit;
 
             await alice.createHerc20HbitSwap(bodies.alice);
@@ -34,7 +34,7 @@ describe("herc20-hbit", () => {
 
     it(
         "herc20-hbit-bob-refunds-alice-refunds",
-        twoActorTest(async ({ alice, bob }) => {
+        startAliceAndBob(async ([alice, bob]) => {
             const bodies = (
                 await SwapFactory.newSwap(alice, bob, {
                     instantRefund: true,

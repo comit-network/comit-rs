@@ -5,12 +5,12 @@
 
 import SwapFactory from "../src/swap_factory";
 import { sleep } from "../src/utils";
-import { twoActorTest } from "../src/actor_test";
+import { startAliceAndBob } from "../src/actor_test";
 
 describe("herc20-halbit-respawn", () => {
     it(
         "herc20-halbit-alice-misses-bob-fund",
-        twoActorTest(async ({ alice, bob }) => {
+        startAliceAndBob(async ([alice, bob]) => {
             const bodies = (await SwapFactory.newSwap(alice, bob)).herc20Halbit;
 
             await alice.createHerc20HalbitSwap(bodies.alice);
@@ -41,7 +41,7 @@ describe("herc20-halbit-respawn", () => {
 
     it(
         "herc20-halbit-bob-misses-alice-redeem",
-        twoActorTest(async ({ alice, bob }) => {
+        startAliceAndBob(async ([alice, bob]) => {
             const bodies = (await SwapFactory.newSwap(alice, bob)).herc20Halbit;
 
             await alice.createHerc20HalbitSwap(bodies.alice);
@@ -73,7 +73,7 @@ describe("herc20-halbit-respawn", () => {
 
     it(
         "halbit-herc20-alice-misses-bob-deploy-and-fund",
-        twoActorTest(async ({ alice, bob }) => {
+        startAliceAndBob(async ([alice, bob]) => {
             const bodies = (await SwapFactory.newSwap(alice, bob)).halbitHerc20;
 
             await alice.createHalbitHerc20Swap(bodies.alice);
@@ -105,7 +105,7 @@ describe("herc20-halbit-respawn", () => {
 
     it(
         "halbit-herc20-bob-down-misses-alice-redeem",
-        twoActorTest(async ({ alice, bob }) => {
+        startAliceAndBob(async ([alice, bob]) => {
             const bodies = (await SwapFactory.newSwap(alice, bob)).halbitHerc20;
 
             await alice.createHalbitHerc20Swap(bodies.alice);

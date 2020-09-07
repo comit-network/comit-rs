@@ -3,7 +3,7 @@
  * @cndConfigOverride ethereum.tokens.dai = 0x0000000000000000000000000000000000000000
  */
 
-import { oneActorTest, twoActorTest } from "../src/actor_test";
+import { startAlice, startAliceAndBob } from "../src/actor_test";
 import SwapFactory from "../src/swap_factory";
 
 // ******************************************** //
@@ -13,7 +13,7 @@ import SwapFactory from "../src/swap_factory";
 describe("Sanity", () => {
     it(
         "invalid-swap-yields-404",
-        oneActorTest(async ({ alice }) => {
+        startAlice(async (alice) => {
             const promise = alice.cnd.fetch(
                 "/swaps/deadbeef-dead-beef-dead-deadbeefdead"
             );
@@ -27,7 +27,7 @@ describe("Sanity", () => {
 
     it(
         "returns-invalid-body-for-bad-json-herc20-halbit",
-        oneActorTest(async ({ alice }) => {
+        startAlice(async (alice) => {
             const promise = alice.cnd.createHerc20Halbit({
                 // @ts-ignore
                 garbage: true,
@@ -42,7 +42,7 @@ describe("Sanity", () => {
 
     it(
         "returns-invalid-body-for-bad-json-halbit-herc20",
-        oneActorTest(async ({ alice }) => {
+        startAlice(async (alice) => {
             const promise = alice.cnd.createHalbitHerc20({
                 // @ts-ignore
                 garbage: true,
@@ -57,7 +57,7 @@ describe("Sanity", () => {
 
     it(
         "returns-invalid-body-for-bad-json-herc20-hbit",
-        oneActorTest(async ({ alice }) => {
+        startAlice(async (alice) => {
             const promise = alice.cnd.createHerc20Hbit({
                 // @ts-ignore
                 garbage: true,
@@ -72,7 +72,7 @@ describe("Sanity", () => {
 
     it(
         "returns-invalid-body-for-bad-json-hbit-herc20",
-        oneActorTest(async ({ alice }) => {
+        startAlice(async (alice) => {
             const promise = alice.cnd.createHbitHerc20({
                 // @ts-ignore
                 garbage: true,
@@ -87,7 +87,7 @@ describe("Sanity", () => {
 
     it(
         "alice-has-empty-peer-list",
-        oneActorTest(async ({ alice }) => {
+        startAlice(async (alice) => {
             const promise = alice.cnd.fetch("/peers");
 
             await expect(promise).resolves.toMatchObject({
@@ -99,7 +99,7 @@ describe("Sanity", () => {
 
     it(
         "returns-listen-addresses-on-root-document",
-        oneActorTest(async ({ alice }) => {
+        startAlice(async (alice) => {
             const res = await alice.cnd.fetch("/");
 
             const body = res.data as { id: string; listen_addresses: string[] };
@@ -113,7 +113,7 @@ describe("Sanity", () => {
 
     it(
         "create-herc20-halbit-returns-bad-request-when-no-lnd-node",
-        twoActorTest(async ({ alice, bob }) => {
+        startAliceAndBob(async ([alice, bob]) => {
             const bodies = (await SwapFactory.newSwap(alice, bob)).herc20Halbit;
 
             const expectedProblem = {
@@ -134,7 +134,7 @@ describe("Sanity", () => {
 
     it(
         "create-halbit-herc20-returns-bad-request-when-no-lnd-node",
-        twoActorTest(async ({ alice, bob }) => {
+        startAliceAndBob(async ([alice, bob]) => {
             const bodies = (await SwapFactory.newSwap(alice, bob)).halbitHerc20;
 
             const expectedProblem = {

@@ -1,4 +1,4 @@
-import { Role, Actors } from "./actors";
+import { Role } from "./actors";
 import pTimeout from "p-timeout";
 import { HarnessGlobal, LedgerConfig } from "./environment";
 import { CndActor } from "./actors/cnd_actor";
@@ -19,58 +19,51 @@ import { CndInstance } from "./environment/cnd_instance";
 
 declare var global: HarnessGlobal;
 
-/*
- * Instantiates a new e2e test based on one actor, Alice.
+/**
+ * Instantiates two CndActors, the first one in the role of Alice and the second one in the role of Bob.
+ * @param testFn
  */
-export function oneActorTest(
-    testFn: (actors: Actors) => Promise<void>
+export function startAlice(
+    testFn: (alice: CndActor) => Promise<void>
 ): ProvidesCallback {
-    return nActorTest(
-        async () =>
-            new Actors(new Map([["Alice", await newCndActor("Alice")]])),
-        testFn
+    return cndActorTest(["Alice"], async ([alice]) => testFn(alice));
+}
+
+/**
+ * Instantiates two CndActors, the first one in the role of Alice and the second one in the role of Bob.
+ * @param testFn
+ */
+export function startAliceAndBob(
+    testFn: ([alice, bob]: CndActor[]) => Promise<void>
+): ProvidesCallback {
+    return cndActorTest(["Alice", "Bob"], async ([alice, bob]) =>
+        testFn([alice, bob])
     );
 }
 
 /*
- * Instantiates a new e2e test based on two actors, Alice and Bob.
+ * Instantiates a set of CndActors with the given roles, executes the provided test function and tears the actors down again.
+ *
+ * This can be used to set up an arbitrary number of nodes by passing any combination of "Alice" or "Bob" within the `roles` array. For example: `cndActorTest(["Alice", "Alice", "Alice", "Bob"], ...)` will give you four nodes, with the first three being in the role of Alice and the fourth one in the role of Bob.
  */
-export function twoActorTest(
-    testFn: (actors: Actors) => Promise<void>
-): ProvidesCallback {
-    const alice = newCndActor("Alice");
-    const bob = newCndActor("Bob");
-
-    return nActorTest(
-        async () =>
-            new Actors(
-                new Map([
-                    ["Alice", await alice],
-                    ["Bob", await bob],
-                ])
-            ),
-        testFn
-    );
-}
-
-/*
- * This test function will take care of instantiating the actors and tearing them down again
- * after the test, regardless if the test succeeded or failed.
- */
-function nActorTest(
-    makeActors: () => Promise<Actors>,
-    testFn: (actors: Actors) => Promise<void>
+export function cndActorTest(
+    roles: Role[],
+    testFn: (actors: CndActor[]) => Promise<void>
 ): ProvidesCallback {
     return async (done) => {
-        const actors = await makeActors();
+        const actors = await Promise.all(roles.map(newCndActor));
 
         try {
             await pTimeout(testFn(actors), 120_000);
         } catch (e) {
-            await actors.dumpState();
+            for (const actor of this.actors) {
+                await actor.dumpState();
+            }
             throw e;
         } finally {
-            await actors.stop();
+            for (const actor of actors) {
+                await actor.stop();
+            }
         }
         done();
     };

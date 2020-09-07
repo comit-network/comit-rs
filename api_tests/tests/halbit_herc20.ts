@@ -5,12 +5,12 @@
 
 import SwapFactory from "../src/swap_factory";
 import { sleep } from "../src/utils";
-import { twoActorTest } from "../src/actor_test";
+import { startAliceAndBob } from "../src/actor_test";
 
 describe("halbit-herc20", () => {
     it(
         "halbit-herc20-alice-redeems-bob-redeems",
-        twoActorTest(async ({ alice, bob }) => {
+        startAliceAndBob(async ([alice, bob]) => {
             const bodies = (await SwapFactory.newSwap(alice, bob)).halbitHerc20;
 
             await alice.createHalbitHerc20Swap(bodies.alice);
@@ -36,7 +36,7 @@ describe("halbit-herc20", () => {
 
     it(
         "halbit-herc20-bob-refunds",
-        twoActorTest(async ({ alice, bob }) => {
+        startAliceAndBob(async ([alice, bob]) => {
             const bodies = (
                 await SwapFactory.newSwap(alice, bob, {
                     instantRefund: true,
