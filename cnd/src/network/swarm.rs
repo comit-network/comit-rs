@@ -306,20 +306,20 @@ async fn handle_new_match(
     #[allow(clippy::cast_possible_truncation)]
     let common_params = CommonParams {
         erc20: asset::Erc20 {
-            token_contract: order_herc20.token_contract.0,
+            token_contract: order_herc20.token_contract,
             quantity: erc20_quantity,
         },
         bitcoin: hbit_quantity.to_inner(),
         ethereum_absolute_expiry: ethereum_absolute_expiry.timestamp() as u32,
         bitcoin_absolute_expiry: bitcoin_absolute_expiry.timestamp() as u32,
         ethereum_chain_id: u32::from(order_herc20.chain_id).into(),
-        bitcoin_network: order_hbit.network.0,
+        bitcoin_network: order_hbit.network,
     };
     let role_params = match our_role {
         Role::Alice => {
             let swap_seed = seed.derive_swap_seed(swap_id);
             RoleDependentParams::Alice(AliceParams {
-                ethereum_identity: order_herc20.our_htlc_address.0,
+                ethereum_identity: order_herc20.our_htlc_address,
                 bitcoin_identity: storage.derive_transient_identity(
                     swap_id,
                     our_role,
@@ -329,7 +329,7 @@ async fn handle_new_match(
             })
         }
         Role::Bob => RoleDependentParams::Bob(BobParams {
-            ethereum_identity: order_herc20.our_htlc_address.0,
+            ethereum_identity: order_herc20.our_htlc_address,
             bitcoin_identity: storage.derive_transient_identity(
                 swap_id,
                 our_role,

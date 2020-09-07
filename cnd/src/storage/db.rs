@@ -6,7 +6,7 @@ pub mod tables;
 mod wrapper_types;
 embed_migrations!("./migrations");
 
-pub use self::{errors::*, tables::*, wrapper_types::custom_sql_types::Text};
+pub use self::{errors::*, tables::*, wrapper_types::Text};
 pub use crate::storage::{ForSwap, Save};
 
 use crate::{LocalSwapId, Role};

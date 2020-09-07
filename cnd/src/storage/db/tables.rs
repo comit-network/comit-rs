@@ -6,10 +6,7 @@ use crate::{
                 btc_dai_orders, halbits, hbits, herc20s, order_hbit_params, order_herc20_params,
                 order_swaps, orders, secret_hashes, swap_contexts, swaps,
             },
-            wrapper_types::{
-                custom_sql_types::{Text, U32},
-                Erc20Amount, Satoshis,
-            },
+            wrapper_types::{Erc20Amount, Satoshis, Text, WeiPerSat, U32},
             Sqlite,
         },
         NoOrderExists, NotOpen,
@@ -18,7 +15,9 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use chrono::NaiveDateTime;
-use comit::{asset::Erc20Quantity, ethereum, ethereum::ChainId, ledger, OrderId, Position};
+use comit::{
+    asset::Erc20Quantity, ethereum, ethereum::ChainId, ledger, OrderId, Position, Price, Quantity,
+};
 use diesel::{prelude::*, RunQueryDsl};
 use libp2p::PeerId;
 use std::ops::Add;
@@ -36,21 +35,13 @@ macro_rules! swap_id_fk {
 #[table_name = "swaps"]
 pub struct Swap {
     id: i32,
-    pub local_swap_id: Text<LocalSwapId>,
-    pub role: Text<Role>,
-    pub counterparty_peer_id: Text<PeerId>,
+    #[diesel(deserialize_as = "Text<LocalSwapId>")]
+    pub local_swap_id: LocalSwapId,
+    #[diesel(deserialize_as = "Text<Role>")]
+    pub role: Role,
+    #[diesel(deserialize_as = "Text<PeerId>")]
+    pub counterparty_peer_id: PeerId,
     pub start_of_swap: NaiveDateTime,
-}
-
-impl From<Swap> for InsertableSwap {
-    fn from(swap: Swap) -> Self {
-        InsertableSwap {
-            local_swap_id: swap.local_swap_id,
-            role: swap.role,
-            counterparty_peer_id: swap.counterparty_peer_id,
-            start_of_swap: swap.start_of_swap,
-        }
-    }
 }
 
 #[derive(Insertable, Debug, Clone)]
@@ -365,8 +356,10 @@ impl InsertableHbit {
 #[table_name = "orders"]
 pub struct Order {
     pub id: i32,
-    pub order_id: Text<OrderId>,
-    pub position: Text<Position>,
+    #[diesel(deserialize_as = "Text<OrderId>")]
+    pub order_id: OrderId,
+    #[diesel(deserialize_as = "Text<Position>")]
+    pub position: Position,
     pub created_at: i64,
     pub open: i32,
     pub closed: i32,
@@ -401,7 +394,7 @@ impl Order {
             .execute(conn)?;
 
         if affected_rows == 0 {
-            anyhow::bail!("failed to mark order {} as settling", order.order_id.0)
+            anyhow::bail!("failed to mark order {} as settling", order.order_id)
         }
 
         Ok(())
@@ -409,7 +402,7 @@ impl Order {
 
     pub fn cancel(&self, conn: &SqliteConnection) -> Result<()> {
         if self.open == 0 {
-            anyhow::bail!(NotOpen(self.order_id.0))
+            anyhow::bail!(NotOpen(self.order_id))
         }
 
         let affected_rows = diesel::update(self)
@@ -417,7 +410,7 @@ impl Order {
             .execute(conn)?;
 
         if affected_rows == 0 {
-            anyhow::bail!("failed to mark order {} as cancelled", self.order_id.0)
+            anyhow::bail!("failed to mark order {} as cancelled", self.order_id)
         }
 
         Ok(())
@@ -493,15 +486,17 @@ impl InsertableOrder {
 pub struct BtcDaiOrder {
     id: i32,
     pub order_id: i32,
-    pub quantity: Text<Satoshis>,
-    pub price: Text<Erc20Amount>,
+    #[diesel(deserialize_as = "Text<Satoshis>")]
+    pub quantity: Quantity<asset::Bitcoin>,
+    #[diesel(deserialize_as = "Text<WeiPerSat>")]
+    pub price: Price<asset::Bitcoin, Erc20Quantity>,
 }
 
 impl BtcDaiOrder {
     pub fn by_order(conn: &SqliteConnection, order: &Order) -> Result<Self> {
         let params = Self::belonging_to(order)
             .first::<Self>(conn)
-            .with_context(|| format!("order {} is not a BTC/DAI order", order.order_id.0))?;
+            .with_context(|| format!("order {} is not a BTC/DAI order", order.order_id))?;
 
         Ok(params)
     }
@@ -539,9 +534,12 @@ impl InsertableBtcDaiOrder {
 pub struct OrderHbitParams {
     id: i32,
     pub order_id: i32,
-    pub network: Text<ledger::Bitcoin>,
-    pub side: Text<Side>,
-    pub our_final_address: Text<::bitcoin::Address>,
+    #[diesel(deserialize_as = "Text<ledger::Bitcoin>")]
+    pub network: ledger::Bitcoin,
+    #[diesel(deserialize_as = "Text<Side>")]
+    pub side: Side,
+    #[diesel(deserialize_as = "Text<::bitcoin::Address>")]
+    pub our_final_address: ::bitcoin::Address,
     pub expiry_offset: i64,
 }
 
@@ -549,7 +547,7 @@ impl OrderHbitParams {
     pub fn by_order(conn: &SqliteConnection, order: &Order) -> Result<Self> {
         let params = Self::belonging_to(order)
             .first::<Self>(conn)
-            .with_context(|| format!("no hbit params found for order {}", order.order_id.0))?;
+            .with_context(|| format!("no hbit params found for order {}", order.order_id))?;
 
         Ok(params)
     }
@@ -597,10 +595,14 @@ impl InsertableOrderHbitParams {
 pub struct OrderHerc20Params {
     id: i32,
     pub order_id: i32,
-    pub chain_id: U32,
-    pub side: Text<Side>,
-    pub our_htlc_address: Text<ethereum::Address>,
-    pub token_contract: Text<ethereum::Address>,
+    #[diesel(deserialize_as = "U32")]
+    pub chain_id: ChainId,
+    #[diesel(deserialize_as = "Text<Side>")]
+    pub side: Side,
+    #[diesel(deserialize_as = "Text<ethereum::Address>")]
+    pub our_htlc_address: ethereum::Address,
+    #[diesel(deserialize_as = "Text<ethereum::Address>")]
+    pub token_contract: ethereum::Address,
     pub expiry_offset: i64,
 }
 
@@ -608,7 +610,7 @@ impl OrderHerc20Params {
     pub fn by_order(conn: &SqliteConnection, order: &Order) -> Result<Self> {
         let params = Self::belonging_to(order)
             .first::<Self>(conn)
-            .with_context(|| format!("no herc20 params found for order {}", order.order_id.0))?;
+            .with_context(|| format!("no herc20 params found for order {}", order.order_id))?;
 
         Ok(params)
     }

@@ -114,7 +114,7 @@ where
 {
     async fn load(&self, id: LocalSwapId) -> anyhow::Result<spawn::Swap<TParamsA, TParamsB>> {
         let tab = self.load_tables(id).await?;
-        let role = tab.swap.role.0;
+        let role = tab.swap.role;
         let secret_hash = derive_or_unwrap_secret_hash(id, self.seed, role, tab.secret_hash)?;
 
         let alpha = TParamsA::into_params(tab.alpha, id, self.seed, role, secret_hash)?;
