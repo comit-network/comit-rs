@@ -3,8 +3,13 @@
  * @cndConfigOverride ethereum.tokens.dai = 0x0000000000000000000000000000000000000000
  */
 import { twoActorTest, oneActorTest } from "../src/actor_test";
-import { MarketEntity, Currency, OrderEntity, Position } from "../src/payload";
-import { Problem } from "comit-sdk";
+import {
+    MarketEntity,
+    Currency,
+    OrderEntity,
+    Position,
+} from "../src/cnd/payload";
+import { Problem } from "../src/cnd/axios_rfc7807_middleware";
 
 test(
     "given_two_connected_nodes_when_other_node_publishes_order_then_it_is_returned_in_the_market",
@@ -174,7 +179,6 @@ test(
         await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
 
         const order = await alice.fetchOrder(href);
-        // @ts-ignore `client` is private
         const cancelAttempt = alice.cnd.client.delete(
             `/orders/${order.properties.id}`
         );

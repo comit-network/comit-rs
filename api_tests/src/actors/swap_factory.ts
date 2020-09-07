@@ -8,7 +8,6 @@
  * It is a replacement for a negotiation/order protocol that takes care of this in a real application.
  */
 import { Actor } from "./actor";
-import { Peer } from "comit-sdk";
 import {
     HalbitHerc20Payload,
     Herc20HalbitPayload,
@@ -17,9 +16,10 @@ import {
     HalbitPayload,
     Herc20Payload,
     HbitPayload,
-} from "../payload";
+} from "../cnd/payload";
 import { HarnessGlobal } from "../utils";
 import { defaultExpiries, nowExpiries } from "./defaults";
+import { Peer } from "../cnd/cnd";
 
 declare var global: HarnessGlobal;
 
@@ -61,13 +61,13 @@ export default class SwapFactory {
             betaCltvExpiry,
         } = settings.instantRefund ? nowExpiries() : defaultExpiries();
 
-        const aliceEthereumAccount = alice.wallets.ethereum.account();
-        const aliceBitcoinAddress = await alice.wallets.bitcoin.address();
-        const aliceLightningPubkey = await alice.wallets.lightning.pubkey();
+        const aliceEthereumAccount = alice.wallets.ethereum.getAccount();
+        const aliceBitcoinAddress = await alice.wallets.bitcoin.getAddress();
+        const aliceLightningPubkey = await alice.wallets.lightning.getPubkey();
 
-        const bobEthereumAccount = bob.wallets.ethereum.account();
-        const bobBitcoinAddress = await bob.wallets.bitcoin.address();
-        const bobLightningPubkey = await bob.wallets.lightning.pubkey();
+        const bobEthereumAccount = bob.wallets.ethereum.getAccount();
+        const bobBitcoinAddress = await bob.wallets.bitcoin.getAddress();
+        const bobLightningPubkey = await bob.wallets.lightning.getPubkey();
 
         const aliceAlphaHerc20 = defaultHerc20Payload(
             alphaAbsoluteExpiry,

@@ -18,6 +18,7 @@
     "dependencies": {
         "@iarna/toml": "^2.2.5",
         "@radar/lnrpc": "^0.10.0-beta",
+        "@types/content-type": "^1.1.3",
         "@types/download": "^6.2.4",
         "@types/find-cache-dir": "^3.2.0",
         "@types/glob": "^7.1.3",
@@ -28,12 +29,14 @@
         "@types/rimraf": "^3.0.0",
         "@types/tail": "^2.0.0",
         "@types/tmp": "^0.2.0",
+        "@types/urijs": "^1.19.11",
         "ajv": "^6.12.4",
+        "axios": "^0.20.0",
         "bignumber.js": "^9.0.0",
         "bitcoin-core": "^3.0.0",
         "bitcoinjs-lib": "^5.1.10",
         "chmod": "^0.2.1",
-        "comit-sdk": "^0.17.1",
+        "content-type": "^1.0.4",
         "download": "^8.0.0",
         "ethers": "^5.0.10",
         "find-cache-dir": "^3.3.1",
@@ -43,6 +46,8 @@
         "jest": "^26.4.2",
         "lodash": "^4.17.20",
         "log4js": "^6.3.0",
+        "nock": "^13.0.4",
+        "p-event": "^4.2.0",
         "p-timeout": "^3.2.0",
         "prettier": "^2.1.1",
         "process-exists": "^4.0.0",
@@ -57,7 +62,8 @@
         "tslint": "^6.1.3",
         "tslint-config-prettier": "^1.18.0",
         "tslint-no-unused-expression-chai": "^0.1.4",
-        "typescript": "^4.0.2"
+        "typescript": "^4.0.2",
+        "urijs": "^1.19.2"
     },
     "prettier": {
         "trailingComma": "es5",

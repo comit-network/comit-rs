@@ -5,7 +5,7 @@ import { Asset } from "../asset";
 import { LightningWallet } from "./lightning";
 import { Logger } from "log4js";
 
-interface AllWallets {
+export interface AllWallets {
     bitcoin?: BitcoinWallet;
     ethereum?: EthereumWallet;
     lightning?: LightningWallet;
@@ -64,7 +64,7 @@ export async function pollUntilMinted(
 export function newBitcoinStubWallet(logger: Logger): BitcoinWallet {
     return newStubWallet(
         {
-            address: () =>
+            getAddress: () =>
                 Promise.resolve("bcrt1qq7pflkfujg6dq25n73n66yjkvppq6h9caklrhz"),
         },
         logger
@@ -74,7 +74,7 @@ export function newBitcoinStubWallet(logger: Logger): BitcoinWallet {
 export function newEthereumStubWallet(logger: Logger): EthereumWallet {
     return newStubWallet(
         {
-            account: () => "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+            getAccount: () => "0x00a329c0648769a73afac7f9381e08fb43dbea72",
         },
         logger
     );
@@ -83,7 +83,7 @@ export function newEthereumStubWallet(logger: Logger): EthereumWallet {
 export function newLightningStubWallet(logger: Logger): LightningWallet {
     return newStubWallet(
         {
-            pubkey: () =>
+            getPubkey: () =>
                 Promise.resolve(
                     "02ed138aaed50d2d597f6fe8d30759fd3949fe73fdf961322713f1c19e10036a06"
                 ),

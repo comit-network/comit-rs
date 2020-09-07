@@ -1,4 +1,3 @@
-import { Cnd, Swap, Wallets as SdkWallets } from "comit-sdk";
 import {
     ActionKind,
     HalbitHerc20Payload,
@@ -10,7 +9,7 @@ import {
     Position,
     SwapEntity,
     SwapEventKind,
-} from "../payload";
+} from "../cnd/payload";
 import { Logger } from "log4js";
 import { CndConfigFile, E2ETestActorConfig } from "../config";
 import {
@@ -33,12 +32,14 @@ import {
 } from "../wallets";
 import { defaultLedgerDescriptionForLedger } from "./defaults";
 import pTimeout from "p-timeout";
-import { Entity } from "comit-sdk/dist/src/cnd/siren";
 import { BitcoindWallet, BitcoinWallet } from "../wallets/bitcoin";
 import { EthereumWallet, Web3EthereumWallet } from "../wallets/ethereum";
 import { LightningWallet } from "../wallets/lightning";
 import { merge } from "lodash";
 import { AxiosResponse } from "axios";
+import { Cnd } from "../cnd/cnd";
+import { Swap } from "../swap";
+import { Entity } from "../cnd/siren";
 
 declare var global: HarnessGlobal;
 
@@ -117,9 +118,7 @@ export class Actor {
     }
 
     public async connect(other: Actor) {
-        const addr = await other.cnd.getPeerListenAddresses();
-        // @ts-ignore
-        await this.cnd.client.post("dial", { addresses: addr });
+        await this.cnd.dial(other.cnd);
 
         const otherPeerId = await other.cnd.getPeerId();
         await this.pollUntilConnectedTo(otherPeerId);
@@ -152,14 +151,14 @@ export class Actor {
 
         await this.setStartingBalances();
 
-        const location = await this.createHerc20Halbit(create);
+        const location = await this.cnd.createHerc20Halbit(create);
 
         this.swap = new Swap(
             this.cnd,
             location,
-            new SdkWallets({
-                ethereum: this.wallets.ethereum.inner,
-                lightning: this.wallets.lightning.inner,
+            new Wallets({
+                ethereum: this.wallets.ethereum,
+                lightning: this.wallets.lightning,
             })
         );
     }
@@ -191,14 +190,14 @@ export class Actor {
 
         await this.setStartingBalances();
 
-        const location = await this.createHalbitHerc20(create);
+        const location = await this.cnd.createHalbitHerc20(create);
 
         this.swap = new Swap(
             this.cnd,
             location,
-            new SdkWallets({
-                ethereum: this.wallets.ethereum.inner,
-                lightning: this.wallets.lightning.inner,
+            new Wallets({
+                ethereum: this.wallets.ethereum,
+                lightning: this.wallets.lightning,
             })
         );
     }
@@ -230,14 +229,14 @@ export class Actor {
 
         await this.setStartingBalances();
 
-        const location = await this.createHerc20Hbit(create);
+        const location = await this.cnd.createHerc20Hbit(create);
 
         this.swap = new Swap(
             this.cnd,
             location,
-            new SdkWallets({
-                ethereum: this.wallets.ethereum.inner,
-                bitcoin: this.wallets.bitcoin.inner,
+            new Wallets({
+                ethereum: this.wallets.ethereum,
+                bitcoin: this.wallets.bitcoin,
             })
         );
     }
@@ -269,14 +268,14 @@ export class Actor {
 
         await this.setStartingBalances();
 
-        const location = await this.createHbitHerc20(create);
+        const location = await this.cnd.createHbitHerc20(create);
 
         this.swap = new Swap(
             this.cnd,
             location,
-            new SdkWallets({
-                bitcoin: this.wallets.bitcoin.inner,
-                ethereum: this.wallets.ethereum.inner,
+            new Wallets({
+                bitcoin: this.wallets.bitcoin,
+                ethereum: this.wallets.ethereum,
             })
         );
     }
@@ -368,19 +367,16 @@ export class Actor {
 
         await this.setStartingBalances();
 
-        // @ts-ignore
-        const response = await this.cnd.client.post("/orders/BTC-DAI", {
+        return this.cnd.createBtcDaiOrder({
             position,
             quantity: sats.toString(10),
             price: weiPerSat.toString(10),
             swap: {
                 role: this.name,
-                bitcoin_address: await this.wallets.bitcoin.address(),
-                ethereum_address: this.wallets.ethereum.account(),
+                bitcoin_address: await this.wallets.bitcoin.getAddress(),
+                ethereum_address: this.wallets.ethereum.getAccount(),
             },
         });
-
-        return response.headers.location;
     }
 
     public async fetchOrder(href: string): Promise<OrderEntity> {
@@ -640,48 +636,6 @@ export class Actor {
         }
     }
 
-    public async createHerc20Halbit(
-        body: Herc20HalbitPayload
-    ): Promise<string> {
-        // @ts-ignore: client is private.
-        const response = await this.cnd.client.post(
-            "swaps/herc20/halbit",
-            body
-        );
-
-        return response.headers.location;
-    }
-
-    public async createHalbitHerc20(
-        body: HalbitHerc20Payload
-    ): Promise<string> {
-        // @ts-ignore: client is private.
-        const response = await this.cnd.client.post(
-            "swaps/halbit/herc20",
-            body
-        );
-
-        return response.headers.location;
-    }
-
-    public async createHerc20Hbit(body: Herc20HbitPayload): Promise<string> {
-        // @ts-ignore: client is private.
-        const response = await this.cnd.client.post("swaps/herc20/hbit", body);
-
-        return response.headers.location;
-    }
-
-    public async createHbitHerc20(body: HbitHerc20Payload): Promise<string> {
-        // @ts-ignore: client is private.
-        const response = await this.cnd.client.post("swaps/hbit/herc20", body);
-
-        return response.headers.location;
-    }
-
-    /**
-     * Wallet Management
-     */
-
     /**
      * Mine and set starting balances
      * @param assets
@@ -725,9 +679,9 @@ export class Actor {
         this.swap = new Swap(
             this.cnd,
             response.entities[0].href,
-            new SdkWallets({
-                ethereum: this.wallets.ethereum.inner,
-                bitcoin: this.wallets.bitcoin.inner,
+            new Wallets({
+                ethereum: this.wallets.ethereum,
+                bitcoin: this.wallets.bitcoin,
             })
         );
     }
@@ -777,7 +731,7 @@ async function newEthereumWallet(
 ): Promise<EthereumWallet> {
     const ethereumConfig = ledgerConfig.ethereum;
     return ethereumConfig
-        ? Web3EthereumWallet.new_instance(
+        ? Web3EthereumWallet.newInstance(
               ethereumConfig.dev_account_key,
               ethereumConfig.rpc_url,
               logger,
