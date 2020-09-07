@@ -1,8 +1,8 @@
 import axios, { AxiosInstance, AxiosPromise, AxiosResponse } from "axios";
 import actionToHttpRequest, {
     FieldValueResolverFn,
-} from "./action_to_http_request";
-import { problemResponseInterceptor } from "./axios_rfc7807_middleware";
+} from "../action_to_http_request";
+import { problemResponseInterceptor } from "../axios_rfc7807_middleware";
 import { Action } from "./siren";
 import {
     CreateBtcDaiOrderPayload,

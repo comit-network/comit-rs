@@ -9,7 +9,7 @@ import {
     OrderEntity,
     Position,
 } from "../src/cnd/payload";
-import { Problem } from "../src/cnd/axios_rfc7807_middleware";
+import { Problem } from "../src/axios_rfc7807_middleware";
 
 test(
     "given_two_connected_nodes_when_other_node_publishes_order_then_it_is_returned_in_the_market",

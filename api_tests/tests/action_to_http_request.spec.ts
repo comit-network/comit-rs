@@ -1,6 +1,6 @@
 import axiosModule from "axios";
 import nockModule from "nock";
-import actionToHttpRequest from "../src/cnd/action_to_http_request";
+import actionToHttpRequest from "../src/action_to_http_request";
 
 describe("actionToHttpRequest", () => {
     it("given action with POST and no fields, should transform to correct http request", async () => {

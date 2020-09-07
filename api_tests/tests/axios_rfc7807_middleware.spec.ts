@@ -1,4 +1,4 @@
-import { Problem } from "../src/cnd/axios_rfc7807_middleware";
+import { Problem } from "../src/axios_rfc7807_middleware";
 
 describe("problem message", () => {
     it("should format all fields to a descriptive message", () => {
