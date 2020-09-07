@@ -12,7 +12,7 @@ export interface AllWallets {
 }
 
 export interface Wallet {
-    MaximumFee: number;
+    MaximumFee: bigint;
     mint(asset: Asset): Promise<void>;
     getBalanceByAsset(asset: Asset): Promise<bigint>;
     getBlockchainTime(): Promise<number>;

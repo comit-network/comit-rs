@@ -78,7 +78,7 @@ export class LndWallet implements LightningWallet {
         return new LndWallet(lnd, logger, bitcoinWallet, config.p2pSocket);
     }
 
-    public MaximumFee = 0;
+    public MaximumFee = BigInt(0);
 
     private constructor(
         private readonly lnd: Lnd,

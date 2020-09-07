@@ -27,7 +27,7 @@ export interface EthereumWallet extends Wallet {
 }
 
 export class Web3EthereumWallet implements EthereumWallet {
-    public MaximumFee = 0;
+    public MaximumFee = BigInt(0);
 
     private constructor(
         private readonly devAccount: ethers.Wallet,

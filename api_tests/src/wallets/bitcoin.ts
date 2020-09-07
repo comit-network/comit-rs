@@ -62,7 +62,7 @@ export class BitcoindWallet implements BitcoinWallet {
         return new BitcoindWallet(minerClient, logger, walletClient);
     }
 
-    public MaximumFee = 100000;
+    public MaximumFee = BigInt(100000);
 
     private constructor(
         private readonly minerClient: BitcoinRpcClient,
