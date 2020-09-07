@@ -13,9 +13,9 @@ import {
     SendResponse,
 } from "@radar/lnrpc";
 import { Logger } from "log4js";
-import { LightningNodeConfig } from "../ledgers";
 import pEvent from "p-event";
 import { Lnd } from "./lnd";
+import { LightningNodeConfig } from "../environment";
 
 export interface LightningWallet extends Wallet {
     readonly p2pSocket: string;

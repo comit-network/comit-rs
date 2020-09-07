@@ -3,9 +3,9 @@ import { Logger } from "log4js";
 import BitcoinRpcClient from "bitcoin-core";
 import { toBitcoin, toSatoshi } from "satoshi-bitcoin";
 import { pollUntilMinted, Wallet } from "./index";
-import { BitcoinNodeConfig } from "../ledgers";
 import { Asset } from "../asset";
 import axios, { AxiosError, AxiosInstance, Method } from "axios";
+import { BitcoinNodeConfig } from "../environment";
 
 export interface BitcoinWallet extends Wallet {
     mintToAddress(

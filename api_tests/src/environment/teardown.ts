@@ -1,6 +1,6 @@
-import { rimrafAsync } from "../utils";
 import path from "path";
 import killNodes from "./kill_nodes";
+import { rimrafAsync } from "./async_fs";
 
 export default async (config: any) => {
     const root = config.rootDir;

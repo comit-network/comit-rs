@@ -1,17 +1,18 @@
 import { ChildProcess, spawn } from "child_process";
-import { existsAsync, waitUntilFileExists } from "../utils";
 import * as path from "path";
 import { promises as asyncFs } from "fs";
 import getPort from "get-port";
-import waitForLogMessage from "../wait_for_log_message";
+import waitForLogMessage from "./wait_for_log_message";
 import { Logger } from "log4js";
-import { LightningNodeConfig, LedgerInstance } from "./index";
 import findCacheDir from "find-cache-dir";
 import download from "download";
 import { platform } from "os";
 import { lock } from "proper-lockfile";
-import { crashListener } from "../crash_listener";
+import { crashListener } from "./crash_listener";
 import { Lnd } from "../wallets/lnd";
+import { LedgerInstance, LightningNodeConfig } from "./index";
+import { waitUntilFileExists } from "./wait_until_file_exists";
+import { existsAsync } from "./async_fs";
 
 export class LndInstance implements LedgerInstance {
     private process: ChildProcess;

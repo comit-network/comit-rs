@@ -1,24 +1,24 @@
 import { Config } from "@jest/types";
-import { execAsync, existsAsync, HarnessGlobal } from "./utils";
 import { promises as asyncFs } from "fs";
 import NodeEnvironment from "jest-environment-node";
 import path from "path";
-import { LndWallet } from "./wallets/lightning";
-import { BitcoindWallet } from "./wallets/bitcoin";
-import { AssetKind } from "./asset";
-import { LedgerKind } from "./ledgers/ledger";
-import { BitcoindInstance } from "./ledgers/bitcoind_instance";
+import { LndWallet } from "../wallets/lightning";
+import { BitcoindWallet } from "../wallets/bitcoin";
+import { AssetKind } from "../asset";
+import { LedgerKind } from "../ledger";
+import { BitcoindInstance } from "./bitcoind_instance";
 import { configure, Logger, shutdown as loggerShutdown } from "log4js";
 import { EnvironmentContext } from "@jest/environment";
-import ledgerLock from "./ledgers/ledger_lock";
-import BitcoinMinerInstance from "./ledgers/bitcoin_miner_instance";
-import { Web3EthereumWallet } from "./wallets/ethereum";
-import { LedgerInstance, LightningNodeConfig } from "./ledgers";
-import { GethInstance } from "./ledgers/geth_instance";
-import { LndInstance } from "./ledgers/lnd_instance";
+import ledgerLock from "./ledger_lock";
+import BitcoinMinerInstance from "./bitcoin_miner_instance";
+import { Web3EthereumWallet } from "../wallets/ethereum";
+import { GethInstance } from "./geth_instance";
+import { LndInstance } from "./lnd_instance";
 import BitcoinRpcClient from "bitcoin-core";
-import { CndConfigFile } from "./config";
+import { CndConfigFile } from "../config";
 import { set } from "lodash";
+import { HarnessGlobal, LedgerInstance, LightningNodeConfig } from "./index";
+import { execAsync, existsAsync } from "./async_fs";
 
 export default class TestEnvironment extends NodeEnvironment {
     private readonly testSuite: string;
@@ -186,7 +186,11 @@ export default class TestEnvironment extends NodeEnvironment {
         } catch (e) {
             // miner is not running
             const tsNode = path.join(this.nodeModulesBinDir, "ts-node");
-            const minerProgram = path.join(this.srcDir, "bitcoin_miner.ts");
+            const minerProgram = path.join(
+                this.srcDir,
+                "environment",
+                "bitcoin_miner.ts"
+            );
 
             await BitcoinMinerInstance.start(
                 tsNode,

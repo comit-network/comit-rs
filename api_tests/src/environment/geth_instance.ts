@@ -1,16 +1,16 @@
 import { ChildProcess, spawn } from "child_process";
-import waitForLogMessage from "../wait_for_log_message";
-import { existsAsync, openAsync } from "../utils";
+import waitForLogMessage from "./wait_for_log_message";
 import { promises as asyncFs } from "fs";
 import getPort from "get-port";
 import { Logger } from "log4js";
-import { LedgerInstance } from "./index";
 import findCacheDir from "find-cache-dir";
 import download from "download";
 import { platform } from "os";
 import chmod from "chmod";
 import * as path from "path";
-import { crashListener } from "../crash_listener";
+import { crashListener } from "./crash_listener";
+import { LedgerInstance } from "./index";
+import { existsAsync, openAsync } from "./async_fs";
 
 export class GethInstance implements LedgerInstance {
     private process: ChildProcess;

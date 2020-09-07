@@ -20,9 +20,9 @@ import {
     toKey,
     toKind,
 } from "../asset";
-import { CndInstance } from "../cnd/cnd_instance";
-import { Ledger, LedgerKind } from "../ledgers/ledger";
-import { HarnessGlobal, LedgerConfig, sleep } from "../utils";
+import { CndInstance } from "../environment/cnd_instance";
+import { Ledger, LedgerKind } from "../ledger";
+import { sleep } from "../utils";
 import { ActorName, Actors } from "./index";
 import {
     newBitcoinStubWallet,
@@ -40,6 +40,7 @@ import { AxiosResponse } from "axios";
 import { Cnd } from "../cnd/cnd";
 import { Swap } from "../swap";
 import { Entity } from "../cnd/siren";
+import { HarnessGlobal, LedgerConfig } from "../environment";
 
 declare var global: HarnessGlobal;
 

@@ -1,4 +1,4 @@
-import { Ledger, LedgerKind } from "../ledgers/ledger";
+import { Ledger, LedgerKind } from "../ledger";
 
 /**
  * WIP as the cnd REST API routes for lightning are not yet defined.

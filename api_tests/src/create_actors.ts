@@ -1,6 +1,6 @@
 import { ActorName, Actors } from "./actors";
 import { Actor } from "./actors/actor";
-import { HarnessGlobal } from "./utils";
+import { HarnessGlobal } from "./environment";
 
 declare var global: HarnessGlobal;
 

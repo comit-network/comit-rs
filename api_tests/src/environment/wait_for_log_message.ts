@@ -1,6 +1,6 @@
 import { Tail } from "tail";
 import pTimeout from "p-timeout";
-import { waitUntilFileExists } from "./utils";
+import { waitUntilFileExists } from "./wait_until_file_exists";
 
 export default async function waitForLogMessage(logFile: string, line: string) {
     await pTimeout(waitUntilFileExists(logFile), 10_000);

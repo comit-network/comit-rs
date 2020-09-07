@@ -1,6 +1,6 @@
-import { LedgerKind } from "./ledgers/ledger";
-import { HarnessGlobal } from "./utils";
+import { LedgerKind } from "./ledger";
 import { parseEther } from "ethers/lib/utils";
+import { HarnessGlobal } from "./environment";
 
 declare var global: HarnessGlobal;
 
