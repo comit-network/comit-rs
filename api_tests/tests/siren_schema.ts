@@ -4,7 +4,7 @@
  */
 
 import { oneActorTest, twoActorTest } from "../src/actor_test";
-import SwapFactory from "../src/actors/swap_factory";
+import SwapFactory from "../src/swap_factory";
 import { sleep } from "../src/utils";
 import "../src/schema_matcher";
 import * as sirenJsonSchema from "../siren.schema.json";

@@ -3,7 +3,7 @@
  * @ledger bitcoin
  */
 
-import SwapFactory from "../src/actors/swap_factory";
+import SwapFactory from "../src/swap_factory";
 import { sleep } from "../src/utils";
 import { twoActorTest } from "../src/actor_test";
 

@@ -7,7 +7,7 @@
  *
  * It is a replacement for a negotiation/order protocol that takes care of this in a real application.
  */
-import { Actor } from "./actor";
+import { Actor } from "./actors/actor";
 import {
     HalbitHerc20Payload,
     Herc20HalbitPayload,
@@ -16,10 +16,10 @@ import {
     HalbitPayload,
     Herc20Payload,
     HbitPayload,
-} from "../cnd/payload";
-import { HarnessGlobal } from "../utils";
-import { defaultExpiries, nowExpiries } from "./defaults";
-import { Peer } from "../cnd/cnd";
+} from "./cnd/payload";
+import { HarnessGlobal } from "./utils";
+import { defaultExpiries, nowExpiries } from "./actors/defaults";
+import { Peer } from "./cnd/cnd";
 
 declare var global: HarnessGlobal;
 

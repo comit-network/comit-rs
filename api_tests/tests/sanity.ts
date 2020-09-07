@@ -4,7 +4,7 @@
  */
 
 import { oneActorTest, twoActorTest } from "../src/actor_test";
-import SwapFactory from "../src/actors/swap_factory";
+import SwapFactory from "../src/swap_factory";
 
 // ******************************************** //
 // Sanity tests                                 //
