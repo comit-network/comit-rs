@@ -1,4 +1,4 @@
-import { ActorName, Actors } from "./actors";
+import { Role, Actors } from "./actors";
 import pTimeout from "p-timeout";
 import { HarnessGlobal, LedgerConfig } from "./environment";
 import { CndActor } from "./actors/cnd_actor";
@@ -76,7 +76,7 @@ function nActorTest(
     };
 }
 
-async function newCndActor(name: ActorName) {
+async function newCndActor(role: Role) {
     const testName = jasmine.currentTestName;
     if (!testName.match(/[A-z0-9\-]+/)) {
         // We use the test name as a file name for the log and hence need to restrict it.
@@ -86,12 +86,12 @@ async function newCndActor(name: ActorName) {
     }
 
     const ledgerConfig = global.ledgerConfigs;
-    const logger = global.getLogger([testName, name]);
+    const logger = global.getLogger([testName, role]);
 
-    const actorConfig = await E2ETestActorConfig.for(name);
+    const actorConfig = await E2ETestActorConfig.for(role);
     const generatedConfig = actorConfig.generateCndConfigFile(ledgerConfig);
     const finalConfig = merge(generatedConfig, global.cndConfigOverrides);
-    const cndLogFile = global.getLogFile([testName, `cnd-${name}.log`]);
+    const cndLogFile = global.getLogFile([testName, `cnd-${role}.log`]);
 
     logger.info(
         "Created new CndActor with config %s",
@@ -117,11 +117,11 @@ async function newCndActor(name: ActorName) {
     const wallets = new Wallets({
         bitcoin: await bitcoinWallet,
         ethereum: await ethereumWallet,
-        lightning: newLightningWallet(global.lndWallets, name, logger),
+        lightning: newLightningWallet(global.lndWallets, role, logger),
     });
     await cndStarting;
 
-    return new CndActor(logger, cndInstance, wallets, name);
+    return new CndActor(logger, cndInstance, wallets, role);
 }
 
 async function newBitcoinWallet(
@@ -153,7 +153,7 @@ async function newEthereumWallet(
 
 function newLightningWallet(
     lightningWallets: { alice?: LightningWallet; bob?: LightningWallet },
-    actor: ActorName,
+    actor: Role,
     logger: Logger
 ): LightningWallet {
     switch (actor) {

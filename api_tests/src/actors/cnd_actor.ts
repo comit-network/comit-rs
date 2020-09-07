@@ -22,7 +22,7 @@ import {
 import { CndInstance } from "../environment/cnd_instance";
 import { Ledger, LedgerKind } from "../ledger";
 import { sleep } from "../utils";
-import { ActorName } from "./index";
+import { Role } from "./index";
 import { Wallets } from "../wallets";
 import { defaultLedgerDescriptionForLedger } from "./defaults";
 import pTimeout from "p-timeout";
@@ -36,6 +36,8 @@ declare var global: HarnessGlobal;
 
 /**
  * An actor that uses cnd to perform to participate in the COMIT network.
+ *
+ * Although in reality instance of cnd can handle multiple swaps in different roles at the same time, the test framework limits an instance to one specific role.
  */
 export class CndActor {
     readonly cnd: CndClient;
@@ -54,7 +56,7 @@ export class CndActor {
         public readonly logger: Logger,
         public readonly cndInstance: CndInstance,
         public readonly wallets: Wallets,
-        public readonly name: ActorName
+        public readonly role: Role
     ) {
         const socket = cndInstance.getConfigFile().http_api.socket;
         this.cnd = new CndClient(`http://${socket}`);
@@ -256,7 +258,7 @@ export class CndActor {
 
         switch (position) {
             case Position.Buy: {
-                switch (this.name) {
+                switch (this.role) {
                     case "Alice": {
                         this.alphaAsset = daiAsset;
                         this.betaAsset = btcAsset;
@@ -283,7 +285,7 @@ export class CndActor {
                 break;
             }
             case Position.Sell: {
-                switch (this.name) {
+                switch (this.role) {
                     case "Alice": {
                         this.alphaAsset = btcAsset;
                         this.betaAsset = daiAsset;
@@ -318,7 +320,7 @@ export class CndActor {
             quantity: sats.toString(10),
             price: weiPerSat.toString(10),
             swap: {
-                role: this.name,
+                role: this.role,
                 bitcoin_address: await this.wallets.bitcoin.getAddress(),
                 ethereum_address: this.wallets.ethereum.getAccount(),
             },
@@ -353,7 +355,7 @@ export class CndActor {
     }
 
     private async setStartingBalances() {
-        switch (this.name) {
+        switch (this.role) {
             case "Alice": {
                 // Alice purchases beta asset with alpha asset
                 await this.setStartingBalance([
@@ -383,11 +385,6 @@ export class CndActor {
                     BigInt(this.alphaAsset.quantity)
                 );
                 break;
-            }
-            default: {
-                throw new Error(
-                    `createSwap does not support the actor ${this.name} yet`
-                );
             }
         }
     }

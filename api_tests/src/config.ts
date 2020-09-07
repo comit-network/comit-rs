@@ -1,6 +1,6 @@
 import * as tmp from "tmp";
 import getPort from "get-port";
-import { ActorName } from "./actors";
+import { Role } from "./actors";
 import {
     BitcoinNodeConfig,
     EthereumNodeConfig,
@@ -25,14 +25,14 @@ export interface HttpApi {
 export class E2ETestActorConfig {
     public readonly data: string;
 
-    public static async for(name: ActorName) {
-        return new E2ETestActorConfig(await getPort(), await getPort(), name);
+    public static async for(role: Role) {
+        return new E2ETestActorConfig(await getPort(), await getPort(), role);
     }
 
     constructor(
         public readonly httpApiPort: number,
         public readonly comitPort: number,
-        public readonly name: ActorName
+        public readonly role: Role
     ) {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;
@@ -72,7 +72,7 @@ export class E2ETestActorConfig {
             config.ethereum = ethereumConnector(ledgerConfig.ethereum);
         }
 
-        switch (this.name) {
+        switch (this.role) {
             case "Alice": {
                 if (ledgerConfig.aliceLnd) {
                     config.lightning = lightningConnector(

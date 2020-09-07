@@ -1,23 +1,23 @@
 import { CndActor } from "./cnd_actor";
 
-export type ActorName = "Alice" | "Bob";
+export type Role = "Alice" | "Bob";
 
 export class Actors {
-    constructor(private readonly actors: Map<string, CndActor>) {}
+    constructor(private readonly actors: Map<Role, CndActor>) {}
 
     get alice(): CndActor {
-        return this.getActorByName("Alice");
+        return this.getActorByRole("Alice");
     }
 
     get bob(): CndActor {
-        return this.getActorByName("Bob");
+        return this.getActorByRole("Bob");
     }
 
-    public getActorByName(name: ActorName): CndActor {
-        const maybeActor = this.actors.get(name);
+    public getActorByRole(role: Role): CndActor {
+        const maybeActor = this.actors.get(role);
 
         if (!maybeActor) {
-            throw new Error(`Actor ${name} was not initialized`);
+            throw new Error(`Actor ${role} was not initialized`);
         }
 
         return maybeActor;
