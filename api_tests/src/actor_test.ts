@@ -41,6 +41,21 @@ export function startAliceAndBob(
     );
 }
 
+/**
+ * Instantiates two CndActors, the first one in the role of Alice and the second one in the role of Bob.
+ *
+ * This function also establishes a network connection between the two.
+ * @param testFn
+ */
+export function startConnectedAliceAndBob(
+    testFn: ([alice, bob]: CndActor[]) => Promise<void>
+): ProvidesCallback {
+    return cndActorTest(["Alice", "Bob"], async ([alice, bob]) => {
+        await alice.connect(bob);
+        return testFn([alice, bob]);
+    });
+}
+
 /*
  * Instantiates a set of CndActors with the given roles, executes the provided test function and tears the actors down again.
  *
