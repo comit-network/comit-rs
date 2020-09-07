@@ -11,7 +11,6 @@ import {
     SwapEventKind,
 } from "../cnd_client/payload";
 import { Logger } from "log4js";
-import { CndConfigFile, E2ETestActorConfig } from "../config";
 import {
     Asset,
     assetAsKey,
@@ -24,23 +23,14 @@ import { CndInstance } from "../environment/cnd_instance";
 import { Ledger, LedgerKind } from "../ledger";
 import { sleep } from "../utils";
 import { ActorName, Actors } from "./index";
-import {
-    newBitcoinStubWallet,
-    newEthereumStubWallet,
-    newLightningStubWallet,
-    Wallets,
-} from "../wallets";
+import { Wallets } from "../wallets";
 import { defaultLedgerDescriptionForLedger } from "./defaults";
 import pTimeout from "p-timeout";
-import { BitcoindWallet, BitcoinWallet } from "../wallets/bitcoin";
-import { EthereumWallet, Web3EthereumWallet } from "../wallets/ethereum";
-import { LightningWallet } from "../wallets/lightning";
-import { merge } from "lodash";
 import { AxiosResponse } from "axios";
 import CndClient from "../cnd_client";
 import { Swap } from "../swap";
 import { Entity } from "../cnd_client/siren";
-import { HarnessGlobal, LedgerConfig } from "../environment";
+import { HarnessGlobal } from "../environment";
 
 declare var global: HarnessGlobal;
 
@@ -48,47 +38,6 @@ declare var global: HarnessGlobal;
  * An actor that uses cnd to perform to participate in the COMIT network.
  */
 export class CndActor {
-    public static async newInstance(
-        name: ActorName,
-        ledgerConfig: LedgerConfig,
-        cargoTargetDirectory: string,
-        cndLogFile: string,
-        logger: Logger,
-        configOverrides: Partial<CndConfigFile>,
-        ethereumLockDir: string,
-        lndWallets: { alice?: LightningWallet; bob?: LightningWallet }
-    ) {
-        const actorConfig = await E2ETestActorConfig.for(name);
-        const generatedConfig = actorConfig.generateCndConfigFile(ledgerConfig);
-        const finalConfig = merge(generatedConfig, configOverrides);
-
-        const cndInstance = new CndInstance(
-            cargoTargetDirectory,
-            cndLogFile,
-            logger,
-            finalConfig
-        );
-
-        await cndInstance.start();
-
-        logger.info(
-            "Created new actor with config %s",
-            JSON.stringify(finalConfig)
-        );
-
-        const wallets = new Wallets({
-            bitcoin: await newBitcoinWallet(ledgerConfig, logger),
-            ethereum: await newEthereumWallet(
-                ledgerConfig,
-                ethereumLockDir,
-                logger
-            ),
-            lightning: newLightningWallet(lndWallets, name, logger),
-        });
-
-        return new CndActor(logger, cndInstance, wallets, name);
-    }
-
     public actors: Actors;
 
     readonly cnd: CndClient;
@@ -103,7 +52,7 @@ export class CndActor {
     public readonly startingBalances: Map<assetAsKey, bigint>;
     public readonly expectedBalanceChanges: Map<assetAsKey, bigint>;
 
-    constructor(
+    public constructor(
         public readonly logger: Logger,
         public readonly cndInstance: CndInstance,
         public readonly wallets: Wallets,
@@ -708,53 +657,6 @@ export class CndActor {
                 peers.peers.findIndex((candidate) => candidate.id === peer) !==
                 -1
         );
-    }
-}
-
-async function newBitcoinWallet(
-    ledgerConfig: LedgerConfig,
-    logger: Logger
-): Promise<BitcoinWallet> {
-    const bitcoinConfig = ledgerConfig.bitcoin;
-    return bitcoinConfig
-        ? BitcoindWallet.newInstance(bitcoinConfig, logger)
-        : Promise.resolve(newBitcoinStubWallet(logger));
-}
-
-async function newEthereumWallet(
-    ledgerConfig: LedgerConfig,
-    ethereumLockDir: string,
-    logger: Logger
-): Promise<EthereumWallet> {
-    const ethereumConfig = ledgerConfig.ethereum;
-    return ethereumConfig
-        ? Web3EthereumWallet.newInstance(
-              ethereumConfig.dev_account_key,
-              ethereumConfig.rpc_url,
-              logger,
-              ethereumLockDir,
-              ethereumConfig.chain_id
-          )
-        : Promise.resolve(newEthereumStubWallet(logger));
-}
-
-function newLightningWallet(
-    lightningWallets: { alice?: LightningWallet; bob?: LightningWallet },
-    actor: ActorName,
-    logger: Logger
-): LightningWallet {
-    switch (actor) {
-        case "Alice": {
-            return lightningWallets.alice || newLightningStubWallet(logger);
-        }
-        case "Bob": {
-            return lightningWallets.bob || newLightningStubWallet(logger);
-        }
-        default: {
-            throw new Error(
-                `Cannot initialize Lightning wallet for actor: '${actor}'`
-            );
-        }
     }
 }
 
