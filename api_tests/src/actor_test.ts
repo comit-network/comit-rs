@@ -1,7 +1,10 @@
-import { Actors } from "./actors";
-import { createActors } from "./create_actors";
+import { ActorName, Actors } from "./actors";
 import pTimeout from "p-timeout";
+import { HarnessGlobal } from "./environment";
+import { Actor } from "./actors/actor";
 import ProvidesCallback = jest.ProvidesCallback;
+
+declare var global: HarnessGlobal;
 
 /*
  * Instantiates a new e2e test based on one actor, Alice.
@@ -19,6 +22,44 @@ export function twoActorTest(
     testFn: (actors: Actors) => Promise<void>
 ): ProvidesCallback {
     return nActorTest(["Alice", "Bob"], testFn);
+}
+
+async function createActors(
+    testName: string,
+    actorNames: ActorName[]
+): Promise<Actors> {
+    const actorsMap = new Map<string, Actor>();
+
+    const listPromises: Promise<Actor>[] = [];
+    for (const name of actorNames) {
+        const cndLogFile = global.getLogFile([testName, `cnd-${name}.log`]);
+        const actorLogger = global.getLogger([testName, name]);
+
+        listPromises.push(
+            Actor.newInstance(
+                name,
+                global.ledgerConfigs,
+                global.cargoTargetDir,
+                cndLogFile,
+                actorLogger,
+                global.cndConfigOverrides,
+                global.gethLockDir,
+                global.lndWallets
+            )
+        );
+    }
+    const createdActors = await Promise.all(listPromises);
+    for (const actor of createdActors) {
+        actorsMap.set(actor.name, actor);
+    }
+
+    const actors = new Actors(actorsMap);
+
+    for (const name of actorNames) {
+        actorsMap.get(name).actors = actors;
+    }
+
+    return actors;
 }
 
 /*
