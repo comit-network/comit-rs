@@ -254,10 +254,6 @@ impl Wallet {
             hash[0], hash[1], hash[2], hash[3]
         )
     }
-
-    pub fn seed(&self) -> Seed {
-        self.seed
-    }
 }
 
 #[cfg(all(test, feature = "test-docker"))]
