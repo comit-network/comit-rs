@@ -142,7 +142,11 @@ export class LndWallet implements LightningWallet {
     public async connectPeer(toWallet: LightningWallet) {
         const pubkey = await toWallet.getPubkey();
         const host = toWallet.p2pSocket;
-        return this.lnd.lnrpc.connectPeer({ addr: { pubkey, host } });
+        try {
+            await this.lnd.lnrpc.connectPeer({ addr: { pubkey, host } });
+        } catch (e) {
+            this.logger.warn("Error while connecting to peer", host);
+        }
     }
 
     public async listPeers(): Promise<Peer[]> {
