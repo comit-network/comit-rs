@@ -4,8 +4,6 @@ import NodeEnvironment from "jest-environment-node";
 import path from "path";
 import { LndWallet } from "../wallets/lightning";
 import { BitcoindWallet } from "../wallets/bitcoin";
-import { AssetKind } from "../asset";
-import { LedgerKind } from "../ledger";
 import { BitcoindInstance } from "./bitcoind_instance";
 import { configure, Logger, shutdown as loggerShutdown } from "log4js";
 import { EnvironmentContext } from "@jest/environment";
@@ -285,16 +283,8 @@ export default class TestEnvironment extends NodeEnvironment {
             await alice.connectPeer(bob);
         }
 
-        await alice.mint({
-            name: AssetKind.Bitcoin,
-            ledger: LedgerKind.Lightning,
-            quantity: "15000000",
-        });
-        await bob.mint({
-            name: AssetKind.Bitcoin,
-            ledger: LedgerKind.Lightning,
-            quantity: "15000000",
-        });
+        await alice.mint(BigInt(15000000));
+        await bob.mint(BigInt(15000000));
 
         await alice.openChannel(bob, 15000000);
         await bob.openChannel(alice, 15000000);

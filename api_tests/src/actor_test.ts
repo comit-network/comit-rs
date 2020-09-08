@@ -75,7 +75,7 @@ export function cndActorTest(
             await pTimeout(testFn(actors), 120_000);
         } catch (e) {
             global.getLogger(["test_environment"]).error("Test failed", e);
-            for (const actor of this.actors) {
+            for (const actor of actors) {
                 await actor.dumpState();
             }
             throw e;

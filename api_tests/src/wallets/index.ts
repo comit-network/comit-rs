@@ -14,7 +14,6 @@ export interface AllWallets {
 
 export interface Wallet {
     MaximumFee: bigint;
-    mint(asset: Asset): Promise<void>;
     getBalanceByAsset(asset: Asset): Promise<bigint>;
 }
 
@@ -69,8 +68,14 @@ export async function pollUntilMinted(
 export function newBitcoinStubWallet(logger: Logger): BitcoinWallet {
     return newStubWallet(
         {
+            MaximumFee: BigInt(0),
             getAddress: () =>
                 Promise.resolve("bcrt1qq7pflkfujg6dq25n73n66yjkvppq6h9caklrhz"),
+            getBalance: () => Promise.resolve(BigInt(0)),
+            mintToAddress: (
+                _minimumExpectedBalance: bigint,
+                _toAddress: string
+            ) => Promise.resolve(),
         },
         logger
     );
@@ -80,6 +85,12 @@ export function newEthereumStubWallet(logger: Logger): EthereumWallet {
     return newStubWallet(
         {
             getAccount: () => "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+            getErc20Balance: (
+                _contractAddress: string,
+                _decimals?: number
+            ): Promise<bigint> => Promise.resolve(BigInt(0)),
+            mintErc20: (_quantity: bigint, _tokenContract: string) =>
+                Promise.resolve(),
         },
         logger
     );
@@ -92,6 +103,7 @@ export function newLightningStubWallet(logger: Logger): LightningWallet {
                 Promise.resolve(
                     "02ed138aaed50d2d597f6fe8d30759fd3949fe73fdf961322713f1c19e10036a06"
                 ),
+            getBalance: () => Promise.resolve(BigInt(0)),
         },
         logger
     );

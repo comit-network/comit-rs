@@ -11,26 +11,22 @@ import {
     SwapEventKind,
 } from "../cnd_client/payload";
 import { Logger } from "log4js";
-import {
-    Asset,
-    assetAsKey,
-    AssetKind,
-    defaultAssetValue,
-    toKey,
-    toKind,
-} from "../asset";
 import { CndInstance } from "../environment/cnd_instance";
-import { Ledger, LedgerKind } from "../ledger";
 import { sleep } from "../utils";
 import { Role } from "./index";
 import { Wallets } from "../wallets";
-import { defaultLedgerDescriptionForLedger } from "./defaults";
 import pTimeout from "p-timeout";
 import { AxiosResponse } from "axios";
 import CndClient from "../cnd_client";
 import { Swap } from "../swap";
 import { Entity } from "../cnd_client/siren";
 import { HarnessGlobal } from "../environment";
+import {
+    BalanceAsserter,
+    Erc20BalanceAsserter,
+    LNBitcoinBalanceAsserter,
+    OnChainBitcoinBalanceAsserter,
+} from "./balance_asserter";
 
 declare var global: HarnessGlobal;
 
@@ -43,13 +39,8 @@ export class CndActor {
     readonly cnd: CndClient;
     public swap: Swap;
 
-    private alphaLedger: Ledger;
-    private alphaAsset: Asset;
-    private betaLedger: Ledger;
-    private betaAsset: Asset;
-
-    private readonly startingBalances: Map<assetAsKey, bigint>;
-    private readonly expectedBalanceChanges: Map<assetAsKey, bigint>;
+    private alphaBalance: BalanceAsserter;
+    private betaBalance: BalanceAsserter;
 
     public constructor(
         public readonly logger: Logger,
@@ -65,9 +56,6 @@ export class CndActor {
         );
         const socket = cndInstance.getConfigFile().http_api.socket;
         this.cnd = new CndClient(`http://${socket}`);
-
-        this.startingBalances = new Map();
-        this.expectedBalanceChanges = new Map();
     }
 
     public async connect(other: CndActor) {
@@ -77,32 +65,33 @@ export class CndActor {
         await this.pollUntilConnectedTo(otherPeerId);
     }
 
-    /**
-     * Create a herc20<->halbit Swap
-     * @param create
-     */
     public async createHerc20HalbitSwap(create: Herc20HalbitPayload) {
-        this.alphaLedger = {
-            name: LedgerKind.Ethereum,
-            chain_id: create.alpha.chain_id,
-        };
-        this.betaLedger = {
-            name: LedgerKind.Lightning,
-            network: create.beta.network,
-        };
-        this.alphaAsset = {
-            name: AssetKind.Erc20,
-            quantity: create.alpha.amount,
-            ledger: LedgerKind.Ethereum,
-            tokenContract: create.alpha.token_contract,
-        };
-        this.betaAsset = {
-            name: AssetKind.Bitcoin,
-            quantity: create.beta.amount,
-            ledger: LedgerKind.Lightning,
-        };
-
-        await this.setStartingBalances();
+        switch (this.role) {
+            case "Alice": {
+                this.alphaBalance = await Erc20BalanceAsserter.newInstance(
+                    this.wallets.ethereum,
+                    BigInt(create.alpha.amount),
+                    create.alpha.token_contract
+                );
+                this.betaBalance = await LNBitcoinBalanceAsserter.newInstance(
+                    this.wallets.lightning,
+                    BigInt(create.beta.amount)
+                );
+                break;
+            }
+            case "Bob": {
+                this.alphaBalance = await Erc20BalanceAsserter.newInstance(
+                    this.wallets.ethereum,
+                    BigInt(create.alpha.amount),
+                    create.alpha.token_contract
+                );
+                this.betaBalance = await LNBitcoinBalanceAsserter.newInstance(
+                    this.wallets.lightning,
+                    BigInt(create.beta.amount)
+                );
+                break;
+            }
+        }
 
         const location = await this.cnd.createHerc20Halbit(create);
 
@@ -116,32 +105,33 @@ export class CndActor {
         );
     }
 
-    /**
-     * Create a halbit<->herc20 Swap
-     * @param create
-     */
     public async createHalbitHerc20Swap(create: HalbitHerc20Payload) {
-        this.alphaLedger = {
-            name: LedgerKind.Lightning,
-            network: create.alpha.network,
-        };
-        this.betaLedger = {
-            name: LedgerKind.Ethereum,
-            chain_id: create.beta.chain_id,
-        };
-        this.alphaAsset = {
-            name: AssetKind.Bitcoin,
-            quantity: create.alpha.amount,
-            ledger: LedgerKind.Lightning,
-        };
-        this.betaAsset = {
-            name: AssetKind.Erc20,
-            quantity: create.beta.amount,
-            ledger: LedgerKind.Ethereum,
-            tokenContract: create.beta.token_contract,
-        };
-
-        await this.setStartingBalances();
+        switch (this.role) {
+            case "Alice": {
+                this.alphaBalance = await LNBitcoinBalanceAsserter.newInstance(
+                    this.wallets.lightning,
+                    BigInt(create.alpha.amount)
+                );
+                this.betaBalance = await Erc20BalanceAsserter.newInstance(
+                    this.wallets.ethereum,
+                    BigInt(create.beta.amount),
+                    create.beta.token_contract
+                );
+                break;
+            }
+            case "Bob": {
+                this.alphaBalance = await LNBitcoinBalanceAsserter.newInstance(
+                    this.wallets.lightning,
+                    BigInt(create.alpha.amount)
+                );
+                this.betaBalance = await Erc20BalanceAsserter.newInstance(
+                    this.wallets.ethereum,
+                    BigInt(create.beta.amount),
+                    create.beta.token_contract
+                );
+                break;
+            }
+        }
 
         const location = await this.cnd.createHalbitHerc20(create);
 
@@ -155,32 +145,33 @@ export class CndActor {
         );
     }
 
-    /**
-     * Create a herc20-hbit Swap
-     * @param create
-     */
     public async createHerc20HbitSwap(create: Herc20HbitPayload) {
-        this.alphaLedger = {
-            name: LedgerKind.Ethereum,
-            chain_id: create.alpha.chain_id,
-        };
-        this.betaLedger = {
-            name: LedgerKind.Bitcoin,
-            network: create.beta.network,
-        };
-        this.alphaAsset = {
-            name: AssetKind.Erc20,
-            quantity: create.alpha.amount,
-            ledger: LedgerKind.Ethereum,
-            tokenContract: create.alpha.token_contract,
-        };
-        this.betaAsset = {
-            name: AssetKind.Bitcoin,
-            quantity: create.beta.amount,
-            ledger: LedgerKind.Bitcoin,
-        };
-
-        await this.setStartingBalances();
+        switch (this.role) {
+            case "Alice": {
+                this.alphaBalance = await Erc20BalanceAsserter.newInstance(
+                    this.wallets.ethereum,
+                    BigInt(create.alpha.amount),
+                    create.alpha.token_contract
+                );
+                this.betaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
+                    this.wallets.bitcoin,
+                    BigInt(create.beta.amount)
+                );
+                break;
+            }
+            case "Bob": {
+                this.alphaBalance = await Erc20BalanceAsserter.newInstance(
+                    this.wallets.ethereum,
+                    BigInt(create.alpha.amount),
+                    create.alpha.token_contract
+                );
+                this.betaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
+                    this.wallets.bitcoin,
+                    BigInt(create.beta.amount)
+                );
+                break;
+            }
+        }
 
         const location = await this.cnd.createHerc20Hbit(create);
 
@@ -194,32 +185,33 @@ export class CndActor {
         );
     }
 
-    /**
-     * Create a hbit-herc20 Swap
-     * @param create
-     */
     public async createHbitHerc20Swap(create: HbitHerc20Payload) {
-        this.alphaLedger = {
-            name: LedgerKind.Bitcoin,
-            network: create.alpha.network,
-        };
-        this.betaLedger = {
-            name: LedgerKind.Ethereum,
-            chain_id: create.beta.chain_id,
-        };
-        this.alphaAsset = {
-            name: AssetKind.Bitcoin,
-            quantity: create.alpha.amount,
-            ledger: LedgerKind.Bitcoin,
-        };
-        this.betaAsset = {
-            name: AssetKind.Erc20,
-            quantity: create.beta.amount,
-            ledger: LedgerKind.Ethereum,
-            tokenContract: create.beta.token_contract,
-        };
-
-        await this.setStartingBalances();
+        switch (this.role) {
+            case "Alice": {
+                this.alphaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
+                    this.wallets.bitcoin,
+                    BigInt(create.alpha.amount)
+                );
+                this.betaBalance = await Erc20BalanceAsserter.newInstance(
+                    this.wallets.ethereum,
+                    BigInt(create.beta.amount),
+                    create.beta.token_contract
+                );
+                break;
+            }
+            case "Bob": {
+                this.alphaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
+                    this.wallets.bitcoin,
+                    BigInt(create.alpha.amount)
+                );
+                this.betaBalance = await Erc20BalanceAsserter.newInstance(
+                    this.wallets.ethereum,
+                    BigInt(create.beta.amount),
+                    create.beta.token_contract
+                );
+                break;
+            }
+        }
 
         const location = await this.cnd.createHbitHerc20(create);
 
@@ -241,12 +233,7 @@ export class CndActor {
         quantity: number,
         price: number
     ): Promise<string> {
-        const sats = Number(quantity) * 100_000_000;
-        const btcAsset = {
-            ledger: LedgerKind.Bitcoin,
-            name: AssetKind.Bitcoin,
-            quantity: sats.toString(10),
-        };
+        const sats = (Number(quantity) * 100_000_000).toString(10);
 
         const daiPerBtc = BigInt(price);
         const weiPerDai = BigInt("1000000000000000000");
@@ -254,36 +241,31 @@ export class CndActor {
         const weiPerSat = (daiPerBtc * weiPerDai) / satsPerBtc;
         const dai = BigInt(sats) * weiPerSat;
 
-        const daiAsset = {
-            ledger: LedgerKind.Ethereum,
-            name: AssetKind.Erc20,
-            quantity: dai.toString(10),
-            tokenContract: global.tokenContract,
-        };
-
         switch (position) {
             case Position.Buy: {
                 switch (this.role) {
                     case "Alice": {
-                        this.alphaAsset = daiAsset;
-                        this.betaAsset = btcAsset;
-                        this.alphaLedger = {
-                            name: LedgerKind.Ethereum,
-                        };
-                        this.betaLedger = {
-                            name: LedgerKind.Bitcoin,
-                        };
+                        this.alphaBalance = await Erc20BalanceAsserter.newInstance(
+                            this.wallets.ethereum,
+                            dai,
+                            global.tokenContract
+                        );
+                        this.betaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
+                            this.wallets.bitcoin,
+                            BigInt(sats)
+                        );
                         break;
                     }
                     case "Bob": {
-                        this.alphaAsset = btcAsset;
-                        this.alphaLedger = {
-                            name: LedgerKind.Bitcoin,
-                        };
-                        this.betaAsset = daiAsset;
-                        this.betaLedger = {
-                            name: LedgerKind.Ethereum,
-                        };
+                        this.alphaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
+                            this.wallets.bitcoin,
+                            BigInt(sats)
+                        );
+                        this.betaBalance = await Erc20BalanceAsserter.newInstance(
+                            this.wallets.ethereum,
+                            dai,
+                            global.tokenContract
+                        );
                         break;
                     }
                 }
@@ -292,25 +274,27 @@ export class CndActor {
             case Position.Sell: {
                 switch (this.role) {
                     case "Alice": {
-                        this.alphaAsset = btcAsset;
-                        this.betaAsset = daiAsset;
-                        this.alphaLedger = {
-                            name: LedgerKind.Bitcoin,
-                        };
-                        this.betaLedger = {
-                            name: LedgerKind.Ethereum,
-                        };
+                        this.alphaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
+                            this.wallets.bitcoin,
+                            BigInt(sats)
+                        );
+                        this.betaBalance = await Erc20BalanceAsserter.newInstance(
+                            this.wallets.ethereum,
+                            dai,
+                            global.tokenContract
+                        );
                         break;
                     }
                     case "Bob": {
-                        this.alphaAsset = daiAsset;
-                        this.betaAsset = btcAsset;
-                        this.alphaLedger = {
-                            name: LedgerKind.Ethereum,
-                        };
-                        this.betaLedger = {
-                            name: LedgerKind.Bitcoin,
-                        };
+                        this.alphaBalance = await Erc20BalanceAsserter.newInstance(
+                            this.wallets.ethereum,
+                            dai,
+                            global.tokenContract
+                        );
+                        this.betaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
+                            this.wallets.bitcoin,
+                            BigInt(sats)
+                        );
                         break;
                     }
                 }
@@ -318,11 +302,9 @@ export class CndActor {
             }
         }
 
-        await this.setStartingBalances();
-
         return this.cnd.createBtcDaiOrder({
             position,
-            quantity: sats.toString(10),
+            quantity: sats,
             price: weiPerSat.toString(10),
             swap: {
                 role: this.role,
@@ -357,41 +339,6 @@ export class CndActor {
         }
 
         return this.cnd.executeSirenAction(action);
-    }
-
-    private async setStartingBalances() {
-        switch (this.role) {
-            case "Alice": {
-                // Alice purchases beta asset with alpha asset
-                await this.setStartingBalance([
-                    this.alphaAsset,
-                    {
-                        ...this.betaAsset,
-                        quantity: "0",
-                    },
-                ]);
-                this.expectedBalanceChanges.set(
-                    toKey(this.betaAsset),
-                    BigInt(this.betaAsset.quantity)
-                );
-                break;
-            }
-            case "Bob": {
-                // Bob purchases alpha asset with beta asset
-                await this.setStartingBalance([
-                    this.betaAsset,
-                    {
-                        ...this.alphaAsset,
-                        quantity: "0",
-                    },
-                ]);
-                this.expectedBalanceChanges.set(
-                    toKey(this.alphaAsset),
-                    BigInt(this.alphaAsset.quantity)
-                );
-                break;
-            }
-        }
     }
 
     public cndHttpApiUrl() {
@@ -487,61 +434,36 @@ export class CndActor {
     }
 
     public async assertBalancesAfterSwap() {
-        for (const [
-            assetAsKey,
-            expectedBalanceChange,
-        ] of this.expectedBalanceChanges.entries()) {
-            this.logger.debug(
-                "Checking that %s balance changed by %d",
-                assetAsKey,
-                expectedBalanceChange
-            );
+        this.logger.debug("Checking if swap @ %s swapped", this.swap.self);
 
-            const { asset, ledger } = toKind(assetAsKey);
-
-            const wallet = this.wallets[ledger];
-            const expectedBalance =
-                this.startingBalances.get(assetAsKey) + expectedBalanceChange;
-            const maximumFee = BigInt(wallet.MaximumFee);
-
-            const balanceInclFees = expectedBalance - maximumFee;
-
-            const currentWalletBalance = await wallet.getBalanceByAsset(
-                defaultAssetValue(asset, ledger)
-            );
-            expect(currentWalletBalance).toBeGreaterThanOrEqual(
-                balanceInclFees
-            );
-
-            this.logger.debug(
-                "Balance check was positive, current balance is %d",
-                currentWalletBalance
-            );
+        switch (this.role) {
+            case "Alice": {
+                await this.alphaBalance.assertSpent();
+                await this.betaBalance.assertReceived();
+                break;
+            }
+            case "Bob": {
+                await this.alphaBalance.assertReceived();
+                await this.betaBalance.assertSpent();
+                break;
+            }
         }
     }
 
     public async assertBalancesAfterRefund() {
         this.logger.debug("Checking if swap @ %s was refunded", this.swap.self);
 
-        for (const [assetKey] of this.startingBalances.entries()) {
-            const { asset, ledger } = toKind(assetKey);
-
-            const wallet = this.wallets[ledger];
-            const maximumFee = BigInt(wallet.MaximumFee);
-
-            this.logger.debug(
-                "Checking that %s balance changed by max %d (MaximumFee)",
-                assetKey,
-                maximumFee
-            );
-            const expectedBalance = this.startingBalances.get(assetKey);
-            const currentWalletBalance = await wallet.getBalanceByAsset(
-                defaultAssetValue(asset, ledger)
-            );
-            const balanceInclFees = expectedBalance - maximumFee;
-            expect(currentWalletBalance).toBeGreaterThanOrEqual(
-                balanceInclFees
-            );
+        switch (this.role) {
+            case "Alice": {
+                await this.alphaBalance.assertRefunded();
+                await this.betaBalance.assertNothingReceived();
+                break;
+            }
+            case "Bob": {
+                await this.alphaBalance.assertNothingReceived();
+                await this.betaBalance.assertRefunded();
+                break;
+            }
         }
     }
 
@@ -570,49 +492,6 @@ export class CndActor {
             const swapResponse = await this.getSwapResponse();
 
             this.logger.debug("swap details: ", JSON.stringify(swapResponse));
-
-            this.logger.debug(
-                "alpha ledger wallet balance %d",
-                await this.alphaLedgerWallet.getBalanceByAsset(this.alphaAsset)
-            );
-            this.logger.debug(
-                "beta ledger wallet balance %d",
-                await this.betaLedgerWallet.getBalanceByAsset(this.betaAsset)
-            );
-        }
-    }
-
-    /**
-     * Mine and set starting balances
-     * @param assets
-     */
-    public async setStartingBalance(assets: Asset[]) {
-        for (const asset of assets) {
-            if (parseFloat(asset.quantity) === 0) {
-                this.startingBalances.set(toKey(asset), BigInt(0));
-                continue;
-            }
-
-            const ledger = defaultLedgerDescriptionForLedger(asset.ledger);
-            const ledgerName = ledger.name;
-
-            this.logger.debug("Minting %s on %s", asset.name, ledgerName);
-
-            await this.wallets.getWalletForLedger(ledgerName).mint(asset);
-
-            const balance = await this.wallets[ledgerName].getBalanceByAsset(
-                asset
-            );
-
-            this.logger.debug(
-                "Starting %s balance: ",
-                asset.name,
-                balance.toString()
-            );
-            this.startingBalances.set(
-                toKey(asset),
-                BigInt(balance.toString(10))
-            );
         }
     }
 
@@ -630,14 +509,6 @@ export class CndActor {
                 bitcoin: this.wallets.bitcoin,
             })
         );
-    }
-
-    get alphaLedgerWallet() {
-        return this.wallets.getWalletForLedger(this.alphaLedger.name);
-    }
-
-    get betaLedgerWallet() {
-        return this.wallets.getWalletForLedger(this.betaLedger.name);
     }
 
     private async pollUntilConnectedTo(peer: string) {

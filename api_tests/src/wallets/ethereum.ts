@@ -22,6 +22,7 @@ export interface EthereumWallet extends Wallet {
     ): Promise<ethers.providers.TransactionReceipt>;
     assertNetwork(expectedChainId: number): Promise<void>;
     getErc20Balance(contractAddress: string): Promise<bigint>;
+    mintErc20(quantity: bigint, tokenContract: string): Promise<void>;
 }
 
 export class Web3EthereumWallet implements EthereumWallet {
@@ -50,23 +51,7 @@ export class Web3EthereumWallet implements EthereumWallet {
         );
     }
 
-    public async mint(asset: Asset): Promise<void> {
-        switch (asset.name) {
-            case "ether":
-                return this.mintEther(BigInt(asset.quantity));
-            case "erc20":
-                return this.mintErc20(
-                    BigInt(asset.quantity),
-                    asset.tokenContract
-                );
-            default:
-                throw new Error(
-                    `Cannot mint asset ${asset.name} with EthereumWallet`
-                );
-        }
-    }
-
-    private async mintErc20(
+    public async mintErc20(
         quantity: bigint,
         tokenContract: string
     ): Promise<void> {
@@ -148,29 +133,6 @@ export class Web3EthereumWallet implements EthereumWallet {
         });
 
         return this.provider.sendTransaction(signedTx);
-    }
-
-    private async mintEther(quantity: bigint): Promise<void> {
-        const minimumExpectedBalance = quantity;
-
-        // make sure we have at least twice as much
-        const value = ethers.BigNumber.from(
-            minimumExpectedBalance.toString()
-        ).mul(2);
-        await this.sendDevAccountTransaction({
-            to: this.getAccount(),
-            value,
-            gasLimit: 21000,
-            chainId: this.chainId,
-        });
-
-        const balance = await this.getEtherBalance();
-
-        if (balance <= minimumExpectedBalance) {
-            throw new Error("Failed to mint Ether");
-        }
-
-        this.logger.info("Minted", quantity, "ether for", this.getAccount());
     }
 
     public async deployErc20TokenContract(): Promise<string> {

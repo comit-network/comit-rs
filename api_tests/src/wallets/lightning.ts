@@ -56,6 +56,9 @@ export interface LightningWallet extends Wallet {
         chain: string,
         network: string
     ): Promise<void>;
+
+    getBalance(): Promise<bigint>;
+    mint(satoshis: bigint): Promise<void>;
 }
 
 export class LndWallet implements LightningWallet {
@@ -84,17 +87,11 @@ export class LndWallet implements LightningWallet {
         public readonly p2pSocket: string
     ) {}
 
-    public async mint(asset: Asset): Promise<void> {
-        if (asset.name !== "bitcoin") {
-            throw new Error(
-                `Cannot mint asset ${asset.name} with LightningWallet`
-            );
-        }
-
+    public async mint(satoshis: bigint): Promise<void> {
         const startingBalance = await this.getBalance();
         this.logger.debug("starting: ", startingBalance.toString());
 
-        const minimumExpectedBalance = BigInt(asset.quantity);
+        const minimumExpectedBalance = satoshis;
         this.logger.debug("min expected: ", minimumExpectedBalance.toString());
 
         await this.bitcoinWallet.mintToAddress(
