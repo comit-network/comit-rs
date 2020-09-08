@@ -1,25 +1,30 @@
 use crate::{
     bitcoin::{Address, Amount, Client, Network, WalletInfoResponse},
     seed::Seed,
-    SwapId,
 };
 use ::bitcoin::{
     hashes::{sha256, Hash, HashEngine},
     secp256k1::SecretKey,
-    util::bip32::{ChainCode, ExtendedPrivKey},
+    util::bip32::{ChainCode, ChildNumber, ExtendedPrivKey},
     PrivateKey, Transaction, Txid,
 };
+use bitcoin::util::bip32::DerivationPath;
+use std::str::FromStr;
+use std::sync::atomic::{AtomicU32, Ordering};
 use url::Url;
 
 const BITCOIND_DEFAULT_EXTERNAL_DERIVATION_PATH: &str = "/0h/0h/*h";
 const BITCOIND_DEFAULT_INTERNAL_DERIVATION_PATH: &str = "/0h/1h/*h";
+const TRANSIENT_DERIVATION_PATH: &str = "m/0'/9939'";
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Wallet {
     /// The wallet is named `nectar_x` with `x` being the first 4 bytes of the hash of the seed
     name: String,
     bitcoind_client: Client,
-    seed: Seed,
+    root_key: ExtendedPrivKey,
+    // This is the only field of this struct that should be mutable
+    transient_key_index: AtomicU32,
     pub network: Network,
 }
 
@@ -28,19 +33,23 @@ impl Wallet {
         let name = Wallet::gen_name(seed);
         let bitcoind_client = Client::new(url);
 
+        let root_key = Self::root_extended_private_key_from_seed(&seed, network);
+
+        // TODO: Load the `transient_key_index` from the DB.
         let wallet = Wallet {
             name,
             bitcoind_client,
-            seed,
+            root_key,
+            transient_key_index: 0.into(),
             network,
         };
 
-        wallet.init().await?;
+        wallet.init(seed).await?;
 
         Ok(wallet)
     }
 
-    async fn init(&self) -> anyhow::Result<()> {
+    async fn init(&self, seed: Seed) -> anyhow::Result<()> {
         let info = self.info().await;
 
         // We assume the wallet present with the same name has the
@@ -52,7 +61,7 @@ impl Wallet {
                     .create_wallet(&self.name, None, Some(true), None, None)
                     .await?;
 
-                let wif = self.seed_as_wif();
+                let wif = self.seed_as_wif(seed);
 
                 self.bitcoind_client
                     .set_hd_seed(&self.name, Some(true), Some(wif))
@@ -66,7 +75,7 @@ impl Wallet {
                 hd_seed_id: None, ..
             }) => {
                 // The wallet may have been previously created, but the `sethdseed` call may have failed
-                let wif = self.seed_as_wif();
+                let wif = self.seed_as_wif(seed);
 
                 self.bitcoind_client
                     .set_hd_seed(&self.name, Some(true), Some(wif))
@@ -80,16 +89,15 @@ impl Wallet {
         }
     }
 
-    pub fn derive_transient_sk(&self, swap_id: SwapId) -> SecretKey {
-        let mut engine = sha256::HashEngine::default();
-
-        engine.input(&self.seed.bytes());
-        engine.input(swap_id.as_bytes());
-        engine.input(b"TRANSIENT_KEY");
-
-        let hash = sha256::Hash::from_engine(engine);
-
-        SecretKey::from_slice(&hash.into_inner()).expect("any 32 bytes are a valid secret key")
+    /// Derive a new key under transient derivation path
+    pub fn derive_transient_sk(&self) -> anyhow::Result<SecretKey> {
+        let index = self.transient_key_index.fetch_add(1, Ordering::SeqCst);
+        let index = ChildNumber::from_hardened_idx(index)?;
+        let path = DerivationPath::from_str(TRANSIENT_DERIVATION_PATH)
+            .expect("Valid derivation path in cost")
+            .child(index);
+        let ext_key = self.root_key.derive_priv(&crate::SECP, &path)?;
+        Ok(ext_key.private_key.key)
     }
 
     pub async fn info(&self) -> anyhow::Result<WalletInfoResponse> {
@@ -122,8 +130,8 @@ impl Wallet {
     /// is NOT used as a private key in bitcoin. See `root_extended_private_key` to get the
     /// root private key of the bip32 hd wallet.
     // TODO: check the network against bitcoind in a non-failing manner (just log)
-    pub fn seed_as_wif(&self) -> String {
-        let key = self.seed.as_secret_key();
+    pub fn seed_as_wif(&self, seed: Seed) -> String {
+        let key = seed.as_secret_key();
 
         let private_key = PrivateKey {
             compressed: true,
@@ -156,7 +164,10 @@ impl Wallet {
 
     /// Wallet descriptors as specified in https://github.com/bitcoin/bitcoin/blob/master/doc/descriptors.md
     pub fn descriptors(&self) -> Vec<String> {
-        Self::descriptors_from_seed(&self.seed, self.network)
+        Self::hd_paths()
+            .iter()
+            .map(|path| format!("wpkh({}{})", self.root_key, path))
+            .collect()
     }
 
     pub fn descriptors_from_seed(seed: &Seed, network: Network) -> Vec<String> {
@@ -334,11 +345,7 @@ mod docker_tests {
             .unwrap();
 
         let key = line.split_ascii_whitespace().last().unwrap();
-        assert_eq!(
-            key,
-            &Wallet::root_extended_private_key_from_seed(&wallet.seed, Network::Regtest)
-                .to_string()
-        );
+        assert_eq!(key, &wallet.root_key.to_string());
     }
 
     #[tokio::test]

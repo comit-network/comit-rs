@@ -297,10 +297,16 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::Be
                 let secret_hash = self.derive_secret_hash(swap_id);
 
                 let ethereum_identity = self.ethereum_wallet.account();
-                let bitcoin_identity = identity::Bitcoin::from_secret_key(
-                    &crate::SECP,
-                    &self.bitcoin_wallet.derive_transient_sk(swap_id),
-                );
+                let bitcoin_transient_sk = match self.bitcoin_wallet.derive_transient_sk() {
+                    Ok(sk) => sk,
+                    Err(err) => {
+                        tracing::error!("Could not derive Bitcoin transient key: {:?}", err);
+                        return;
+                    }
+                };
+
+                let bitcoin_identity =
+                    identity::Bitcoin::from_secret_key(&crate::SECP, &bitcoin_transient_sk);
 
                 let erc20_quantity = quantity.as_sat() * price;
 
@@ -466,14 +472,21 @@ impl
                     Utc,
                 );
 
-                let transient_sk = self.bitcoin_wallet.derive_transient_sk(swap_id);
+                let bitcoin_transient_sk = match self.bitcoin_wallet.derive_transient_sk() {
+                    Ok(sk) => sk,
+                    Err(err) => {
+                        tracing::error!("Could not derive Bitcoin transient key: {:?}", err);
+                        return;
+                    }
+                };
+
                 let swap_kind = match (exec_swap.our_role, exec_swap.swap_protocol) {
                     // Sell
                     (Role::Alice, setup_swap::SwapProtocol::HbitHerc20) => {
                         SwapKind::HbitHerc20(SwapParams {
                             hbit_params: crate::swap::hbit::Params::new(
                                 exec_swap.hbit,
-                                transient_sk,
+                                bitcoin_transient_sk,
                             ),
                             herc20_params: crate::swap::herc20::Params {
                                 asset: exec_swap.herc20.asset.clone(),
@@ -496,7 +509,7 @@ impl
                         SwapKind::HbitHerc20(SwapParams {
                             hbit_params: crate::swap::hbit::Params::new(
                                 exec_swap.hbit,
-                                transient_sk,
+                                bitcoin_transient_sk,
                             ),
                             herc20_params: crate::swap::herc20::Params {
                                 asset: exec_swap.herc20.asset.clone(),
@@ -519,7 +532,7 @@ impl
                         SwapKind::Herc20Hbit(SwapParams {
                             hbit_params: crate::swap::hbit::Params::new(
                                 exec_swap.hbit,
-                                transient_sk,
+                                bitcoin_transient_sk,
                             ),
                             herc20_params: crate::swap::herc20::Params {
                                 asset: exec_swap.herc20.asset.clone(),
@@ -542,7 +555,7 @@ impl
                         SwapKind::Herc20Hbit(SwapParams {
                             hbit_params: crate::swap::hbit::Params::new(
                                 exec_swap.hbit,
-                                transient_sk,
+                                bitcoin_transient_sk,
                             ),
                             herc20_params: crate::swap::herc20::Params {
                                 asset: exec_swap.herc20.asset.clone(),
