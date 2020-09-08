@@ -2,12 +2,12 @@ import crypto from "crypto";
 import { Logger } from "log4js";
 import BitcoinRpcClient from "bitcoin-core";
 import { toBitcoin, toSatoshi } from "satoshi-bitcoin";
-import { pollUntilMinted, Wallet } from "./index";
-import { Asset } from "../asset";
 import axios, { AxiosError, AxiosInstance, Method } from "axios";
 import { BitcoinNodeConfig } from "../environment";
+import { pollUntilMinted } from "./index";
 
-export interface BitcoinWallet extends Wallet {
+export interface BitcoinWallet {
+    MaximumFee: bigint;
     mintToAddress(
         minimumExpectedBalance: bigint,
         toAddress: string
@@ -97,37 +97,6 @@ export class BitcoindWallet implements BitcoinWallet {
             async () => this.getBalance(),
             BigInt(expectedBalance)
         );
-    }
-
-    public async mint(asset: Asset): Promise<void> {
-        if (asset.name !== "bitcoin") {
-            throw new Error(
-                `Cannot mint asset ${asset.name} with BitcoinWallet`
-            );
-        }
-
-        const startingBalance = await this.getBalance();
-
-        const minimumExpectedBalance = BigInt(asset.quantity);
-
-        await this.mintToAddress(
-            minimumExpectedBalance,
-            await this.getAddress()
-        );
-
-        await pollUntilMinted(
-            async () => this.getBalance(),
-            startingBalance + minimumExpectedBalance
-        );
-    }
-
-    public async getBalanceByAsset(asset: Asset): Promise<bigint> {
-        if (asset.name !== "bitcoin") {
-            throw new Error(
-                `Cannot read balance for asset ${asset.name} with BitcoinWallet`
-            );
-        }
-        return this.getBalance();
     }
 
     public async getBalance(): Promise<bigint> {

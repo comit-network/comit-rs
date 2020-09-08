@@ -1,11 +1,9 @@
 import { BigNumber, Contract, ethers } from "ethers";
-import { Wallet } from "./index";
 import { Logger } from "log4js";
-import { Asset } from "../asset";
 import erc20 from "../../ethereum_abi/erc20.json";
 import { EventFragment, FunctionFragment } from "ethers/lib/utils";
 
-export interface EthereumWallet extends Wallet {
+export interface EthereumWallet {
     getAccount(): string;
     deployErc20TokenContract(): Promise<string>;
     deployContract(
@@ -26,8 +24,6 @@ export interface EthereumWallet extends Wallet {
 }
 
 export class Web3EthereumWallet implements EthereumWallet {
-    public MaximumFee = BigInt(0);
-
     private constructor(
         private readonly wallet: ethers.Wallet,
         private readonly logger: Logger,
@@ -152,19 +148,6 @@ export class Web3EthereumWallet implements EthereumWallet {
             1
         );
         return transactionReceipt.contractAddress;
-    }
-
-    public async getBalanceByAsset(asset: Asset): Promise<bigint> {
-        switch (asset.name) {
-            case "ether":
-                return this.getEtherBalance();
-            case "erc20":
-                return this.getErc20Balance(asset.tokenContract);
-            default:
-                throw new Error(
-                    `Cannot read balance for asset ${asset.name} with EthereumWallet`
-                );
-        }
     }
 
     public getAccount(): string {

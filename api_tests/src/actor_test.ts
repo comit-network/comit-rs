@@ -2,7 +2,6 @@ import { Role } from "./actors";
 import pTimeout from "p-timeout";
 import { HarnessGlobal, LedgerConfig } from "./environment";
 import { CndActor } from "./actors/cnd_actor";
-import ProvidesCallback = jest.ProvidesCallback;
 import { Logger } from "log4js";
 import { BitcoindWallet, BitcoinWallet } from "./wallets/bitcoin";
 import {
@@ -16,6 +15,7 @@ import { LightningWallet } from "./wallets/lightning";
 import { E2ETestActorConfig } from "./config";
 import { merge } from "lodash";
 import { CndInstance } from "./environment/cnd_instance";
+import ProvidesCallback = jest.ProvidesCallback;
 
 declare var global: HarnessGlobal;
 
@@ -122,7 +122,7 @@ async function newCndActor(role: Role) {
     const wallets = new Wallets({
         bitcoin: await bitcoinWallet,
         ethereum: await ethereumWallet,
-        lightning: newLightningWallet(global.lndWallets, role, logger),
+        lightning: newLightningWallet(global.lndWallets, role),
     });
     await cndStarting;
 
@@ -136,7 +136,7 @@ async function newBitcoinWallet(
     const bitcoinConfig = ledgerConfig.bitcoin;
     return bitcoinConfig
         ? BitcoindWallet.newInstance(bitcoinConfig, logger)
-        : Promise.resolve(newBitcoinStubWallet(logger));
+        : Promise.resolve(newBitcoinStubWallet());
 }
 
 async function newEthereumWallet(
@@ -151,20 +151,19 @@ async function newEthereumWallet(
               ethereumConfig.chain_id,
               ethereumConfig.devAccount
           )
-        : Promise.resolve(newEthereumStubWallet(logger));
+        : Promise.resolve(newEthereumStubWallet());
 }
 
 function newLightningWallet(
     lightningWallets: { alice?: LightningWallet; bob?: LightningWallet },
-    actor: Role,
-    logger: Logger
+    actor: Role
 ): LightningWallet {
     switch (actor) {
         case "Alice": {
-            return lightningWallets.alice || newLightningStubWallet(logger);
+            return lightningWallets.alice || newLightningStubWallet();
         }
         case "Bob": {
-            return lightningWallets.bob || newLightningStubWallet(logger);
+            return lightningWallets.bob || newLightningStubWallet();
         }
     }
 }

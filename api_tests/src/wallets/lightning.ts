@@ -1,5 +1,4 @@
-import { pollUntilMinted, Wallet } from "./index";
-import { Asset } from "../asset";
+import { pollUntilMinted } from "./index";
 import { BitcoinWallet } from "./bitcoin";
 import { sleep } from "../utils";
 import {
@@ -14,7 +13,7 @@ import { Logger } from "log4js";
 import { Lnd } from "./lnd";
 import { LightningNodeConfig } from "../environment";
 
-export interface LightningWallet extends Wallet {
+export interface LightningWallet {
     readonly p2pSocket: string;
 
     newFundingAddress(): Promise<string>;
@@ -78,8 +77,6 @@ export class LndWallet implements LightningWallet {
         return new LndWallet(lnd, logger, bitcoinWallet, config.p2pSocket);
     }
 
-    public MaximumFee = BigInt(0);
-
     private constructor(
         private readonly lnd: Lnd,
         private readonly logger: Logger,
@@ -109,16 +106,6 @@ export class LndWallet implements LightningWallet {
         return this.lnd.lnrpc
             .newAddress({ type: AddressType.NESTED_PUBKEY_HASH })
             .then((r) => r.address);
-    }
-
-    public async getBalanceByAsset(asset: Asset): Promise<bigint> {
-        if (asset.name !== "bitcoin") {
-            throw new Error(
-                `Cannot read balance for asset ${asset.name} with LightningWallet`
-            );
-        }
-
-        return this.getBalance();
     }
 
     public async getBalance(): Promise<bigint> {

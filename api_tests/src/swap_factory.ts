@@ -10,12 +10,12 @@
 import { CndActor } from "./actors/cnd_actor";
 import {
     HalbitHerc20Payload,
-    Herc20HalbitPayload,
-    HbitHerc20Payload,
-    Herc20HbitPayload,
     HalbitPayload,
-    Herc20Payload,
+    HbitHerc20Payload,
     HbitPayload,
+    Herc20HalbitPayload,
+    Herc20HbitPayload,
+    Herc20Payload,
     Peer,
 } from "./cnd_client/payload";
 import { defaultExpiries, nowExpiries } from "./actors/defaults";
