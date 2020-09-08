@@ -139,13 +139,6 @@ export class LndWallet implements LightningWallet {
         return walletBalance + channelBalance;
     }
 
-    // This function does not have its place on a Wallet
-    public async getBlockchainTime(): Promise<number> {
-        throw new Error(
-            "getBlockchainTime should not be called for LightningWallet"
-        );
-    }
-
     public async connectPeer(toWallet: LightningWallet) {
         const pubkey = await toWallet.getPubkey();
         const host = toWallet.p2pSocket;

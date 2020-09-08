@@ -127,14 +127,6 @@ export class BitcoindWallet implements BitcoinWallet {
         return BigInt(toSatoshi(await this.getBalance()));
     }
 
-    public async getBlockchainTime(): Promise<number> {
-        const res = await this.rpcClient.request({
-            data: { jsonrpc: "1.0", method: "getblockchaininfo", params: [] },
-        });
-
-        return res.data.result.mediantime;
-    }
-
     public async getBalance(): Promise<number> {
         const res = await this.rpcClient.request({
             data: { jsonrpc: "1.0", method: "getbalance", params: [] },

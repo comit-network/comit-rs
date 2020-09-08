@@ -239,15 +239,6 @@ export class Web3EthereumWallet implements EthereumWallet {
         return balance;
     }
 
-    public async getBlockchainTime(): Promise<number> {
-        const block = await this.provider.send("eth_getBlockByNumber", [
-            "latest",
-            false,
-        ]);
-
-        return block.timestamp;
-    }
-
     public getAccount(): string {
         return this.wallet.address;
     }

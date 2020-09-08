@@ -15,7 +15,6 @@ export interface Wallet {
     MaximumFee: bigint;
     mint(asset: Asset): Promise<void>;
     getBalanceByAsset(asset: Asset): Promise<bigint>;
-    getBlockchainTime(): Promise<number>;
 }
 
 export class Wallets {
