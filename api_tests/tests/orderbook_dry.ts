@@ -77,7 +77,7 @@ test(
 );
 
 test(
-    "given_alice_makes_an_order_when_fully_matched_against_bobs_order_then_settling_says_100",
+    "given_alice_makes_an_order_when_fully_matched_against_bobs_order_then_settling_says_quantity",
     twoActorTest(async ({ alice, bob }) => {
         await alice.connect(bob);
         const aliceHref = await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
@@ -89,16 +89,32 @@ test(
             alice.fetchOrder(aliceHref).then((r) => r.properties)
         ).resolves.toMatchObject({
             state: {
-                open: "0.00",
-                settling: "1.00",
+                open: {
+                    currency: "BTC",
+                    value: "0",
+                    decimals: 8,
+                },
+                settling: {
+                    currency: "BTC",
+                    value: "20000000",
+                    decimals: 8,
+                },
             },
         });
         await expect(
             bob.fetchOrder(bobHref).then((r) => r.properties)
         ).resolves.toMatchObject({
             state: {
-                open: "0.00",
-                settling: "1.00",
+                open: {
+                    currency: "BTC",
+                    value: "0",
+                    decimals: 8,
+                },
+                settling: {
+                    currency: "BTC",
+                    value: "20000000",
+                    decimals: 8,
+                },
             },
         });
     })
@@ -125,7 +141,11 @@ test(
                 decimals: 18,
             },
             state: {
-                open: "1.00",
+                open: {
+                    currency: "BTC",
+                    value: "20000000",
+                    decimals: 8,
+                },
             },
         });
     })
@@ -160,8 +180,16 @@ test(
             alice.fetchOrder(href).then((r) => r.properties)
         ).resolves.toMatchObject({
             state: {
-                open: "0.00",
-                cancelled: "1.00",
+                open: {
+                    currency: "BTC",
+                    value: "0",
+                    decimals: 8,
+                },
+                cancelled: {
+                    currency: "BTC",
+                    value: "20000000",
+                    decimals: 8,
+                },
             },
         });
         await expect(

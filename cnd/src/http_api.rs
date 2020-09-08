@@ -32,9 +32,9 @@ use crate::{
 };
 use anyhow::Result;
 use chrono::Utc;
-use comit::{OrderId, Position, Price, Quantity};
+use comit::{order::btc_zero, OrderId, Position, Price, Quantity};
 use libp2p::{Multiaddr, PeerId};
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use warp::http::Method;
 
 /// Object representing the data of a POST request for creating a swap.
@@ -93,17 +93,17 @@ impl From<(tables::Order, tables::BtcDaiOrder)> for OrderProperties {
             price: Amount::from(btc_dai_order.price),
             quantity: Amount::from(btc_dai_order.quantity),
             state: State::new(
-                order.open,
-                order.closed,
-                order.settling,
-                order.failed,
-                order.cancelled,
+                Amount::from(btc_dai_order.open),
+                Amount::from(btc_dai_order.closed),
+                Amount::from(btc_dai_order.settling),
+                Amount::from(btc_dai_order.failed),
+                Amount::from(btc_dai_order.cancelled),
             ),
         }
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 #[serde(tag = "currency")]
 pub enum Amount {
     #[serde(rename = "BTC")]
@@ -143,39 +143,30 @@ impl Amount {
 
 #[derive(Serialize)]
 struct State {
-    #[serde(serialize_with = "percent_string")]
-    open: u8,
-    #[serde(serialize_with = "percent_string")]
-    closed: u8,
-    #[serde(serialize_with = "percent_string")]
-    settling: u8,
-    #[serde(serialize_with = "percent_string")]
-    failed: u8,
-    #[serde(serialize_with = "percent_string")]
-    cancelled: u8,
+    open: Amount,
+    closed: Amount,
+    settling: Amount,
+    failed: Amount,
+    cancelled: Amount,
 }
 
 impl State {
     #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)] // we only store positive values in the DB ranging from 0 - 100
-    fn new(open: i32, closed: i32, settling: i32, failed: i32, cancelled: i32) -> Self {
+    fn new(
+        open: Amount,
+        closed: Amount,
+        settling: Amount,
+        failed: Amount,
+        cancelled: Amount,
+    ) -> Self {
         Self {
-            open: open as u8,
-            closed: closed as u8,
-            settling: settling as u8,
-            failed: failed as u8,
-            cancelled: cancelled as u8,
+            open,
+            closed,
+            settling,
+            failed,
+            cancelled,
         }
     }
-}
-
-fn percent_string<S>(value: &u8, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    #[allow(clippy::cast_precision_loss)] // we only deal with very small values here (0 - 100)
-    let percent = (*value as f32) / 100f32;
-
-    serializer.serialize_str(&format!("{:.2}", percent))
 }
 
 fn make_order_entity(properties: OrderProperties) -> Result<siren::Entity> {
@@ -189,7 +180,7 @@ fn make_order_entity(properties: OrderProperties) -> Result<siren::Entity> {
 }
 
 fn cancel_action(order: &OrderProperties) -> Option<siren::Action> {
-    if order.state.open > 0 {
+    if order.state.open != Amount::btc(btc_zero().to_inner()) {
         Some(siren::Action {
             name: "cancel".to_string(),
             class: vec![],
@@ -526,11 +517,11 @@ mod tests {
             price: Amount::dai(Erc20Quantity::from_wei_dec_str("9100000000000000000000").unwrap()),
             quantity: Amount::btc(Bitcoin::from_sat(10000000)),
             state: State {
-                open: 30,
-                closed: 10,
-                settling: 0,
-                failed: 60,
-                cancelled: 0,
+                open: Amount::btc(Bitcoin::from_sat(3000000)),
+                closed: Amount::btc(Bitcoin::from_sat(1000000)),
+                settling: Amount::btc(Bitcoin::from_sat(0)),
+                failed: Amount::btc(Bitcoin::from_sat(6000000)),
+                cancelled: Amount::btc(Bitcoin::from_sat(0)),
             },
         };
 
@@ -552,11 +543,31 @@ mod tests {
     "decimals": 8
   },
   "state": {
-    "open": "0.30",
-    "closed": "0.10",
-    "settling": "0.00",
-    "failed": "0.60",
-    "cancelled": "0.00"
+    "open": {
+      "currency": "BTC",
+      "value": "3000000",
+      "decimals": 8
+    },
+    "closed": {
+      "currency": "BTC",
+      "value": "1000000",
+      "decimals": 8
+    },
+    "settling": {
+      "currency": "BTC",
+      "value": "0",
+      "decimals": 8
+    },
+    "failed": {
+      "currency": "BTC",
+      "value": "6000000",
+      "decimals": 8
+    },
+    "cancelled": {
+      "currency": "BTC",
+      "value": "0",
+      "decimals": 8
+    }
   }
 }"#
         );

@@ -1,4 +1,8 @@
-use crate::{http_api::problem, network::Swarm, storage::Storage};
+use crate::{
+    http_api::problem,
+    network::Swarm,
+    storage::{BtcDaiOrder, Storage},
+};
 use anyhow::Result;
 use comit::OrderId;
 use futures::TryFutureExt;
@@ -24,7 +28,8 @@ async fn handler(order_id: OrderId, storage: Storage, swarm: Swarm) -> Result<im
     db.do_in_transaction(|conn| {
         use crate::storage::Order;
 
-        Order::by_order_id(conn, order_id)?.cancel(conn)?;
+        let order = Order::by_order_id(conn, order_id)?;
+        BtcDaiOrder::by_order(conn, &order)?.cancel(conn)?;
 
         Ok(())
     })

@@ -16,11 +16,11 @@ use crate::{
 use anyhow::{Context, Result};
 use chrono::NaiveDateTime;
 use comit::{
-    asset::Erc20Quantity, ethereum, ethereum::ChainId, ledger, OrderId, Position, Price, Quantity,
+    asset::Erc20Quantity, ethereum, ethereum::ChainId, ledger, order::btc_zero, OrderId, Position,
+    Price, Quantity,
 };
 use diesel::{prelude::*, RunQueryDsl};
 use libp2p::PeerId;
-use std::ops::Add;
 use time::OffsetDateTime;
 
 macro_rules! swap_id_fk {
@@ -361,11 +361,6 @@ pub struct Order {
     #[diesel(deserialize_as = "Text<Position>")]
     pub position: Position,
     pub created_at: i64,
-    pub open: i32,
-    pub closed: i32,
-    pub settling: i32,
-    pub failed: i32,
-    pub cancelled: i32,
 }
 
 impl Order {
@@ -377,50 +372,13 @@ impl Order {
 
         Ok(order)
     }
-
-    /// Marks the status of the current order as settling.
-    ///
-    /// Whilst we don't have partial order matching, this simply means updating
-    /// the percent of:
-    ///
-    /// - `open` to `0`
-    /// - `settling` to `100`
-    ///
-    /// Once we implement partial order matching, this will need to get more
-    /// sophisticated.
-    pub fn mark_as_settling(conn: &SqliteConnection, order: &Order) -> Result<()> {
-        let affected_rows = diesel::update(order)
-            .set((orders::settling.eq(100), orders::open.eq(0)))
-            .execute(conn)?;
-
-        if affected_rows == 0 {
-            anyhow::bail!("failed to mark order {} as settling", order.order_id)
-        }
-
-        Ok(())
-    }
-
-    pub fn cancel(&self, conn: &SqliteConnection) -> Result<()> {
-        if self.open == 0 {
-            anyhow::bail!(NotOpen(self.order_id))
-        }
-
-        let affected_rows = diesel::update(self)
-            .set((orders::cancelled.eq(self.open), orders::open.eq(0)))
-            .execute(conn)?;
-
-        if affected_rows == 0 {
-            anyhow::bail!("failed to mark order {} as cancelled", self.order_id)
-        }
-
-        Ok(())
-    }
 }
 
 pub fn all_open_btc_dai_orders(conn: &SqliteConnection) -> Result<Vec<(Order, BtcDaiOrder)>> {
     let orders = orders::table
         .inner_join(btc_dai_orders::table)
-        .filter(orders::open.add(orders::settling).gt(0))
+        .filter(btc_dai_orders::open.ne(Text::<Satoshis>(btc_zero().to_inner().into())))
+        .or_filter(btc_dai_orders::settling.ne(Text::<Satoshis>(btc_zero().to_inner().into())))
         .load::<(Order, BtcDaiOrder)>(conn)?;
 
     Ok(orders)
@@ -432,35 +390,14 @@ pub struct InsertableOrder {
     pub order_id: Text<OrderId>,
     pub position: Text<Position>,
     pub created_at: i64,
-    // TODO: Make a custom SQL type for this
-    pub open: i32,
-    pub closed: i32,
-    pub settling: i32,
-    pub failed: i32,
-    pub cancelled: i32,
 }
 
 impl InsertableOrder {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        order_id: OrderId,
-        position: Position,
-        created_at: OffsetDateTime,
-        open: i32,
-        closed: i32,
-        settling: i32,
-        failed: i32,
-        cancelled: i32,
-    ) -> Self {
+    pub fn new(order_id: OrderId, position: Position, created_at: OffsetDateTime) -> Self {
         Self {
             order_id: Text(order_id),
             position: Text(position),
             created_at: created_at.timestamp(),
-            open,
-            closed,
-            settling,
-            failed,
-            cancelled,
         }
     }
 
@@ -490,6 +427,16 @@ pub struct BtcDaiOrder {
     pub quantity: Quantity<asset::Bitcoin>,
     #[diesel(deserialize_as = "Text<WeiPerSat>")]
     pub price: Price<asset::Bitcoin, Erc20Quantity>,
+    #[diesel(deserialize_as = "Text<Satoshis>")]
+    pub open: Quantity<asset::Bitcoin>,
+    #[diesel(deserialize_as = "Text<Satoshis>")]
+    pub closed: Quantity<asset::Bitcoin>,
+    #[diesel(deserialize_as = "Text<Satoshis>")]
+    pub settling: Quantity<asset::Bitcoin>,
+    #[diesel(deserialize_as = "Text<Satoshis>")]
+    pub failed: Quantity<asset::Bitcoin>,
+    #[diesel(deserialize_as = "Text<Satoshis>")]
+    pub cancelled: Quantity<asset::Bitcoin>,
 }
 
 impl BtcDaiOrder {
@@ -500,6 +447,47 @@ impl BtcDaiOrder {
 
         Ok(params)
     }
+
+    /// Move the amount that is settling from open to settling.
+    ///
+    /// Whilst we don't have partial order matching, this simply means updating
+    /// `settling` to the amount of `open` and updating `open` to `0`.
+    ///
+    /// Once we implement partial order matching, this will need to get more
+    /// sophisticated.
+    pub fn mark_as_settling(&self, conn: &SqliteConnection) -> Result<()> {
+        let affected_rows = diesel::update(self)
+            .set((
+                btc_dai_orders::settling.eq(Text::<Satoshis>(self.open.to_inner().into())),
+                btc_dai_orders::open.eq(Text::<Satoshis>(btc_zero().to_inner().into())),
+            ))
+            .execute(conn)?;
+
+        if affected_rows == 0 {
+            anyhow::bail!("failed to mark order {} as settling", self.order_id)
+        }
+
+        Ok(())
+    }
+
+    pub fn cancel(&self, conn: &SqliteConnection) -> Result<()> {
+        if self.open == btc_zero() {
+            anyhow::bail!(NotOpen(self.order_id))
+        }
+
+        let affected_rows = diesel::update(self)
+            .set((
+                btc_dai_orders::cancelled.eq(Text::<Satoshis>(self.open.to_inner().into())),
+                btc_dai_orders::open.eq(Text::<Satoshis>(btc_zero().to_inner().into())),
+            ))
+            .execute(conn)?;
+
+        if affected_rows == 0 {
+            anyhow::bail!("failed to mark order {} as cancelled", self.order_id)
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Insertable, Clone, Debug)]
@@ -508,14 +496,34 @@ pub struct InsertableBtcDaiOrder {
     pub order_id: i32,
     pub quantity: Text<Satoshis>,
     pub price: Text<Erc20Amount>,
+    pub open: Text<Satoshis>,
+    pub closed: Text<Satoshis>,
+    pub settling: Text<Satoshis>,
+    pub failed: Text<Satoshis>,
+    pub cancelled: Text<Satoshis>,
 }
 
 impl InsertableBtcDaiOrder {
-    pub fn new(order_fk: i32, quantity: asset::Bitcoin, price: Erc20Quantity) -> Self {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        order_fk: i32,
+        quantity: asset::Bitcoin,
+        price: Erc20Quantity,
+        open: asset::Bitcoin,
+        closed: asset::Bitcoin,
+        settling: asset::Bitcoin,
+        failed: asset::Bitcoin,
+        cancelled: asset::Bitcoin,
+    ) -> Self {
         Self {
             order_id: order_fk,
             quantity: Text(quantity.into()),
             price: Text(price.into()),
+            open: Text(open.into()),
+            closed: Text(closed.into()),
+            settling: Text(settling.into()),
+            failed: Text(failed.into()),
+            cancelled: Text(cancelled.into()),
         }
     }
 

@@ -3,8 +3,8 @@ use crate::{
     network::peer_tracker::PeerTracker,
     spawn,
     storage::{
-        ForSwap, InsertableOrderSwap, InsertableSecretHash, Load, Order, OrderHbitParams, RootSeed,
-        Save, Storage, SwapContext,
+        BtcDaiOrder, ForSwap, InsertableOrderSwap, InsertableSecretHash, Load, Order,
+        OrderHbitParams, RootSeed, Save, Storage, SwapContext,
     },
     ProtocolSpawner,
 };
@@ -320,7 +320,8 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<setup_swap::BehaviourOutEvent<S
                                 insertable_herc20(swap_pk).insert(conn)?;
 
                                 let order = Order::by_order_id(conn, order_id)?;
-                                Order::mark_as_settling(conn, &order)?;
+                                BtcDaiOrder::by_order(conn, &order)?.mark_as_settling(conn)?;
+
                                 InsertableOrderSwap::new(swap_pk, order.id).insert(conn)?;
                                 let order_hbit_params = OrderHbitParams::by_order(conn, &order)?;
                                 insertable_hbit(
