@@ -62,7 +62,7 @@ impl Swarm {
             database,
         );
 
-        let local_key_pair = behaviour.key_pair();
+        let local_key_pair = behaviour.identity();
         let local_peer_id = behaviour.peer_id();
 
         let transport = transport::build_transport(local_key_pair)?;
@@ -155,9 +155,7 @@ pub struct Nectar {
     #[behaviour(ignore)]
     seed: Seed,
     #[behaviour(ignore)]
-    key_pair: Keypair,
-    #[behaviour(ignore)]
-    peer_id: PeerId,
+    identity: Keypair,
     #[behaviour(ignore)]
     events: VecDeque<Event>,
     #[behaviour(ignore)]
@@ -180,14 +178,13 @@ impl Nectar {
         ethereum_wallet: Arc<ethereum::Wallet>,
         database: Arc<Database>,
     ) -> Self {
-        let key_pair = seed.derive_key_pair();
-        let peer_id = PeerId::from(key_pair.public());
+        let identity = seed.derive_libp2p_identity();
+        let peer_id = PeerId::from(identity.public());
 
         Self {
             seed,
-            orderbook: comit::network::Orderbook::new(peer_id.clone(), key_pair.clone()),
-            key_pair,
-            peer_id,
+            orderbook: comit::network::Orderbook::new(peer_id, identity.clone()),
+            identity,
             setup_swap: Default::default(),
             events: VecDeque::new(),
             dai_contract_address,
@@ -197,12 +194,12 @@ impl Nectar {
         }
     }
 
-    pub fn key_pair(&self) -> Keypair {
-        self.key_pair.clone()
+    pub fn identity(&self) -> Keypair {
+        self.identity.clone()
     }
 
     pub fn peer_id(&self) -> PeerId {
-        self.peer_id.clone()
+        PeerId::from(self.identity.public())
     }
 
     fn publish(&mut self, order: BtcDaiOrder) {
@@ -645,11 +642,11 @@ impl Seed {
         self.0
     }
 
-    pub fn derive_key_pair(&self) -> libp2p::identity::Keypair {
+    pub fn derive_libp2p_identity(&self) -> libp2p::identity::Keypair {
         let mut engine = sha256::HashEngine::default();
 
         engine.input(&self.bytes());
-        engine.input(b"LIBP2P_KEYPAIR");
+        engine.input(b"LIBP2P_IDENTITY");
 
         let hash = sha256::Hash::from_engine(engine);
         let key =
