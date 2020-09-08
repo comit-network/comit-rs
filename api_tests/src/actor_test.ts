@@ -115,11 +115,7 @@ async function newCndActor(role: Role) {
     const cndStarting = cndInstance.start();
 
     const bitcoinWallet = newBitcoinWallet(ledgerConfig, logger);
-    const ethereumWallet = newEthereumWallet(
-        ledgerConfig,
-        global.gethLockDir,
-        logger
-    );
+    const ethereumWallet = newEthereumWallet(ledgerConfig, logger);
 
     // Await all of the Promises that we started. In JS, Promises are eager and hence already started evaluating. This is an attempt to improve the startup performance of an actor.
     const wallets = new Wallets({
@@ -144,17 +140,15 @@ async function newBitcoinWallet(
 
 async function newEthereumWallet(
     ledgerConfig: LedgerConfig,
-    ethereumLockDir: string,
     logger: Logger
 ): Promise<EthereumWallet> {
     const ethereumConfig = ledgerConfig.ethereum;
     return ethereumConfig
         ? Web3EthereumWallet.newInstance(
-              ethereumConfig.dev_account_key,
               ethereumConfig.rpc_url,
               logger,
-              ethereumLockDir,
-              ethereumConfig.chain_id
+              ethereumConfig.chain_id,
+              ethereumConfig.devAccount
           )
         : Promise.resolve(newEthereumStubWallet(logger));
 }

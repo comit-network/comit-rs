@@ -1,10 +1,7 @@
-import { promises as asyncFs } from "fs";
 import { BigNumber, Contract, ethers } from "ethers";
 import { Wallet } from "./index";
 import { Logger } from "log4js";
-import { lock } from "proper-lockfile";
 import { Asset } from "../asset";
-import path from "path";
 import erc20 from "../../ethereum_abi/erc20.json";
 import { EventFragment, FunctionFragment } from "ethers/lib/utils";
 
@@ -30,34 +27,25 @@ export class Web3EthereumWallet implements EthereumWallet {
     public MaximumFee = BigInt(0);
 
     private constructor(
-        private readonly devAccount: ethers.Wallet,
         private readonly wallet: ethers.Wallet,
         private readonly logger: Logger,
-        private readonly ethereumLockDir: string,
         private readonly provider: ethers.providers.JsonRpcProvider,
-        public readonly chainId: number
+        public readonly chainId: number,
+        private readonly devAccount: string
     ) {}
 
     public static async newInstance(
-        devAccountKey: string,
         rpcUrl: string,
         logger: Logger,
-        ethereumLockDir: string,
-        chainId: number
+        chainId: number,
+        devAccount: string
     ) {
-        const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-
-        const ethereumDevAccount = await ethers.Wallet.fromEncryptedJson(
-            devAccountKey,
-            ""
-        );
         return new Web3EthereumWallet(
-            ethereumDevAccount,
             ethers.Wallet.createRandom(),
             logger,
-            ethereumLockDir,
-            provider,
-            chainId
+            new ethers.providers.JsonRpcProvider(rpcUrl),
+            chainId,
+            devAccount
         );
     }
 
@@ -115,52 +103,15 @@ export class Web3EthereumWallet implements EthereumWallet {
     private async sendDevAccountTransaction(
         tx: ethers.providers.TransactionRequest
     ): Promise<ethers.providers.TransactionReceipt> {
-        const lockFile = path.join(
-            this.ethereumLockDir,
-            "ethereum-dev-account.lock"
-        );
-        await asyncFs.mkdir(lockFile, {
-            recursive: true,
-        });
+        const signer = this.provider.getSigner(this.devAccount);
+        const response = await signer.sendTransaction(tx);
 
-        const release = await lock(lockFile, {
-            retries: {
-                retries: 200,
-                factor: 1,
-                minTimeout: 100,
-            },
-        }).catch(() =>
-            Promise.reject(
-                new Error(
-                    `Failed to acquire lock on for sending transaction from Ethereum dev-account`
-                )
-            )
-        );
-
-        this.logger.debug(
-            "Acquired lock for ethereum-dev-account, sending transaction ",
-            tx
-        );
-
-        try {
-            return await this.sendTransaction(tx, this.devAccount);
-        } finally {
-            await release();
-        }
-
-        this.logger.debug("Lock for ethereum-dev-account account released.");
+        return this.assertSuccessful(response);
     }
 
-    private async sendTransaction(
-        tx: ethers.providers.TransactionRequest,
-        wallet: ethers.Wallet
+    private async assertSuccessful(
+        transactionResponse: ethers.providers.TransactionResponse
     ) {
-        tx.nonce = await this.provider.getTransactionCount(wallet.address);
-        const signedTx = await wallet.signTransaction(tx);
-        const transactionResponse = await this.provider.sendTransaction(
-            signedTx
-        );
-
         this.logger.debug(
             "Transaction: ",
             transactionResponse.hash,
@@ -182,7 +133,20 @@ export class Web3EthereumWallet implements EthereumWallet {
             " confirmed in block: ",
             transactionReceipt.blockHash
         );
+
         return transactionReceipt;
+    }
+
+    private async signAndSend(tx: ethers.providers.TransactionRequest) {
+        const nonce = await this.provider.getTransactionCount(
+            this.wallet.address
+        );
+        const signedTx = await this.wallet.signTransaction({
+            ...tx,
+            nonce,
+        });
+
+        return this.provider.sendTransaction(signedTx);
     }
 
     private async mintEther(quantity: bigint): Promise<void> {
@@ -284,12 +248,13 @@ export class Web3EthereumWallet implements EthereumWallet {
     ): Promise<ethers.providers.TransactionReceipt> {
         await this.assertNetwork(chainId);
         const value = BigNumber.from(amount.toString());
-        const transaction: ethers.providers.TransactionRequest = {
+        const response = await this.signAndSend({
             data,
             value,
             gasLimit,
-        };
-        return this.sendTransaction(transaction, this.wallet);
+        });
+
+        return this.assertSuccessful(response);
     }
 
     async callContract(
@@ -299,12 +264,13 @@ export class Web3EthereumWallet implements EthereumWallet {
         chainId: number
     ): Promise<ethers.providers.TransactionReceipt> {
         await this.assertNetwork(chainId);
-        const transaction: ethers.providers.TransactionRequest = {
+        const response = await this.signAndSend({
             data,
             to: contractAddress,
             gasLimit,
-        };
-        return this.sendTransaction(transaction, this.wallet);
+        });
+
+        return this.assertSuccessful(response);
     }
 
     async assertNetwork(expectedChainId: number): Promise<void> {

@@ -11,7 +11,6 @@ export interface HarnessGlobal extends Global.Global {
         bob?: LightningWallet;
     };
     tokenContract: string;
-    gethLockDir: string;
     cargoTargetDir: string;
     cndConfigOverrides: Partial<CndConfigFile>;
 
@@ -42,9 +41,9 @@ export interface LightningNodeConfig {
 }
 
 export interface EthereumNodeConfig {
+    devAccount: string;
     rpc_url: string;
     tokenContract: string;
-    dev_account_key: string;
     chain_id: number;
 }
 

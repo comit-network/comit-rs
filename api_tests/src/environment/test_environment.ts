@@ -105,7 +105,6 @@ export default class TestEnvironment extends NodeEnvironment {
 
             return dir;
         };
-        this.global.gethLockDir = await this.getLockDirectory("geth");
 
         this.logger.info("Starting up test environment");
 
@@ -230,13 +229,11 @@ export default class TestEnvironment extends NodeEnvironment {
         );
         const config = await this.startLedger(lockDir, geth, async (geth) => {
             const rpcUrl = geth.rpcUrl;
-            const devAccountKey = geth.devAccountKey();
             const erc20Wallet = await Web3EthereumWallet.newInstance(
-                devAccountKey,
                 rpcUrl,
                 this.logger,
-                lockDir,
-                geth.CHAIN_ID
+                geth.CHAIN_ID,
+                geth.devAccount
             );
             const erc20TokenContract = await erc20Wallet.deployErc20TokenContract();
 
@@ -247,8 +244,8 @@ export default class TestEnvironment extends NodeEnvironment {
 
             return {
                 rpc_url: rpcUrl,
+                devAccount: geth.devAccount,
                 tokenContract: erc20TokenContract,
-                dev_account_key: devAccountKey,
                 chain_id: geth.CHAIN_ID,
             };
         });
