@@ -191,6 +191,9 @@ nobootstrap=true
 ; Only wait 1 confirmation to open a channel
 bitcoin.defaultchanconfs=1
 
+; Allow to have several channels pending at the same time (default is 1)
+maxpendingchannels=10
+
 [Bitcoin]
 
 bitcoin.active=true
