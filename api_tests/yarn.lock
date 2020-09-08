@@ -1141,10 +1141,10 @@
   resolved "https://registry.yarnpkg.com/@types/tmp/-/tmp-0.2.0.tgz#e3f52b4d7397eaa9193592ef3fdd44dc0af4298c"
   integrity sha512-flgpHJjntpBAdJD43ShRosQvNC0ME97DCfGvZEDlAThQmnerRXrLbX6YgzRBQCZTthET9eAWFAMaYP0m0Y4HzQ==
 
-"@types/urijs@^1.19.11":
-  version "1.19.11"
-  resolved "https://registry.yarnpkg.com/@types/urijs/-/urijs-1.19.11.tgz#9cb7adb6f4866e0197c4dbb1d16739ad9ad51a05"
-  integrity sha512-nZ1MAYvftKvqeQpKYTdUHg6cjKDHD95n4hon7VqJl5KnhXrKUCmy009oy8N8uAaVFicdsTPnjV7HM4AUrtcF9g==
+"@types/urijs@^1.19.12":
+  version "1.19.12"
+  resolved "https://registry.yarnpkg.com/@types/urijs/-/urijs-1.19.12.tgz#eee14a0c4e4a92c13a5d0a45c87353257d6370d5"
+  integrity sha512-+BmVXyxXCmGuS177d6yj9zt3tBugh35ZIPgYTWctDf2/LwGirIWIyaH01dmTzxjro6LNiaYIIj3jveKetMmZ1A==
 
 "@types/yargs-parser@*":
   version "15.0.0"
