@@ -503,7 +503,7 @@ dependencies = [
  "tempfile",
  "testcontainers",
  "thiserror",
- "time 0.2.17",
+ "time 0.2.18",
  "tokio",
  "tokio-socks 0.3.0",
  "toml",
@@ -559,7 +559,7 @@ dependencies = [
  "strum_macros",
  "testcontainers",
  "thiserror",
- "time 0.2.17",
+ "time 0.2.18",
  "tokio",
  "tracing",
  "tracing-core",
@@ -3421,9 +3421,9 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.2.17"
+version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca7ec98a72285d12e0febb26f0847b12d54be24577618719df654c66cadab55d"
+checksum = "12785163ae8a1cbb52a5db39af4a5baabd3fe49f07f76f952f89d7e89e5ce531"
 dependencies = [
  "const_fn",
  "libc",
