@@ -21,6 +21,7 @@ export interface EthereumWallet extends Wallet {
         chainId: number
     ): Promise<ethers.providers.TransactionReceipt>;
     assertNetwork(expectedChainId: number): Promise<void>;
+    getErc20Balance(contractAddress: string): Promise<bigint>;
 }
 
 export class Web3EthereumWallet implements EthereumWallet {
@@ -196,7 +197,7 @@ export class Web3EthereumWallet implements EthereumWallet {
             case "ether":
                 return this.getEtherBalance();
             case "erc20":
-                return this.getErc20Balance(asset.tokenContract, 0);
+                return this.getErc20Balance(asset.tokenContract);
             default:
                 throw new Error(
                     `Cannot read balance for asset ${asset.name} with EthereumWallet`
@@ -214,30 +215,14 @@ export class Web3EthereumWallet implements EthereumWallet {
             .then((balance) => BigInt(balance.toString()));
     }
 
-    public async getErc20Balance(
-        contractAddress: string,
-        decimals?: number
-    ): Promise<bigint> {
+    public async getErc20Balance(contractAddress: string): Promise<bigint> {
         const abi = erc20 as (FunctionFragment | EventFragment)[];
         const contract = new Contract(contractAddress, abi, this.provider);
 
-        let dec;
-        if (decimals === undefined) {
-            try {
-                dec = await contract.decimals();
-            } catch (e) {
-                // decimals() not present on token contract, defaulting to 18
-                dec = 18;
-            }
-        } else {
-            dec = decimals;
-        }
-
         const strBalance = await contract.balanceOf(this.getAccount());
         const intBalance = BigNumber.from(strBalance);
-        const balance = intBalance.div(BigNumber.from(10).pow(dec));
 
-        return BigInt(balance.toString());
+        return BigInt(intBalance.toString());
     }
 
     async deployContract(
