@@ -4,16 +4,13 @@ import { BitcoinWallet } from "./bitcoin";
 import { sleep } from "../utils";
 import {
     AddressType,
-    Channel,
     GetInfoResponse,
     Invoice,
-    OpenStatusUpdate,
     PaymentStatus,
     Peer,
     SendResponse,
 } from "@radar/lnrpc";
 import { Logger } from "log4js";
-import pEvent from "p-event";
 import { Lnd } from "./lnd";
 import { LightningNodeConfig } from "../environment";
 
@@ -153,19 +150,12 @@ export class LndWallet implements LightningWallet {
         return response.peers ? response.peers : [];
     }
 
-    public async getChannels(): Promise<Channel[]> {
-        const listChannelsResponse = await this.lnd.lnrpc.listChannels();
-
-        return listChannelsResponse.channels;
-    }
-
     public async isSyncedToChain(): Promise<boolean> {
         return this.lnd.lnrpc.getInfo().then((r) => r.syncedToChain);
     }
 
     public async openChannel(toWallet: LightningWallet, quantity: number) {
         // First, need to check everyone is sync'd to the chain
-
         while (
             !(await this.isSyncedToChain()) ||
             !(await toWallet.isSyncedToChain())
@@ -175,46 +165,11 @@ export class LndWallet implements LightningWallet {
         }
 
         const request = {
-            nodePubkey: Buffer.from(await toWallet.getPubkey(), "hex"),
+            nodePubkeyString: await toWallet.getPubkey(),
             localFundingAmount: quantity.toString(),
         };
-        const openChannel = this.lnd.lnrpc.openChannel(request);
 
-        openChannel.on("error", (err: any) => {
-            throw new Error(
-                `Error encountered for Open Channel: ${JSON.stringify(err)}`
-            );
-        });
-
-        this.logger.debug("Channel opened, waiting for confirmations");
-
-        let outpoint;
-        while (!outpoint) {
-            const status: OpenStatusUpdate = await pEvent(openChannel, "data");
-            try {
-                outpoint = outpointFromChannelStatusUpdate(status);
-            } catch (e) {
-                // Let's wait for another update
-            }
-        }
-
-        await this.pollUntilChannelIsOpen(outpoint);
-    }
-
-    private async pollUntilChannelIsOpen(outpoint: Outpoint): Promise<void> {
-        const { txId, vout } = outpoint;
-        const channels = await this.getChannels();
-        if (channels) {
-            for (const channel of channels) {
-                this.logger.debug(`Looking for channel ${txId}:${vout}`);
-                if (channel.channelPoint === `${txId}:${vout}`) {
-                    this.logger.debug("Found a channel:", channel);
-                    return;
-                }
-            }
-        }
-        await sleep(500);
-        return this.pollUntilChannelIsOpen(outpoint);
+        await this.lnd.lnrpc.openChannelSync(request);
     }
 
     async sendPayment(
@@ -349,40 +304,4 @@ export class LndWallet implements LightningWallet {
 export interface Outpoint {
     txId: string;
     vout: number;
-}
-
-function outpointFromChannelStatusUpdate(status: OpenStatusUpdate): Outpoint {
-    let txId;
-    let vout;
-
-    if (status.chanOpen) {
-        const {
-            fundingTxidStr,
-            fundingTxidBytes,
-            outputIndex,
-        } = status.chanOpen.channelPoint;
-        if (fundingTxidStr) {
-            txId = fundingTxidStr;
-        } else if (fundingTxidBytes) {
-            txId = fundingTxidBytes;
-        }
-        vout = outputIndex;
-    }
-
-    if (status.chanPending) {
-        txId = status.chanPending.txid;
-        vout = status.chanPending.outputIndex;
-    }
-
-    if (vout) {
-        if (typeof txId === "string") {
-            return { txId, vout };
-        } else if (txId) {
-            /// We reverse the endianness of the buffer to match the encoding of transaction ids returned in ListChannels
-            const txIdStr = txId.reverse().toString("hex");
-            return { txId: txIdStr, vout };
-        }
-    }
-
-    throw new Error(`OpenStatusUpdate is malformed: ${JSON.stringify(status)}`);
 }
