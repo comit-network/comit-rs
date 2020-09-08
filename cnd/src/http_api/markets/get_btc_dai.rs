@@ -20,20 +20,19 @@ pub fn route(swarm: Swarm) -> impl Filter<Extract = impl Reply, Error = Rejectio
         })
 }
 
-/// Retrieves "executable" orders: orders that have expiries that match the safe
+/// Retrieves viable orders: orders that have expiries that match the safe
 /// expiries determined by the expiries module.
 async fn handler(swarm: Swarm) -> Result<impl Reply> {
     let mut orders = siren::Entity::default();
     let local_peer_id = swarm.local_peer_id();
 
-    let executable_orders = facade
-        .swarm
+    let viable_orders = swarm
         .btc_dai_market()
         .await
         .into_iter()
-        .filter(|(_, order)| has_executable_expiries(order));
+        .filter(|(_, order)| has_viable_expiries(order));
 
-    for (maker, order) in executable_orders {
+    for (maker, order) in viable_orders {
         let market_item = siren::Entity::default()
             .with_properties(MarketItem {
                 id: order.id,
@@ -51,7 +50,7 @@ async fn handler(swarm: Swarm) -> Result<impl Reply> {
     Ok(reply::json(&orders))
 }
 
-pub fn has_executable_expiries(order: &BtcDaiOrder) -> bool {
+pub fn has_viable_expiries(order: &BtcDaiOrder) -> bool {
     match order.swap_protocol {
         SwapProtocol::HbitHerc20 {
             hbit_expiry_offset,
@@ -77,30 +76,30 @@ struct MarketItem {
 
 #[cfg(test)]
 mod tests {
-    use crate::http_api::markets::get_btc_dai::has_executable_expiries;
+    use crate::http_api::markets::get_btc_dai::has_viable_expiries;
     use comit::{asset, order::SwapProtocol, BtcDaiOrder, Position, Price, Quantity, Role};
     use spectral::{assert_that, prelude::MappingIterAssertions};
     use time::Duration;
 
     #[test]
-    fn filter_out_orders_with_unexectubale_expiries() {
-        let order_with_executable_expiries = order_with_executable_expiries();
+    fn filter_out_orders_with_unviable_expiries() {
+        let order_with_viable_expiries = order_with_viable_expiries();
         let unfiltered_orders = vec![
-            order_with_executable_expiries.clone(),
-            order_with_unexecutable_expiries(),
+            order_with_viable_expiries.clone(),
+            order_with_unviable_expiries(),
         ];
 
         let filtered_orders = unfiltered_orders
             .into_iter()
-            .filter(|order| has_executable_expiries(order))
+            .filter(|order| has_viable_expiries(order))
             .collect::<Vec<BtcDaiOrder>>();
 
         assert_eq!(filtered_orders.len(), 1);
         assert_that(&filtered_orders)
-            .matching_contains(|order| order_with_executable_expiries.id == order.id);
+            .matching_contains(|order| order_with_viable_expiries.id == order.id);
     }
 
-    fn order_with_executable_expiries() -> BtcDaiOrder {
+    fn order_with_viable_expiries() -> BtcDaiOrder {
         BtcDaiOrder::sell(
             Quantity::new(asset::Bitcoin::ZERO),
             Price::from_wei_per_sat(asset::Erc20Quantity::zero()),
@@ -108,18 +107,18 @@ mod tests {
         )
     }
 
-    fn order_with_unexecutable_expiries() -> BtcDaiOrder {
+    fn order_with_unviable_expiries() -> BtcDaiOrder {
         let unsafe_hbit_expiry_offset = Duration::zero();
         let unsafe_herc20_expiry_offset = Duration::zero();
 
         assert_ne!(
-            order_with_executable_expiries()
+            order_with_viable_expiries()
                 .swap_protocol
                 .hbit_expiry_offset(),
             unsafe_hbit_expiry_offset
         );
         assert_ne!(
-            order_with_executable_expiries()
+            order_with_viable_expiries()
                 .swap_protocol
                 .herc20_expiry_offset(),
             unsafe_herc20_expiry_offset
