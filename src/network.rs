@@ -1,6 +1,4 @@
-use crate::{
-    bitcoin, ethereum, ethereum::dai, order::BtcDaiOrderForm, swap::SwapKind, Seed, SwapId,
-};
+use crate::{bitcoin, ethereum, ethereum::dai, order::BtcDaiOrderForm, swap::SwapKind, SwapId};
 use ::bitcoin::hashes::{sha256, Hash, HashEngine};
 
 use comit::{
@@ -34,17 +32,21 @@ use crate::swap::{Database, SwapParams};
 use chrono::{NaiveDateTime, Utc};
 use time::{Duration, OffsetDateTime};
 
+pub const SEED_LENGTH: usize = 32;
+
 #[derive(derivative::Derivative)]
 #[derivative(Debug)]
 pub struct Swarm {
     #[derivative(Debug = "ignore")]
     inner: libp2p::Swarm<Nectar>,
     local_peer_id: PeerId,
+    #[derivative(Debug = "ignore")]
+    seed: Seed,
 }
 
 impl Swarm {
     pub fn new(
-        seed: &Seed,
+        seed: Seed,
         settings: &crate::config::Settings,
         bitcoin_wallet: Arc<bitcoin::Wallet>,
         ethereum_wallet: Arc<ethereum::Wallet>,
@@ -52,19 +54,18 @@ impl Swarm {
     ) -> anyhow::Result<Self> {
         use anyhow::Context as _;
 
-        let local_key_pair = derive_key_pair(seed);
-        let local_peer_id = PeerId::from(local_key_pair.public());
-
-        let transport = transport::build_transport(local_key_pair.clone())?;
-
         let behaviour = Nectar::new(
-            local_peer_id.clone(),
-            local_key_pair,
+            seed,
             settings.ethereum.chain.dai_contract_address(),
             bitcoin_wallet,
             ethereum_wallet,
             database,
         );
+
+        let local_key_pair = behaviour.identity();
+        let local_peer_id = behaviour.peer_id();
+
+        let transport = transport::build_transport(local_key_pair)?;
 
         let mut swarm =
             libp2p::swarm::SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
@@ -80,6 +81,7 @@ impl Swarm {
         Ok(Self {
             inner: swarm,
             local_peer_id,
+            seed,
         })
     }
 
@@ -151,6 +153,10 @@ pub struct Nectar {
     orderbook: orderbook::Orderbook,
     setup_swap: setup_swap::SetupSwap<SetupSwapContext>,
     #[behaviour(ignore)]
+    seed: Seed,
+    #[behaviour(ignore)]
+    identity: Keypair,
+    #[behaviour(ignore)]
     events: VecDeque<Event>,
     #[behaviour(ignore)]
     database: Arc<Database>,
@@ -166,15 +172,19 @@ pub struct Nectar {
 
 impl Nectar {
     fn new(
-        local_peer_id: PeerId,
-        local_key_pair: Keypair,
+        seed: Seed,
         dai_contract_address: ethereum::Address,
         bitcoin_wallet: Arc<bitcoin::Wallet>,
         ethereum_wallet: Arc<ethereum::Wallet>,
         database: Arc<Database>,
     ) -> Self {
+        let identity = seed.derive_libp2p_identity();
+        let peer_id = PeerId::from(identity.public());
+
         Self {
-            orderbook: comit::network::Orderbook::new(local_peer_id, local_key_pair),
+            seed,
+            orderbook: comit::network::Orderbook::new(peer_id, identity.clone()),
+            identity,
             setup_swap: Default::default(),
             events: VecDeque::new(),
             dai_contract_address,
@@ -184,26 +194,29 @@ impl Nectar {
         }
     }
 
+    pub fn identity(&self) -> Keypair {
+        self.identity.clone()
+    }
+
+    pub fn peer_id(&self) -> PeerId {
+        PeerId::from(self.identity.public())
+    }
+
     fn publish(&mut self, order: BtcDaiOrder) {
         self.orderbook.publish(order);
     }
 
-    fn seed(&self) -> Seed {
-        // todo: see if there is a better place to store the seed so it doesnt have to
-        // be pulled from bitcoin wallet
-        self.bitcoin_wallet.seed()
-    }
-
     fn derive_secret_hash(&self, swap_id: SwapId) -> SecretHash {
-        let secret: Secret =
-            Self::sha256_with_seed(self.seed(), &[b"SECRET", swap_id.as_bytes()]).into();
+        let secret: Secret = self
+            .sha256_with_seed(&[b"SECRET", swap_id.as_bytes()])
+            .into();
         SecretHash::new(secret)
     }
 
-    fn sha256_with_seed(seed: Seed, slices: &[&[u8]]) -> [u8; 32] {
+    fn sha256_with_seed(&self, slices: &[&[u8]]) -> [u8; 32] {
         let mut engine = sha256::HashEngine::default();
 
-        engine.input(&seed.bytes());
+        engine.input(&self.seed.bytes());
         engine.input(b"TRANSIENT_KEY");
         for slice in slices {
             engine.input(slice);
@@ -610,15 +623,36 @@ impl<'de> Deserialize<'de> for ActivePeer {
     }
 }
 
-fn derive_key_pair(seed: &Seed) -> libp2p::identity::Keypair {
-    let mut engine = sha256::HashEngine::default();
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub struct Seed([u8; SEED_LENGTH]);
 
-    engine.input(&seed.bytes());
-    engine.input(b"LIBP2P_KEYPAIR");
+impl Seed {
+    /// prefix "NETWORK" to the provided seed and apply sha256
+    pub fn new(seed: [u8; crate::seed::SEED_LENGTH]) -> Self {
+        let mut engine = sha256::HashEngine::default();
 
-    let hash = sha256::Hash::from_engine(engine);
-    let key = ed25519::SecretKey::from_bytes(hash.into_inner()).expect("we always pass 32 bytes");
-    libp2p::identity::Keypair::Ed25519(key.into())
+        engine.input(&seed);
+        engine.input(b"NETWORK");
+
+        let hash = sha256::Hash::from_engine(engine);
+        Self(hash.into_inner())
+    }
+
+    pub fn bytes(&self) -> [u8; SEED_LENGTH] {
+        self.0
+    }
+
+    pub fn derive_libp2p_identity(&self) -> libp2p::identity::Keypair {
+        let mut engine = sha256::HashEngine::default();
+
+        engine.input(&self.bytes());
+        engine.input(b"LIBP2P_IDENTITY");
+
+        let hash = sha256::Hash::from_engine(engine);
+        let key =
+            ed25519::SecretKey::from_bytes(hash.into_inner()).expect("we always pass 32 bytes");
+        libp2p::identity::Keypair::Ed25519(key.into())
+    }
 }
 
 mod transport {

@@ -47,7 +47,7 @@ pub async fn trade(
     let db = Arc::new(Database::new_test()?);
 
     let mut swarm = Swarm::new(
-        &seed,
+        network::Seed::new(seed.bytes()),
         &settings,
         Arc::clone(&bitcoin_wallet),
         Arc::clone(&ethereum_wallet),
