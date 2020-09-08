@@ -203,6 +203,6 @@ mod tests {
         let bytes = Bytes(vec![0u8, 1u8, 2u8, 3u8]);
 
         let tokens = quote!(#bytes);
-        assert_eq!(tokens.to_string(), "[ 0u8 , 1u8 , 2u8 , 3u8 ]");
+        assert_eq!(tokens.to_string(), "[0u8 , 1u8 , 2u8 , 3u8]");
     }
 }
