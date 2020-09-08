@@ -66,7 +66,10 @@ export class Web3EthereumWallet implements EthereumWallet {
             case "ether":
                 return this.mintEther(BigInt(asset.quantity));
             case "erc20":
-                return this.mintErc20(asset);
+                return this.mintErc20(
+                    BigInt(asset.quantity),
+                    asset.tokenContract
+                );
             default:
                 throw new Error(
                     `Cannot mint asset ${asset.name} with EthereumWallet`
@@ -74,13 +77,16 @@ export class Web3EthereumWallet implements EthereumWallet {
         }
     }
 
-    private async mintErc20(asset: Asset): Promise<void> {
+    private async mintErc20(
+        quantity: bigint,
+        tokenContract: string
+    ): Promise<void> {
         let toAddress = this.getAccount();
 
         const functionIdentifier = "40c10f19";
         toAddress = toAddress.replace(/^0x/, "").padStart(64, "0");
 
-        const bigNumber = ethers.BigNumber.from(asset.quantity);
+        const bigNumber = ethers.BigNumber.from(quantity);
         const hexAmount = bigNumber
             .toHexString()
             .replace(/^0x/, "")
@@ -88,7 +94,7 @@ export class Web3EthereumWallet implements EthereumWallet {
         const data = "0x" + functionIdentifier + toAddress + hexAmount;
 
         const tx: ethers.providers.TransactionRequest = {
-            to: asset.tokenContract,
+            to: tokenContract,
             gasLimit: "0x100000",
             value: "0x0",
             data,
@@ -98,9 +104,9 @@ export class Web3EthereumWallet implements EthereumWallet {
 
         this.logger.info(
             "Minted",
-            asset.quantity,
+            quantity,
             "erc20 tokens (",
-            asset.tokenContract,
+            tokenContract,
             ") for",
             toAddress
         );
