@@ -1,6 +1,6 @@
 use crate::{
     http_api::{make_order_entity, problem},
-    Facade,
+    storage::Storage,
 };
 use anyhow::Result;
 use comit::OrderId;
@@ -8,18 +8,18 @@ use futures::TryFutureExt;
 use warp::{Filter, Rejection, Reply};
 
 /// The warp filter for getting a single order.
-pub fn route(facade: Facade) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+pub fn route(storage: Storage) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::get()
         .and(warp::path!("orders" / OrderId))
         .and_then(move |order_id| {
-            handler(order_id, facade.clone())
+            handler(order_id, storage.clone())
                 .map_err(problem::from_anyhow)
                 .map_err(warp::reject::custom)
         })
 }
 
-async fn handler(order_id: OrderId, facade: Facade) -> Result<impl Reply> {
-    let db = &facade.storage.db;
+async fn handler(order_id: OrderId, storage: Storage) -> Result<impl Reply> {
+    let db = &storage.db;
     let properties = db
         .do_in_transaction(|conn| {
             use crate::storage::{BtcDaiOrder, Order};

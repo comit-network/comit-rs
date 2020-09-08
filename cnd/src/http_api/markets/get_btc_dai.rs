@@ -1,6 +1,6 @@
 use crate::{
-    facade::Facade,
     http_api::{problem, serde_peer_id, Amount},
+    network::Swarm,
 };
 use anyhow::{Context, Result};
 use comit::{OrderId, Position};
@@ -10,21 +10,21 @@ use serde::Serialize;
 use warp::{reply, Filter, Rejection, Reply};
 
 /// The warp filter for getting the BTC/DAI market view.
-pub fn route(facade: Facade) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+pub fn route(swarm: Swarm) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::get()
         .and(warp::path!("markets" / "BTC-DAI"))
         .and_then(move || {
-            handler(facade.clone())
+            handler(swarm.clone())
                 .map_err(problem::from_anyhow)
                 .map_err(warp::reject::custom)
         })
 }
 
-async fn handler(facade: Facade) -> Result<impl Reply> {
+async fn handler(swarm: Swarm) -> Result<impl Reply> {
     let mut orders = siren::Entity::default();
-    let local_peer_id = facade.swarm.local_peer_id();
+    let local_peer_id = swarm.local_peer_id();
 
-    for (maker, order) in facade.swarm.btc_dai_market().await {
+    for (maker, order) in swarm.btc_dai_market().await {
         let market_item = siren::Entity::default()
             .with_properties(MarketItem {
                 id: order.id,

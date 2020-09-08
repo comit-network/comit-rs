@@ -1,12 +1,11 @@
-use crate::{http_api::serde_peer_id, Facade};
+use crate::{http_api::serde_peer_id, network::Swarm};
 use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
 use warp::{Rejection, Reply};
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn get_peers(facade: Facade) -> Result<impl Reply, Rejection> {
-    let peers = facade
-        .swarm
+pub async fn get_peers(swarm: Swarm) -> Result<impl Reply, Rejection> {
+    let peers = swarm
         .connected_peers()
         .await
         .map(|(peer, addresses)| Peer {

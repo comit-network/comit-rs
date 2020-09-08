@@ -12,11 +12,12 @@ use crate::{
     config::Settings,
     ethereum,
     http_api::problem,
+    network::Swarm,
     storage::{
         InsertableBtcDaiOrder, InsertableOrder, InsertableOrderHbitParams,
-        InsertableOrderHerc20Params,
+        InsertableOrderHerc20Params, Storage,
     },
-    Facade, Role,
+    Role,
 };
 use anyhow::Result;
 use comit::{order::SwapProtocol, BtcDaiOrder, Position, Price, Quantity, Side};
@@ -27,22 +28,27 @@ use warp::{http::StatusCode, Filter, Rejection, Reply};
 
 /// The warp filter for making a new BTC/DAI order.
 pub fn route(
-    facade: Facade,
+    storage: Storage,
+    swarm: Swarm,
     settings: Settings,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::post()
         .and(warp::path!("orders" / "BTC-DAI"))
         .and(warp::body::json())
         .and_then(move |body| {
-            handler(body, facade.clone(), settings.clone())
+            handler(body, storage.clone(), swarm.clone(), settings.clone())
                 .map_err(problem::from_anyhow)
                 .map_err(warp::reject::custom)
         })
 }
 
-async fn handler(body: Body, facade: Facade, settings: Settings) -> Result<impl Reply> {
-    let db = facade.storage.db;
-    let swarm = facade.swarm;
+async fn handler(
+    body: Body,
+    storage: Storage,
+    swarm: Swarm,
+    settings: Settings,
+) -> Result<impl Reply> {
+    let db = storage.db;
 
     let order = BtcDaiOrder::new(
         body.position,

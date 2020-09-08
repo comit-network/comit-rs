@@ -10,31 +10,39 @@
 //!    action on the action endpoint e.g., "/swaps/:swap_id/fund"
 
 use crate::{
+    bitcoin,
+    connectors::Connectors,
+    ethereum,
     http_api::{
         action::ActionResponseBody, problem, route_factory, ActionName, AlphaAbsoluteExpiry,
         AlphaLedger, AlphaProtocol, BetaAbsoluteExpiry, BetaLedger, BetaProtocol, Events, GetRole,
         Ledger, Protocol, SwapEvent,
     },
-    storage::{Load, LoadAll},
-    DeployAction, Facade, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role,
+    storage::{Load, LoadAll, Storage},
+    DeployAction, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role,
 };
+use comit::Timestamp;
 use serde::Serialize;
 use warp::{http, Rejection, Reply};
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn get_swap(id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
-    handle_get_swap(id, facade)
+pub async fn get_swap(
+    id: LocalSwapId,
+    storage: Storage,
+    connectors: Connectors,
+) -> Result<impl Reply, Rejection> {
+    handle_get_swap(id, storage, connectors)
         .await
         .map(|swap_resource| warp::reply::json(&swap_resource))
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)
 }
 
-pub async fn get_swaps(facade: Facade) -> Result<impl Reply, Rejection> {
+pub async fn get_swaps(storage: Storage) -> Result<impl Reply, Rejection> {
     let swaps = async {
         let mut swaps = siren::Entity::default().with_class_member("swaps");
 
-        for context in facade.storage.load_all().await? {
+        for context in storage.load_all().await? {
             swaps.push_sub_entity(siren::SubEntity::from_link(siren::EntityLink {
                 class: vec![],
                 title: None,
@@ -53,20 +61,30 @@ pub async fn get_swaps(facade: Facade) -> Result<impl Reply, Rejection> {
     Ok(warp::reply::json(&swaps))
 }
 
-async fn handle_get_swap(id: LocalSwapId, facade: Facade) -> anyhow::Result<siren::Entity> {
-    let swap_context = facade.load(id).await?;
+async fn handle_get_swap(
+    id: LocalSwapId,
+    storage: Storage,
+    connectors: Connectors,
+) -> anyhow::Result<siren::Entity> {
+    let swap_context = storage.load(id).await?;
     within_swap_context!(swap_context, {
-        let swap: ActorSwap = facade.load(id).await?;
-        let swap_entity = make_swap_entity(id, swap, facade.clone()).await?;
+        let swap: ActorSwap = storage.load(id).await?;
+        let bitcoin_median_time_past =
+            bitcoin::median_time_past(connectors.bitcoin().as_ref()).await?;
+        let ethereum_latest_time = ethereum::latest_time(connectors.ethereum().as_ref()).await?;
+
+        let swap_entity =
+            make_swap_entity(id, swap, bitcoin_median_time_past, ethereum_latest_time)?;
 
         Ok(swap_entity)
     })
 }
 
-async fn make_swap_entity<S>(
+fn make_swap_entity<S>(
     id: LocalSwapId,
     swap: S,
-    facade: Facade,
+    bitcoin_median_time_past: Timestamp,
+    ethereum_latest_time: Timestamp,
 ) -> anyhow::Result<siren::Entity>
 where
     S: GetRole
@@ -86,7 +104,7 @@ where
 {
     let entity = create_swap_entity(id, &swap)?;
 
-    match next_available_action(&swap, facade).await? {
+    match next_available_action(&swap, bitcoin_median_time_past, ethereum_latest_time)? {
         None => Ok(entity),
         Some(action) => {
             let siren_action = make_siren_action(id, action);
@@ -117,7 +135,11 @@ where
     Ok(entity)
 }
 
-async fn next_available_action<S>(swap: &S, facade: Facade) -> anyhow::Result<Option<ActionName>>
+fn next_available_action<S>(
+    swap: &S,
+    bitcoin_median_time_past: Timestamp,
+    ethereum_latest_time: Timestamp,
+) -> anyhow::Result<Option<ActionName>>
 where
     S: GetRole
         + DeployAction
@@ -149,16 +171,16 @@ where
             Role::Alice => {
                 let expiry = swap.alpha_absolute_expiry().unwrap();
                 let time = match swap.alpha_ledger() {
-                    Ledger::Bitcoin => facade.bitcoin_median_time_past().await?,
-                    Ledger::Ethereum => facade.ethereum_latest_time().await?,
+                    Ledger::Bitcoin => bitcoin_median_time_past,
+                    Ledger::Ethereum => ethereum_latest_time,
                 };
                 (expiry, time)
             }
             Role::Bob => {
                 let expiry = swap.beta_absolute_expiry().unwrap();
                 let time = match swap.beta_ledger() {
-                    Ledger::Bitcoin => facade.bitcoin_median_time_past().await?,
-                    Ledger::Ethereum => facade.ethereum_latest_time().await?,
+                    Ledger::Bitcoin => bitcoin_median_time_past,
+                    Ledger::Ethereum => ethereum_latest_time,
                 };
                 (expiry, time)
             }
@@ -211,8 +233,8 @@ struct SwapResource {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_init(id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
-    handle_action_init(id, facade)
+pub async fn action_init(id: LocalSwapId, storage: Storage) -> Result<impl Reply, Rejection> {
+    handle_action_init(id, storage)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -220,10 +242,13 @@ pub async fn action_init(id: LocalSwapId, facade: Facade) -> Result<impl Reply, 
 }
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
-async fn handle_action_init(id: LocalSwapId, facade: Facade) -> anyhow::Result<ActionResponseBody> {
-    let swap_context = facade.load(id).await?;
+async fn handle_action_init(
+    id: LocalSwapId,
+    storage: Storage,
+) -> anyhow::Result<ActionResponseBody> {
+    let swap_context = storage.load(id).await?;
     let response = within_swap_context!(swap_context, {
-        let swap: ActorSwap = facade.load(id).await?;
+        let swap: ActorSwap = storage.load(id).await?;
         let action = swap.init_action()?;
         ActionResponseBody::from(action)
     });
@@ -232,8 +257,8 @@ async fn handle_action_init(id: LocalSwapId, facade: Facade) -> anyhow::Result<A
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_deploy(id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
-    handle_action_deploy(id, facade)
+pub async fn action_deploy(id: LocalSwapId, storage: Storage) -> Result<impl Reply, Rejection> {
+    handle_action_deploy(id, storage)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -243,11 +268,11 @@ pub async fn action_deploy(id: LocalSwapId, facade: Facade) -> Result<impl Reply
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_deploy(
     id: LocalSwapId,
-    facade: Facade,
+    storage: Storage,
 ) -> anyhow::Result<ActionResponseBody> {
-    let swap_context = facade.load(id).await?;
+    let swap_context = storage.load(id).await?;
     let response = within_swap_context!(swap_context, {
-        let swap: ActorSwap = facade.load(id).await?;
+        let swap: ActorSwap = storage.load(id).await?;
         let action = swap.deploy_action()?;
         ActionResponseBody::from(action)
     });
@@ -256,8 +281,8 @@ async fn handle_action_deploy(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_fund(id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
-    handle_action_fund(id, facade)
+pub async fn action_fund(id: LocalSwapId, storage: Storage) -> Result<impl Reply, Rejection> {
+    handle_action_fund(id, storage)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -265,10 +290,13 @@ pub async fn action_fund(id: LocalSwapId, facade: Facade) -> Result<impl Reply, 
 }
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
-async fn handle_action_fund(id: LocalSwapId, facade: Facade) -> anyhow::Result<ActionResponseBody> {
-    let swap_context = facade.load(id).await?;
+async fn handle_action_fund(
+    id: LocalSwapId,
+    storage: Storage,
+) -> anyhow::Result<ActionResponseBody> {
+    let swap_context = storage.load(id).await?;
     let response = within_swap_context!(swap_context, {
-        let swap: ActorSwap = facade.load(id).await?;
+        let swap: ActorSwap = storage.load(id).await?;
         let action = swap.fund_action()?;
         ActionResponseBody::from(action)
     });
@@ -277,8 +305,8 @@ async fn handle_action_fund(id: LocalSwapId, facade: Facade) -> anyhow::Result<A
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_redeem(id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
-    handle_action_redeem(id, facade)
+pub async fn action_redeem(id: LocalSwapId, storage: Storage) -> Result<impl Reply, Rejection> {
+    handle_action_redeem(id, storage)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -288,11 +316,11 @@ pub async fn action_redeem(id: LocalSwapId, facade: Facade) -> Result<impl Reply
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_redeem(
     id: LocalSwapId,
-    facade: Facade,
+    storage: Storage,
 ) -> anyhow::Result<ActionResponseBody> {
-    let swap_context = facade.load(id).await?;
+    let swap_context = storage.load(id).await?;
     let response = within_swap_context!(swap_context, {
-        let swap: ActorSwap = facade.load(id).await?;
+        let swap: ActorSwap = storage.load(id).await?;
         let action = swap.redeem_action()?;
         ActionResponseBody::from(action)
     });
@@ -301,8 +329,8 @@ async fn handle_action_redeem(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_refund(id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
-    handle_action_refund(id, facade)
+pub async fn action_refund(id: LocalSwapId, storage: Storage) -> Result<impl Reply, Rejection> {
+    handle_action_refund(id, storage)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -312,11 +340,11 @@ pub async fn action_refund(id: LocalSwapId, facade: Facade) -> Result<impl Reply
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_refund(
     id: LocalSwapId,
-    facade: Facade,
+    storage: Storage,
 ) -> anyhow::Result<ActionResponseBody> {
-    let swap_context = facade.load(id).await?;
+    let swap_context = storage.load(id).await?;
     let response = within_swap_context!(swap_context, {
-        let swap: ActorSwap = facade.load(id).await?;
+        let swap: ActorSwap = storage.load(id).await?;
         let action = swap.refund_action()?;
         ActionResponseBody::from(action)
     });

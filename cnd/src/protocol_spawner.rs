@@ -1,23 +1,19 @@
 use crate::{
-    btsieve, halbit, hbit, herc20, http_api::LedgerNotConfigured, LocalSwapId, Role, Side,
+    connectors::Connectors, halbit, hbit, herc20, http_api::LedgerNotConfigured, storage::Storage,
+    LocalSwapId, Role, Side,
 };
 use chrono::{DateTime, Utc};
 use comit::lnd::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams};
-use std::sync::Arc;
 use tokio::runtime::Handle;
 
 /// ProtocolSpawner acts as a bundle for all dependencies needed to spawn
 /// instances of a protocol.
 #[derive(Debug, Clone)]
 pub struct ProtocolSpawner {
-    ethereum_connector: Arc<btsieve::ethereum::Cache<btsieve::ethereum::Web3Connector>>,
-    bitcoin_connector: Arc<btsieve::bitcoin::Cache<btsieve::bitcoin::BitcoindConnector>>,
+    connectors: Connectors,
     lnd_connector_params: Option<LndConnectorParams>,
     runtime_handle: Handle,
-
-    herc20_states: Arc<herc20::States>,
-    halbit_states: Arc<halbit::States>,
-    hbit_states: Arc<hbit::States>,
+    storage: Storage,
 }
 
 /// The `Spawn` trait abstracts over the functionality of spawning a particular
@@ -35,22 +31,16 @@ pub trait Spawn<P> {
 
 impl ProtocolSpawner {
     pub fn new(
-        ethereum_connector: Arc<btsieve::ethereum::Cache<btsieve::ethereum::Web3Connector>>,
-        bitcoin_connector: Arc<btsieve::bitcoin::Cache<btsieve::bitcoin::BitcoindConnector>>,
+        connectors: Connectors,
         lnd_connector_params: Option<LndConnectorParams>,
         runtime_handle: Handle,
-        herc20_states: Arc<herc20::States>,
-        halbit_states: Arc<halbit::States>,
-        hbit_states: Arc<hbit::States>,
+        storage: Storage,
     ) -> Self {
         Self {
-            ethereum_connector,
-            bitcoin_connector,
+            connectors,
             lnd_connector_params,
             runtime_handle,
-            herc20_states,
-            halbit_states,
-            hbit_states,
+            storage,
         }
     }
 
@@ -79,8 +69,8 @@ impl Spawn<herc20::Params> for ProtocolSpawner {
             start_of_swap,
             role,
             side,
-            self.herc20_states.clone(),
-            self.ethereum_connector.clone(),
+            self.storage.herc20_states.clone(),
+            self.connectors.ethereum(),
         );
 
         self.runtime_handle.spawn(task);
@@ -102,8 +92,8 @@ impl Spawn<hbit::Params> for ProtocolSpawner {
             start_of_swap,
             role,
             side,
-            self.hbit_states.clone(),
-            self.bitcoin_connector.clone(),
+            self.storage.hbit_states.clone(),
+            self.connectors.bitcoin(),
         );
 
         self.runtime_handle.spawn(task);
@@ -137,7 +127,7 @@ impl Spawn<halbit::Params> for ProtocolSpawner {
                     params,
                     role,
                     side,
-                    self.halbit_states.clone(),
+                    self.storage.halbit_states.clone(),
                     LndConnectorAsSender::from(lnd_connector_params.clone()),
                 ));
             }
@@ -147,7 +137,7 @@ impl Spawn<halbit::Params> for ProtocolSpawner {
                     params,
                     role,
                     side,
-                    self.halbit_states.clone(),
+                    self.storage.halbit_states.clone(),
                     LndConnectorAsReceiver::from(lnd_connector_params.clone()),
                 ));
             }
