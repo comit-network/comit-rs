@@ -4,6 +4,7 @@ import { EthereumWallet } from "./ethereum";
 import { Asset } from "../asset";
 import { LightningWallet } from "./lightning";
 import { Logger } from "log4js";
+import pTimeout from "p-timeout";
 
 export interface AllWallets {
     bitcoin?: BitcoinWallet;
@@ -49,14 +50,20 @@ export async function pollUntilMinted(
     getBalance: () => Promise<bigint>,
     minimumBalance: bigint
 ): Promise<void> {
-    const currentBalance = await getBalance();
-    if (currentBalance >= minimumBalance) {
-        return;
-    } else {
-        await sleep(500);
+    const timeout = 10; // minting shouldn't take longer than 10 seconds
+    const error = new Error(`Minting failed after ${timeout} seconds`);
+    Error.captureStackTrace(error);
 
-        return pollUntilMinted(getBalance, minimumBalance);
-    }
+    let currentBalance = await getBalance();
+
+    const poller = async () => {
+        while (currentBalance < minimumBalance) {
+            await sleep(500);
+            currentBalance = await getBalance();
+        }
+    };
+
+    await pTimeout(poller(), timeout * 1000, error);
 }
 
 export function newBitcoinStubWallet(logger: Logger): BitcoinWallet {
