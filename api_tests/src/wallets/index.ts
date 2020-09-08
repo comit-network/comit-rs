@@ -46,17 +46,16 @@ export class Wallets {
 }
 
 export async function pollUntilMinted(
-    wallet: Wallet,
-    minimumBalance: BigInt,
-    asset: Asset
+    getBalance: () => Promise<bigint>,
+    minimumBalance: bigint
 ): Promise<void> {
-    const currentBalance = await wallet.getBalanceByAsset(asset);
+    const currentBalance = await getBalance();
     if (currentBalance >= minimumBalance) {
         return;
     } else {
         await sleep(500);
 
-        return pollUntilMinted(wallet, minimumBalance, asset);
+        return pollUntilMinted(getBalance, minimumBalance);
     }
 }
 

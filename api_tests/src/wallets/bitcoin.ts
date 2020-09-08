@@ -13,7 +13,7 @@ export interface BitcoinWallet extends Wallet {
         toAddress: string
     ): Promise<void>;
     getAddress(): Promise<string>;
-    getBalance(): Promise<number>;
+    getBalance(): Promise<bigint>;
     sendToAddress(
         address: string,
         satoshis: number,
@@ -112,9 +112,8 @@ export class BitcoindWallet implements BitcoinWallet {
         );
 
         await pollUntilMinted(
-            this,
-            startingBalance + minimumExpectedBalance,
-            asset
+            async () => this.getBalance(),
+            startingBalance + minimumExpectedBalance
         );
     }
 
@@ -124,15 +123,15 @@ export class BitcoindWallet implements BitcoinWallet {
                 `Cannot read balance for asset ${asset.name} with BitcoinWallet`
             );
         }
-        return BigInt(toSatoshi(await this.getBalance()));
+        return this.getBalance();
     }
 
-    public async getBalance(): Promise<number> {
+    public async getBalance(): Promise<bigint> {
         const res = await this.rpcClient.request({
             data: { jsonrpc: "1.0", method: "getbalance", params: [] },
         });
 
-        return res.data.result;
+        return BigInt(toSatoshi(res.data.result));
     }
 
     public async getAddress(): Promise<string> {

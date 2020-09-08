@@ -106,9 +106,8 @@ export class LndWallet implements LightningWallet {
         );
 
         await pollUntilMinted(
-            this,
-            startingBalance + minimumExpectedBalance,
-            asset
+            async () => this.getBalance(),
+            startingBalance + minimumExpectedBalance
         );
     }
 
@@ -125,6 +124,10 @@ export class LndWallet implements LightningWallet {
             );
         }
 
+        return this.getBalance();
+    }
+
+    public async getBalance(): Promise<bigint> {
         const walletBalance = await this.lnd.lnrpc
             .walletBalance()
             .then((r) => r.confirmedBalance)
