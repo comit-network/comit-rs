@@ -236,11 +236,15 @@ bitcoind.dir=${this.bitcoindDataDir}
         const lockRelease = await lock(dirPath, {
             lockfilePath: path.join(dirPath, "lock"),
             retries: {
-                retries: 6 * 5, // Let's give it at least 5min to download (minTimeout * retries = min total wait)
-                minTimeout: 10000,
-                maxTimeout: 30000,
+                factor: 1,
+                retries: 60 * 5, // Let's give it at least 5min to download (minTimeout * retries = min total wait)
+                minTimeout: 1000,
             },
-        });
+        }).catch(() =>
+            Promise.reject(
+                new Error(`Failed to acquire lock for downloading lnd`)
+            )
+        );
 
         try {
             await existsAsync(binaryPath);

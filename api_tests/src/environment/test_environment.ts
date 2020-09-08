@@ -150,7 +150,11 @@ export default class TestEnvironment extends NodeEnvironment {
      */
     private async startBitcoin() {
         const lockDir = await this.getLockDirectory("bitcoind");
-        const release = await ledgerLock(lockDir);
+        const release = await ledgerLock(lockDir).catch(() =>
+            Promise.reject(
+                new Error(`Failed to acquire lock for starting bitcoind`)
+            )
+        );
 
         const bitcoind = await BitcoindInstance.new(
             await this.global.getDataDir("bitcoind"),
@@ -213,7 +217,11 @@ export default class TestEnvironment extends NodeEnvironment {
      */
     private async startEthereum() {
         const lockDir = await this.getLockDirectory("geth");
-        const release = await ledgerLock(lockDir);
+        const release = await ledgerLock(lockDir).catch(() =>
+            Promise.reject(
+                new Error(`Failed to acquire lock for starting geth`)
+            )
+        );
 
         const geth = await GethInstance.new(
             await this.global.getDataDir("geth"),
@@ -283,7 +291,6 @@ export default class TestEnvironment extends NodeEnvironment {
             ledger: LedgerKind.Lightning,
             quantity: "15000000",
         });
-
         await bob.mint({
             name: AssetKind.Bitcoin,
             ledger: LedgerKind.Lightning,
@@ -330,10 +337,14 @@ export default class TestEnvironment extends NodeEnvironment {
     }
 
     private async initLightningLedger(
-        role: string
+        role: "lnd-alice" | "lnd-bob"
     ): Promise<LightningNodeConfig> {
         const lockDir = await this.getLockDirectory(role);
-        const release = await ledgerLock(lockDir);
+        const release = await ledgerLock(lockDir).catch(() =>
+            Promise.reject(
+                new Error(`Failed to acquire lock for starting ${role}`)
+            )
+        );
 
         const lnd = await LndInstance.new(
             await this.global.getDataDir(role),
@@ -391,7 +402,14 @@ export default class TestEnvironment extends NodeEnvironment {
         }
     }
 
-    private async getLockDirectory(process: string): Promise<string> {
+    private async getLockDirectory(
+        process:
+            | "geth"
+            | "bitcoind"
+            | "lnd-alice"
+            | "lnd-bob"
+            | "ethereum-dev-account"
+    ): Promise<string> {
         const dir = path.join(this.locksDir, process);
 
         await asyncFs.mkdir(dir, {

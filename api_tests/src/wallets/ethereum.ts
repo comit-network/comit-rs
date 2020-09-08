@@ -125,11 +125,17 @@ export class Web3EthereumWallet implements EthereumWallet {
 
         const release = await lock(lockFile, {
             retries: {
-                retries: 10,
-                minTimeout: 50,
-                maxTimeout: 2000,
+                retries: 200,
+                factor: 1,
+                minTimeout: 100,
             },
-        });
+        }).catch(() =>
+            Promise.reject(
+                new Error(
+                    `Failed to acquire lock on for sending transaction from Ethereum dev-account`
+                )
+            )
+        );
 
         this.logger.debug(
             "Acquired lock for ethereum-dev-account, sending transaction ",

@@ -6,7 +6,6 @@ import { pollUntilMinted, Wallet } from "./index";
 import { Asset } from "../asset";
 import axios, { AxiosError, AxiosInstance, Method } from "axios";
 import { BitcoinNodeConfig } from "../environment";
-import { pollUntilMinted } from "./index";
 
 export interface BitcoinWallet extends Wallet {
     mintToAddress(
