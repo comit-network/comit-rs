@@ -26,9 +26,13 @@ async fn bitcoin_transaction_pattern_e2e_test() {
     let connector = BitcoindConnector::new(url).unwrap();
 
     let target_address = client.get_new_address(None, None).unwrap();
-
     // make sure we have money
-    client.generate(101, None).unwrap();
+    client.generate_to_address(101, &target_address).unwrap();
+
+    // A random address to send further bitcoin to when generating
+    let dummy_address = "bcrt1qnylgnvd94ukm43e4dh9vxefywhlr9zdgz2g86f"
+        .parse()
+        .unwrap();
 
     let start_of_swap = Utc::now();
 
@@ -49,7 +53,7 @@ async fn bitcoin_transaction_pattern_e2e_test() {
                         None,
                     )
                     .unwrap();
-                client.generate(1, None).unwrap();
+                client.generate_to_address(1, &dummy_address).unwrap();
 
                 transaction_hash
             }
