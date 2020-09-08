@@ -94,7 +94,7 @@ export class LndWallet implements LightningWallet {
             );
         }
 
-        const startingBalance = await this.getBalanceByAsset(asset);
+        const startingBalance = await this.getBalance();
         this.logger.debug("starting: ", startingBalance.toString());
 
         const minimumExpectedBalance = BigInt(asset.quantity);

@@ -102,7 +102,7 @@ export class BitcoindWallet implements BitcoinWallet {
             );
         }
 
-        const startingBalance = await this.getBalanceByAsset(asset);
+        const startingBalance = await this.getBalance();
 
         const minimumExpectedBalance = BigInt(asset.quantity);
 
