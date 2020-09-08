@@ -6,6 +6,7 @@ import { pollUntilMinted, Wallet } from "./index";
 import { Asset } from "../asset";
 import axios, { AxiosError, AxiosInstance, Method } from "axios";
 import { BitcoinNodeConfig } from "../environment";
+import { pollUntilMinted } from "./index";
 
 export interface BitcoinWallet extends Wallet {
     mintToAddress(
@@ -86,13 +87,17 @@ export class BitcoindWallet implements BitcoinWallet {
         }
 
         // make sure we have at least twice as much
-        const amount = toBitcoin(
-            (minimumExpectedBalance * BigInt(2)).toString()
-        );
+        const expectedBalance = minimumExpectedBalance * BigInt(2);
+        const amount = toBitcoin(expectedBalance.toString());
 
         await this.minerClient.sendToAddress(toAddress, amount);
 
-        this.logger.info("Minted", amount, "bitcoin for", toAddress);
+        this.logger.info("Minted", amount, "BTC to", toAddress);
+
+        await pollUntilMinted(
+            async () => this.getBalance(),
+            BigInt(expectedBalance)
+        );
     }
 
     public async mint(asset: Asset): Promise<void> {
