@@ -1,7 +1,6 @@
 use crate::bitcoin::*;
 use serde::{de, Deserialize, Deserializer, Serializer};
-use std::convert::TryFrom;
-use std::fmt;
+use std::{convert::TryFrom, fmt};
 
 pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Amount>, D::Error>
 where

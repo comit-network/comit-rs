@@ -1,5 +1,9 @@
-use crate::swap::{Database, SwapParams};
-use crate::{bitcoin, ethereum, order::BtcDaiOrderForm, swap::SwapKind, SwapId};
+use crate::{
+    bitcoin, ethereum,
+    order::BtcDaiOrderForm,
+    swap::{Database, SwapKind, SwapParams},
+    SwapId,
+};
 use ::bitcoin::hashes::{sha256, Hash, HashEngine};
 use chrono::{NaiveDateTime, Utc};
 use comit::{

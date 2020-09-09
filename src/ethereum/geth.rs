@@ -1,5 +1,7 @@
-use crate::ethereum::{ether, Address};
-use crate::jsonrpc;
+use crate::{
+    ethereum::{ether, Address},
+    jsonrpc,
+};
 use anyhow::Context;
 use asset::Erc20Quantity;
 use comit::{
@@ -192,10 +194,10 @@ fn balance_of_fn(account: Address) -> anyhow::Result<Vec<u8>> {
     let account = clarity::Address::from_slice(account.as_bytes())
         .map_err(|_| anyhow::anyhow!("Could not construct clarity::Address from slice"))?;
 
-    let balance_of = clarity::abi::encode_call(
-        "balanceOf(address)",
-        &[clarity::abi::Token::Address(account)],
-    );
+    let balance_of =
+        clarity::abi::encode_call("balanceOf(address)", &[clarity::abi::Token::Address(
+            account,
+        )]);
 
     Ok(balance_of)
 }

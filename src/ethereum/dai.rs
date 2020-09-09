@@ -48,7 +48,8 @@ impl Amount {
         Self(BigUint::zero())
     }
 
-    // The rate input is for dai to bitcoin but we applied it to attodai so we need to:
+    // The rate input is for dai to bitcoin but we applied it to attodai so we need
+    // to:
     // - divide to get dai (18)
     // - multiply to adjust for rate (9)
     // - multiply to get satoshis (8)
@@ -112,8 +113,9 @@ impl Amount {
         self.0.clone()
     }
 
-    /// Allow to know the worth of self in bitcoin asset using the given conversion rate.
-    /// Truncation may be done during the conversion to allow a result in satoshi
+    /// Allow to know the worth of self in bitcoin asset using the given
+    /// conversion rate. Truncation may be done during the conversion to
+    /// allow a result in satoshi
     pub fn worth_in(&self, btc_to_dai: Rate) -> anyhow::Result<bitcoin::Amount> {
         if btc_to_dai.integer().is_zero() {
             anyhow::bail!("Cannot use a nil rate.")
@@ -213,7 +215,8 @@ impl From<Erc20> for Amount {
     }
 }
 
-// todo: this should be a simple conversion from the internal BigUint in Erc20Quantity
+// todo: this should be a simple conversion from the internal BigUint in
+// Erc20Quantity
 impl From<Erc20Quantity> for Amount {
     fn from(erc20_quantity: Erc20Quantity) -> Self {
         Amount(BigUint::from_bytes_le(&erc20_quantity.to_bytes()))

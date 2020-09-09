@@ -11,14 +11,17 @@ use crate::{
     Maker, MidMarketRate, Seed, Spread,
 };
 use anyhow::Context;
-use comit::btsieve::bitcoin::BitcoindConnector;
-use comit::btsieve::ethereum::Web3Connector;
-use futures::channel::mpsc::Sender;
-use futures::{channel::mpsc::Receiver, Future, FutureExt, SinkExt, StreamExt, TryFutureExt};
+use comit::btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
+use futures::{
+    channel::mpsc::{Receiver, Sender},
+    Future, FutureExt, SinkExt, StreamExt, TryFutureExt,
+};
 use futures_timer::Delay;
 
-use crate::maker::TakeRequestDecision;
-use crate::network::{new_swarm, ActivePeer, SetupSwapContext};
+use crate::{
+    maker::TakeRequestDecision,
+    network::{new_swarm, ActivePeer, SetupSwapContext},
+};
 use comit::{Position, Role};
 use std::{sync::Arc, time::Duration};
 

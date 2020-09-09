@@ -128,13 +128,10 @@ impl<'c> Blockchain<'c> {
         let to = clarity::Address::from_slice(to.as_bytes())
             .map_err(|_| anyhow::anyhow!("Could not construct clarity::Address from slice"))?;
 
-        let transfer = clarity::abi::encode_call(
-            "transfer(address,uint256)",
-            &[
-                clarity::abi::Token::Address(to),
-                clarity::abi::Token::Uint(Uint256::from_bytes_le(value.to_bytes().as_slice())),
-            ],
-        );
+        let transfer = clarity::abi::encode_call("transfer(address,uint256)", &[
+            clarity::abi::Token::Address(to),
+            clarity::abi::Token::Uint(Uint256::from_bytes_le(value.to_bytes().as_slice())),
+        ]);
 
         Ok(transfer)
     }

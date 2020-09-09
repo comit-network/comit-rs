@@ -21,7 +21,15 @@ jobs:
         with:
           profile: minimal
           override: true
-          components: rustfmt, clippy
+          components: clippy
+
+      - name: Install Rust nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly-2020-01-15
+          profile: minimal
+          override: false
+          components: rustfmt
 
       - name: Cache ~/.cargo/bin directory
         uses: actions/cache@v1
@@ -36,7 +44,7 @@ jobs:
         run: cargo tomlfmt -d -p Cargo.toml
 
       - name: Check code formatting
-        run: cargo fmt -- --check
+        run: cargo +nightly-2020-01-15-x86_64-unknown-linux-gnu fmt -- --check
 
       - name: Run clippy
         run: cargo clippy --all-targets -- -D warnings

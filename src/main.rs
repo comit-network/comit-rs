@@ -39,12 +39,12 @@ mod test_harness;
 #[cfg(test)]
 mod arbitrary;
 
-use crate::fs::default_config_path;
 use crate::{
     command::{
         balance, deposit, dump_config, resume_only, trade, wallet_info, withdraw, Command, Options,
     },
     config::{read_config, Settings},
+    fs::default_config_path,
 };
 use conquer_once::Lazy;
 

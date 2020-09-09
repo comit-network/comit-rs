@@ -1,16 +1,15 @@
 use anyhow::Context;
-use comit::asset::ethereum::FromWei;
-use comit::asset::Erc20Quantity;
-use comit::{Position, Price};
+use comit::{
+    asset::{ethereum::FromWei, Erc20Quantity},
+    Position, Price,
+};
 use num::{BigUint, Integer, ToPrimitive};
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
-use std::iter::FromIterator;
-use std::str::FromStr;
+use std::{convert::TryFrom, iter::FromIterator, str::FromStr};
 
-/// Represent a rate. Note this is designed to support Bitcoin/Dai buy and sell rates (Bitcoin being in the range of 10k-100kDai)
-/// A rate has a maximum precision of 9 digits after the decimal
-/// rate = self.0 * 10e-9
+/// Represent a rate. Note this is designed to support Bitcoin/Dai buy and sell
+/// rates (Bitcoin being in the range of 10k-100kDai) A rate has a maximum
+/// precision of 9 digits after the decimal rate = self.0 * 10e-9
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, PartialOrd)]
 pub struct Rate(u64);
 

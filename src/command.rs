@@ -90,15 +90,15 @@ pub enum Withdraw {
 }
 
 fn parse_bitcoin(str: &str) -> anyhow::Result<bitcoin::Amount> {
-    // TODO: In addition to providing an interface to withdraw satoshi, we could use string instead of
-    // float here
+    // TODO: In addition to providing an interface to withdraw satoshi, we could use
+    // string instead of float here
     let btc = f64::from_str(str)?;
     bitcoin::Amount::from_btc(btc)
 }
 
 fn parse_dai(str: &str) -> anyhow::Result<dai::Amount> {
-    // TODO: In addition to providing an interface to withdraw attodai, we could use string instead of
-    // float here
+    // TODO: In addition to providing an interface to withdraw attodai, we could use
+    // string instead of float here
     let dai = f64::from_str(str)?;
     dai::Amount::from_dai_trunc(dai)
 }

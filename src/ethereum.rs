@@ -174,8 +174,8 @@ pub mod ether {
         use super::*;
 
         // Currently testing the comit crate but best to state expectations here.
-        // Also give the opportunity to have tests if we were to decides to implement our own
-        // representation.
+        // Also give the opportunity to have tests if we were to decides to implement
+        // our own representation.
         #[test]
         fn one_ether_shows_as_one_ether() {
             let ether = Amount::from_str("1_000_000_000_000_000_000").unwrap();

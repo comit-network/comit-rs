@@ -1,5 +1,7 @@
-use crate::bitcoin::{Address, Amount, Network};
-use crate::jsonrpc;
+use crate::{
+    bitcoin::{Address, Amount, Network},
+    jsonrpc,
+};
 use ::bitcoin::{consensus::encode::serialize_hex, hashes::hex::FromHex, Transaction, Txid};
 use anyhow::Context;
 use serde::Deserialize;
@@ -405,21 +407,18 @@ mod test {
 
         let info: WalletInfoResponse = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(
-            info,
-            WalletInfoResponse {
-                wallet_name: "nectar_7426b018".into(),
-                wallet_version: 169_900,
-                tx_count: 0,
-                keypool_oldest: 1_592_792_998,
-                keypool_size_hd_internal: 1000,
-                unlocked_until: None,
-                pay_tx_fee: 0.0,
-                hd_seed_id: Some("4959e065fd8e278e4ffe62254897ddac18b02674".into()),
-                private_keys_enabled: true,
-                avoid_reuse: false,
-                scanning: ScanProgress::Bool(false)
-            }
-        )
+        assert_eq!(info, WalletInfoResponse {
+            wallet_name: "nectar_7426b018".into(),
+            wallet_version: 169_900,
+            tx_count: 0,
+            keypool_oldest: 1_592_792_998,
+            keypool_size_hd_internal: 1000,
+            unlocked_until: None,
+            pay_tx_fee: 0.0,
+            hd_seed_id: Some("4959e065fd8e278e4ffe62254897ddac18b02674".into()),
+            private_keys_enabled: true,
+            avoid_reuse: false,
+            scanning: ScanProgress::Bool(false)
+        })
     }
 }

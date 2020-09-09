@@ -79,8 +79,7 @@ where
 mod tests {
     use super::*;
     use crate::{bitcoin, config::file::Level, ethereum::ChainId, Spread};
-    use std::fs;
-    use std::io::Write;
+    use std::{fs, io::Write};
 
     #[test]
     fn network_deserializes_correctly() {
@@ -183,17 +182,14 @@ mod tests {
         let default_path_fn = || Err(anyhow!("Some error"));
 
         let config = read_config(&None, default_path_fn).unwrap();
-        assert_eq!(
-            config,
-            File {
-                maker: None,
-                network: None,
-                data: None,
-                logging: None,
-                bitcoin: None,
-                ethereum: None,
-            },
-        )
+        assert_eq!(config, File {
+            maker: None,
+            network: None,
+            data: None,
+            logging: None,
+            bitcoin: None,
+            ethereum: None,
+        },)
     }
 
     #[test]

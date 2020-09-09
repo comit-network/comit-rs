@@ -19,7 +19,8 @@ const TRANSIENT_DERIVATION_PATH: &str = "m/0'/9939'";
 #[derive(derivative::Derivative)]
 #[derivative(Debug)]
 pub struct Wallet {
-    /// The wallet is named `nectar_x` with `x` being the first 4 bytes of the hash of the seed
+    /// The wallet is named `nectar_x` with `x` being the first 4 bytes of the
+    /// hash of the seed
     name: String,
     bitcoind_client: Client,
     root_key: ExtendedPrivKey,
@@ -70,7 +71,8 @@ impl Wallet {
             Ok(WalletInfoResponse {
                 hd_seed_id: None, ..
             }) => {
-                // The wallet may have been previously created, but the `sethdseed` call may have failed
+                // The wallet may have been previously created, but the `sethdseed` call may
+                // have failed
                 let wif = self.seed_as_wif(seed);
 
                 self.bitcoind_client
@@ -117,13 +119,14 @@ impl Wallet {
             .await
     }
 
-    /// Returns the seed in wif format, this allows the user to import the wallet in a
-    /// different bitcoind using `sethdseed`.
-    /// It seems relevant that access to bitcoind must not be needed to complete the task
-    /// in case there is an issue with bitcoind and the user wants to regain control over their wallet
-    /// Do note that the `wif` format is only here to allow the communication of `bytes`. The seed
-    /// is NOT used as a private key in bitcoin. See `root_extended_private_key` to get the
-    /// root private key of the bip32 hd wallet.
+    /// Returns the seed in wif format, this allows the user to import the
+    /// wallet in a different bitcoind using `sethdseed`.
+    /// It seems relevant that access to bitcoind must not be needed to complete
+    /// the task in case there is an issue with bitcoind and the user wants
+    /// to regain control over their wallet Do note that the `wif` format is
+    /// only here to allow the communication of `bytes`. The seed
+    /// is NOT used as a private key in bitcoin. See `root_extended_private_key`
+    /// to get the root private key of the bip32 hd wallet.
     // TODO: check the network against bitcoind in a non-failing manner (just log)
     pub fn seed_as_wif(&self, seed: Seed) -> String {
         let key = seed.as_secret_key();
@@ -192,10 +195,12 @@ impl Wallet {
 
     /// In accordance with [BIP32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki),
     /// bitcoind uses 2 derivations paths to generate new keys and addresses,
-    /// "m/iH/0/k corresponds to the k'th keypair of the external chain of account number i of the
-    /// HDW derived from master m." ie, the addresses to give to someone else to receive bitcoin.
-    /// "m/iH/1/k corresponds to the k'th keypair of the internal chain of account number i of the
-    /// HDW derived from master m." ie, the addresses to send change.
+    /// "m/iH/0/k corresponds to the k'th keypair of the external chain of
+    /// account number i of the HDW derived from master m." ie, the
+    /// addresses to give to someone else to receive bitcoin.
+    /// "m/iH/1/k corresponds to the k'th keypair of the internal chain of
+    /// account number i of the HDW derived from master m." ie, the
+    /// addresses to send change.
     fn hd_paths() -> Vec<&'static str> {
         vec![
             BITCOIND_DEFAULT_EXTERNAL_DERIVATION_PATH,
@@ -383,8 +388,8 @@ mod docker_tests {
         }
     }
 
-    // The test does not behave the same way than I encountered when running a solo container
-    // Let's not invest more time on it right now and review later.
+    // The test does not behave the same way than I encountered when running a solo
+    // container Let's not invest more time on it right now and review later.
     #[ignore]
     #[tokio::test]
     async fn create_bitcoin_wallet_when_already_existing_but_no_seed_set_and_get_address() {
@@ -401,8 +406,9 @@ mod docker_tests {
             wallet.name
         };
 
-        // The trick is to not generate 100 blocks, bitcoind will accept bitcoin_wallet creation
-        // but fail setting the seed (but for some reason I am not able to reproduce this behaviour)
+        // The trick is to not generate 100 blocks, bitcoind will accept bitcoin_wallet
+        // creation but fail setting the seed (but for some reason I am not able
+        // to reproduce this behaviour)
         let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
         {
             let res = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).await;
@@ -460,8 +466,8 @@ mod docker_tests {
 
         let descriptors = wallet.descriptors_with_checksums().await.unwrap();
 
-        // This returns 40 addresses, 20 per path but the "internal" path used for change
-        // Addresses will not be tested.
+        // This returns 40 addresses, 20 per path but the "internal" path used for
+        // change Addresses will not be tested.
         let mut derived_addresses = Vec::new();
         for descriptor in descriptors {
             let mut addresses = bitcoind_client

@@ -115,10 +115,12 @@ impl Default for Ethereum {
 pub struct Maker {
     /// Maximum amount to sell per order
     pub max_sell: MaxSell,
-    /// Spread to apply to the mid-market rate, format is permyriad. E.g. 5.20 is 5.2% spread
+    /// Spread to apply to the mid-market rate, format is permyriad. E.g. 5.20
+    /// is 5.2% spread
     pub spread: Spread,
-    /// Maximum possible network fee to consider when calculating the available balance.
-    /// Fees are in the nominal native currency and per transaction.
+    /// Maximum possible network fee to consider when calculating the available
+    /// balance. Fees are in the nominal native currency and per
+    /// transaction.
     pub maximum_possible_fee: Fees,
 }
 
