@@ -77,7 +77,7 @@ test(
 );
 
 test(
-    "given_alice_makes_an_order_when_fully_matched_against_bobs_order_then_settling_says_100",
+    "given_alice_makes_an_order_when_fully_matched_against_bobs_order_then_settling_says_quantity",
     twoActorTest(async ({ alice, bob }) => {
         await alice.connect(bob);
         const aliceHref = await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
@@ -89,16 +89,16 @@ test(
             alice.fetchOrder(aliceHref).then((r) => r.properties)
         ).resolves.toMatchObject({
             state: {
-                open: "0.00",
-                settling: "1.00",
+                open: "0",
+                settling: "20000000",
             },
         });
         await expect(
             bob.fetchOrder(bobHref).then((r) => r.properties)
         ).resolves.toMatchObject({
             state: {
-                open: "0.00",
-                settling: "1.00",
+                open: "0",
+                settling: "20000000",
             },
         });
     })
@@ -125,7 +125,7 @@ test(
                 decimals: 18,
             },
             state: {
-                open: "1.00",
+                open: "20000000",
             },
         });
     })
@@ -160,8 +160,8 @@ test(
             alice.fetchOrder(href).then((r) => r.properties)
         ).resolves.toMatchObject({
             state: {
-                open: "0.00",
-                cancelled: "1.00",
+                open: "0",
+                cancelled: "20000000",
             },
         });
         await expect(
