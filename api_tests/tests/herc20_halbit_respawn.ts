@@ -12,6 +12,10 @@ describe("herc20-halbit-respawn", () => {
         "herc20-halbit-alice-misses-bob-fund",
         startAliceAndBob(async ([alice, bob]) => {
             const bodies = (await SwapFactory.newSwap(alice, bob)).herc20Halbit;
+            await bob.openLnChannel(
+                alice,
+                BigInt(bodies.bob.beta.amount) * BigInt(2)
+            );
 
             await alice.createHerc20HalbitSwap(bodies.alice);
             await bob.createHerc20HalbitSwap(bodies.bob);
@@ -43,6 +47,10 @@ describe("herc20-halbit-respawn", () => {
         "herc20-halbit-bob-misses-alice-redeem",
         startAliceAndBob(async ([alice, bob]) => {
             const bodies = (await SwapFactory.newSwap(alice, bob)).herc20Halbit;
+            await bob.openLnChannel(
+                alice,
+                BigInt(bodies.bob.beta.amount) * BigInt(2)
+            );
 
             await alice.createHerc20HalbitSwap(bodies.alice);
             await bob.createHerc20HalbitSwap(bodies.bob);
@@ -75,6 +83,10 @@ describe("herc20-halbit-respawn", () => {
         "halbit-herc20-alice-misses-bob-deploy-and-fund",
         startAliceAndBob(async ([alice, bob]) => {
             const bodies = (await SwapFactory.newSwap(alice, bob)).halbitHerc20;
+            await alice.openLnChannel(
+                bob,
+                BigInt(bodies.alice.alpha.amount) * BigInt(2)
+            );
 
             await alice.createHalbitHerc20Swap(bodies.alice);
             await bob.createHalbitHerc20Swap(bodies.bob);
@@ -107,6 +119,10 @@ describe("herc20-halbit-respawn", () => {
         "halbit-herc20-bob-down-misses-alice-redeem",
         startAliceAndBob(async ([alice, bob]) => {
             const bodies = (await SwapFactory.newSwap(alice, bob)).halbitHerc20;
+            await alice.openLnChannel(
+                bob,
+                BigInt(bodies.alice.alpha.amount) * BigInt(2)
+            );
 
             await alice.createHalbitHerc20Swap(bodies.alice);
             await bob.createHalbitHerc20Swap(bodies.bob);

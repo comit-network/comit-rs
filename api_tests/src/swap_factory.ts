@@ -63,11 +63,11 @@ export default class SwapFactory {
 
         const aliceEthereumAccount = alice.wallets.ethereum.getAccount();
         const aliceBitcoinAddress = await alice.wallets.bitcoin.getAddress();
-        const aliceLightningPubkey = await alice.wallets.lightning.getPubkey();
+        const aliceLightningPubkey = await alice.lndClient.getPubkey();
 
         const bobEthereumAccount = bob.wallets.ethereum.getAccount();
         const bobBitcoinAddress = await bob.wallets.bitcoin.getAddress();
-        const bobLightningPubkey = await bob.wallets.lightning.getPubkey();
+        const bobLightningPubkey = await bob.lndClient.getPubkey();
 
         const aliceAlphaHerc20 = defaultHerc20Payload(
             alphaAbsoluteExpiry,

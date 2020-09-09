@@ -2,8 +2,6 @@ import { Config } from "@jest/types";
 import { promises as asyncFs } from "fs";
 import NodeEnvironment from "jest-environment-node";
 import path from "path";
-import { LndWallet } from "../wallets/lightning";
-import { BitcoinFaucet } from "../wallets/bitcoin";
 import { BitcoindInstance } from "./bitcoind_instance";
 import { configure, Logger, shutdown as loggerShutdown } from "log4js";
 import { EnvironmentContext } from "@jest/environment";
@@ -17,6 +15,8 @@ import { CndConfigFile } from "../config";
 import { set } from "lodash";
 import { HarnessGlobal, LedgerInstance, LightningNodeConfig } from "./index";
 import { execAsync, existsAsync } from "./async_fs";
+import { LndClient } from "../wallets/lightning";
+import { BitcoinFaucet } from "../wallets/bitcoin";
 
 export default class TestEnvironment extends NodeEnvironment {
     private readonly testSuite: string;
@@ -30,6 +30,7 @@ export default class TestEnvironment extends NodeEnvironment {
     public global: HarnessGlobal;
 
     private logger: Logger;
+    private bitcoinFaucet: BitcoinFaucet;
 
     constructor(config: Config.ProjectConfig, context: EnvironmentContext) {
         super(config);
@@ -62,7 +63,7 @@ export default class TestEnvironment extends NodeEnvironment {
 
         // setup global variables
         this.global.ledgerConfigs = {};
-        this.global.lndWallets = {};
+        this.global.lndClients = {};
         this.global.cargoTargetDir = cargoTargetDir;
         this.global.cndConfigOverrides = this.cndConfigOverrides;
 
@@ -205,6 +206,7 @@ export default class TestEnvironment extends NodeEnvironment {
         }
 
         this.global.ledgerConfigs.bitcoin = config;
+        this.bitcoinFaucet = new BitcoinFaucet(config, this.logger);
 
         await release();
     }
@@ -269,26 +271,6 @@ export default class TestEnvironment extends NodeEnvironment {
             this.startAliceLightning(),
             this.startBobLightning(),
         ]);
-
-        await this.setupLightningChannels();
-    }
-
-    private async setupLightningChannels() {
-        const { alice, bob } = this.global.lndWallets;
-
-        const alicePeers = await alice.listPeers();
-        const bobPubkey = await bob.getPubkey();
-
-        if (!alicePeers.find((peer) => peer.pubKey === bobPubkey)) {
-            await alice.connectPeer(bob);
-        }
-
-        // need to mint more than the desired channel balance due to fees
-        await alice.mint(BigInt(20000000));
-        await bob.mint(BigInt(20000000));
-
-        await alice.openChannel(bob, 15000000);
-        await bob.openChannel(alice, 15000000);
     }
 
     /**
@@ -299,8 +281,16 @@ export default class TestEnvironment extends NodeEnvironment {
      */
     private async startAliceLightning() {
         const config = await this.initLightningLedger("lnd-alice");
-        this.global.lndWallets.alice = await this.initLightningWallet(config);
+        const alice = await LndClient.newInstance(config, this.logger);
+
+        this.global.lndClients.alice = alice;
         this.global.ledgerConfigs.aliceLnd = config;
+
+        await this.bitcoinFaucet.mint(
+            BigInt(1_000_000_000), // 10 BTC should be enough money in the LND instance for a few swaps :)
+            await alice.newFundingAddress(),
+            async () => alice.confirmedWalletBalance()
+        );
     }
 
     /**
@@ -311,15 +301,15 @@ export default class TestEnvironment extends NodeEnvironment {
      */
     private async startBobLightning() {
         const config = await this.initLightningLedger("lnd-bob");
-        this.global.lndWallets.bob = await this.initLightningWallet(config);
-        this.global.ledgerConfigs.bobLnd = config;
-    }
+        const bob = await LndClient.newInstance(config, this.logger);
 
-    private async initLightningWallet(config: LightningNodeConfig) {
-        return LndWallet.newInstance(
-            new BitcoinFaucet(this.global.ledgerConfigs.bitcoin, this.logger),
-            this.logger,
-            config
+        this.global.lndClients.bob = bob;
+        this.global.ledgerConfigs.bobLnd = config;
+
+        await this.bitcoinFaucet.mint(
+            BigInt(1_000_000_000), // 10 BTC should be enough money in the LND instance for a few swaps :)
+            await bob.newFundingAddress(),
+            async () => bob.confirmedWalletBalance()
         );
     }
 

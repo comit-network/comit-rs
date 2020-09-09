@@ -1,14 +1,14 @@
 import { Network } from "../wallets/bitcoin";
 import { Global } from "@jest/types";
-import { LightningWallet } from "../wallets/lightning";
 import { CndConfigFile } from "../config";
 import { Logger } from "log4js";
+import { LndClient } from "../wallets/lightning";
 
 export interface HarnessGlobal extends Global.Global {
     ledgerConfigs: LedgerConfig;
-    lndWallets: {
-        alice?: LightningWallet;
-        bob?: LightningWallet;
+    lndClients: {
+        alice?: LndClient;
+        bob?: LndClient;
     };
     tokenContract: string;
     cargoTargetDir: string;

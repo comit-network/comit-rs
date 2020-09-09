@@ -9,10 +9,10 @@ import download from "download";
 import { platform } from "os";
 import { lock } from "proper-lockfile";
 import { crashListener } from "./crash_listener";
-import { Lnd } from "../wallets/lnd";
 import { LedgerInstance, LightningNodeConfig } from "./index";
 import { waitUntilFileExists } from "./wait_until_file_exists";
 import { existsAsync } from "./async_fs";
+import { createLnRpc } from "@radar/lnrpc";
 
 export class LndInstance implements LedgerInstance {
     private process: ChildProcess;
@@ -34,7 +34,7 @@ export class LndInstance implements LedgerInstance {
         );
     }
 
-    private constructor(
+    constructor(
         private readonly dataDir: string,
         private readonly logger: Logger,
         private readonly bitcoindDataDir: string,
@@ -90,14 +90,13 @@ export class LndInstance implements LedgerInstance {
     }
 
     private async initWallet() {
-        const config = {
+        this.logger.debug("Instantiating lnd connection:", this.config);
+        const lnRpc = await createLnRpc({
             server: this.grpcSocket,
             tls: this.tlsCertPath(),
-        };
-        this.logger.debug("Instantiating lnd connection:", config);
-        const lnd = await Lnd.init(config);
+        });
 
-        const { cipherSeedMnemonic } = await lnd.lnrpc.genSeed({
+        const { cipherSeedMnemonic } = await lnRpc.genSeed({
             seedEntropy: Buffer.alloc(16, this.lndP2pPort),
         });
         const walletPassword = Buffer.from("password", "utf8");
@@ -106,7 +105,7 @@ export class LndInstance implements LedgerInstance {
             cipherSeedMnemonic,
             walletPassword
         );
-        await lnd.lnrpc.initWallet({ cipherSeedMnemonic, walletPassword });
+        await lnRpc.initWallet({ cipherSeedMnemonic, walletPassword });
         this.logger.debug("Lnd wallet initialized!");
     }
 

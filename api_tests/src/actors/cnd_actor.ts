@@ -27,6 +27,7 @@ import {
     LNBitcoinBalanceAsserter,
     OnChainBitcoinBalanceAsserter,
 } from "./balance_asserter";
+import { LndChannel, LndClient } from "../wallets/lightning";
 
 declare var global: HarnessGlobal;
 
@@ -46,7 +47,8 @@ export class CndActor {
         public readonly logger: Logger,
         public readonly cndInstance: CndInstance,
         public readonly wallets: Wallets,
-        public readonly role: Role
+        public readonly role: Role,
+        public readonly lndClient: LndClient
     ) {
         logger.info(
             "Created new actor in role",
@@ -63,6 +65,19 @@ export class CndActor {
 
         const otherPeerId = await other.cnd.getPeerId();
         await this.pollUntilConnectedTo(otherPeerId);
+    }
+
+    public async openLnChannel(other: CndActor, amount: bigint): Promise<void> {
+        const channel = await this.lndClient.openChannel(
+            other.lndClient,
+            amount
+        );
+
+        this.wallets.lightning = channel;
+        other.wallets.lightning = new LndChannel(
+            other.lndClient,
+            channel.chanId
+        );
     }
 
     public async createHerc20HalbitSwap(create: Herc20HalbitPayload) {

@@ -7,11 +7,11 @@ import { BitcoindWallet, BitcoinWallet } from "./wallets/bitcoin";
 import {
     newBitcoinStubWallet,
     newEthereumStubWallet,
-    newLightningStubWallet,
+    newLightningStubChannel,
+    newLndStubClient,
     Wallets,
 } from "./wallets";
 import { EthereumWallet, Web3EthereumWallet } from "./wallets/ethereum";
-import { LightningWallet } from "./wallets/lightning";
 import { E2ETestActorConfig } from "./config";
 import { merge } from "lodash";
 import { CndInstance } from "./environment/cnd_instance";
@@ -122,11 +122,26 @@ async function newCndActor(role: Role) {
     const wallets = new Wallets({
         bitcoin: await bitcoinWallet,
         ethereum: await ethereumWallet,
-        lightning: newLightningWallet(global.lndWallets, role),
+        lightning: newLightningStubChannel(), // Lightning channels are initialized lazily
     });
     await cndStarting;
 
-    return new CndActor(logger, cndInstance, wallets, role);
+    const lndClient = (() => {
+        switch (role) {
+            case "Alice":
+                return global.lndClients.alice;
+            case "Bob":
+                return global.lndClients.bob;
+        }
+    })();
+
+    return new CndActor(
+        logger,
+        cndInstance,
+        wallets,
+        role,
+        lndClient || newLndStubClient()
+    );
 }
 
 async function newBitcoinWallet(
@@ -152,18 +167,4 @@ async function newEthereumWallet(
               ethereumConfig.devAccount
           )
         : Promise.resolve(newEthereumStubWallet());
-}
-
-function newLightningWallet(
-    lightningWallets: { alice?: LightningWallet; bob?: LightningWallet },
-    actor: Role
-): LightningWallet {
-    switch (actor) {
-        case "Alice": {
-            return lightningWallets.alice || newLightningStubWallet();
-        }
-        case "Bob": {
-            return lightningWallets.bob || newLightningStubWallet();
-        }
-    }
 }

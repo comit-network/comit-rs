@@ -1,6 +1,6 @@
 import { EthereumWallet } from "../wallets/ethereum";
 import { BitcoinWallet } from "../wallets/bitcoin";
-import { LightningWallet } from "../wallets/lightning";
+import { LightningChannel } from "../wallets/lightning";
 
 export interface BalanceAsserter {
     assertReceived(): Promise<void>;
@@ -143,7 +143,7 @@ export class OnChainBitcoinBalanceAsserter implements BalanceAsserter {
 
 export class LNBitcoinBalanceAsserter implements BalanceAsserter {
     public static async newInstance(
-        wallet: LightningWallet,
+        wallet: LightningChannel,
         swapAmount: bigint
     ) {
         const startingBalance = await wallet.getBalance();
@@ -156,7 +156,7 @@ export class LNBitcoinBalanceAsserter implements BalanceAsserter {
     }
 
     constructor(
-        private readonly wallet: LightningWallet,
+        private readonly wallet: LightningChannel,
         private readonly startingBalance: bigint,
         private readonly swapAmount: bigint
     ) {}

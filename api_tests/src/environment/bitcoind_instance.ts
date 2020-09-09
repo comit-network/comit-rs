@@ -162,6 +162,7 @@ acceptnonstdtxn=0
 zmqpubrawblock=tcp://127.0.0.1:${this.zmqPubRawBlockPort}
 zmqpubrawtx=tcp://127.0.0.1:${this.zmqPubRawTxPort}
 fallbackfee=0.0002
+txindex=1
 
 [regtest]
 bind=0.0.0.0:${this.p2pPort}

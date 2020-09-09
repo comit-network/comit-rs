@@ -12,6 +12,10 @@ describe("herc20-halbit", () => {
         "herc20-halbit-alice-redeems-bob-redeems",
         startAliceAndBob(async ([alice, bob]) => {
             const bodies = (await SwapFactory.newSwap(alice, bob)).herc20Halbit;
+            await bob.openLnChannel(
+                alice,
+                BigInt(bodies.bob.beta.amount) * BigInt(2)
+            );
 
             await alice.createHerc20HalbitSwap(bodies.alice);
             await bob.createHerc20HalbitSwap(bodies.bob);
@@ -42,6 +46,10 @@ describe("herc20-halbit", () => {
                     instantRefund: true,
                 })
             ).herc20Halbit;
+            await bob.openLnChannel(
+                alice,
+                BigInt(bodies.bob.beta.amount) * BigInt(2)
+            );
 
             await alice.createHerc20HalbitSwap(bodies.alice);
             await bob.createHerc20HalbitSwap(bodies.bob);

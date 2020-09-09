@@ -1,11 +1,11 @@
 import { BitcoinWallet } from "./bitcoin";
 import { EthereumWallet } from "./ethereum";
-import { LightningWallet } from "./lightning";
+import { LightningChannel, LndClient } from "./lightning";
 
 export interface AllWallets {
     bitcoin?: BitcoinWallet;
     ethereum?: EthereumWallet;
-    lightning?: LightningWallet;
+    lightning?: LightningChannel;
 }
 
 export class Wallets {
@@ -19,8 +19,12 @@ export class Wallets {
         return this.getWalletForLedger("ethereum");
     }
 
-    get lightning(): LightningWallet {
+    get lightning(): LightningChannel {
         return this.getWalletForLedger("lightning");
+    }
+
+    set lightning(channel: LightningChannel) {
+        this.wallets.lightning = channel;
     }
 
     public getWalletForLedger<K extends keyof AllWallets>(
@@ -58,14 +62,21 @@ export function newEthereumStubWallet(): EthereumWallet {
     });
 }
 
-export function newLightningStubWallet(): LightningWallet {
+export function newLightningStubChannel(): LightningChannel {
     return newStubWallet({
+        getBalance: () => Promise.resolve(BigInt(0)),
+    });
+}
+
+export function newLndStubClient(): LndClient {
+    const stub = {
         getPubkey: () =>
             Promise.resolve(
                 "02ed138aaed50d2d597f6fe8d30759fd3949fe73fdf961322713f1c19e10036a06"
             ),
-        getBalance: () => Promise.resolve(BigInt(0)),
-    });
+    };
+
+    return (stub as unknown) as LndClient;
 }
 
 function newStubWallet<W, T extends Partial<W>>(stubs: T): W {
