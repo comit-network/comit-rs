@@ -93,11 +93,11 @@ impl From<(tables::Order, tables::BtcDaiOrder)> for OrderProperties {
             price: Amount::from(btc_dai_order.price),
             quantity: Amount::from(btc_dai_order.quantity),
             state: State::new(
-                Amount::from(btc_dai_order.open),
-                Amount::from(btc_dai_order.closed),
-                Amount::from(btc_dai_order.settling),
-                Amount::from(btc_dai_order.failed),
-                Amount::from(btc_dai_order.cancelled),
+                btc_dai_order.open.to_inner(),
+                btc_dai_order.closed.to_inner(),
+                btc_dai_order.settling.to_inner(),
+                btc_dai_order.failed.to_inner(),
+                btc_dai_order.cancelled.to_inner(),
             ),
         }
     }
@@ -143,21 +143,26 @@ impl Amount {
 
 #[derive(Serialize)]
 struct State {
-    open: Amount,
-    closed: Amount,
-    settling: Amount,
-    failed: Amount,
-    cancelled: Amount,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    open: asset::Bitcoin,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    closed: asset::Bitcoin,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    settling: asset::Bitcoin,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    failed: asset::Bitcoin,
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    cancelled: asset::Bitcoin,
 }
 
 impl State {
     #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)] // we only store positive values in the DB ranging from 0 - 100
     fn new(
-        open: Amount,
-        closed: Amount,
-        settling: Amount,
-        failed: Amount,
-        cancelled: Amount,
+        open: asset::Bitcoin,
+        closed: asset::Bitcoin,
+        settling: asset::Bitcoin,
+        failed: asset::Bitcoin,
+        cancelled: asset::Bitcoin,
     ) -> Self {
         Self {
             open,
@@ -180,7 +185,7 @@ fn make_order_entity(properties: OrderProperties) -> Result<siren::Entity> {
 }
 
 fn cancel_action(order: &OrderProperties) -> Option<siren::Action> {
-    if order.state.open != Amount::btc(asset::Bitcoin::ZERO) {
+    if order.state.open != asset::Bitcoin::ZERO {
         Some(siren::Action {
             name: "cancel".to_string(),
             class: vec![],
@@ -517,11 +522,11 @@ mod tests {
             price: Amount::dai(Erc20Quantity::from_wei_dec_str("9100000000000000000000").unwrap()),
             quantity: Amount::btc(Bitcoin::from_sat(10000000)),
             state: State {
-                open: Amount::btc(Bitcoin::from_sat(3000000)),
-                closed: Amount::btc(Bitcoin::from_sat(1000000)),
-                settling: Amount::btc(Bitcoin::from_sat(0)),
-                failed: Amount::btc(Bitcoin::from_sat(6000000)),
-                cancelled: Amount::btc(Bitcoin::from_sat(0)),
+                open: Bitcoin::from_sat(3000000),
+                closed: Bitcoin::from_sat(1000000),
+                settling: Bitcoin::from_sat(0),
+                failed: Bitcoin::from_sat(6000000),
+                cancelled: Bitcoin::from_sat(0),
             },
         };
 
@@ -543,31 +548,11 @@ mod tests {
     "decimals": 8
   },
   "state": {
-    "open": {
-      "currency": "BTC",
-      "value": "3000000",
-      "decimals": 8
-    },
-    "closed": {
-      "currency": "BTC",
-      "value": "1000000",
-      "decimals": 8
-    },
-    "settling": {
-      "currency": "BTC",
-      "value": "0",
-      "decimals": 8
-    },
-    "failed": {
-      "currency": "BTC",
-      "value": "6000000",
-      "decimals": 8
-    },
-    "cancelled": {
-      "currency": "BTC",
-      "value": "0",
-      "decimals": 8
-    }
+    "open": "3000000",
+    "closed": "1000000",
+    "settling": "0",
+    "failed": "6000000",
+    "cancelled": "0"
   }
 }"#
         );

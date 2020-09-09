@@ -89,32 +89,16 @@ test(
             alice.fetchOrder(aliceHref).then((r) => r.properties)
         ).resolves.toMatchObject({
             state: {
-                open: {
-                    currency: "BTC",
-                    value: "0",
-                    decimals: 8,
-                },
-                settling: {
-                    currency: "BTC",
-                    value: "20000000",
-                    decimals: 8,
-                },
+                open: "0",
+                settling: "20000000",
             },
         });
         await expect(
             bob.fetchOrder(bobHref).then((r) => r.properties)
         ).resolves.toMatchObject({
             state: {
-                open: {
-                    currency: "BTC",
-                    value: "0",
-                    decimals: 8,
-                },
-                settling: {
-                    currency: "BTC",
-                    value: "20000000",
-                    decimals: 8,
-                },
+                open: "0",
+                settling: "20000000",
             },
         });
     })
@@ -141,11 +125,7 @@ test(
                 decimals: 18,
             },
             state: {
-                open: {
-                    currency: "BTC",
-                    value: "20000000",
-                    decimals: 8,
-                },
+                open: "20000000",
             },
         });
     })
@@ -180,16 +160,8 @@ test(
             alice.fetchOrder(href).then((r) => r.properties)
         ).resolves.toMatchObject({
             state: {
-                open: {
-                    currency: "BTC",
-                    value: "0",
-                    decimals: 8,
-                },
-                cancelled: {
-                    currency: "BTC",
-                    value: "20000000",
-                    decimals: 8,
-                },
+                open: "0",
+                cancelled: "20000000",
             },
         });
         await expect(
