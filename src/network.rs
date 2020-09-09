@@ -12,7 +12,7 @@ use comit::{
     },
     order::SwapProtocol,
     orderpool::Match,
-    BtcDaiOrder, Position, Role, Secret, SecretHash,
+    Position, Role, Secret, SecretHash,
 };
 use futures::Future;
 use libp2p::{
@@ -30,73 +30,43 @@ use std::{
 };
 use time::{Duration, OffsetDateTime};
 
+pub type Swarm = libp2p::Swarm<Nectar>;
+
 pub const SEED_LENGTH: usize = 32;
 
-#[derive(derivative::Derivative)]
-#[derivative(Debug)]
-pub struct Swarm {
-    #[derivative(Debug = "ignore")]
-    inner: libp2p::Swarm<Nectar>,
-    local_peer_id: PeerId,
-    #[derivative(Debug = "ignore")]
+pub fn new_swarm(
     seed: Seed,
-}
+    settings: &crate::config::Settings,
+    bitcoin_wallet: Arc<bitcoin::Wallet>,
+    ethereum_wallet: Arc<ethereum::Wallet>,
+    database: Arc<Database>,
+) -> anyhow::Result<Swarm> {
+    use anyhow::Context as _;
 
-impl Swarm {
-    pub fn new(
-        seed: Seed,
-        settings: &crate::config::Settings,
-        bitcoin_wallet: Arc<bitcoin::Wallet>,
-        ethereum_wallet: Arc<ethereum::Wallet>,
-        database: Arc<Database>,
-    ) -> anyhow::Result<Self> {
-        use anyhow::Context as _;
+    let behaviour = Nectar::new(
+        seed,
+        settings.ethereum.chain.dai_contract_address(),
+        bitcoin_wallet,
+        ethereum_wallet,
+        database,
+    );
 
-        let behaviour = Nectar::new(
-            seed,
-            settings.ethereum.chain.dai_contract_address(),
-            bitcoin_wallet,
-            ethereum_wallet,
-            database,
-        );
+    let local_key_pair = behaviour.identity();
+    let local_peer_id = behaviour.peer_id();
 
-        let local_key_pair = behaviour.identity();
-        let local_peer_id = behaviour.peer_id();
+    let transport = transport::build_transport(local_key_pair)?;
 
-        let transport = transport::build_transport(local_key_pair)?;
-
-        let mut swarm =
-            libp2p::swarm::SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
-                .executor(Box::new(TokioExecutor {
-                    handle: tokio::runtime::Handle::current(),
-                }))
-                .build();
-        for addr in settings.network.listen.clone() {
-            libp2p::Swarm::listen_on(&mut swarm, addr.clone())
-                .with_context(|| format!("Address is not supported: {:?}", addr))?;
-        }
-
-        Ok(Self {
-            inner: swarm,
-            local_peer_id,
-            seed,
-        })
+    let mut swarm = libp2p::swarm::SwarmBuilder::new(transport, behaviour, local_peer_id)
+        .executor(Box::new(TokioExecutor {
+            handle: tokio::runtime::Handle::current(),
+        }))
+        .build();
+    for addr in settings.network.listen.clone() {
+        Swarm::listen_on(&mut swarm, addr.clone())
+            .with_context(|| format!("Address is not supported: {:?}", addr))?;
     }
 
-    // TODO: Try to replace this with `DerefMut` impl
-    pub fn as_inner(&mut self) -> &mut libp2p::Swarm<Nectar> {
-        &mut self.inner
-    }
-
-    pub fn publish(&mut self, order: BtcDaiOrder) {
-        tracing::info!("Publishing new order");
-        self.inner.publish(order);
-    }
-
-    pub fn clear_own_orders(&mut self) {
-        tracing::info!("Cancelling all current orders");
-        self.inner.orderbook.clear_own_orders();
-    }
+    Ok(swarm)
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -128,7 +98,7 @@ pub struct SetupSwapContext {
 #[behaviour(out_event = "Event", poll_method = "poll")]
 #[allow(missing_debug_implementations)]
 pub struct Nectar {
-    orderbook: orderbook::Orderbook,
+    pub orderbook: orderbook::Orderbook,
     pub setup_swap: setup_swap::SetupSwap<SetupSwapContext>,
     #[behaviour(ignore)]
     seed: Seed,
@@ -178,10 +148,6 @@ impl Nectar {
 
     pub fn peer_id(&self) -> PeerId {
         PeerId::from(self.identity.public())
-    }
-
-    fn publish(&mut self, order: BtcDaiOrder) {
-        self.orderbook.publish(order);
     }
 
     fn derive_secret_hash(&self, swap_id: SwapId) -> SecretHash {

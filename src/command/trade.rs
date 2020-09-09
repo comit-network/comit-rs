@@ -18,7 +18,7 @@ use futures::{channel::mpsc::Receiver, Future, FutureExt, SinkExt, StreamExt, Tr
 use futures_timer::Delay;
 
 use crate::maker::TakeRequestDecision;
-use crate::network::{ActivePeer, SetupSwapContext};
+use crate::network::{new_swarm, ActivePeer, SetupSwapContext};
 use comit::{Position, Role};
 use std::{sync::Arc, time::Duration};
 
@@ -46,7 +46,7 @@ pub async fn trade(
     #[cfg(test)]
     let db = Arc::new(Database::new_test()?);
 
-    let mut swarm = Swarm::new(
+    let mut swarm = new_swarm(
         network::Seed::new(seed.bytes()),
         &settings,
         Arc::clone(&bitcoin_wallet),
@@ -62,8 +62,12 @@ pub async fn trade(
         .new_buy_order()
         .context("Could not generate buy order")?;
 
-    swarm.publish(initial_sell_order.to_order_comit_order(maker.swap_protocol(Position::Buy))?);
-    swarm.publish(initial_buy_order.to_order_comit_order(maker.swap_protocol(Position::Sell))?);
+    swarm
+        .orderbook
+        .publish(initial_sell_order.to_order_comit_order(maker.swap_protocol(Position::Buy))?);
+    swarm
+        .orderbook
+        .publish(initial_buy_order.to_order_comit_order(maker.swap_protocol(Position::Sell))?);
 
     let update_interval = Duration::from_secs(15u64);
 
@@ -106,7 +110,7 @@ pub async fn trade(
                     handle_finished_swap(finished_swap, &mut maker, &db, &mut history, &mut swarm).await;
                 }
             },
-            network_event = swarm.as_inner().next().fuse() => {
+            network_event = swarm.next().fuse() => {
                 handle_network_event(
                     network_event,
                     &mut maker,
@@ -348,9 +352,9 @@ fn handle_rate_update(
                         new_buy_order.to_order_comit_order(maker.swap_protocol(Position::Buy)),
                     ) {
                         (Ok(sell), Ok(buy)) => {
-                            swarm.publish(sell);
-                            swarm.publish(buy);
-                            swarm.clear_own_orders();
+                            swarm.orderbook.publish(sell);
+                            swarm.orderbook.publish(buy);
+                            swarm.orderbook.clear_own_orders();
                         }
                         // todo: This messy error handling code will be removed when we move to
                         // price quantity order model in nectar
@@ -381,8 +385,8 @@ fn handle_btc_balance_update(
             Ok(Some(new_sell_order)) => {
                 match new_sell_order.to_order_comit_order(maker.swap_protocol(Position::Sell)) {
                     Ok(order) => {
-                        swarm.clear_own_orders();
-                        swarm.publish(order);
+                        swarm.orderbook.clear_own_orders();
+                        swarm.orderbook.publish(order);
                     }
                     Err(e) => tracing::error!("Could not handle btc update: {}", e),
                 }
@@ -410,8 +414,8 @@ fn handle_dai_balance_update(
             Ok(Some(new_buy_order)) => {
                 match new_buy_order.to_order_comit_order(maker.swap_protocol(Position::Buy)) {
                     Ok(order) => {
-                        swarm.clear_own_orders();
-                        swarm.publish(order);
+                        swarm.orderbook.clear_own_orders();
+                        swarm.orderbook.publish(order);
                     }
                     Err(e) => tracing::error!("Could not handle dai balance update: {}", e),
                 }
@@ -502,7 +506,7 @@ async fn handle_network_event(
 
             match result {
                 Ok(TakeRequestDecision::GoForSwap) => {
-                    if let Err(e) = swarm.as_inner().setup_swap.send(
+                    if let Err(e) = swarm.setup_swap.send(
                         &to,
                         to_send,
                         common,
