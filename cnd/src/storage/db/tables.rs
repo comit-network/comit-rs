@@ -512,7 +512,6 @@ pub struct InsertableBtcDaiOrder {
 }
 
 impl InsertableBtcDaiOrder {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(order_fk: i32, quantity: asset::Bitcoin, price: Erc20Quantity) -> Self {
         Self {
             order_id: order_fk,
