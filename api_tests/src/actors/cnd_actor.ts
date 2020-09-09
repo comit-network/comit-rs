@@ -57,6 +57,12 @@ export class CndActor {
         public readonly wallets: Wallets,
         public readonly role: Role
     ) {
+        logger.info(
+            "Created new actor in role",
+            role,
+            "with config",
+            cndInstance.getConfigFile()
+        );
         const socket = cndInstance.getConfigFile().http_api.socket;
         this.cnd = new CndClient(`http://${socket}`);
 

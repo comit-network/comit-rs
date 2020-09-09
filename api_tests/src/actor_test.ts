@@ -67,10 +67,14 @@ export function cndActorTest(
 ): ProvidesCallback {
     return async (done) => {
         const actors = await Promise.all(roles.map(newCndActor));
+        global
+            .getLogger(["test_environment"])
+            .info("All actors created, running test");
 
         try {
             await pTimeout(testFn(actors), 120_000);
         } catch (e) {
+            global.getLogger(["test_environment"]).error("Test failed", e);
             for (const actor of this.actors) {
                 await actor.dumpState();
             }
@@ -96,15 +100,12 @@ async function newCndActor(role: Role) {
     const ledgerConfig = global.ledgerConfigs;
     const logger = global.getLogger([testName, role]);
 
+    logger.info("Creating new actor in role", role);
+
     const actorConfig = await E2ETestActorConfig.for(role);
     const generatedConfig = actorConfig.generateCndConfigFile(ledgerConfig);
     const finalConfig = merge(generatedConfig, global.cndConfigOverrides);
     const cndLogFile = global.getLogFile([testName, `cnd-${role}.log`]);
-
-    logger.info(
-        "Created new CndActor with config %s",
-        JSON.stringify(finalConfig)
-    );
 
     const cndInstance = new CndInstance(
         global.cargoTargetDir,

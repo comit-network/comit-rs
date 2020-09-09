@@ -109,6 +109,8 @@ export default class TestEnvironment extends NodeEnvironment {
         this.logger.info("Starting up test environment");
 
         await this.startLedgers();
+
+        this.logger.info("Test environment started");
     }
 
     async teardown() {
