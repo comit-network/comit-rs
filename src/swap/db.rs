@@ -32,6 +32,8 @@ pub struct Database {
 }
 
 impl Database {
+    const BITCOIN_TRANSIENT_KEYS_INDEX_KEY: &'static str = "bitcoin_transient_key_index";
+
     #[cfg(not(test))]
     pub fn new(path: &std::path::Path) -> anyhow::Result<Self> {
         let path = path
@@ -43,6 +45,11 @@ impl Database {
             let peers = Vec::<ActivePeer>::new();
             let peers = serialize(&peers)?;
             let _ = db.insert("active_peer", peers)?;
+        }
+
+        if !db.contains_key(Self::BITCOIN_TRANSIENT_KEYS_INDEX_KEY)? {
+            let index = serialize(&0u32)?;
+            let _ = db.insert(serialize(&Self::BITCOIN_TRANSIENT_KEYS_INDEX_KEY)?, index)?;
         }
 
         Ok(Database { db })
@@ -60,7 +67,38 @@ impl Database {
         let peers = serialize(&peers)?;
         let _ = db.insert("active_peer", peers)?;
 
+        let index = serialize(&0u32)?;
+        let _ = db.insert(serialize(&Self::BITCOIN_TRANSIENT_KEYS_INDEX_KEY)?, index)?;
+
         Ok(Database { db, tmp_dir })
+    }
+
+    pub fn fetch_inc_bitcoin_transient_key_index(&self) -> anyhow::Result<u32> {
+        let old_value = self.db.fetch_and_update(
+            serialize(&Self::BITCOIN_TRANSIENT_KEYS_INDEX_KEY)?,
+            |old| match old {
+                Some(bytes) => deserialize::<u32>(bytes)
+                    .map_err(|err| {
+                        tracing::error!(
+                            "Bitcoin transient keys index is corrupted in the db: {:?}, {:#}",
+                            bytes,
+                            err
+                        )
+                    })
+                    .map(|index| serialize(&(index + 1)).expect("Can always serialized a u32"))
+                    .ok(),
+                None => None,
+            },
+        )?;
+
+        match old_value {
+            Some(index) => deserialize(&index),
+            None => Err(anyhow!(
+                "The Bitcoin transient keys index was not properly instantiated in the db"
+            )),
+        }
+
+        // TODO: Flush the db
     }
 }
 /// Swap related functions
@@ -392,5 +430,13 @@ mod tests {
         for swap in swaps.iter() {
             assert!(stored_swaps.contains(&swap))
         }
+    }
+
+    #[test]
+    fn increment_bitcoin_transient_key_index() {
+        let db = Database::new_test().unwrap();
+
+        assert_eq!(db.fetch_inc_bitcoin_transient_key_index().unwrap(), 0);
+        assert_eq!(db.fetch_inc_bitcoin_transient_key_index().unwrap(), 1);
     }
 }

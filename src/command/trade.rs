@@ -496,6 +496,7 @@ async fn handle_network_event(
             swap_protocol,
             swap_id,
             match_ref_point,
+            bitcoin_transient_key_index,
         } => {
             let result = maker.process_taken_order(form);
 
@@ -508,6 +509,7 @@ async fn handle_network_event(
                         swap_protocol,
                         swap_id,
                         match_ref_point,
+                        bitcoin_transient_key_index,
                     ) {
                         tracing::error!("Sending setup swap message yielded error: {}", e)
                     }

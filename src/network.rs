@@ -1,6 +1,7 @@
+use crate::swap::{Database, SwapParams};
 use crate::{bitcoin, ethereum, ethereum::dai, order::BtcDaiOrderForm, swap::SwapKind, SwapId};
 use ::bitcoin::hashes::{sha256, Hash, HashEngine};
-
+use chrono::{NaiveDateTime, Utc};
 use comit::{
     identity,
     network::{
@@ -27,9 +28,6 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
-
-use crate::swap::{Database, SwapParams};
-use chrono::{NaiveDateTime, Utc};
 use time::{Duration, OffsetDateTime};
 
 pub const SEED_LENGTH: usize = 32;
@@ -102,6 +100,7 @@ impl Swarm {
         swap_protocol: comit::network::setup_swap::SwapProtocol,
         swap_id: SwapId,
         match_ref_point: OffsetDateTime,
+        bitcoin_transient_key_index: u32,
     ) -> anyhow::Result<()> {
         tracing::info!("Sending setup swap message");
         self.inner.setup_swap.send(
@@ -112,6 +111,7 @@ impl Swarm {
             SetupSwapContext {
                 swap_id,
                 match_ref_point,
+                bitcoin_transient_key_index,
             },
         )?;
         Ok(())
@@ -135,12 +135,14 @@ pub enum Event {
         swap_protocol: comit::network::setup_swap::SwapProtocol,
         swap_id: SwapId,
         match_ref_point: OffsetDateTime,
+        bitcoin_transient_key_index: u32,
     },
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct SetupSwapContext {
     swap_id: SwapId,
+    bitcoin_transient_key_index: u32,
     match_ref_point: OffsetDateTime,
 }
 
@@ -264,9 +266,11 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::Be
                 ours,
                 ..
             }) => {
+                // TODO: Just push this to the stream and process it in `trade.rs`.
                 let taker = ActivePeer {
                     peer_id: peer.clone(),
                 };
+
                 let ongoing_trade_with_taker_exists = match self
                     .database
                     .contains_active_peer(&taker)
@@ -295,9 +299,19 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::Be
                 let token_contract = self.dai_contract_address;
                 let swap_id = SwapId::default();
                 let secret_hash = self.derive_secret_hash(swap_id);
+                let index = match self.database.fetch_inc_bitcoin_transient_key_index() {
+                    Err(err) => {
+                        tracing::error!(
+                            "Could not fetch the index for the Bitcoin transient key: {:#}",
+                            err
+                        );
+                        return;
+                    }
+                    Ok(index) => index,
+                };
 
                 let ethereum_identity = self.ethereum_wallet.account();
-                let bitcoin_transient_sk = match self.bitcoin_wallet.derive_transient_sk() {
+                let bitcoin_transient_sk = match self.bitcoin_wallet.derive_transient_sk(index) {
                     Ok(sk) => sk,
                     Err(err) => {
                         tracing::error!("Could not derive Bitcoin transient key: {:?}", err);
@@ -448,6 +462,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::Be
                     swap_protocol,
                     swap_id,
                     match_ref_point: match_reference_point,
+                    bitcoin_transient_key_index: index,
                 });
             }
         }
@@ -472,7 +487,10 @@ impl
                     Utc,
                 );
 
-                let bitcoin_transient_sk = match self.bitcoin_wallet.derive_transient_sk() {
+                let bitcoin_transient_sk = match self
+                    .bitcoin_wallet
+                    .derive_transient_sk(exec_swap.context.bitcoin_transient_key_index)
+                {
                     Ok(sk) => sk,
                     Err(err) => {
                         tracing::error!("Could not derive Bitcoin transient key: {:?}", err);

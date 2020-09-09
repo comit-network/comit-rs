@@ -10,21 +10,19 @@ use ::bitcoin::{
 };
 use bitcoin::util::bip32::DerivationPath;
 use std::str::FromStr;
-use std::sync::atomic::{AtomicU32, Ordering};
 use url::Url;
 
 const BITCOIND_DEFAULT_EXTERNAL_DERIVATION_PATH: &str = "/0h/0h/*h";
 const BITCOIND_DEFAULT_INTERNAL_DERIVATION_PATH: &str = "/0h/1h/*h";
 const TRANSIENT_DERIVATION_PATH: &str = "m/0'/9939'";
 
-#[derive(Debug)]
+#[derive(derivative::Derivative)]
+#[derivative(Debug)]
 pub struct Wallet {
     /// The wallet is named `nectar_x` with `x` being the first 4 bytes of the hash of the seed
     name: String,
     bitcoind_client: Client,
     root_key: ExtendedPrivKey,
-    // This is the only field of this struct that should be mutable
-    transient_key_index: AtomicU32,
     pub network: Network,
 }
 
@@ -35,12 +33,10 @@ impl Wallet {
 
         let root_key = Self::root_extended_private_key_from_seed(&seed, network);
 
-        // TODO: Load the `transient_key_index` from the DB.
         let wallet = Wallet {
             name,
             bitcoind_client,
             root_key,
-            transient_key_index: 0.into(),
             network,
         };
 
@@ -90,8 +86,7 @@ impl Wallet {
     }
 
     /// Derive a new key under transient derivation path
-    pub fn derive_transient_sk(&self) -> anyhow::Result<SecretKey> {
-        let index = self.transient_key_index.fetch_add(1, Ordering::SeqCst);
+    pub fn derive_transient_sk(&self, index: u32) -> anyhow::Result<SecretKey> {
         let index = ChildNumber::from_hardened_idx(index)?;
         let path = DerivationPath::from_str(TRANSIENT_DERIVATION_PATH)
             .expect("Valid derivation path in cost")
