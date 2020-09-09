@@ -465,7 +465,7 @@ dependencies = [
  "config",
  "conquer-once",
  "data-encoding",
- "derivative 2.1.1",
+ "derivative",
  "diesel",
  "diesel_migrations",
  "digest 0.1.0",
@@ -533,7 +533,7 @@ dependencies = [
  "byteorder",
  "chrono",
  "conquer-once",
- "derivative 2.1.1",
+ "derivative",
  "digest 0.1.0",
  "ethbloom",
  "futures",
@@ -658,6 +658,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crypto-mac"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b584a330336237c1eecd3e94266efb216c56ed91225d634cb2991c5f3fd1aeab"
+dependencies = [
+ "generic-array 0.14.3",
+ "subtle 2.2.3",
+]
+
+[[package]]
 name = "ctr"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -685,17 +695,6 @@ name = "data-encoding"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4d0e2d24e5ee3b23a01de38eefdcd978907890701f08ffffd4cb457ca4ee8d6"
-
-[[package]]
-name = "derivative"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c6d883546668a3e2011b6a716a7330b82eabb0151b138217f632c8243e17135"
-dependencies = [
- "proc-macro2 0.4.30",
- "quote 0.6.13",
- "syn 0.15.44",
-]
 
 [[package]]
 name = "derivative"
@@ -1256,8 +1255,18 @@ version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5dcb5e64cda4c23119ab41ba960d1e170a774c8e4b9d9e6a9bc18aabf5e59695"
 dependencies = [
- "crypto-mac",
+ "crypto-mac 0.7.0",
  "digest 0.8.1",
+]
+
+[[package]]
+name = "hmac"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "126888268dcc288495a26bf004b38c5fdbb31682f992c84ceb046a1f0fe38840"
+dependencies = [
+ "crypto-mac 0.8.0",
+ "digest 0.9.0",
 ]
 
 [[package]]
@@ -1268,7 +1277,7 @@ checksum = "c6e570451493f10f6581b48cdd530413b63ea9e780f544bfd3bdcaa0d89d1a7b"
 dependencies = [
  "digest 0.8.1",
  "generic-array 0.12.3",
- "hmac",
+ "hmac 0.7.1",
 ]
 
 [[package]]
@@ -1680,7 +1689,7 @@ dependencies = [
  "aes-ctr",
  "ctr",
  "futures",
- "hmac",
+ "hmac 0.7.1",
  "js-sys",
  "lazy_static",
  "libp2p-core",
@@ -3300,17 +3309,6 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "0.15.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ca4b3b69a77cbe1ffc9e198781b7acb0c7365a883670e8f1c1bc66fba79a5c5"
-dependencies = [
- "proc-macro2 0.4.30",
- "quote 0.6.13",
- "unicode-xid 0.1.0",
-]
-
-[[package]]
-name = "syn"
 version = "1.0.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "963f7d3cc59b59b9325165add223142bbf1df27655d07789f109896d353d8350"
@@ -3357,18 +3355,18 @@ dependencies = [
 
 [[package]]
 name = "testcontainers"
-version = "0.9.1"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af06783709f5254b087f0a1ea4557e372a5c2c597ca4a1157fbe536b1de2fb19"
+checksum = "5134c13096bec3ad5d4e468f2ab32788654110de751099b729997fb37e924b4a"
 dependencies = [
- "derivative 1.0.4",
+ "derivative",
  "hex 0.4.2",
- "hmac",
+ "hmac 0.8.1",
  "log 0.4.11",
  "rand 0.7.3",
  "serde",
  "serde_json",
- "sha2 0.8.2",
+ "sha2 0.9.1",
 ]
 
 [[package]]
