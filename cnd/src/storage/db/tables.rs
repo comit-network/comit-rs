@@ -363,6 +363,14 @@ pub struct Order {
 }
 
 impl Order {
+    fn by_id(conn: &SqliteConnection, id: i32) -> Result<Self> {
+        let order = orders::table
+            .filter(orders::id.eq(id))
+            .first::<Order>(conn)?;
+
+        Ok(order)
+    }
+
     pub fn by_order_id(conn: &SqliteConnection, order_id: OrderId) -> Result<Self> {
         let order = orders::table
             .filter(orders::order_id.eq(Text(order_id)))
@@ -471,7 +479,8 @@ impl BtcDaiOrder {
 
     pub fn set_to_cancelled(&self, conn: &SqliteConnection) -> Result<()> {
         if self.open == Quantity::new(asset::Bitcoin::ZERO) {
-            anyhow::bail!(NotOpen(self.order_id))
+            let order = Order::by_id(conn, self.order_id.clone())?;
+            anyhow::bail!(NotOpen(order.order_id))
         }
 
         let affected_rows = diesel::update(self)

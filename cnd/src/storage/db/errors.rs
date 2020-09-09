@@ -54,4 +54,4 @@ pub struct NoRefundIdentity;
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("Order {0} is no longer open and can therefore not be cancelled")]
-pub struct NotOpen(pub i32);
+pub struct NotOpen(pub OrderId);
