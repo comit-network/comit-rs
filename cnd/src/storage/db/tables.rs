@@ -479,7 +479,7 @@ impl BtcDaiOrder {
 
     pub fn set_to_cancelled(&self, conn: &SqliteConnection) -> Result<()> {
         if self.open == Quantity::new(asset::Bitcoin::ZERO) {
-            let order = Order::by_id(conn, self.order_id.clone())?;
+            let order = Order::by_id(conn, self.order_id)?;
             anyhow::bail!(NotOpen(order.order_id))
         }
 
