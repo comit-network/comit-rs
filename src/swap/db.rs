@@ -32,6 +32,7 @@ pub struct Database {
 }
 
 impl Database {
+    const ACTIVE_PEER_KEY: &'static str = "active_peer";
     const BITCOIN_TRANSIENT_KEYS_INDEX_KEY: &'static str = "bitcoin_transient_key_index";
 
     #[cfg(not(test))]
@@ -41,10 +42,10 @@ impl Database {
             .ok_or_else(|| anyhow!("The path is not utf-8 valid: {:?}", path))?;
         let db = sled::open(path).context(format!("Could not open the DB at {}", path))?;
 
-        if !db.contains_key("active_peer")? {
+        if !db.contains_key(Self::ACTIVE_PEER_KEY)? {
             let peers = Vec::<ActivePeer>::new();
             let peers = serialize(&peers)?;
-            let _ = db.insert("active_peer", peers)?;
+            let _ = db.insert(serialize(&Self::ACTIVE_PEER_KEY)?, peers)?;
         }
 
         if !db.contains_key(Self::BITCOIN_TRANSIENT_KEYS_INDEX_KEY)? {
@@ -65,7 +66,7 @@ impl Database {
 
         let peers = Vec::<ActivePeer>::new();
         let peers = serialize(&peers)?;
-        let _ = db.insert("active_peer", peers)?;
+        let _ = db.insert(serialize(&Self::ACTIVE_PEER_KEY)?, peers)?;
 
         let index = serialize(&0u32)?;
         let _ = db.insert(serialize(&Self::BITCOIN_TRANSIENT_KEYS_INDEX_KEY)?, index)?;
@@ -217,7 +218,8 @@ impl Database {
         let updated_peers = Vec::<ActivePeer>::from_iter(peers);
         let updated_peers = serialize(&updated_peers)?;
 
-        self.db.insert("active_peer", updated_peers)?;
+        self.db
+            .insert(serialize(&Self::ACTIVE_PEER_KEY)?, updated_peers)?;
 
         Ok(())
     }
@@ -225,7 +227,7 @@ impl Database {
     fn peers(&self) -> anyhow::Result<HashSet<ActivePeer>> {
         let peers = self
             .db
-            .get("active_peer")?
+            .get(serialize(&Self::ACTIVE_PEER_KEY)?)?
             .ok_or_else(|| anyhow::anyhow!("no key \"active_peer\" in db"))?;
         let peers: Vec<ActivePeer> = deserialize(&peers)?;
         let peers = HashSet::<ActivePeer>::from_iter(peers);
