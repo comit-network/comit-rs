@@ -8,9 +8,6 @@ on:
       - 'trying'
       - 'master'
 
-env:
-  RUST_TOOLCHAIN: stable
-
 jobs:
   static_analysis:
     runs-on: ubuntu-latest
@@ -18,11 +15,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
-      - name: Install ${{ env.RUST_TOOLCHAIN }} toolchain
+      - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
+        id: toolchain
         with:
           profile: minimal
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
           override: true
           components: rustfmt, clippy
 
@@ -30,7 +27,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.cargo/bin
-          key: ubuntu-rust-${{ env.RUST_TOOLCHAIN }}-cargo-bin-directory-v2
+          key: ubuntu-rust-${{ steps.toolchain.outputs.rustc_hash }}-cargo-bin-directory-v2
 
       - name: Install tomlfmt
         run: which cargo-tomlfmt || cargo install cargo-tomlfmt
@@ -53,11 +50,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
-      - name: Install ${{ env.RUST_TOOLCHAIN }} toolchain
+      - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
+        id: toolchain
         with:
           profile: minimal
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
           override: true
 
       - name: Cache target directory
@@ -65,13 +62,13 @@ jobs:
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ matrix.os }}-rust-${{ env.RUST_TOOLCHAIN }}-target-directory-${{ hashFiles('Cargo.lock') }}-v5
+          key: ${{ matrix.os }}-rust-${{ steps.toolchain.outputs.rustc_hash }}-target-directory-${{ hashFiles('Cargo.lock') }}-v5
 
       - name: Cache ~/.cargo/registry directory
         uses: actions/cache@v1
         with:
           path: ~/.cargo/registry
-          key: ${{ matrix.os }}-rust-${{ env.RUST_TOOLCHAIN }}-cargo-registry-directory-${{ hashFiles('Cargo.lock') }}-v5
+          key: ${{ matrix.os }}-rust-${{ steps.toolchain.outputs.rustc_hash }}-cargo-registry-directory-${{ hashFiles('Cargo.lock') }}-v5
 
       - name: Cargo check ${{ matrix.os }}
         run: cargo check

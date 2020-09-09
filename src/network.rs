@@ -1,6 +1,7 @@
+use crate::swap::{Database, SwapParams};
 use crate::{bitcoin, ethereum, ethereum::dai, order::BtcDaiOrderForm, swap::SwapKind, SwapId};
 use ::bitcoin::hashes::{sha256, Hash, HashEngine};
-
+use chrono::{NaiveDateTime, Utc};
 use comit::{
     identity,
     network::{
@@ -11,7 +12,7 @@ use comit::{
     },
     order::SwapProtocol,
     orderpool::Match,
-    BtcDaiOrder, Position, Role, Secret, SecretHash,
+    Position, Role, Secret, SecretHash,
 };
 use futures::Future;
 use libp2p::{
@@ -27,100 +28,45 @@ use std::{
     sync::Arc,
     task::{Context, Poll},
 };
-
-use crate::swap::{Database, SwapParams};
-use chrono::{NaiveDateTime, Utc};
 use time::{Duration, OffsetDateTime};
+
+pub type Swarm = libp2p::Swarm<Nectar>;
 
 pub const SEED_LENGTH: usize = 32;
 
-#[derive(derivative::Derivative)]
-#[derivative(Debug)]
-pub struct Swarm {
-    #[derivative(Debug = "ignore")]
-    inner: libp2p::Swarm<Nectar>,
-    local_peer_id: PeerId,
-    #[derivative(Debug = "ignore")]
+pub fn new_swarm(
     seed: Seed,
-}
+    settings: &crate::config::Settings,
+    bitcoin_wallet: Arc<bitcoin::Wallet>,
+    ethereum_wallet: Arc<ethereum::Wallet>,
+    database: Arc<Database>,
+) -> anyhow::Result<Swarm> {
+    use anyhow::Context as _;
 
-impl Swarm {
-    pub fn new(
-        seed: Seed,
-        settings: &crate::config::Settings,
-        bitcoin_wallet: Arc<bitcoin::Wallet>,
-        ethereum_wallet: Arc<ethereum::Wallet>,
-        database: Arc<Database>,
-    ) -> anyhow::Result<Self> {
-        use anyhow::Context as _;
+    let behaviour = Nectar::new(
+        seed,
+        settings.ethereum.chain.dai_contract_address(),
+        bitcoin_wallet,
+        ethereum_wallet,
+        database,
+    );
 
-        let behaviour = Nectar::new(
-            seed,
-            settings.ethereum.chain.dai_contract_address(),
-            bitcoin_wallet,
-            ethereum_wallet,
-            database,
-        );
+    let local_key_pair = behaviour.identity();
+    let local_peer_id = behaviour.peer_id();
 
-        let local_key_pair = behaviour.identity();
-        let local_peer_id = behaviour.peer_id();
+    let transport = transport::build_transport(local_key_pair)?;
 
-        let transport = transport::build_transport(local_key_pair)?;
-
-        let mut swarm =
-            libp2p::swarm::SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
-                .executor(Box::new(TokioExecutor {
-                    handle: tokio::runtime::Handle::current(),
-                }))
-                .build();
-        for addr in settings.network.listen.clone() {
-            libp2p::Swarm::listen_on(&mut swarm, addr.clone())
-                .with_context(|| format!("Address is not supported: {:?}", addr))?;
-        }
-
-        Ok(Self {
-            inner: swarm,
-            local_peer_id,
-            seed,
-        })
+    let mut swarm = libp2p::swarm::SwarmBuilder::new(transport, behaviour, local_peer_id)
+        .executor(Box::new(TokioExecutor {
+            handle: tokio::runtime::Handle::current(),
+        }))
+        .build();
+    for addr in settings.network.listen.clone() {
+        Swarm::listen_on(&mut swarm, addr.clone())
+            .with_context(|| format!("Address is not supported: {:?}", addr))?;
     }
 
-    pub fn as_inner(&mut self) -> &mut libp2p::Swarm<Nectar> {
-        &mut self.inner
-    }
-
-    pub fn publish(&mut self, order: BtcDaiOrder) {
-        tracing::info!("Publishing new order");
-        self.inner.publish(order);
-    }
-
-    pub fn setup_swap(
-        &mut self,
-        to: &PeerId,
-        to_send: RoleDependentParams,
-        common: CommonParams,
-        swap_protocol: comit::network::setup_swap::SwapProtocol,
-        swap_id: SwapId,
-        match_ref_point: OffsetDateTime,
-    ) -> anyhow::Result<()> {
-        tracing::info!("Sending setup swap message");
-        self.inner.setup_swap.send(
-            to,
-            to_send,
-            common,
-            swap_protocol,
-            SetupSwapContext {
-                swap_id,
-                match_ref_point,
-            },
-        )?;
-        Ok(())
-    }
-
-    pub fn clear_own_orders(&mut self) {
-        tracing::info!("Cancelling all current orders");
-        self.inner.orderbook.clear_own_orders();
-    }
+    Ok(swarm)
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -135,13 +81,15 @@ pub enum Event {
         swap_protocol: comit::network::setup_swap::SwapProtocol,
         swap_id: SwapId,
         match_ref_point: OffsetDateTime,
+        bitcoin_transient_key_index: u32,
     },
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct SetupSwapContext {
-    swap_id: SwapId,
-    match_ref_point: OffsetDateTime,
+    pub swap_id: SwapId,
+    pub bitcoin_transient_key_index: u32,
+    pub match_ref_point: OffsetDateTime,
 }
 
 /// A `NetworkBehaviour` that delegates to the `Orderbook` and `SetupSwap`
@@ -150,8 +98,8 @@ pub struct SetupSwapContext {
 #[behaviour(out_event = "Event", poll_method = "poll")]
 #[allow(missing_debug_implementations)]
 pub struct Nectar {
-    orderbook: orderbook::Orderbook,
-    setup_swap: setup_swap::SetupSwap<SetupSwapContext>,
+    pub orderbook: orderbook::Orderbook,
+    pub setup_swap: setup_swap::SetupSwap<SetupSwapContext>,
     #[behaviour(ignore)]
     seed: Seed,
     #[behaviour(ignore)]
@@ -200,10 +148,6 @@ impl Nectar {
 
     pub fn peer_id(&self) -> PeerId {
         PeerId::from(self.identity.public())
-    }
-
-    fn publish(&mut self, order: BtcDaiOrder) {
-        self.orderbook.publish(order);
     }
 
     fn derive_secret_hash(&self, swap_id: SwapId) -> SecretHash {
@@ -264,9 +208,11 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::Be
                 ours,
                 ..
             }) => {
+                // TODO: Just push this to the stream and process it in `trade.rs`.
                 let taker = ActivePeer {
                     peer_id: peer.clone(),
                 };
+
                 let ongoing_trade_with_taker_exists = match self
                     .database
                     .contains_active_peer(&taker)
@@ -295,12 +241,28 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::Be
                 let token_contract = self.dai_contract_address;
                 let swap_id = SwapId::default();
                 let secret_hash = self.derive_secret_hash(swap_id);
+                let index = match self.database.fetch_inc_bitcoin_transient_key_index() {
+                    Err(err) => {
+                        tracing::error!(
+                            "Could not fetch the index for the Bitcoin transient key: {:#}",
+                            err
+                        );
+                        return;
+                    }
+                    Ok(index) => index,
+                };
 
                 let ethereum_identity = self.ethereum_wallet.account();
-                let bitcoin_identity = identity::Bitcoin::from_secret_key(
-                    &crate::SECP,
-                    &self.bitcoin_wallet.derive_transient_sk(swap_id),
-                );
+                let bitcoin_transient_sk = match self.bitcoin_wallet.derive_transient_sk(index) {
+                    Ok(sk) => sk,
+                    Err(err) => {
+                        tracing::error!("Could not derive Bitcoin transient key: {:?}", err);
+                        return;
+                    }
+                };
+
+                let bitcoin_identity =
+                    identity::Bitcoin::from_secret_key(&crate::SECP, &bitcoin_transient_sk);
 
                 let erc20_quantity = quantity.as_sat() * price;
 
@@ -442,6 +404,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::Be
                     swap_protocol,
                     swap_id,
                     match_ref_point: match_reference_point,
+                    bitcoin_transient_key_index: index,
                 });
             }
         }
@@ -466,14 +429,24 @@ impl
                     Utc,
                 );
 
-                let transient_sk = self.bitcoin_wallet.derive_transient_sk(swap_id);
+                let bitcoin_transient_sk = match self
+                    .bitcoin_wallet
+                    .derive_transient_sk(exec_swap.context.bitcoin_transient_key_index)
+                {
+                    Ok(sk) => sk,
+                    Err(err) => {
+                        tracing::error!("Could not derive Bitcoin transient key: {:?}", err);
+                        return;
+                    }
+                };
+
                 let swap_kind = match (exec_swap.our_role, exec_swap.swap_protocol) {
                     // Sell
                     (Role::Alice, setup_swap::SwapProtocol::HbitHerc20) => {
                         SwapKind::HbitHerc20(SwapParams {
                             hbit_params: crate::swap::hbit::Params::new(
                                 exec_swap.hbit,
-                                transient_sk,
+                                bitcoin_transient_sk,
                             ),
                             herc20_params: crate::swap::herc20::Params {
                                 asset: exec_swap.herc20.asset.clone(),
@@ -496,7 +469,7 @@ impl
                         SwapKind::HbitHerc20(SwapParams {
                             hbit_params: crate::swap::hbit::Params::new(
                                 exec_swap.hbit,
-                                transient_sk,
+                                bitcoin_transient_sk,
                             ),
                             herc20_params: crate::swap::herc20::Params {
                                 asset: exec_swap.herc20.asset.clone(),
@@ -519,7 +492,7 @@ impl
                         SwapKind::Herc20Hbit(SwapParams {
                             hbit_params: crate::swap::hbit::Params::new(
                                 exec_swap.hbit,
-                                transient_sk,
+                                bitcoin_transient_sk,
                             ),
                             herc20_params: crate::swap::herc20::Params {
                                 asset: exec_swap.herc20.asset.clone(),
@@ -542,7 +515,7 @@ impl
                         SwapKind::Herc20Hbit(SwapParams {
                             hbit_params: crate::swap::hbit::Params::new(
                                 exec_swap.hbit,
-                                transient_sk,
+                                bitcoin_transient_sk,
                             ),
                             herc20_params: crate::swap::herc20::Params {
                                 asset: exec_swap.herc20.asset.clone(),

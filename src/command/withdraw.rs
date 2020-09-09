@@ -1,14 +1,16 @@
 use crate::command::Withdraw;
 use crate::ethereum::STANDARD_ETH_TRANSFER_GAS_LIMIT;
 use crate::{bitcoin, ethereum};
+use std::borrow::Borrow;
 
 pub async fn withdraw(
     ethereum_wallet: ethereum::Wallet,
-    bitcoin_wallet: bitcoin::Wallet,
+    bitcoin_wallet: impl Borrow<bitcoin::Wallet>,
     arguments: Withdraw,
 ) -> anyhow::Result<String> {
     match arguments {
         Withdraw::Btc { amount, to_address } => {
+            let bitcoin_wallet = bitcoin_wallet.borrow();
             let tx_id = bitcoin_wallet
                 .send_to_address(to_address.clone(), amount, bitcoin_wallet.network)
                 .await?;
@@ -52,6 +54,7 @@ mod tests {
     use comit::asset::ethereum::FromWei;
     use comit::asset::{Erc20, Erc20Quantity};
     use std::str::FromStr;
+    use std::sync::Arc;
 
     // Run cargo test with `--ignored --nocapture` to see the `println output`
     #[ignore]
@@ -63,13 +66,15 @@ mod tests {
         let bitcoin_blockchain = test_harness::bitcoin::Blockchain::new(&client).unwrap();
         bitcoin_blockchain.init().await.unwrap();
 
-        let bitcoin_wallet = bitcoin::Wallet::new(
-            seed,
-            bitcoin_blockchain.node_url.clone(),
-            ::bitcoin::Network::Regtest,
-        )
-        .await
-        .unwrap();
+        let bitcoin_wallet = Arc::new(
+            bitcoin::Wallet::new(
+                seed,
+                bitcoin_blockchain.node_url.clone(),
+                ::bitcoin::Network::Regtest,
+            )
+            .await
+            .unwrap(),
+        );
 
         let bitcoin_address = bitcoin_wallet.new_address().await.unwrap();
         bitcoin_blockchain

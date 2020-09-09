@@ -39,6 +39,7 @@ mod test_harness;
 #[cfg(test)]
 mod arbitrary;
 
+use crate::fs::default_config_path;
 use crate::{
     command::{
         balance, deposit, dump_config, resume_only, trade, wallet_info, withdraw, Command, Options,
@@ -47,7 +48,6 @@ use crate::{
 };
 use conquer_once::Lazy;
 
-use crate::fs::default_config_path;
 pub use maker::Maker;
 pub use mid_market_rate::MidMarketRate;
 pub use rate::{Rate, Spread};
@@ -85,6 +85,7 @@ async fn main() {
         settings.bitcoin.network,
     )
     .await;
+
     let ethereum_wallet = ethereum::Wallet::new(
         seed,
         settings.ethereum.node_url.clone(),
