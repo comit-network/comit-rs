@@ -115,12 +115,6 @@ pub fn btc(btc: f64) -> Quantity<Bitcoin> {
     ))
 }
 
-pub fn btc_zero() -> Quantity<Bitcoin> {
-    Quantity::new(Bitcoin::from_sat(
-        bitcoin::Amount::from_btc(0.0).unwrap().as_sat(),
-    ))
-}
-
 /// A newtype representing the price of one unit of the base currency B in the
 /// quote currency Q.
 ///

@@ -20,10 +20,7 @@ use crate::{
     Role,
 };
 use anyhow::Result;
-use comit::{
-    order::{btc_zero, SwapProtocol},
-    BtcDaiOrder, Position, Price, Quantity, Side,
-};
+use comit::{order::SwapProtocol, BtcDaiOrder, Position, Price, Quantity, Side};
 use diesel::SqliteConnection;
 use futures::TryFutureExt;
 use serde::Deserialize;
@@ -110,10 +107,10 @@ fn save_order(
                 quantity,
                 price,
                 quantity,
-                btc_zero().to_inner(),
-                btc_zero().to_inner(),
-                btc_zero().to_inner(),
-                btc_zero().to_inner(),
+                asset::Bitcoin::ZERO,
+                asset::Bitcoin::ZERO,
+                asset::Bitcoin::ZERO,
+                asset::Bitcoin::ZERO,
             )
         }
     };

@@ -32,7 +32,7 @@ use crate::{
 };
 use anyhow::Result;
 use chrono::Utc;
-use comit::{order::btc_zero, OrderId, Position, Price, Quantity};
+use comit::{OrderId, Position, Price, Quantity};
 use libp2p::{Multiaddr, PeerId};
 use serde::{Deserialize, Serialize};
 use warp::http::Method;
@@ -180,7 +180,7 @@ fn make_order_entity(properties: OrderProperties) -> Result<siren::Entity> {
 }
 
 fn cancel_action(order: &OrderProperties) -> Option<siren::Action> {
-    if order.state.open != Amount::btc(btc_zero().to_inner()) {
+    if order.state.open != Amount::btc(asset::Bitcoin::ZERO) {
         Some(siren::Action {
             name: "cancel".to_string(),
             class: vec![],

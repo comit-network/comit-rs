@@ -16,8 +16,7 @@ use crate::{
 use anyhow::{Context, Result};
 use chrono::NaiveDateTime;
 use comit::{
-    asset::Erc20Quantity, ethereum, ethereum::ChainId, ledger, order::btc_zero, OrderId, Position,
-    Price, Quantity,
+    asset::Erc20Quantity, ethereum, ethereum::ChainId, ledger, OrderId, Position, Price, Quantity,
 };
 use diesel::{prelude::*, RunQueryDsl};
 use libp2p::PeerId;
@@ -377,8 +376,8 @@ impl Order {
 pub fn all_open_btc_dai_orders(conn: &SqliteConnection) -> Result<Vec<(Order, BtcDaiOrder)>> {
     let orders = orders::table
         .inner_join(btc_dai_orders::table)
-        .filter(btc_dai_orders::open.ne(Text::<Satoshis>(btc_zero().to_inner().into())))
-        .or_filter(btc_dai_orders::settling.ne(Text::<Satoshis>(btc_zero().to_inner().into())))
+        .filter(btc_dai_orders::open.ne(Text::<Satoshis>(asset::Bitcoin::ZERO.into())))
+        .or_filter(btc_dai_orders::settling.ne(Text::<Satoshis>(asset::Bitcoin::ZERO.into())))
         .load::<(Order, BtcDaiOrder)>(conn)?;
 
     Ok(orders)
@@ -459,7 +458,7 @@ impl BtcDaiOrder {
         let affected_rows = diesel::update(self)
             .set((
                 btc_dai_orders::settling.eq(Text::<Satoshis>(self.open.to_inner().into())),
-                btc_dai_orders::open.eq(Text::<Satoshis>(btc_zero().to_inner().into())),
+                btc_dai_orders::open.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
             ))
             .execute(conn)?;
 
@@ -471,14 +470,14 @@ impl BtcDaiOrder {
     }
 
     pub fn cancel(&self, conn: &SqliteConnection) -> Result<()> {
-        if self.open == btc_zero() {
+        if self.open == Quantity::new(asset::Bitcoin::ZERO) {
             anyhow::bail!(NotOpen(self.order_id))
         }
 
         let affected_rows = diesel::update(self)
             .set((
                 btc_dai_orders::cancelled.eq(Text::<Satoshis>(self.open.to_inner().into())),
-                btc_dai_orders::open.eq(Text::<Satoshis>(btc_zero().to_inner().into())),
+                btc_dai_orders::open.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
             ))
             .execute(conn)?;
 
