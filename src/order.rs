@@ -314,16 +314,26 @@ mod tests {
         let rate = Rate::try_from(10_000.0).unwrap();
         let spread = Spread::new(300).unwrap();
 
+        assert_eq!(
+            spread.apply(rate, Position::Sell).unwrap().integer(),
+            BigUint::from(103000000000000 as u64)
+        );
+
         let order =
             BtcDaiOrderForm::new_sell(btc(1.51), btc(0.01), btc(0.5), None, rate, spread).unwrap();
 
         assert_eq!(bitcoin::Amount::from(order.quantity), btc(1.0));
         assert_eq!(dai::Amount::from(order.quote()), dai(10_300.0));
 
+        assert_eq!(
+            spread.apply(rate, Position::Buy).unwrap().integer(),
+            BigUint::from(97000000000000 as u64)
+        );
+
         let order = BtcDaiOrderForm::new_buy(dai(10_051.0), dai(51.0), None, rate, spread).unwrap();
 
         assert_eq!(bitcoin::Amount::from(order.quantity), btc(1.03092783));
-        assert_eq!(dai::Amount::from(order.quote()), dai(10_000.0));
+        assert_eq!(dai::Amount::from(order.quote()), dai(9999.999951));
     }
 
     #[test]

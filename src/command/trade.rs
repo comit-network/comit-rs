@@ -344,11 +344,13 @@ fn handle_rate_update(
                     new_sell_order,
                     new_buy_order,
                 })) => {
-                    swarm.publish(
+                    swarm.orderbook.publish(
                         new_sell_order.to_comit_order(maker.swap_protocol(Position::Sell)),
                     );
-                    swarm.publish(new_buy_order.to_comit_order(maker.swap_protocol(Position::Buy)));
-                    swarm.clear_own_orders();
+                    swarm
+                        .orderbook
+                        .publish(new_buy_order.to_comit_order(maker.swap_protocol(Position::Buy)));
+                    swarm.orderbook.clear_own_orders();
                 }
 
                 Ok(None) => (),
