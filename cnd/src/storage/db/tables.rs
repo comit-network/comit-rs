@@ -454,7 +454,7 @@ impl BtcDaiOrder {
     ///
     /// Once we implement partial order matching, this will need to get more
     /// sophisticated.
-    pub fn mark_as_settling(&self, conn: &SqliteConnection) -> Result<()> {
+    pub fn set_to_settling(&self, conn: &SqliteConnection) -> Result<()> {
         let affected_rows = diesel::update(self)
             .set((
                 btc_dai_orders::settling.eq(Text::<Satoshis>(self.open.to_inner().into())),
@@ -469,7 +469,7 @@ impl BtcDaiOrder {
         Ok(())
     }
 
-    pub fn cancel(&self, conn: &SqliteConnection) -> Result<()> {
+    pub fn set_to_cancelled(&self, conn: &SqliteConnection) -> Result<()> {
         if self.open == Quantity::new(asset::Bitcoin::ZERO) {
             anyhow::bail!(NotOpen(self.order_id))
         }
@@ -495,34 +495,25 @@ pub struct InsertableBtcDaiOrder {
     pub order_id: i32,
     pub quantity: Text<Satoshis>,
     pub price: Text<Erc20Amount>,
-    pub open: Text<Satoshis>,
-    pub closed: Text<Satoshis>,
-    pub settling: Text<Satoshis>,
-    pub failed: Text<Satoshis>,
-    pub cancelled: Text<Satoshis>,
+    open: Text<Satoshis>,
+    closed: Text<Satoshis>,
+    settling: Text<Satoshis>,
+    failed: Text<Satoshis>,
+    cancelled: Text<Satoshis>,
 }
 
 impl InsertableBtcDaiOrder {
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        order_fk: i32,
-        quantity: asset::Bitcoin,
-        price: Erc20Quantity,
-        open: asset::Bitcoin,
-        closed: asset::Bitcoin,
-        settling: asset::Bitcoin,
-        failed: asset::Bitcoin,
-        cancelled: asset::Bitcoin,
-    ) -> Self {
+    pub fn new(order_fk: i32, quantity: asset::Bitcoin, price: Erc20Quantity) -> Self {
         Self {
             order_id: order_fk,
             quantity: Text(quantity.into()),
             price: Text(price.into()),
-            open: Text(open.into()),
-            closed: Text(closed.into()),
-            settling: Text(settling.into()),
-            failed: Text(failed.into()),
-            cancelled: Text(cancelled.into()),
+            open: Text(quantity.into()),
+            closed: Text(asset::Bitcoin::ZERO.into()),
+            settling: Text(asset::Bitcoin::ZERO.into()),
+            failed: Text(asset::Bitcoin::ZERO.into()),
+            cancelled: Text(asset::Bitcoin::ZERO.into()),
         }
     }
 

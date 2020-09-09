@@ -320,7 +320,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<setup_swap::BehaviourOutEvent<S
                                 insertable_herc20(swap_pk).insert(conn)?;
 
                                 let order = Order::by_order_id(conn, order_id)?;
-                                BtcDaiOrder::by_order(conn, &order)?.mark_as_settling(conn)?;
+                                BtcDaiOrder::by_order(conn, &order)?.set_to_settling(conn)?;
 
                                 InsertableOrderSwap::new(swap_pk, order.id).insert(conn)?;
                                 let order_hbit_params = OrderHbitParams::by_order(conn, &order)?;

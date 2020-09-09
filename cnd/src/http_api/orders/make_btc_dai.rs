@@ -101,18 +101,7 @@ fn save_order(
         let quantity = order.quantity.to_inner();
         let price = order.price.wei_per_sat();
 
-        move |order_fk| {
-            InsertableBtcDaiOrder::new(
-                order_fk,
-                quantity,
-                price,
-                quantity,
-                asset::Bitcoin::ZERO,
-                asset::Bitcoin::ZERO,
-                asset::Bitcoin::ZERO,
-                asset::Bitcoin::ZERO,
-            )
-        }
+        move |order_fk| InsertableBtcDaiOrder::new(order_fk, quantity, price)
     };
 
     let insertable_hbit = {

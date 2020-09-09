@@ -29,7 +29,7 @@ async fn handler(order_id: OrderId, storage: Storage, swarm: Swarm) -> Result<im
         use crate::storage::Order;
 
         let order = Order::by_order_id(conn, order_id)?;
-        BtcDaiOrder::by_order(conn, &order)?.cancel(conn)?;
+        BtcDaiOrder::by_order(conn, &order)?.set_to_cancelled(conn)?;
 
         Ok(())
     })

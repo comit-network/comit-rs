@@ -92,13 +92,13 @@ impl From<(tables::Order, tables::BtcDaiOrder)> for OrderProperties {
             position: order.position,
             price: Amount::from(btc_dai_order.price),
             quantity: Amount::from(btc_dai_order.quantity),
-            state: State::new(
-                btc_dai_order.open.to_inner(),
-                btc_dai_order.closed.to_inner(),
-                btc_dai_order.settling.to_inner(),
-                btc_dai_order.failed.to_inner(),
-                btc_dai_order.cancelled.to_inner(),
-            ),
+            state: State {
+                open: btc_dai_order.open.to_inner(),
+                closed: btc_dai_order.closed.to_inner(),
+                settling: btc_dai_order.settling.to_inner(),
+                failed: btc_dai_order.failed.to_inner(),
+                cancelled: btc_dai_order.cancelled.to_inner(),
+            },
         }
     }
 }
@@ -156,21 +156,8 @@ struct State {
 }
 
 impl State {
-    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)] // we only store positive values in the DB ranging from 0 - 100
-    fn new(
-        open: asset::Bitcoin,
-        closed: asset::Bitcoin,
-        settling: asset::Bitcoin,
-        failed: asset::Bitcoin,
-        cancelled: asset::Bitcoin,
-    ) -> Self {
-        Self {
-            open,
-            closed,
-            settling,
-            failed,
-            cancelled,
-        }
+    pub fn is_open(&self) -> bool {
+        self.open != asset::Bitcoin::ZERO
     }
 }
 
@@ -185,7 +172,7 @@ fn make_order_entity(properties: OrderProperties) -> Result<siren::Entity> {
 }
 
 fn cancel_action(order: &OrderProperties) -> Option<siren::Action> {
-    if order.state.open != asset::Bitcoin::ZERO {
+    if order.state.is_open() {
         Some(siren::Action {
             name: "cancel".to_string(),
             class: vec![],
