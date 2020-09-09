@@ -3,15 +3,9 @@ use crate::{
     float_maths::string_int_to_float,
     Rate,
 };
-use ::bitcoin::Network;
+use comit::{asset::Bitcoin, Quantity};
 
 pub const SATS_IN_BITCOIN_EXP: u16 = 8;
-
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq)]
-pub struct Asset {
-    pub amount: Amount,
-    pub network: Network,
-}
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Default)]
 pub struct Amount(::bitcoin::Amount);
@@ -88,15 +82,27 @@ impl From<Amount> for ::bitcoin::Amount {
     }
 }
 
+impl From<Amount> for comit::asset::Bitcoin {
+    fn from(from: Amount) -> Self {
+        Self::from_sat(from.as_sat())
+    }
+}
+
 impl From<comit::asset::Bitcoin> for Amount {
     fn from(from: comit::asset::Bitcoin) -> Self {
         Self(from.into())
     }
 }
 
-impl From<Amount> for comit::asset::Bitcoin {
-    fn from(from: Amount) -> Self {
-        Self::from_sat(from.as_sat())
+impl From<comit::Quantity<comit::asset::Bitcoin>> for Amount {
+    fn from(from: comit::Quantity<comit::asset::Bitcoin>) -> Self {
+        Self::from_sat(from.sats())
+    }
+}
+
+impl Into<comit::Quantity<comit::asset::Bitcoin>> for Amount {
+    fn into(self) -> Quantity<Bitcoin> {
+        Quantity::new(comit::asset::Bitcoin::from_sat(self.as_sat()))
     }
 }
 
@@ -108,13 +114,13 @@ impl std::fmt::Display for Amount {
 }
 
 #[cfg(test)]
-impl crate::StaticStub for Asset {
-    fn static_stub() -> Self {
-        Self {
-            amount: Amount::default(),
-            network: Network::Bitcoin,
-        }
-    }
+pub fn btc(btc: f64) -> Amount {
+    Amount::from_btc(btc).unwrap()
+}
+
+#[cfg(test)]
+pub fn some_btc(btc: f64) -> Option<Amount> {
+    Some(Amount::from_btc(btc).unwrap())
 }
 
 #[cfg(test)]

@@ -5,11 +5,10 @@ use crate::{
     Rate,
 };
 use comit::{
-    asset::{ethereum::FromWei, Erc20, Erc20Quantity},
+    asset::{Erc20, Erc20Quantity},
     ethereum::Address,
 };
 use conquer_once::Lazy;
-use ethereum_types::U256;
 use num::{BigUint, CheckedAdd, Integer, ToPrimitive, Zero};
 use std::str::FromStr;
 
@@ -40,12 +39,6 @@ static ROPSTEN_DAI_CONTRACT_ADDRESS: Lazy<Address> = Lazy::new(|| {
         .parse()
         .expect("Valid hex")
 });
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Asset {
-    pub amount: Amount,
-    pub chain: ethereum::Chain,
-}
 
 #[derive(Clone, Ord, PartialOrd, PartialEq, Eq, Default)]
 pub struct Amount(BigUint);
@@ -220,20 +213,21 @@ impl From<Erc20> for Amount {
     }
 }
 
+// todo: this should be a simple conversion from the internal BigUint in Erc20Quantity
 impl From<Erc20Quantity> for Amount {
     fn from(erc20_quantity: Erc20Quantity) -> Self {
-        let quantity = BigUint::from_bytes_le(erc20_quantity.to_bytes().as_slice());
-        Amount(quantity)
+        Amount(BigUint::from_bytes_le(&erc20_quantity.to_bytes()))
     }
 }
 
-impl From<Amount> for Erc20Quantity {
-    fn from(amount: Amount) -> Self {
-        let buf = amount.0.to_bytes_be();
-        let wei = U256::from_big_endian(&buf);
+#[cfg(test)]
+pub fn dai(dai: f64) -> Amount {
+    Amount::from_dai_trunc(dai).unwrap()
+}
 
-        Self::from_wei(wei)
-    }
+#[cfg(test)]
+pub fn some_dai(dai: f64) -> Option<Amount> {
+    Some(Amount::from_dai_trunc(dai).unwrap())
 }
 
 #[cfg(test)]

@@ -22,7 +22,7 @@ impl hbit::ExecuteFund for Wallet {
 
         let txid = self
             .inner
-            .send_to_address(action.to, action.amount.into(), action.network)
+            .send_to_address(action.to, action.amount.into(), action.network.into())
             .await?;
 
         // we send money to a single address, vout is always 0
@@ -102,7 +102,7 @@ impl Wallet {
     ) -> anyhow::Result<bitcoin::Transaction> {
         let _txid = self
             .inner
-            .send_raw_transaction(action.transaction.clone(), action.network)
+            .send_raw_transaction(action.transaction.clone(), action.network.into())
             .await?;
 
         Ok(action.transaction)

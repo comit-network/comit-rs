@@ -10,7 +10,7 @@ async-trait = "0.1"
 bitcoin = { version = "0.23", features = ["rand", "use-serde"] }
 chrono = "0.4"
 clarity = "0.1"
-comit = { git = "https://github.com/comit-network/comit-rs/", package = "comit", rev = "cc450c425b52e060371d0384a759cd0eab13396c" }
+comit = { git = "https://github.com/comit-network/comit-rs/", package = "comit", rev = "76854090bb542ab55c5649c98ad1bc887bf5c764" }
 config = "0.10"
 conquer-once = "0.2"
 csv = "1.1"

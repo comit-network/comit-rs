@@ -71,8 +71,8 @@ where
 #[cfg(test)]
 mod arbitrary {
     use crate::swap::hbit::{Params, SharedParams};
-    use ::bitcoin::{secp256k1::SecretKey, Network};
-    use comit::{asset, identity};
+    use ::bitcoin::secp256k1::SecretKey;
+    use comit::{asset, identity, ledger};
     use quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for Params {
@@ -99,11 +99,11 @@ mod arbitrary {
         SecretKey::from_slice(&bytes).unwrap()
     }
 
-    fn bitcoin_network<G: Gen>(g: &mut G) -> Network {
+    fn bitcoin_network<G: Gen>(g: &mut G) -> ledger::Bitcoin {
         match u8::arbitrary(g) % 3 {
-            0 => Network::Bitcoin,
-            1 => Network::Testnet,
-            2 => Network::Regtest,
+            0 => ledger::Bitcoin::Mainnet,
+            1 => ledger::Bitcoin::Testnet,
+            2 => ledger::Bitcoin::Regtest,
             _ => unreachable!(),
         }
     }

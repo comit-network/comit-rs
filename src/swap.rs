@@ -163,7 +163,7 @@ impl crate::StaticStub for SwapParams {
         SwapParams {
             hbit_params: hbit::Params {
                 shared: hbit::SharedParams {
-                    network: ::bitcoin::Network::Regtest,
+                    network: comit::ledger::Bitcoin::Regtest,
                     asset: comit::asset::Bitcoin::from_sat(12_345_678),
                     redeem_identity: comit::bitcoin::PublicKey::from_str(
                         "039b6347398505f5ec93826dc61c19f47c66c0283ee9be980e29ce325a0f4679ef",
@@ -297,7 +297,7 @@ mod tests {
 
     fn hbit_params(
         secret_hash: SecretHash,
-        network: ::bitcoin::Network,
+        network: comit::ledger::Bitcoin,
     ) -> (hbit::SharedParams, bitcoin::SecretKey, bitcoin::SecretKey) {
         let asset = asset::Bitcoin::from_sat(100_000_000);
         let expiry = Timestamp::now().plus(60 * 60);
@@ -356,10 +356,7 @@ mod tests {
             let node_url = blockchain.node_url.clone();
 
             (
-                Arc::new(BitcoindConnector::new(
-                    node_url.clone(),
-                    crate::bitcoin::Network::Regtest,
-                )?),
+                Arc::new(BitcoindConnector::new(node_url.clone())?),
                 node_url,
                 blockchain,
             )
@@ -471,7 +468,7 @@ mod tests {
         let beta_expiry = Timestamp::now().plus(60 * 60);
 
         let (hbit_params, hbit_transient_refund_sk, hbit_transient_redeem_sk) =
-            hbit_params(secret_hash, bitcoin_network);
+            hbit_params(secret_hash, bitcoin_network.into());
 
         let herc20_params = herc20::params(
             secret_hash,
