@@ -216,7 +216,7 @@ function defaultHalbitPayload(
     lndPubkey: string
 ): HalbitPayload {
     return {
-        amount: "10000",
+        amount: "100000",
         network: "regtest",
         identity: lndPubkey,
         cltv_expiry: cltvExpiry,
