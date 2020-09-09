@@ -83,7 +83,8 @@ export class Erc20BalanceAsserter implements BalanceAsserter {
 
 export class OnChainBitcoinBalanceAsserter implements BalanceAsserter {
     public static async newInstance(wallet: BitcoinWallet, swapAmount: bigint) {
-        await wallet.mintToAddress(swapAmount, await wallet.getAddress());
+        // need to mint more than what we want to swap to pay for miner fees
+        await wallet.mint(swapAmount * BigInt(2));
 
         const startingBalance = await wallet.getBalance();
 

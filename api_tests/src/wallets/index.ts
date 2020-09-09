@@ -1,8 +1,6 @@
-import { sleep } from "../utils";
 import { BitcoinWallet } from "./bitcoin";
 import { EthereumWallet } from "./ethereum";
 import { LightningWallet } from "./lightning";
-import pTimeout from "p-timeout";
 
 export interface AllWallets {
     bitcoin?: BitcoinWallet;
@@ -38,34 +36,13 @@ export class Wallets {
     }
 }
 
-export async function pollUntilMinted(
-    getBalance: () => Promise<bigint>,
-    minimumBalance: bigint
-): Promise<void> {
-    const timeout = 10; // minting shouldn't take longer than 10 seconds
-    const error = new Error(`Minting failed after ${timeout} seconds`);
-    Error.captureStackTrace(error);
-
-    let currentBalance = await getBalance();
-
-    const poller = async () => {
-        while (currentBalance < minimumBalance) {
-            await sleep(500);
-            currentBalance = await getBalance();
-        }
-    };
-
-    await pTimeout(poller(), timeout * 1000, error);
-}
-
 export function newBitcoinStubWallet(): BitcoinWallet {
     return newStubWallet({
         MaximumFee: BigInt(0),
         getAddress: () =>
             Promise.resolve("bcrt1qq7pflkfujg6dq25n73n66yjkvppq6h9caklrhz"),
         getBalance: () => Promise.resolve(BigInt(0)),
-        mintToAddress: (_minimumExpectedBalance: bigint, _toAddress: string) =>
-            Promise.resolve(),
+        mint: (_satoshis: bigint) => Promise.resolve(),
     });
 }
 

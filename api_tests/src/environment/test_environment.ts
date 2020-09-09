@@ -3,7 +3,7 @@ import { promises as asyncFs } from "fs";
 import NodeEnvironment from "jest-environment-node";
 import path from "path";
 import { LndWallet } from "../wallets/lightning";
-import { BitcoindWallet } from "../wallets/bitcoin";
+import { BitcoinFaucet } from "../wallets/bitcoin";
 import { BitcoindInstance } from "./bitcoind_instance";
 import { configure, Logger, shutdown as loggerShutdown } from "log4js";
 import { EnvironmentContext } from "@jest/environment";
@@ -283,8 +283,9 @@ export default class TestEnvironment extends NodeEnvironment {
             await alice.connectPeer(bob);
         }
 
-        await alice.mint(BigInt(15000000));
-        await bob.mint(BigInt(15000000));
+        // need to mint more than the desired channel balance due to fees
+        await alice.mint(BigInt(20000000));
+        await bob.mint(BigInt(20000000));
 
         await alice.openChannel(bob, 15000000);
         await bob.openChannel(alice, 15000000);
@@ -316,10 +317,7 @@ export default class TestEnvironment extends NodeEnvironment {
 
     private async initLightningWallet(config: LightningNodeConfig) {
         return LndWallet.newInstance(
-            await BitcoindWallet.newInstance(
-                this.global.ledgerConfigs.bitcoin,
-                this.logger
-            ),
+            new BitcoinFaucet(this.global.ledgerConfigs.bitcoin, this.logger),
             this.logger,
             config
         );

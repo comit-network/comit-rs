@@ -4,14 +4,11 @@ import BitcoinRpcClient from "bitcoin-core";
 import { toBitcoin, toSatoshi } from "satoshi-bitcoin";
 import axios, { AxiosError, AxiosInstance, Method } from "axios";
 import { BitcoinNodeConfig } from "../environment";
-import { pollUntilMinted } from "./index";
+import { sleep } from "../utils";
+import pTimeout from "p-timeout";
 
 export interface BitcoinWallet {
     MaximumFee: bigint;
-    mintToAddress(
-        minimumExpectedBalance: bigint,
-        toAddress: string
-    ): Promise<void>;
     getAddress(): Promise<string>;
     getBalance(): Promise<bigint>;
     sendToAddress(
@@ -25,6 +22,68 @@ export interface BitcoinWallet {
     ): Promise<string>;
 
     getFee(): string;
+
+    mint(satoshis: bigint): Promise<void>;
+}
+
+export class BitcoinFaucet {
+    private readonly minerClient: BitcoinRpcClient;
+
+    constructor(config: BitcoinNodeConfig, private readonly logger: Logger) {
+        this.minerClient = new BitcoinRpcClient({
+            network: config.network,
+            port: config.rpcPort,
+            host: config.host,
+            username: config.username,
+            password: config.password,
+            wallet: config.minerWallet,
+        });
+    }
+
+    public async mint(
+        satoshis: bigint,
+        address: string,
+        getBalance: () => Promise<bigint>
+    ): Promise<void> {
+        const startingBalance = await getBalance();
+
+        const blockHeight = await this.minerClient.getBlockCount();
+
+        if (blockHeight < 101) {
+            throw new Error(
+                "unable to mint bitcoin, coinbase transactions are not yet spendable"
+            );
+        }
+
+        const btc = toBitcoin(satoshis.toString());
+
+        await this.minerClient.sendToAddress(address, btc);
+        this.logger.info("Minted", btc, "BTC to", address);
+
+        await waitUntilBalanceReaches(getBalance, startingBalance + satoshis);
+    }
+}
+
+async function waitUntilBalanceReaches(
+    getBalance: () => Promise<bigint>,
+    expectedBalance: bigint
+): Promise<void> {
+    let currentBalance = await getBalance();
+
+    const timeout = 10;
+    const error = new Error(
+        `Balance did not reach ${expectedBalance} after ${timeout} seconds, starting balance was ${currentBalance}`
+    );
+    Error.captureStackTrace(error);
+
+    const poller = async () => {
+        while (currentBalance < expectedBalance) {
+            await sleep(500);
+            currentBalance = await getBalance();
+        }
+    };
+
+    await pTimeout(poller(), timeout * 1000, error);
 }
 
 export class BitcoindWallet implements BitcoinWallet {
@@ -45,57 +104,26 @@ export class BitcoindWallet implements BitcoinWallet {
 
         logger.info("Name of generated Bitcoin wallet:", walletName);
 
-        const minerClient = new BitcoinRpcClient({
-            network: config.network,
-            port: config.rpcPort,
-            host: config.host,
-            username: config.username,
-            password: config.password,
-            wallet: config.minerWallet,
-        });
         const walletClient = newAxiosClient(
             `${config.rpcUrl}/wallet/${walletName}`,
             auth,
             logger
         );
+        const faucet = new BitcoinFaucet(config, logger);
 
-        return new BitcoindWallet(minerClient, logger, walletClient);
+        return new BitcoindWallet(faucet, walletClient);
     }
 
     public MaximumFee = BigInt(100000);
 
-    private constructor(
-        private readonly minerClient: BitcoinRpcClient,
-        private readonly logger: Logger,
+    constructor(
+        private readonly faucet: BitcoinFaucet,
         private readonly rpcClient: AxiosInstance
     ) {}
 
-    public async mintToAddress(
-        minimumExpectedBalance: bigint,
-        toAddress: string
-    ): Promise<void> {
-        const res = await this.rpcClient.request({
-            data: { jsonrpc: "1.0", method: "getblockcount", params: [] },
-        });
-
-        const blockHeight = res.data.result;
-        if (blockHeight < 101) {
-            throw new Error(
-                "unable to mint bitcoin, coinbase transactions are not yet spendable"
-            );
-        }
-
-        // make sure we have at least twice as much
-        const expectedBalance = minimumExpectedBalance * BigInt(2);
-        const amount = toBitcoin(expectedBalance.toString());
-
-        await this.minerClient.sendToAddress(toAddress, amount);
-
-        this.logger.info("Minted", amount, "BTC to", toAddress);
-
-        await pollUntilMinted(
-            async () => this.getBalance(),
-            BigInt(expectedBalance)
+    public async mint(satoshis: bigint): Promise<void> {
+        await this.faucet.mint(satoshis, await this.getAddress(), async () =>
+            this.getBalance()
         );
     }
 

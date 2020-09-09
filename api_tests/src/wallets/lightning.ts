@@ -1,5 +1,3 @@
-import { pollUntilMinted } from "./index";
-import { BitcoinWallet } from "./bitcoin";
 import { sleep } from "../utils";
 import {
     AddressType,
@@ -12,6 +10,7 @@ import {
 import { Logger } from "log4js";
 import { Lnd } from "./lnd";
 import { LightningNodeConfig } from "../environment";
+import { BitcoinFaucet } from "./bitcoin";
 
 export interface LightningWallet {
     readonly p2pSocket: string;
@@ -62,7 +61,7 @@ export interface LightningWallet {
 
 export class LndWallet implements LightningWallet {
     public static async newInstance(
-        bitcoinWallet: BitcoinWallet,
+        bitcoinFaucet: BitcoinFaucet,
         logger: Logger,
         config: LightningNodeConfig
     ) {
@@ -74,31 +73,21 @@ export class LndWallet implements LightningWallet {
 
         logger.debug("lnd getinfo:", await lnd.lnrpc.getInfo());
 
-        return new LndWallet(lnd, logger, bitcoinWallet, config.p2pSocket);
+        return new LndWallet(lnd, logger, bitcoinFaucet, config.p2pSocket);
     }
 
     private constructor(
         private readonly lnd: Lnd,
         private readonly logger: Logger,
-        private readonly bitcoinWallet: BitcoinWallet,
+        private readonly bitcoinFaucet: BitcoinFaucet,
         public readonly p2pSocket: string
     ) {}
 
     public async mint(satoshis: bigint): Promise<void> {
-        const startingBalance = await this.getBalance();
-        this.logger.debug("starting: ", startingBalance.toString());
-
-        const minimumExpectedBalance = satoshis;
-        this.logger.debug("min expected: ", minimumExpectedBalance.toString());
-
-        await this.bitcoinWallet.mintToAddress(
-            minimumExpectedBalance,
-            await this.newFundingAddress()
-        );
-
-        await pollUntilMinted(
-            async () => this.getBalance(),
-            startingBalance + minimumExpectedBalance
+        await this.bitcoinFaucet.mint(
+            satoshis,
+            await this.newFundingAddress(),
+            async () => this.getBalance()
         );
     }
 
