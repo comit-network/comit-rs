@@ -83,6 +83,7 @@ impl Swarm {
         })
     }
 
+    // TODO: Try to replace this with `DerefMut` impl
     pub fn as_inner(&mut self) -> &mut libp2p::Swarm<Nectar> {
         &mut self.inner
     }
@@ -90,31 +91,6 @@ impl Swarm {
     pub fn publish(&mut self, order: BtcDaiOrder) {
         tracing::info!("Publishing new order");
         self.inner.publish(order);
-    }
-
-    pub fn setup_swap(
-        &mut self,
-        to: &PeerId,
-        to_send: RoleDependentParams,
-        common: CommonParams,
-        swap_protocol: comit::network::setup_swap::SwapProtocol,
-        swap_id: SwapId,
-        match_ref_point: OffsetDateTime,
-        bitcoin_transient_key_index: u32,
-    ) -> anyhow::Result<()> {
-        tracing::info!("Sending setup swap message");
-        self.inner.setup_swap.send(
-            to,
-            to_send,
-            common,
-            swap_protocol,
-            SetupSwapContext {
-                swap_id,
-                match_ref_point,
-                bitcoin_transient_key_index,
-            },
-        )?;
-        Ok(())
     }
 
     pub fn clear_own_orders(&mut self) {
@@ -141,9 +117,9 @@ pub enum Event {
 
 #[derive(Debug, Copy, Clone)]
 pub struct SetupSwapContext {
-    swap_id: SwapId,
-    bitcoin_transient_key_index: u32,
-    match_ref_point: OffsetDateTime,
+    pub swap_id: SwapId,
+    pub bitcoin_transient_key_index: u32,
+    pub match_ref_point: OffsetDateTime,
 }
 
 /// A `NetworkBehaviour` that delegates to the `Orderbook` and `SetupSwap`
@@ -153,7 +129,7 @@ pub struct SetupSwapContext {
 #[allow(missing_debug_implementations)]
 pub struct Nectar {
     orderbook: orderbook::Orderbook,
-    setup_swap: setup_swap::SetupSwap<SetupSwapContext>,
+    pub setup_swap: setup_swap::SetupSwap<SetupSwapContext>,
     #[behaviour(ignore)]
     seed: Seed,
     #[behaviour(ignore)]

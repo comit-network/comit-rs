@@ -18,7 +18,7 @@ use futures::{channel::mpsc::Receiver, Future, FutureExt, SinkExt, StreamExt, Tr
 use futures_timer::Delay;
 
 use crate::maker::TakeRequestDecision;
-use crate::network::ActivePeer;
+use crate::network::{ActivePeer, SetupSwapContext};
 use comit::{Position, Role};
 use std::{sync::Arc, time::Duration};
 
@@ -502,17 +502,20 @@ async fn handle_network_event(
 
             match result {
                 Ok(TakeRequestDecision::GoForSwap) => {
-                    if let Err(e) = swarm.setup_swap(
+                    if let Err(e) = swarm.as_inner().setup_swap.send(
                         &to,
                         to_send,
                         common,
                         swap_protocol,
-                        swap_id,
-                        match_ref_point,
-                        bitcoin_transient_key_index,
+                        SetupSwapContext {
+                            swap_id,
+                            match_ref_point,
+                            bitcoin_transient_key_index,
+                        },
                     ) {
                         tracing::error!("Sending setup swap message yielded error: {}", e)
                     }
+
                     let _ = db
                         .insert_active_peer(ActivePeer { peer_id: to })
                         .await
