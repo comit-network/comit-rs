@@ -238,13 +238,10 @@ impl Wallet {
         )
         .map_err(|_| anyhow::anyhow!("Failed to deserialize slice into clarity::Address"))?;
 
-        let data = clarity::abi::encode_call(
-            "transfer(address,uint256)",
-            &[
-                clarity::abi::Token::Address(to),
-                clarity::abi::Token::Uint(Uint256::from_bytes_le(value.to_bytes().as_slice())),
-            ],
-        );
+        let data = clarity::abi::encode_call("transfer(address,uint256)", &[
+            clarity::abi::Token::Address(to),
+            clarity::abi::Token::Uint(Uint256::from_bytes_le(value.to_bytes().as_slice())),
+        ]);
 
         let transaction = clarity::Transaction {
             nonce: nonce.into(),
@@ -438,8 +435,7 @@ impl From<DeployedContract> for comit::herc20::Deployed {
 mod tests {
     use super::*;
     use crate::{ethereum::ether, test_harness::ethereum::Blockchain};
-    use comit::asset::ethereum::FromWei;
-    use comit::asset::{self, Erc20Quantity};
+    use comit::asset::{self, ethereum::FromWei, Erc20Quantity};
 
     async fn random_wallet(node_url: Url, dai_contract_address: Address) -> anyhow::Result<Wallet> {
         let seed = Seed::random().unwrap();

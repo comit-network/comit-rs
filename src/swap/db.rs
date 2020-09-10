@@ -9,8 +9,7 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
 use crate::StaticStub;
-use std::collections::HashSet;
-use std::iter::FromIterator;
+use std::{collections::HashSet, iter::FromIterator};
 
 mod hbit;
 mod herc20;
@@ -179,8 +178,9 @@ impl Database {
     }
 }
 
-/// These methods are used to prevent a peer from having more than one ongoing swap with nectar
-/// An active peer refers to one that has an ongoing swap with nectar.
+/// These methods are used to prevent a peer from having more than one ongoing
+/// swap with nectar An active peer refers to one that has an ongoing swap with
+/// nectar.
 impl Database {
     pub async fn insert_active_peer(&self, peer: ActivePeer) -> anyhow::Result<()> {
         self.modify_peers_with(|peers: &mut HashSet<ActivePeer>| peers.insert(peer.clone()))?;

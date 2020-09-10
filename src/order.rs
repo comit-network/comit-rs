@@ -104,16 +104,16 @@ impl BtcDaiOrderForm {
             Position::Buy => {
                 // We are buying BTC for DAI
                 // Given an order rate of: 1:9000
-                // It is NOT profitable to buy, if the current rate is greater than the order rate.
-                // 1:8800 -> We give less DAI for getting BTC -> Good.
+                // It is NOT profitable to buy, if the current rate is greater than the order
+                // rate. 1:8800 -> We give less DAI for getting BTC -> Good.
                 // 1:9200 -> We have to give more DAI for getting BTC -> Sucks.
                 Ok(order_rate <= profitable_rate.into())
             }
             Position::Sell => {
                 // We are selling BTC for DAI
                 // Given an order rate of: 1:9000
-                // It is NOT profitable to sell, if the current rate is smaller than the order rate.
-                // 1:8800 -> We get less DAI for our BTC -> Sucks.
+                // It is NOT profitable to sell, if the current rate is smaller than the order
+                // rate. 1:8800 -> We get less DAI for our BTC -> Sucks.
                 // 1:9200 -> We get more DAI for our BTC -> Good.
                 Ok(order_rate >= profitable_rate.into())
             }

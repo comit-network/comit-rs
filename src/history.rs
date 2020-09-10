@@ -4,8 +4,10 @@ use chrono::{DateTime, Utc};
 use csv::*;
 use num::BigUint;
 use serde::{Serialize, Serializer};
-use std::fs::{File, OpenOptions};
-use std::path::Path;
+use std::{
+    fs::{File, OpenOptions},
+    path::Path,
+};
 
 #[derive(Debug, Copy, Clone, Serialize)]
 #[serde(rename_all = "UPPERCASE")]
@@ -100,13 +102,15 @@ impl Serialize for UtcDateTime {
 pub struct Trade {
     /// When the trade was taken and accepted
     pub utc_start_timestamp: UtcDateTime,
-    /// When the last transaction (redeem or refund) was seen (can be changed to confirmed in the future)
+    /// When the last transaction (redeem or refund) was seen (can be changed to
+    /// confirmed in the future)
     pub utc_final_timestamp: UtcDateTime,
     /// The symbol of the base currency
     pub base_symbol: Symbol,
     /// The symbol of the quote currency
     pub quote_symbol: Symbol,
-    /// The position of the trade from the user's point of view (note: Sell = sell the base)
+    /// The position of the trade from the user's point of view (note: Sell =
+    /// sell the base)
     pub position: Position,
     /// The base currency traded amount in the most precise unit (e.g. Satoshi)
     /// Note: it does not include fees

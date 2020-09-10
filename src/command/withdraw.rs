@@ -1,6 +1,4 @@
-use crate::command::Withdraw;
-use crate::ethereum::STANDARD_ETH_TRANSFER_GAS_LIMIT;
-use crate::{bitcoin, ethereum};
+use crate::{bitcoin, command::Withdraw, ethereum, ethereum::STANDARD_ETH_TRANSFER_GAS_LIMIT};
 use std::borrow::Borrow;
 
 pub async fn withdraw(
@@ -49,12 +47,12 @@ pub async fn withdraw(
 #[cfg(all(test, feature = "test-docker"))]
 mod tests {
     use super::*;
-    use crate::ethereum::{dai, ether, ChainId};
-    use crate::{test_harness, Seed};
-    use comit::asset::ethereum::FromWei;
-    use comit::asset::{Erc20, Erc20Quantity};
-    use std::str::FromStr;
-    use std::sync::Arc;
+    use crate::{
+        ethereum::{dai, ether, ChainId},
+        test_harness, Seed,
+    };
+    use comit::asset::{ethereum::FromWei, Erc20, Erc20Quantity};
+    use std::{str::FromStr, sync::Arc};
 
     // Run cargo test with `--ignored --nocapture` to see the `println output`
     #[ignore]

@@ -1,6 +1,10 @@
 use crate::{
-    bitcoin, command::into_history_trade, command::FinishedSwap, config::Settings, ethereum,
-    history::History, swap::Database, swap::SwapKind,
+    bitcoin,
+    command::{into_history_trade, FinishedSwap},
+    config::Settings,
+    ethereum,
+    history::History,
+    swap::{Database, SwapKind},
 };
 use chrono::Utc;
 use comit::btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};

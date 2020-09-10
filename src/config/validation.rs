@@ -1,7 +1,9 @@
 use async_trait::async_trait;
-use comit::btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
-use comit::ethereum::ChainId;
-use comit::ledger;
+use comit::{
+    btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
+    ethereum::ChainId,
+    ledger,
+};
 use std::fmt::Debug;
 use thiserror::Error;
 

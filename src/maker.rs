@@ -243,13 +243,12 @@ pub struct BalanceNotAvailable(Symbol);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ethereum::dai::{dai, some_dai};
-    use crate::order::btc_dai_order_form;
-    use crate::rate::rate;
     use crate::{
         bitcoin,
         bitcoin::amount::{btc, some_btc},
-        order::BtcDaiOrderForm,
+        ethereum::dai::{dai, some_dai},
+        order::{btc_dai_order_form, BtcDaiOrderForm},
+        rate::rate,
         MidMarketRate, Rate, StaticStub,
     };
     use std::convert::TryFrom;

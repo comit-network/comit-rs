@@ -1,6 +1,8 @@
-use crate::bitcoin;
-use crate::config::{Bitcoind, Data, MaxSell, Network};
-use crate::Spread;
+use crate::{
+    bitcoin,
+    config::{Bitcoind, Data, MaxSell, Network},
+    Spread,
+};
 use comit::ethereum::ChainId;
 use config as config_rs;
 use log::LevelFilter;
@@ -139,11 +141,13 @@ pub enum None {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{Bitcoind, Settings};
-    use crate::{bitcoin, ethereum::dai};
+    use crate::{
+        bitcoin,
+        config::{Bitcoind, Settings},
+        ethereum::dai,
+    };
     use spectral::prelude::*;
-    use std::io::Write;
-    use std::path::PathBuf;
+    use std::{io::Write, path::PathBuf};
     use tempdir::TempDir;
 
     #[derive(serde::Deserialize, PartialEq, Debug)]
