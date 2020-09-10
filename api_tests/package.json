@@ -32,7 +32,6 @@
         "@types/urijs": "^1.19.12",
         "ajv": "^6.12.4",
         "axios": "^0.20.0",
-        "bignumber.js": "^9.0.0",
         "bitcoin-core": "^3.0.0",
         "bitcoinjs-lib": "^5.1.10",
         "chmod": "^0.2.1",
