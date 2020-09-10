@@ -1,5 +1,0 @@
-status = [
-    "static_analysis",
-    "build_test (ubuntu-latest)",
-    "build_test (macos-latest)",
-]
