@@ -1,0 +1,48 @@
+# Nectar Configuration File
+
+# The configuration file must be in TOML format.
+# The current config can be printed using `nectar dump-config`.
+# A custom location to the config file can be specified using `--config`.
+
+[maker]
+# The spread to apply to the mid-market when publish an offer. It's a pyrimiad format, 12.34 = 12.34% spread.
+spread = 500
+
+[maker.max_sell]
+# The maximum amount of bitcoin to sell in one order, optional field.
+# If absent, orders are capped by the available balance.
+bitcoin = 0.1
+# The maximum amount of dai to sell in one order, optional field.
+# If absent, orders are capped by the available balance.
+dai = 1000
+
+[maker.maximum_possible_fee]
+# An estimation of the maximum fee that we would expect to pay, used to ensure we always have enough
+# balance to execute an order we publish.
+bitcoin = 0.00009275 
+
+[network]
+# The libp2p socket on which nectar listens for COMIT messages.
+listen = ["/ip4/0.0.0.0/tcp/9939"]
+
+[data]
+# Where the data is stored (database & seed), not to be confused with the config file location.
+dir = "/Users/froyer/Library/Application Support/nectar"
+
+[logging]
+# Logging level for nectar: Error, Warn, Info, Debug or Trace.
+level = "Info"
+
+[bitcoin]
+# The Bitcoin network nectar is acting on: mainnet, testnet or regtest
+network = "regtest"
+
+[bitcoin.bitcoind]
+# The url to the bitcoind json rpc, can include user and password if necessary: `http://user:password@host:port`
+node_url = "http://localhost:18443/"
+
+[ethereum]
+# The Ethereum chain id nectar is acting on
+chain_id = 1
+# The url to the web3 node, can include an infura key: `https://mainnet.infura.io/v3/YOUR-PROJECT-ID`
+node_url = "http://localhost:8545/"
