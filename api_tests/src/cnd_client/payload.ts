@@ -25,14 +25,14 @@ export type HbitHerc20Payload = Payload<HbitPayload, Herc20Payload>;
 export type Herc20HbitPayload = Payload<Herc20Payload, HbitPayload>;
 
 export type HalbitPayload = {
-    amount: string;
+    amount: bigint;
     identity: string;
     network: string;
     cltv_expiry: number;
 };
 
 export type Herc20Payload = {
-    amount: string;
+    amount: bigint;
     identity: string;
     token_contract: string;
     absolute_expiry: number;
@@ -40,7 +40,7 @@ export type Herc20Payload = {
 };
 
 export type HbitPayload = {
-    amount: string;
+    amount: bigint;
     final_identity: string;
     network: string;
     absolute_expiry: number;
@@ -228,8 +228,8 @@ export interface OpenOrdersEntity extends Entity {
 
 export interface CreateBtcDaiOrderPayload {
     position: Position;
-    quantity: string;
-    price: string;
+    quantity: bigint;
+    price: bigint;
     swap: {
         role: string;
         bitcoin_address: string;

@@ -287,7 +287,7 @@ export default class TestEnvironment extends NodeEnvironment {
         this.global.ledgerConfigs.aliceLnd = config;
 
         await this.bitcoinFaucet.mint(
-            BigInt(1_000_000_000), // 10 BTC should be enough money in the LND instance for a few swaps :)
+            1_000_000_000n, // 10 BTC should be enough money in the LND instance for a few swaps :)
             await alice.newFundingAddress(),
             async () => alice.confirmedWalletBalance()
         );
@@ -307,7 +307,7 @@ export default class TestEnvironment extends NodeEnvironment {
         this.global.ledgerConfigs.bobLnd = config;
 
         await this.bitcoinFaucet.mint(
-            BigInt(1_000_000_000), // 10 BTC should be enough money in the LND instance for a few swaps :)
+            1_000_000_000n, // 10 BTC should be enough money in the LND instance for a few swaps :)
             await bob.newFundingAddress(),
             async () => bob.confirmedWalletBalance()
         );

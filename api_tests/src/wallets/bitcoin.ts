@@ -114,7 +114,7 @@ export class BitcoindWallet implements BitcoinWallet {
         return new BitcoindWallet(faucet, walletClient);
     }
 
-    public MaximumFee = BigInt(100000);
+    public MaximumFee = 100000n;
 
     constructor(
         private readonly faucet: BitcoinFaucet,

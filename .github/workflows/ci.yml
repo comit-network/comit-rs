@@ -23,6 +23,11 @@ jobs:
           profile: minimal
           override: true
 
+      - name: Install NodeJS 14.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: '14.x'
+
       - name: Cache cargo registry
         uses: actions/cache@v2
         with:
@@ -112,18 +117,18 @@ jobs:
           path: target/debug/cnd
 
       ## Run e2e tests
-      - name: Install NodeJS 12.x
+      - name: Install NodeJS 14.x
         if: matrix.e2e
         uses: actions/setup-node@v1
         with:
-          node-version: '12.x'
+          node-version: '14.x'
 
       - name: Cache node_modules directory
         if: matrix.e2e
         uses: actions/cache@v2
         with:
           path: api_tests/node_modules
-          key: ${{ matrix.os }}-node-modules-directory-${{ hashFiles('api_tests/package.json') }}-v2
+          key: ${{ matrix.os }}-node-14-node-modules-directory-${{ hashFiles('api_tests/package.json') }}
 
       - name: Run e2e tests
         if: matrix.e2e

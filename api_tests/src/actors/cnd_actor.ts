@@ -85,24 +85,24 @@ export class CndActor {
             case "Alice": {
                 this.alphaBalance = await Erc20BalanceAsserter.newInstance(
                     this.wallets.ethereum,
-                    BigInt(create.alpha.amount),
+                    create.alpha.amount,
                     create.alpha.token_contract
                 );
                 this.betaBalance = await LNBitcoinBalanceAsserter.newInstance(
                     this.wallets.lightning,
-                    BigInt(create.beta.amount)
+                    create.beta.amount
                 );
                 break;
             }
             case "Bob": {
                 this.alphaBalance = await Erc20BalanceAsserter.newInstance(
                     this.wallets.ethereum,
-                    BigInt(create.alpha.amount),
+                    create.alpha.amount,
                     create.alpha.token_contract
                 );
                 this.betaBalance = await LNBitcoinBalanceAsserter.newInstance(
                     this.wallets.lightning,
-                    BigInt(create.beta.amount)
+                    create.beta.amount
                 );
                 break;
             }
@@ -125,11 +125,11 @@ export class CndActor {
             case "Alice": {
                 this.alphaBalance = await LNBitcoinBalanceAsserter.newInstance(
                     this.wallets.lightning,
-                    BigInt(create.alpha.amount)
+                    create.alpha.amount
                 );
                 this.betaBalance = await Erc20BalanceAsserter.newInstance(
                     this.wallets.ethereum,
-                    BigInt(create.beta.amount),
+                    create.beta.amount,
                     create.beta.token_contract
                 );
                 break;
@@ -137,11 +137,11 @@ export class CndActor {
             case "Bob": {
                 this.alphaBalance = await LNBitcoinBalanceAsserter.newInstance(
                     this.wallets.lightning,
-                    BigInt(create.alpha.amount)
+                    create.alpha.amount
                 );
                 this.betaBalance = await Erc20BalanceAsserter.newInstance(
                     this.wallets.ethereum,
-                    BigInt(create.beta.amount),
+                    create.beta.amount,
                     create.beta.token_contract
                 );
                 break;
@@ -165,24 +165,24 @@ export class CndActor {
             case "Alice": {
                 this.alphaBalance = await Erc20BalanceAsserter.newInstance(
                     this.wallets.ethereum,
-                    BigInt(create.alpha.amount),
+                    create.alpha.amount,
                     create.alpha.token_contract
                 );
                 this.betaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
                     this.wallets.bitcoin,
-                    BigInt(create.beta.amount)
+                    create.beta.amount
                 );
                 break;
             }
             case "Bob": {
                 this.alphaBalance = await Erc20BalanceAsserter.newInstance(
                     this.wallets.ethereum,
-                    BigInt(create.alpha.amount),
+                    create.alpha.amount,
                     create.alpha.token_contract
                 );
                 this.betaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
                     this.wallets.bitcoin,
-                    BigInt(create.beta.amount)
+                    create.beta.amount
                 );
                 break;
             }
@@ -205,11 +205,11 @@ export class CndActor {
             case "Alice": {
                 this.alphaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
                     this.wallets.bitcoin,
-                    BigInt(create.alpha.amount)
+                    create.alpha.amount
                 );
                 this.betaBalance = await Erc20BalanceAsserter.newInstance(
                     this.wallets.ethereum,
-                    BigInt(create.beta.amount),
+                    create.beta.amount,
                     create.beta.token_contract
                 );
                 break;
@@ -217,11 +217,11 @@ export class CndActor {
             case "Bob": {
                 this.alphaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
                     this.wallets.bitcoin,
-                    BigInt(create.alpha.amount)
+                    create.alpha.amount
                 );
                 this.betaBalance = await Erc20BalanceAsserter.newInstance(
                     this.wallets.ethereum,
-                    BigInt(create.beta.amount),
+                    create.beta.amount,
                     create.beta.token_contract
                 );
                 break;
@@ -248,13 +248,13 @@ export class CndActor {
         quantity: number,
         price: number
     ): Promise<string> {
-        const sats = (Number(quantity) * 100_000_000).toString(10);
-
+        const sats = BigInt(quantity * 100_000_000);
         const daiPerBtc = BigInt(price);
-        const weiPerDai = BigInt("1000000000000000000");
-        const satsPerBtc = BigInt("100000000");
+
+        const weiPerDai = 1000000000000000000n;
+        const satsPerBtc = 100000000n;
         const weiPerSat = (daiPerBtc * weiPerDai) / satsPerBtc;
-        const dai = BigInt(sats) * weiPerSat;
+        const dai = sats * weiPerSat;
 
         switch (position) {
             case Position.Buy: {
@@ -267,14 +267,14 @@ export class CndActor {
                         );
                         this.betaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
                             this.wallets.bitcoin,
-                            BigInt(sats)
+                            sats
                         );
                         break;
                     }
                     case "Bob": {
                         this.alphaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
                             this.wallets.bitcoin,
-                            BigInt(sats)
+                            sats
                         );
                         this.betaBalance = await Erc20BalanceAsserter.newInstance(
                             this.wallets.ethereum,
@@ -291,7 +291,7 @@ export class CndActor {
                     case "Alice": {
                         this.alphaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
                             this.wallets.bitcoin,
-                            BigInt(sats)
+                            sats
                         );
                         this.betaBalance = await Erc20BalanceAsserter.newInstance(
                             this.wallets.ethereum,
@@ -308,7 +308,7 @@ export class CndActor {
                         );
                         this.betaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
                             this.wallets.bitcoin,
-                            BigInt(sats)
+                            sats
                         );
                         break;
                     }
@@ -320,7 +320,7 @@ export class CndActor {
         return this.cnd.createBtcDaiOrder({
             position,
             quantity: sats,
-            price: weiPerSat.toString(10),
+            price: weiPerSat,
             swap: {
                 role: this.role,
                 bitcoin_address: await this.wallets.bitcoin.getAddress(),
