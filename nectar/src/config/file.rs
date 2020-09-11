@@ -3,7 +3,7 @@ use crate::{
     config::{Bitcoind, Data, MaxSell, Network},
     Spread,
 };
-use comit::ethereum::ChainId;
+use comit::{ethereum::ChainId, ledger};
 use config as config_rs;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
@@ -41,8 +41,7 @@ pub struct Fees {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Bitcoin {
-    #[serde(with = "crate::config::serde::bitcoin_network")]
-    pub network: bitcoin::Network,
+    pub network: ledger::Bitcoin,
     pub bitcoind: Option<Bitcoind>,
 }
 
@@ -208,7 +207,7 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                 level: Some(Level::Debug),
             }),
             bitcoin: Some(Bitcoin {
-                network: bitcoin::Network::Regtest,
+                network: ledger::Bitcoin::Regtest,
                 bitcoind: Some(Bitcoind {
                     node_url: "http://localhost:18443".parse().unwrap(),
                 }),
@@ -258,7 +257,7 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                 level: Some(Level::Debug),
             }),
             bitcoin: Some(Bitcoin {
-                network: bitcoin::Network::Regtest,
+                network: ledger::Bitcoin::Regtest,
                 bitcoind: Some(Bitcoind {
                     node_url: "http://localhost:18443".parse().unwrap(),
                 }),
@@ -351,19 +350,19 @@ local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
 
         let expected = vec![
             Bitcoin {
-                network: bitcoin::Network::Bitcoin,
+                network: ledger::Bitcoin::Mainnet,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:8332").unwrap(),
                 }),
             },
             Bitcoin {
-                network: bitcoin::Network::Testnet,
+                network: ledger::Bitcoin::Testnet,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:18332").unwrap(),
                 }),
             },
             Bitcoin {
-                network: bitcoin::Network::Regtest,
+                network: ledger::Bitcoin::Regtest,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:18443").unwrap(),
                 }),

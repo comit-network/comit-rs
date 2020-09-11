@@ -5,7 +5,7 @@ use crate::{
     rate::Spread,
     MidMarketRate,
 };
-use comit::{order::SwapProtocol, Position, Role};
+use comit::{ledger, order::SwapProtocol, Position, Role};
 
 // Bundles the state of the application
 #[derive(Debug)]
@@ -19,7 +19,7 @@ pub struct Maker {
     dai_max_sell_amount: Option<dai::Amount>,
     mid_market_rate: Option<MidMarketRate>,
     spread: Spread,
-    bitcoin_network: bitcoin::Network,
+    bitcoin_network: ledger::Bitcoin,
     ethereum_chain: ethereum::Chain,
     role: Role,
 }
@@ -34,7 +34,7 @@ impl Maker {
         dai_max_sell_amount: Option<dai::Amount>,
         mid_market_rate: MidMarketRate,
         spread: Spread,
-        bitcoin_network: bitcoin::Network,
+        bitcoin_network: ledger::Bitcoin,
         dai_chain: ethereum::Chain,
         role: Role,
     ) -> Self {
@@ -265,7 +265,7 @@ mod tests {
                 dai_max_sell_amount: None,
                 mid_market_rate: Some(MidMarketRate::static_stub()),
                 spread: Spread::default(),
-                bitcoin_network: bitcoin::Network::Bitcoin,
+                bitcoin_network: ledger::Bitcoin::Mainnet,
                 ethereum_chain: ethereum::Chain::static_stub(),
                 role: Role::Bob,
             }

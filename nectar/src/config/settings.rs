@@ -4,6 +4,7 @@ use crate::{
     ethereum, Spread,
 };
 use anyhow::Context;
+use comit::ledger;
 use log::LevelFilter;
 use std::convert::{TryFrom, TryInto};
 use url::Url;
@@ -20,14 +21,14 @@ pub struct Settings {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Bitcoin {
-    pub network: bitcoin::Network,
+    pub network: ledger::Bitcoin,
     pub bitcoind: Bitcoind,
 }
 
 impl Default for Bitcoin {
     fn default() -> Self {
         Self {
-            network: bitcoin::Network::Regtest,
+            network: ledger::Bitcoin::Regtest,
             bitcoind: Bitcoind {
                 node_url: Url::parse("http://localhost:18443")
                     .expect("static string to be a valid url"),
@@ -153,13 +154,13 @@ fn derive_url_bitcoin(bitcoin: Option<file::Bitcoin>) -> Bitcoin {
             let node_url = match bitcoin.bitcoind {
                 Some(bitcoind) => bitcoind.node_url,
                 None => match bitcoin.network {
-                    bitcoin::Network::Bitcoin => "http://localhost:8332"
+                    ledger::Bitcoin::Mainnet => "http://localhost:8332"
                         .parse()
                         .expect("to be valid static string"),
-                    bitcoin::Network::Testnet => "http://localhost:18332"
+                    ledger::Bitcoin::Testnet => "http://localhost:18332"
                         .parse()
                         .expect("to be valid static string"),
-                    bitcoin::Network::Regtest => "http://localhost:18443"
+                    ledger::Bitcoin::Regtest => "http://localhost:18443"
                         .parse()
                         .expect("to be valid static string"),
                 },
@@ -346,9 +347,9 @@ mod tests {
             .is_ok()
             .map(|settings| &settings.bitcoin)
             .is_equal_to(Bitcoin {
-                network: ::bitcoin::Network::Regtest,
+                network: ledger::Bitcoin::Mainnet,
                 bitcoind: Bitcoind {
-                    node_url: "http://localhost:18443".parse().unwrap(),
+                    node_url: "http://localhost:8332".parse().unwrap(),
                 },
             })
     }
@@ -356,9 +357,9 @@ mod tests {
     #[test]
     fn bitcoin_defaults_network_only() {
         let defaults = vec![
-            (::bitcoin::Network::Bitcoin, "http://localhost:8332"),
-            (::bitcoin::Network::Testnet, "http://localhost:18332"),
-            (::bitcoin::Network::Regtest, "http://localhost:18443"),
+            (ledger::Bitcoin::Mainnet, "http://localhost:8332"),
+            (ledger::Bitcoin::Testnet, "http://localhost:18332"),
+            (ledger::Bitcoin::Regtest, "http://localhost:18443"),
         ];
 
         for (network, url) in defaults {

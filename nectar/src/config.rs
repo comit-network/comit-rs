@@ -79,6 +79,7 @@ where
 mod tests {
     use super::*;
     use crate::{bitcoin, config::file::Level, ethereum::ChainId, Spread};
+    use comit::ledger;
     use std::{fs, io::Write};
 
     #[test]
@@ -138,7 +139,7 @@ mod tests {
                 level: Some(Level::Info),
             }),
             bitcoin: Some(file::Bitcoin {
-                network: bitcoin::Network::Regtest,
+                network: ledger::Bitcoin::Regtest,
                 bitcoind: Some(Bitcoind {
                     node_url: "http://localhost:18443/".parse().unwrap(),
                 }),

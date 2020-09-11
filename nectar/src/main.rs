@@ -82,7 +82,7 @@ async fn main() {
     let bitcoin_wallet = bitcoin::Wallet::new(
         seed,
         settings.bitcoin.bitcoind.node_url.clone(),
-        settings.bitcoin.network,
+        settings.bitcoin.network.into(),
     )
     .await;
 
@@ -107,7 +107,7 @@ async fn main() {
                 ethereum_wallet.ok(),
                 bitcoin_wallet.ok(),
                 &seed,
-                settings.bitcoin.network,
+                settings.bitcoin.network.into(),
             )
             .await
             .expect("get wallet info");
