@@ -1,0 +1,68 @@
+[package]
+name = "nectar"
+version = "0.1.0"
+authors = ["CoBloX Team <team@coblox.tech>"]
+edition = "2018"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+bitcoin = { version = "0.23", features = ["rand", "use-serde"] }
+chrono = "0.4"
+clarity = "0.1"
+comit = { path = "../comit/", package = "comit" }
+config = "0.10"
+conquer-once = "0.2"
+csv = "1.1"
+derivative = "2.1"
+directories = "2.0"
+ethabi = "2.0"
+ethereum-types = "0.9"
+futures = "0.3"
+futures-timer = "3.0"
+hex = "0.4"
+libp2p = { version = "0.24", default-features = false, features = ["tcp-tokio", "secio", "yamux", "mplex", "dns"] }
+log = "0.4"
+num = "0.3"
+num256 = "0.2"
+pem = "0.8"
+reqwest = { version = "0.10", default-features = false, features = ["json", "native-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde-hex = "0.1"
+serde_cbor = "0.11"
+serde_json = "1.0"
+sled = "0.32"
+spectral = "0.6"
+structopt = "0.3"
+strum = "0.18"
+strum_macros = "0.18"
+thiserror = "1.0"
+time = { version = "0.2", features = ["serde"] }
+tokio = { version = "0.2", features = ["macros", "time"] }
+toml = "0.5"
+tracing = "0.1"
+tracing-log = "0.1"
+tracing-subscriber = "0.2"
+url = { version = "2", features = ["serde"] }
+uuid = { version = "0.8", features = ["serde", "v4"] }
+wagyu-ethereum = "0.6"
+wagyu-model = "0.6"
+
+[dependencies.rand]
+default-features = false
+version = "0.6"
+
+[dev-dependencies]
+base64 = "0.12"
+proptest = "0.10"
+quickcheck = "0.9"
+quickcheck_async = "0.1"
+tempdir = "0.3"
+testcontainers = "0.9"
+
+[features]
+default = ["test-docker"]
+
+# "test-docker" feature is related to test code
+# if it's enabled then tests needing docker will be ran
+test-docker = []
