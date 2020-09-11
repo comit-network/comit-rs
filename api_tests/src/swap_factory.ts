@@ -204,7 +204,7 @@ function defaultHbitPayload(
     finalIdentity: string
 ): HbitPayload {
     return {
-        amount: "1000000",
+        amount: 1000000n,
         final_identity: finalIdentity,
         network: "regtest",
         absolute_expiry: absoluteExpiry,
@@ -216,7 +216,7 @@ function defaultHalbitPayload(
     lndPubkey: string
 ): HalbitPayload {
     return {
-        amount: "100000",
+        amount: 100000n,
         network: "regtest",
         identity: lndPubkey,
         cltv_expiry: cltvExpiry,
@@ -229,7 +229,7 @@ function defaultHerc20Payload(
     tokenContract: string
 ): Herc20Payload {
     return {
-        amount: "9000000000000000000",
+        amount: 9000000000000000000n,
         token_contract: tokenContract,
         chain_id: 1337,
         identity,

@@ -19,6 +19,9 @@ export default class CndClient {
     public constructor(cndUrl: string) {
         this.client = axios.create({
             baseURL: cndUrl,
+            headers: {
+                "Content-Type": "application/json",
+            },
         });
         this.client.interceptors.response.use(
             (response) => response,
@@ -90,13 +93,19 @@ export default class CndClient {
     }
 
     public async createHerc20Hbit(body: Herc20HbitPayload): Promise<string> {
-        const response = await this.client.post("swaps/herc20/hbit", body);
+        const response = await this.client.post(
+            "swaps/herc20/hbit",
+            JSON.stringify(body, bigIntSerializer)
+        );
 
         return response.headers.location;
     }
 
     public async createHbitHerc20(body: HbitHerc20Payload): Promise<string> {
-        const response = await this.client.post("swaps/hbit/herc20", body);
+        const response = await this.client.post(
+            "swaps/hbit/herc20",
+            JSON.stringify(body, bigIntSerializer)
+        );
 
         return response.headers.location;
     }
@@ -104,7 +113,10 @@ export default class CndClient {
     public async createHalbitHerc20(
         body: HalbitHerc20Payload
     ): Promise<string> {
-        const response = await this.client.post("swaps/halbit/herc20", body);
+        const response = await this.client.post(
+            "swaps/halbit/herc20",
+            JSON.stringify(body, bigIntSerializer)
+        );
 
         return response.headers.location;
     }
@@ -112,13 +124,19 @@ export default class CndClient {
     public async createHerc20Halbit(
         body: Herc20HalbitPayload
     ): Promise<string> {
-        const response = await this.client.post("swaps/herc20/halbit", body);
+        const response = await this.client.post(
+            "swaps/herc20/halbit",
+            JSON.stringify(body, bigIntSerializer)
+        );
 
         return response.headers.location;
     }
 
     public async createBtcDaiOrder(order: CreateBtcDaiOrderPayload) {
-        const response = await this.client.post("/orders/BTC-DAI", order);
+        const response = await this.client.post(
+            "/orders/BTC-DAI",
+            JSON.stringify(order, bigIntSerializer)
+        );
 
         return response.headers.location;
     }
@@ -128,4 +146,12 @@ export default class CndClient {
 
         return response.data;
     }
+}
+
+function bigIntSerializer(_key: string, value: any): any {
+    if (typeof value === "bigint") {
+        return value.toString(10);
+    }
+
+    return value;
 }

@@ -42,10 +42,10 @@ export class Wallets {
 
 export function newBitcoinStubWallet(): BitcoinWallet {
     return newStubWallet({
-        MaximumFee: BigInt(0),
+        MaximumFee: 0n,
         getAddress: () =>
             Promise.resolve("bcrt1qq7pflkfujg6dq25n73n66yjkvppq6h9caklrhz"),
-        getBalance: () => Promise.resolve(BigInt(0)),
+        getBalance: () => Promise.resolve(0n),
         mint: (_satoshis: bigint) => Promise.resolve(),
     });
 }
@@ -56,7 +56,7 @@ export function newEthereumStubWallet(): EthereumWallet {
         getErc20Balance: (
             _contractAddress: string,
             _decimals?: number
-        ): Promise<bigint> => Promise.resolve(BigInt(0)),
+        ): Promise<bigint> => Promise.resolve(0n),
         mintErc20: (_quantity: bigint, _tokenContract: string) =>
             Promise.resolve(),
     });
@@ -64,7 +64,7 @@ export function newEthereumStubWallet(): EthereumWallet {
 
 export function newLightningStubChannel(): LightningChannel {
     return newStubWallet({
-        getBalance: () => Promise.resolve(BigInt(0)),
+        getBalance: () => Promise.resolve(0n),
     });
 }
 

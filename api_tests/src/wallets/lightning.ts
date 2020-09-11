@@ -225,8 +225,9 @@ export class LndClient {
     public async confirmedWalletBalance(): Promise<bigint> {
         return this.lnrpc
             .walletBalance()
-            .then((r) => (r.confirmedBalance ? r.confirmedBalance : ""))
-            .then(BigInt);
+            .then((r) =>
+                r.confirmedBalance ? BigInt(r.confirmedBalance) : 0n
+            );
     }
 
     private async isSyncedToChain(): Promise<boolean> {
@@ -258,7 +259,7 @@ export class LndClient {
 
         // as the counterparty, localBalance is undefined ...
         if (!channel.localBalance) {
-            return BigInt(0);
+            return 0n;
         }
 
         return BigInt(channel.localBalance);
