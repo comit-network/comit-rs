@@ -46,6 +46,7 @@ use crate::{
     config::{read_config, Settings},
     fs::default_config_path,
 };
+use anyhow::{Context, Result};
 use conquer_once::Lazy;
 
 pub use maker::Maker;
@@ -61,12 +62,12 @@ pub static SECP: Lazy<::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All>
     Lazy::new(::bitcoin::secp256k1::Secp256k1::new);
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     let options = Options::from_args();
 
-    let settings = read_config(&options.config_file, default_config_path)
-        .and_then(Settings::from_config_file_and_defaults)
-        .expect("Could not initialize configuration");
+    let file = read_config(&options.config_file, default_config_path)?;
+    let settings = Settings::from_config_file_and_defaults(file, options.network)
+        .context("could not initialize configuration")?;
 
     if let Command::DumpConfig = options.cmd {
         dump_config(settings).expect("dump config");
@@ -149,5 +150,7 @@ async fn main() {
         )
         .await
         .expect("Wrapping up"),
-    }
+    };
+
+    Ok(())
 }

@@ -317,7 +317,8 @@ local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
         let default_file = File::default();
 
         // convert to settings, this populates all empty fields with defaults
-        let effective_settings = Settings::from_config_file_and_defaults(default_file).unwrap();
+        let effective_settings =
+            Settings::from_config_file_and_defaults(default_file, None).unwrap();
 
         // write settings back to file
         let file_with_effective_settings = File::from(effective_settings);

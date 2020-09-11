@@ -32,6 +32,11 @@ pub struct Options {
     /// Path to configuration file
     #[structopt(short = "c", long = "config", parse(from_os_str))]
     pub config_file: Option<PathBuf>,
+
+    /// Which network to connect to
+    #[structopt(short = "n", long = "network")]
+    pub network: Option<comit::Network>,
+
     /// Commands available
     #[structopt(subcommand)]
     pub cmd: Command,

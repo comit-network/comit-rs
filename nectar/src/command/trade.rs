@@ -556,7 +556,7 @@ mod tests {
         swap::herc20::asset::ethereum::FromWei,
         test_harness, Seed,
     };
-    use comit::{asset, asset::Erc20Quantity, ethereum::ChainId};
+    use comit::{asset, asset::Erc20Quantity, ethereum::ChainId, ledger};
     use ethereum::ether;
     use log::LevelFilter;
 
@@ -593,7 +593,7 @@ mod tests {
             logging: Logging {
                 level: LevelFilter::Trace,
             },
-            bitcoin: Default::default(),
+            bitcoin: settings::Bitcoin::new(ledger::Bitcoin::Regtest),
             ethereum: settings::Ethereum {
                 node_url: ethereum_blockchain.node_url.clone(),
                 chain: ethereum::Chain::new(

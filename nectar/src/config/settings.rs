@@ -3,10 +3,9 @@ use crate::{
     config::{file, Bitcoind, Data, File, MaxSell, Network},
     ethereum, Spread,
 };
-use anyhow::Context;
+use anyhow::{Context, Result};
 use comit::ledger;
 use log::LevelFilter;
-use std::convert::{TryFrom, TryInto};
 use url::Url;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -25,15 +24,49 @@ pub struct Bitcoin {
     pub bitcoind: Bitcoind,
 }
 
-impl Default for Bitcoin {
-    fn default() -> Self {
+impl Bitcoin {
+    pub fn new(network: ledger::Bitcoin) -> Self {
         Self {
-            network: ledger::Bitcoin::Regtest,
-            bitcoind: Bitcoind {
-                node_url: Url::parse("http://localhost:18443")
-                    .expect("static string to be a valid url"),
-            },
+            network,
+            bitcoind: Bitcoind::new(network),
         }
+    }
+
+    fn from_file(bitcoin: file::Bitcoin, comit_network: Option<comit::Network>) -> Result<Self> {
+        if let Some(comit_network) = comit_network {
+            let inferred = ledger::Bitcoin::from(comit_network);
+            if inferred != bitcoin.network {
+                anyhow::bail!(
+                    "inferred Bitcoin network {} from CLI argument {} but config file says {}",
+                    inferred,
+                    comit_network,
+                    bitcoin.network
+                );
+            }
+        }
+
+        let network = bitcoin.network;
+        let bitcoind = bitcoin.bitcoind.unwrap_or_else(|| Bitcoind::new(network));
+
+        Ok(Bitcoin { network, bitcoind })
+    }
+}
+
+impl Bitcoind {
+    fn new(network: ledger::Bitcoin) -> Self {
+        let node_url = match network {
+            ledger::Bitcoin::Mainnet => {
+                Url::parse("http://localhost:8332").expect("static string to be a valid url")
+            }
+            ledger::Bitcoin::Testnet => {
+                Url::parse("http://localhost:18332").expect("static string to be a valid url")
+            }
+            ledger::Bitcoin::Regtest => {
+                Url::parse("http://localhost:18443").expect("static string to be a valid url")
+            }
+        };
+
+        Bitcoind { node_url }
     }
 }
 
@@ -52,6 +85,48 @@ pub struct Ethereum {
     pub chain: ethereum::Chain,
 }
 
+impl Ethereum {
+    fn new(chain_id: ethereum::ChainId) -> Result<Self> {
+        let chain = ethereum::Chain::from_public_chain_id(chain_id)?;
+        let node_url = "http://localhost:8545"
+            .parse()
+            .expect("to be valid static string");
+
+        Ok(Ethereum { node_url, chain })
+    }
+
+    fn from_file(ethereum: file::Ethereum, comit_network: Option<comit::Network>) -> Result<Self> {
+        if let Some(comit_network) = comit_network {
+            let inferred = ethereum::ChainId::from(comit_network);
+            if inferred != ethereum.chain_id {
+                anyhow::bail!(
+                    "inferred Ethereum chain ID {} from CLI argument {} but config file says {}",
+                    inferred,
+                    comit_network,
+                    ethereum.chain_id
+                );
+            }
+        }
+
+        let node_url = match ethereum.node_url {
+            None => {
+                // default is always localhost:8545
+                "http://localhost:8545"
+                    .parse()
+                    .expect("to be valid static string")
+            }
+            Some(node_url) => node_url,
+        };
+
+        let chain = match (ethereum.chain_id, ethereum.local_dai_contract_address) {
+            (chain_id, Some(address)) => ethereum::Chain::new(chain_id, address),
+            (chain_id, None) => ethereum::Chain::from_public_chain_id(chain_id)?,
+        };
+
+        Ok(Ethereum { node_url, chain })
+    }
+}
+
 impl From<Ethereum> for file::Ethereum {
     fn from(ethereum: Ethereum) -> Self {
         match ethereum.chain {
@@ -68,37 +143,6 @@ impl From<Ethereum> for file::Ethereum {
                 node_url: Some(ethereum.node_url),
                 local_dai_contract_address: None,
             },
-        }
-    }
-}
-
-impl TryFrom<Option<file::Ethereum>> for Ethereum {
-    type Error = anyhow::Error;
-
-    fn try_from(file_ethereum: Option<file::Ethereum>) -> anyhow::Result<Ethereum> {
-        match file_ethereum {
-            None => Ok(Ethereum::default()),
-            Some(file_ethereum) => {
-                let node_url = match file_ethereum.node_url {
-                    None => {
-                        // default is always localhost:8545
-                        "http://localhost:8545"
-                            .parse()
-                            .expect("to be valid static string")
-                    }
-                    Some(node_url) => node_url,
-                };
-
-                let chain = match (
-                    file_ethereum.chain_id,
-                    file_ethereum.local_dai_contract_address,
-                ) {
-                    (chain_id, Some(address)) => ethereum::Chain::new(chain_id, address),
-                    (chain_id, None) => ethereum::Chain::from_public_chain_id(chain_id)?,
-                };
-
-                Ok(Ethereum { node_url, chain })
-            }
         }
     }
 }
@@ -147,32 +191,6 @@ pub struct Logging {
     pub level: LevelFilter,
 }
 
-fn derive_url_bitcoin(bitcoin: Option<file::Bitcoin>) -> Bitcoin {
-    match bitcoin {
-        None => Bitcoin::default(),
-        Some(bitcoin) => {
-            let node_url = match bitcoin.bitcoind {
-                Some(bitcoind) => bitcoind.node_url,
-                None => match bitcoin.network {
-                    ledger::Bitcoin::Mainnet => "http://localhost:8332"
-                        .parse()
-                        .expect("to be valid static string"),
-                    ledger::Bitcoin::Testnet => "http://localhost:18332"
-                        .parse()
-                        .expect("to be valid static string"),
-                    ledger::Bitcoin::Regtest => "http://localhost:18443"
-                        .parse()
-                        .expect("to be valid static string"),
-                },
-            };
-            Bitcoin {
-                network: bitcoin.network,
-                bitcoind: Bitcoind { node_url },
-            }
-        }
-    }
-}
-
 impl From<Settings> for File {
     fn from(settings: Settings) -> Self {
         let Settings {
@@ -216,7 +234,10 @@ impl From<Maker> for file::Maker {
 }
 
 impl Settings {
-    pub fn from_config_file_and_defaults(config_file: File) -> anyhow::Result<Self> {
+    pub fn from_config_file_and_defaults(
+        config_file: File,
+        comit_network: Option<comit::Network>,
+    ) -> anyhow::Result<Self> {
         let File {
             maker,
             network,
@@ -290,8 +311,14 @@ impl Settings {
                     },
                 }
             },
-            bitcoin: derive_url_bitcoin(bitcoin),
-            ethereum: ethereum.try_into()?,
+            bitcoin: bitcoin.map_or_else(
+                || Ok(Bitcoin::new(comit_network.unwrap_or_default().into())),
+                |file| Bitcoin::from_file(file, comit_network),
+            )?,
+            ethereum: ethereum.map_or_else(
+                || Ethereum::new(comit_network.unwrap_or_default().into()),
+                |file| Ethereum::from_file(file, comit_network),
+            )?,
         })
     }
 }
@@ -310,7 +337,7 @@ mod tests {
             ..File::default()
         };
 
-        let settings = Settings::from_config_file_and_defaults(config_file);
+        let settings = Settings::from_config_file_and_defaults(config_file, None);
 
         assert_that(&settings)
             .is_ok()
@@ -327,7 +354,7 @@ mod tests {
             ..File::default()
         };
 
-        let settings = Settings::from_config_file_and_defaults(config_file);
+        let settings = Settings::from_config_file_and_defaults(config_file, None);
 
         assert_that(&settings)
             .is_ok()
@@ -341,7 +368,7 @@ mod tests {
     fn bitcoin_defaults() {
         let config_file = File { ..File::default() };
 
-        let settings = Settings::from_config_file_and_defaults(config_file);
+        let settings = Settings::from_config_file_and_defaults(config_file, None);
 
         assert_that(&settings)
             .is_ok()
@@ -371,7 +398,7 @@ mod tests {
                 ..File::default()
             };
 
-            let settings = Settings::from_config_file_and_defaults(config_file);
+            let settings = Settings::from_config_file_and_defaults(config_file, None);
 
             assert_that(&settings)
                 .is_ok()
@@ -389,7 +416,7 @@ mod tests {
     fn ethereum_defaults() {
         let config_file = File { ..File::default() };
 
-        let settings = Settings::from_config_file_and_defaults(config_file);
+        let settings = Settings::from_config_file_and_defaults(config_file, None);
 
         assert_that(&settings)
             .is_ok()
