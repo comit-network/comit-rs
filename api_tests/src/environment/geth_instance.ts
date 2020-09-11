@@ -1,16 +1,16 @@
 import { ChildProcess, spawn } from "child_process";
-import waitForLogMessage from "../wait_for_log_message";
-import { existsAsync, openAsync } from "../utils";
+import waitForLogMessage from "./wait_for_log_message";
 import { promises as asyncFs } from "fs";
 import getPort from "get-port";
 import { Logger } from "log4js";
-import { LedgerInstance } from "./index";
 import findCacheDir from "find-cache-dir";
 import download from "download";
 import { platform } from "os";
 import chmod from "chmod";
 import * as path from "path";
-import { crashListener } from "../crash_listener";
+import { crashListener } from "./crash_listener";
+import { LedgerInstance } from "./index";
+import { existsAsync, openAsync } from "./async_fs";
 
 export class GethInstance implements LedgerInstance {
     private process: ChildProcess;
@@ -54,6 +54,9 @@ export class GethInstance implements LedgerInstance {
                 `--rpc`,
                 `--rpcport=${this.rpcPort}`,
                 `--port=${this.p2pPort}`,
+                `--allow-insecure-unlock`,
+                `--unlock=${this.devAccount}`,
+                `--password=${this.devAccountPasswordFile}`,
             ],
 
             {
@@ -85,6 +88,7 @@ export class GethInstance implements LedgerInstance {
             this.devAccountKeyFile,
             this.devAccountKey()
         );
+        await GethInstance.writeFile(this.devAccountPasswordFile, "");
     }
 
     /**
@@ -107,6 +111,14 @@ export class GethInstance implements LedgerInstance {
 
     private get devAccountKeyFile() {
         return path.join(this.dataDir, "keystore", DEV_ACCOUNT_KEY_FILE_NAME);
+    }
+
+    public get devAccount() {
+        return DEV_ACCOUNT_KEY.address;
+    }
+
+    private get devAccountPasswordFile() {
+        return path.join(this.dataDir, "password");
     }
 
     private async findBinary(version: string): Promise<string> {
@@ -170,7 +182,7 @@ export class GethInstance implements LedgerInstance {
         return `http://localhost:${this.rpcPort}`;
     }
 
-    public devAccountKey() {
+    private devAccountKey() {
         return JSON.stringify(DEV_ACCOUNT_KEY);
     }
 }

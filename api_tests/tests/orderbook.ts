@@ -3,16 +3,14 @@
  * @ledger bitcoin
  */
 
-import { twoActorTest } from "../src/actor_test";
+import { startConnectedAliceAndBob } from "../src/actor_test";
 import { sleep } from "../src/utils";
-import { Position } from "../src/cnd/payload";
+import { Position } from "../src/cnd_client/payload";
 
 describe("orderbook", () => {
     it(
         "herc20-hbit",
-        twoActorTest(async ({ alice, bob }) => {
-            await alice.connect(bob);
-
+        startConnectedAliceAndBob(async ([alice, bob]) => {
             await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
             await bob.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
 
@@ -36,9 +34,7 @@ describe("orderbook", () => {
 
     it(
         "hbit-herc20",
-        twoActorTest(async ({ alice, bob }) => {
-            await alice.connect(bob);
-
+        startConnectedAliceAndBob(async ([alice, bob]) => {
             await alice.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
             await bob.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
 

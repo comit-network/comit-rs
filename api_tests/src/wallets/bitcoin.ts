@@ -2,18 +2,15 @@ import crypto from "crypto";
 import { Logger } from "log4js";
 import BitcoinRpcClient from "bitcoin-core";
 import { toBitcoin, toSatoshi } from "satoshi-bitcoin";
-import { pollUntilMinted, Wallet } from "./index";
-import { BitcoinNodeConfig } from "../ledgers";
-import { Asset } from "../asset";
 import axios, { AxiosError, AxiosInstance, Method } from "axios";
+import { BitcoinNodeConfig } from "../environment";
+import { sleep } from "../utils";
+import pTimeout from "p-timeout";
 
-export interface BitcoinWallet extends Wallet {
-    mintToAddress(
-        minimumExpectedBalance: bigint,
-        toAddress: string
-    ): Promise<void>;
+export interface BitcoinWallet {
+    MaximumFee: bigint;
     getAddress(): Promise<string>;
-    getBalance(): Promise<number>;
+    getBalance(): Promise<bigint>;
     sendToAddress(
         address: string,
         satoshis: number,
@@ -25,6 +22,68 @@ export interface BitcoinWallet extends Wallet {
     ): Promise<string>;
 
     getFee(): string;
+
+    mint(satoshis: bigint): Promise<void>;
+}
+
+export class BitcoinFaucet {
+    private readonly minerClient: BitcoinRpcClient;
+
+    constructor(config: BitcoinNodeConfig, private readonly logger: Logger) {
+        this.minerClient = new BitcoinRpcClient({
+            network: config.network,
+            port: config.rpcPort,
+            host: config.host,
+            username: config.username,
+            password: config.password,
+            wallet: config.minerWallet,
+        });
+    }
+
+    public async mint(
+        satoshis: bigint,
+        address: string,
+        getBalance: () => Promise<bigint>
+    ): Promise<void> {
+        const startingBalance = await getBalance();
+
+        const blockHeight = await this.minerClient.getBlockCount();
+
+        if (blockHeight < 101) {
+            throw new Error(
+                "unable to mint bitcoin, coinbase transactions are not yet spendable"
+            );
+        }
+
+        const btc = toBitcoin(satoshis.toString());
+
+        await this.minerClient.sendToAddress(address, btc);
+        this.logger.info("Minted", btc, "BTC to", address);
+
+        await waitUntilBalanceReaches(getBalance, startingBalance + satoshis);
+    }
+}
+
+async function waitUntilBalanceReaches(
+    getBalance: () => Promise<bigint>,
+    expectedBalance: bigint
+): Promise<void> {
+    let currentBalance = await getBalance();
+
+    const timeout = 10;
+    const error = new Error(
+        `Balance did not reach ${expectedBalance} after ${timeout} seconds, starting balance was ${currentBalance}`
+    );
+    Error.captureStackTrace(error);
+
+    const poller = async () => {
+        while (currentBalance < expectedBalance) {
+            await sleep(500);
+            currentBalance = await getBalance();
+        }
+    };
+
+    await pTimeout(poller(), timeout * 1000, error);
 }
 
 export class BitcoindWallet implements BitcoinWallet {
@@ -45,102 +104,35 @@ export class BitcoindWallet implements BitcoinWallet {
 
         logger.info("Name of generated Bitcoin wallet:", walletName);
 
-        const minerClient = new BitcoinRpcClient({
-            network: config.network,
-            port: config.rpcPort,
-            host: config.host,
-            username: config.username,
-            password: config.password,
-            wallet: config.minerWallet,
-        });
         const walletClient = newAxiosClient(
             `${config.rpcUrl}/wallet/${walletName}`,
             auth,
             logger
         );
+        const faucet = new BitcoinFaucet(config, logger);
 
-        return new BitcoindWallet(minerClient, logger, walletClient);
+        return new BitcoindWallet(faucet, walletClient);
     }
 
-    public MaximumFee = 100000;
+    public MaximumFee = BigInt(100000);
 
-    private constructor(
-        private readonly minerClient: BitcoinRpcClient,
-        private readonly logger: Logger,
+    constructor(
+        private readonly faucet: BitcoinFaucet,
         private readonly rpcClient: AxiosInstance
     ) {}
 
-    public async mintToAddress(
-        minimumExpectedBalance: bigint,
-        toAddress: string
-    ): Promise<void> {
-        const res = await this.rpcClient.request({
-            data: { jsonrpc: "1.0", method: "getblockcount", params: [] },
-        });
-
-        const blockHeight = res.data.result;
-        if (blockHeight < 101) {
-            throw new Error(
-                "unable to mint bitcoin, coinbase transactions are not yet spendable"
-            );
-        }
-
-        // make sure we have at least twice as much
-        const amount = toBitcoin(
-            (minimumExpectedBalance * BigInt(2)).toString()
-        );
-
-        await this.minerClient.sendToAddress(toAddress, amount);
-
-        this.logger.info("Minted", amount, "bitcoin for", toAddress);
-    }
-
-    public async mint(asset: Asset): Promise<void> {
-        if (asset.name !== "bitcoin") {
-            throw new Error(
-                `Cannot mint asset ${asset.name} with BitcoinWallet`
-            );
-        }
-
-        const startingBalance = await this.getBalanceByAsset(asset);
-
-        const minimumExpectedBalance = BigInt(asset.quantity);
-
-        await this.mintToAddress(
-            minimumExpectedBalance,
-            await this.getAddress()
-        );
-
-        await pollUntilMinted(
-            this,
-            startingBalance + minimumExpectedBalance,
-            asset
+    public async mint(satoshis: bigint): Promise<void> {
+        await this.faucet.mint(satoshis, await this.getAddress(), async () =>
+            this.getBalance()
         );
     }
 
-    public async getBalanceByAsset(asset: Asset): Promise<bigint> {
-        if (asset.name !== "bitcoin") {
-            throw new Error(
-                `Cannot read balance for asset ${asset.name} with BitcoinWallet`
-            );
-        }
-        return BigInt(toSatoshi(await this.getBalance()));
-    }
-
-    public async getBlockchainTime(): Promise<number> {
-        const res = await this.rpcClient.request({
-            data: { jsonrpc: "1.0", method: "getblockchaininfo", params: [] },
-        });
-
-        return res.data.result.mediantime;
-    }
-
-    public async getBalance(): Promise<number> {
+    public async getBalance(): Promise<bigint> {
         const res = await this.rpcClient.request({
             data: { jsonrpc: "1.0", method: "getbalance", params: [] },
         });
 
-        return res.data.result;
+        return BigInt(toSatoshi(res.data.result));
     }
 
     public async getAddress(): Promise<string> {

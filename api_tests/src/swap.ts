@@ -1,11 +1,11 @@
 import { AxiosResponse } from "axios";
 import { Action } from "./action";
-import { LedgerAction } from "./cnd/action_payload";
-import { Cnd } from "./cnd/cnd";
-import { Action as SirenAction, Field } from "./cnd/siren";
+import { LedgerAction } from "./cnd_client/action_payload";
+import CndClient from "./cnd_client";
+import { Action as SirenAction, Field } from "./cnd_client/siren";
 import { AllWallets, Wallets } from "./wallets";
 import { BigNumber } from "ethers";
-import { SwapEntity } from "./cnd/payload";
+import { SwapEntity } from "./cnd_client/payload";
 
 export class WalletError extends Error {
     constructor(
@@ -26,7 +26,7 @@ export class Swap {
     private readonly wallets: Wallets;
 
     constructor(
-        private readonly cnd: Cnd,
+        private readonly cnd: CndClient,
         readonly self: string,
         wallets: AllWallets
     ) {
@@ -57,11 +57,11 @@ export class Swap {
     }
 
     /**
-     * Low level API for executing a ledger action returned from {@link Cnd}.
+     * Low level API for executing a ledger action returned from {@link CndClient}.
      *
      * Uses the wallets given in the constructor to send transactions according to the given ledger action.
      *
-     * @param ledgerAction The ledger action returned from {@link Cnd}.
+     * @param ledgerAction The ledger action returned from {@link CndClient}.
      * @throws A {@link WalletError} if a wallet or blockchain action failed.
      */
     public async doLedgerAction(ledgerAction: LedgerAction): Promise<string> {

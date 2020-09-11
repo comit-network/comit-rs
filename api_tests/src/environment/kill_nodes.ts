@@ -1,9 +1,9 @@
 import glob from "glob";
-import { rimrafAsync } from "../utils";
 import { promisify } from "util";
 import processExists from "process-exists";
 import path from "path";
 import { promises as asyncFs } from "fs";
+import { rimrafAsync } from "./async_fs";
 
 const globAsync = promisify(glob);
 

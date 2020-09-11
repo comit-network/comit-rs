@@ -1,24 +1,22 @@
 import { Config } from "@jest/types";
-import { execAsync, existsAsync, HarnessGlobal } from "./utils";
 import { promises as asyncFs } from "fs";
 import NodeEnvironment from "jest-environment-node";
 import path from "path";
-import { LndWallet } from "./wallets/lightning";
-import { BitcoindWallet } from "./wallets/bitcoin";
-import { AssetKind } from "./asset";
-import { LedgerKind } from "./ledgers/ledger";
-import { BitcoindInstance } from "./ledgers/bitcoind_instance";
+import { BitcoindInstance } from "./bitcoind_instance";
 import { configure, Logger, shutdown as loggerShutdown } from "log4js";
 import { EnvironmentContext } from "@jest/environment";
-import ledgerLock from "./ledgers/ledger_lock";
-import BitcoinMinerInstance from "./ledgers/bitcoin_miner_instance";
-import { Web3EthereumWallet } from "./wallets/ethereum";
-import { LedgerInstance, LightningNodeConfig } from "./ledgers";
-import { GethInstance } from "./ledgers/geth_instance";
-import { LndInstance } from "./ledgers/lnd_instance";
+import ledgerLock from "./ledger_lock";
+import BitcoinMinerInstance from "./bitcoin_miner_instance";
+import { Web3EthereumWallet } from "../wallets/ethereum";
+import { GethInstance } from "./geth_instance";
+import { LndInstance } from "./lnd_instance";
 import BitcoinRpcClient from "bitcoin-core";
-import { CndConfigFile } from "./config";
+import { CndConfigFile } from "../config";
 import { set } from "lodash";
+import { HarnessGlobal, LedgerInstance, LightningNodeConfig } from "./index";
+import { execAsync, existsAsync } from "./async_fs";
+import { LndClient } from "../wallets/lightning";
+import { BitcoinFaucet } from "../wallets/bitcoin";
 
 export default class TestEnvironment extends NodeEnvironment {
     private readonly testSuite: string;
@@ -32,6 +30,7 @@ export default class TestEnvironment extends NodeEnvironment {
     public global: HarnessGlobal;
 
     private logger: Logger;
+    private bitcoinFaucet: BitcoinFaucet;
 
     constructor(config: Config.ProjectConfig, context: EnvironmentContext) {
         super(config);
@@ -64,7 +63,7 @@ export default class TestEnvironment extends NodeEnvironment {
 
         // setup global variables
         this.global.ledgerConfigs = {};
-        this.global.lndWallets = {};
+        this.global.lndClients = {};
         this.global.cargoTargetDir = cargoTargetDir;
         this.global.cndConfigOverrides = this.cndConfigOverrides;
 
@@ -105,11 +104,12 @@ export default class TestEnvironment extends NodeEnvironment {
 
             return dir;
         };
-        this.global.gethLockDir = await this.getLockDirectory("geth");
 
         this.logger.info("Starting up test environment");
 
         await this.startLedgers();
+
+        this.logger.info("Test environment started");
     }
 
     async teardown() {
@@ -150,7 +150,11 @@ export default class TestEnvironment extends NodeEnvironment {
      */
     private async startBitcoin() {
         const lockDir = await this.getLockDirectory("bitcoind");
-        const release = await ledgerLock(lockDir);
+        const release = await ledgerLock(lockDir).catch(() =>
+            Promise.reject(
+                new Error(`Failed to acquire lock for starting bitcoind`)
+            )
+        );
 
         const bitcoind = await BitcoindInstance.new(
             await this.global.getDataDir("bitcoind"),
@@ -186,7 +190,11 @@ export default class TestEnvironment extends NodeEnvironment {
         } catch (e) {
             // miner is not running
             const tsNode = path.join(this.nodeModulesBinDir, "ts-node");
-            const minerProgram = path.join(this.srcDir, "bitcoin_miner.ts");
+            const minerProgram = path.join(
+                this.srcDir,
+                "environment",
+                "bitcoin_miner.ts"
+            );
 
             await BitcoinMinerInstance.start(
                 tsNode,
@@ -198,6 +206,7 @@ export default class TestEnvironment extends NodeEnvironment {
         }
 
         this.global.ledgerConfigs.bitcoin = config;
+        this.bitcoinFaucet = new BitcoinFaucet(config, this.logger);
 
         await release();
     }
@@ -209,7 +218,11 @@ export default class TestEnvironment extends NodeEnvironment {
      */
     private async startEthereum() {
         const lockDir = await this.getLockDirectory("geth");
-        const release = await ledgerLock(lockDir);
+        const release = await ledgerLock(lockDir).catch(() =>
+            Promise.reject(
+                new Error(`Failed to acquire lock for starting geth`)
+            )
+        );
 
         const geth = await GethInstance.new(
             await this.global.getDataDir("geth"),
@@ -218,13 +231,11 @@ export default class TestEnvironment extends NodeEnvironment {
         );
         const config = await this.startLedger(lockDir, geth, async (geth) => {
             const rpcUrl = geth.rpcUrl;
-            const devAccountKey = geth.devAccountKey();
             const erc20Wallet = await Web3EthereumWallet.newInstance(
-                devAccountKey,
                 rpcUrl,
                 this.logger,
-                lockDir,
-                geth.CHAIN_ID
+                geth.CHAIN_ID,
+                geth.devAccount
             );
             const erc20TokenContract = await erc20Wallet.deployErc20TokenContract();
 
@@ -235,8 +246,8 @@ export default class TestEnvironment extends NodeEnvironment {
 
             return {
                 rpc_url: rpcUrl,
+                devAccount: geth.devAccount,
                 tokenContract: erc20TokenContract,
-                dev_account_key: devAccountKey,
                 chain_id: geth.CHAIN_ID,
             };
         });
@@ -260,34 +271,6 @@ export default class TestEnvironment extends NodeEnvironment {
             this.startAliceLightning(),
             this.startBobLightning(),
         ]);
-
-        await this.setupLightningChannels();
-    }
-
-    private async setupLightningChannels() {
-        const { alice, bob } = this.global.lndWallets;
-
-        const alicePeers = await alice.listPeers();
-        const bobPubkey = await bob.getPubkey();
-
-        if (!alicePeers.find((peer) => peer.pubKey === bobPubkey)) {
-            await alice.connectPeer(bob);
-        }
-
-        await alice.mint({
-            name: AssetKind.Bitcoin,
-            ledger: LedgerKind.Lightning,
-            quantity: "15000000",
-        });
-
-        await bob.mint({
-            name: AssetKind.Bitcoin,
-            ledger: LedgerKind.Lightning,
-            quantity: "15000000",
-        });
-
-        await alice.openChannel(bob, 15000000);
-        await bob.openChannel(alice, 15000000);
     }
 
     /**
@@ -298,8 +281,16 @@ export default class TestEnvironment extends NodeEnvironment {
      */
     private async startAliceLightning() {
         const config = await this.initLightningLedger("lnd-alice");
-        this.global.lndWallets.alice = await this.initLightningWallet(config);
+        const alice = await LndClient.newInstance(config, this.logger);
+
+        this.global.lndClients.alice = alice;
         this.global.ledgerConfigs.aliceLnd = config;
+
+        await this.bitcoinFaucet.mint(
+            BigInt(1_000_000_000), // 10 BTC should be enough money in the LND instance for a few swaps :)
+            await alice.newFundingAddress(),
+            async () => alice.confirmedWalletBalance()
+        );
     }
 
     /**
@@ -310,26 +301,27 @@ export default class TestEnvironment extends NodeEnvironment {
      */
     private async startBobLightning() {
         const config = await this.initLightningLedger("lnd-bob");
-        this.global.lndWallets.bob = await this.initLightningWallet(config);
-        this.global.ledgerConfigs.bobLnd = config;
-    }
+        const bob = await LndClient.newInstance(config, this.logger);
 
-    private async initLightningWallet(config: LightningNodeConfig) {
-        return LndWallet.newInstance(
-            await BitcoindWallet.newInstance(
-                this.global.ledgerConfigs.bitcoin,
-                this.logger
-            ),
-            this.logger,
-            config
+        this.global.lndClients.bob = bob;
+        this.global.ledgerConfigs.bobLnd = config;
+
+        await this.bitcoinFaucet.mint(
+            BigInt(1_000_000_000), // 10 BTC should be enough money in the LND instance for a few swaps :)
+            await bob.newFundingAddress(),
+            async () => bob.confirmedWalletBalance()
         );
     }
 
     private async initLightningLedger(
-        role: string
+        role: "lnd-alice" | "lnd-bob"
     ): Promise<LightningNodeConfig> {
         const lockDir = await this.getLockDirectory(role);
-        const release = await ledgerLock(lockDir);
+        const release = await ledgerLock(lockDir).catch(() =>
+            Promise.reject(
+                new Error(`Failed to acquire lock for starting ${role}`)
+            )
+        );
 
         const lnd = await LndInstance.new(
             await this.global.getDataDir(role),
@@ -387,7 +379,14 @@ export default class TestEnvironment extends NodeEnvironment {
         }
     }
 
-    private async getLockDirectory(process: string): Promise<string> {
+    private async getLockDirectory(
+        process:
+            | "geth"
+            | "bitcoind"
+            | "lnd-alice"
+            | "lnd-bob"
+            | "ethereum-dev-account"
+    ): Promise<string> {
         const dir = path.join(this.locksDir, process);
 
         await asyncFs.mkdir(dir, {

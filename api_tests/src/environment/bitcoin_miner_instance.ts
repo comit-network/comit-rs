@@ -1,7 +1,7 @@
 import { spawn } from "child_process";
 import { Logger } from "log4js";
 import { promises as asyncFs } from "fs";
-import { existsAsync } from "../utils";
+import { existsAsync } from "./async_fs";
 
 export default class BitcoinMinerInstance {
     public static async start(

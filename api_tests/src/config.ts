@@ -1,13 +1,12 @@
 import * as tmp from "tmp";
-import { LedgerConfig } from "./utils";
 import getPort from "get-port";
+import { Role } from "./actors";
 import {
-    LightningNodeConfig,
     BitcoinNodeConfig,
     EthereumNodeConfig,
-} from "./ledgers";
-import { Logger } from "log4js";
-import { ActorName } from "./actors";
+    LedgerConfig,
+    LightningNodeConfig,
+} from "./environment";
 
 export interface CndConfigFile {
     http_api: HttpApi;
@@ -26,20 +25,14 @@ export interface HttpApi {
 export class E2ETestActorConfig {
     public readonly data: string;
 
-    public static async for(name: ActorName, logger: Logger) {
-        return new E2ETestActorConfig(
-            await getPort(),
-            await getPort(),
-            name,
-            logger
-        );
+    public static async for(role: Role) {
+        return new E2ETestActorConfig(await getPort(), await getPort(), role);
     }
 
     constructor(
         public readonly httpApiPort: number,
         public readonly comitPort: number,
-        public readonly name: ActorName,
-        private readonly logger: Logger
+        public readonly role: Role
     ) {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;
@@ -79,7 +72,7 @@ export class E2ETestActorConfig {
             config.ethereum = ethereumConnector(ledgerConfig.ethereum);
         }
 
-        switch (this.name) {
+        switch (this.role) {
             case "Alice": {
                 if (ledgerConfig.aliceLnd) {
                     config.lightning = lightningConnector(
@@ -94,13 +87,6 @@ export class E2ETestActorConfig {
                 }
                 break;
             }
-            case "Carol":
-                {
-                    this.logger.warn(
-                        "generating lnd config for carol is not supported at this stage"
-                    );
-                }
-                break;
         }
 
         return config;

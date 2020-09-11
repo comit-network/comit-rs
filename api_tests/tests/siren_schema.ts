@@ -3,20 +3,20 @@
  * @ledger ethereum
  */
 
-import { oneActorTest, twoActorTest } from "../src/actor_test";
-import SwapFactory from "../src/actors/swap_factory";
+import { startAlice, startAliceAndBob } from "../src/actor_test";
+import SwapFactory from "../src/swap_factory";
 import { sleep } from "../src/utils";
 import "../src/schema_matcher";
 import * as sirenJsonSchema from "../siren.schema.json";
 import * as rootJsonSchema from "../root.schema.json";
 import axios from "axios";
-import { SwapEntity } from "../src/cnd/payload";
-import * as siren from "../src/cnd/siren";
+import { SwapEntity } from "../src/cnd_client/payload";
+import * as siren from "../src/cnd_client/siren";
 
 describe("Siren Schema", () => {
     it(
         "can-fetch-root-document-as-valid-siren",
-        oneActorTest(async ({ alice }) => {
+        startAlice(async (alice) => {
             const res = await axios({
                 baseURL: alice.cndHttpApiUrl(),
                 url: "/",
@@ -48,7 +48,7 @@ describe("Siren Schema", () => {
 
     it(
         "get-single-swap-is-valid-siren",
-        twoActorTest(async ({ alice, bob }) => {
+        startAliceAndBob(async ([alice, bob]) => {
             const bodies = (await SwapFactory.newSwap(alice, bob)).hbitHerc20;
 
             await alice.createHbitHerc20Swap(bodies.alice);

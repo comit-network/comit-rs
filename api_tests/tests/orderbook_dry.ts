@@ -2,19 +2,18 @@
  * @cndConfigOverride ethereum.chain_id = 1337
  * @cndConfigOverride ethereum.tokens.dai = 0x0000000000000000000000000000000000000000
  */
-import { twoActorTest, oneActorTest } from "../src/actor_test";
+import { startAlice, startConnectedAliceAndBob } from "../src/actor_test";
 import {
-    MarketEntity,
     Currency,
+    MarketEntity,
     OrderEntity,
     Position,
-} from "../src/cnd/payload";
-import { Problem } from "../src/cnd/axios_rfc7807_middleware";
+} from "../src/cnd_client/payload";
+import { Problem } from "../src/axios_rfc7807_middleware";
 
 test(
     "given_two_connected_nodes_when_other_node_publishes_order_then_it_is_returned_in_the_market",
-    twoActorTest(async ({ alice, bob }) => {
-        await alice.connect(bob);
+    startConnectedAliceAndBob(async ([alice, bob]) => {
         await bob.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
         const bobsPeerId = await bob.cnd.getPeerId();
 
@@ -54,7 +53,7 @@ test(
 
 test(
     "given_i_make_an_order_when_i_restart_my_node_it_should_still_be_there",
-    oneActorTest(async ({ alice }) => {
+    startAlice(async (alice) => {
         const href = await alice.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
 
         await alice.restart();
@@ -78,8 +77,7 @@ test(
 
 test(
     "given_alice_makes_an_order_when_fully_matched_against_bobs_order_then_settling_says_quantity",
-    twoActorTest(async ({ alice, bob }) => {
-        await alice.connect(bob);
+    startConnectedAliceAndBob(async ([alice, bob]) => {
         const aliceHref = await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
         const bobHref = await bob.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
 
@@ -106,7 +104,7 @@ test(
 
 test(
     "given_alice_makes_an_order_when_listing_all_orders_then_it_is_returned",
-    oneActorTest(async ({ alice }) => {
+    startAlice(async (alice) => {
         await alice.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
 
         const orders = await alice.listOpenOrders();
@@ -133,8 +131,21 @@ test(
 
 test(
     "given_a_settling_order_when_open_orders_are_listed_is_still_returned_but_cannot_be_cancelled",
-    twoActorTest(async ({ alice, bob }) => {
-        await alice.connect(bob);
+    startConnectedAliceAndBob(async ([alice, bob]) => {
+        await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
+        await bob.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
+        await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
+
+        const orders = await alice.listOpenOrders();
+
+        expect(orders.entities).toHaveLength(1);
+        expect(orders.entities[0].actions).toHaveLength(0);
+    })
+);
+
+test(
+    "given_a_settling_order_when_open_orders_are_listed_is_still_returned_but_cannot_be_cancelled",
+    startConnectedAliceAndBob(async ([alice, bob]) => {
         await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
         await bob.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
         await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
@@ -148,7 +159,7 @@ test(
 
 test(
     "given_an_order_when_cancelled_state_changes_to_cancelled",
-    oneActorTest(async ({ alice }) => {
+    startAlice(async (alice) => {
         const href = await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
 
         const order = await alice.fetchOrder(href);
@@ -172,8 +183,7 @@ test(
 
 test(
     "given_a_settling_order_when_trying_to_cancel_then_fails",
-    twoActorTest(async ({ alice, bob }) => {
-        await alice.connect(bob);
+    startConnectedAliceAndBob(async ([alice, bob]) => {
         const href = await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
         await bob.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
         await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
@@ -194,9 +204,7 @@ test(
 
 test(
     "given_an_order_when_cancelled_then_it_is_taken_from_the_market",
-    twoActorTest(async ({ alice, bob }) => {
-        await alice.connect(bob);
-
+    startConnectedAliceAndBob(async ([alice, bob]) => {
         // make an order and wait until Bob sees it
         const href = await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
         await bob.pollCndUntil<MarketEntity>(
@@ -218,8 +226,7 @@ test(
 
 test(
     "given_an_order_when_it_fully_matches_and_swap_is_setup_then_order_is_removed_from_the_market",
-    twoActorTest(async ({ alice, bob }) => {
-        await alice.connect(bob);
+    startConnectedAliceAndBob(async ([alice, bob]) => {
         await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
         await bob.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
 
@@ -234,8 +241,7 @@ test(
 
 test(
     "given_an_order_when_cancelled_then_it_is_no_longer_returned_in_open_orders",
-    twoActorTest(async ({ alice, bob }) => {
-        await alice.connect(bob);
+    startAlice(async (alice) => {
         const href = await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
 
         const order = await alice.fetchOrder(href);

@@ -1,15 +1,15 @@
 import { ChildProcess, spawn } from "child_process";
 import * as path from "path";
 import { promises as asyncFs } from "fs";
-import { existsAsync } from "../utils";
 import getPort from "get-port";
 import { Logger } from "log4js";
-import waitForLogMessage from "../wait_for_log_message";
-import { BitcoinNodeConfig, LedgerInstance } from "./index";
+import waitForLogMessage from "./wait_for_log_message";
 import findCacheDir from "find-cache-dir";
 import download from "download";
 import { platform } from "os";
-import { crashListener } from "../crash_listener";
+import { crashListener } from "./crash_listener";
+import { BitcoinNodeConfig, LedgerInstance } from "./index";
+import { existsAsync } from "./async_fs";
 
 export class BitcoindInstance implements LedgerInstance {
     private process: ChildProcess;
@@ -162,6 +162,7 @@ acceptnonstdtxn=0
 zmqpubrawblock=tcp://127.0.0.1:${this.zmqPubRawBlockPort}
 zmqpubrawtx=tcp://127.0.0.1:${this.zmqPubRawTxPort}
 fallbackfee=0.0002
+txindex=1
 
 [regtest]
 bind=0.0.0.0:${this.p2pPort}

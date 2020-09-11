@@ -1,37 +1,19 @@
-import { pollUntilMinted, Wallet } from "./index";
-import { Asset } from "../asset";
-import { BitcoinWallet } from "./bitcoin";
 import { sleep } from "../utils";
-import {
+import createLnRpc, {
     AddressType,
-    Channel,
-    GetInfoResponse,
-    Invoice,
-    OpenStatusUpdate,
+    ChannelPoint,
+    createInvoicesRpc,
+    InvoicesRpc,
+    LnRpc,
     PaymentStatus,
-    Peer,
     SendResponse,
 } from "@radar/lnrpc";
+import { LightningNodeConfig } from "../environment";
 import { Logger } from "log4js";
-import { LightningNodeConfig } from "../ledgers";
-import pEvent from "p-event";
-import { Lnd } from "./lnd";
+import pTimeout from "p-timeout";
 
-export interface LightningWallet extends Wallet {
-    readonly p2pSocket: string;
-
-    newFundingAddress(): Promise<string>;
-    getPubkey(): Promise<string>;
-    connectPeer(toWallet: LightningWallet): Promise<any>;
-    listPeers(): Promise<Peer[]>;
-    openChannel(toWallet: LightningWallet, quantity: number): Promise<void>;
-    addInvoice(
-        sats: string
-    ): Promise<{
-        rHash: string;
-        paymentRequest: string;
-    }>;
-    isSyncedToChain(): Promise<boolean>;
+export interface LightningChannel {
+    getBalance(): Promise<bigint>;
     sendPayment(
         publicKey: string,
         satAmount: string,
@@ -45,15 +27,6 @@ export interface LightningWallet extends Wallet {
         cltvExpiry: number
     ): Promise<string>;
     settleInvoice(secret: string): Promise<void>;
-
-    /**
-     * Asserts that the available lnd instance is the same than the one connected to cnd.
-     *
-     * @param selfPublicKey
-     * @param chain
-     * @param network
-     * @throws Error if the lnd instance details mismatch
-     */
     assertLndDetails(
         selfPublicKey: string,
         chain: string,
@@ -61,167 +34,20 @@ export interface LightningWallet extends Wallet {
     ): Promise<void>;
 }
 
-export class LndWallet implements LightningWallet {
-    public static async newInstance(
-        bitcoinWallet: BitcoinWallet,
-        logger: Logger,
-        config: LightningNodeConfig
-    ) {
-        const lnd = await Lnd.init({
-            tls: config.tlsCertPath,
-            macaroonPath: config.macaroonPath,
-            server: config.grpcSocket,
-        });
-
-        logger.debug("lnd getinfo:", await lnd.lnrpc.getInfo());
-
-        return new LndWallet(lnd, logger, bitcoinWallet, config.p2pSocket);
-    }
-
-    public MaximumFee = 0;
-
-    private constructor(
-        private readonly lnd: Lnd,
-        private readonly logger: Logger,
-        private readonly bitcoinWallet: BitcoinWallet,
-        public readonly p2pSocket: string
+/**
+ * Implements the LightningChannel interface through a reference to an Lnd instance.
+ */
+export class LndChannel implements LightningChannel {
+    public constructor(
+        private readonly client: LndClient,
+        public readonly chanId: string
     ) {}
 
-    public async mint(asset: Asset): Promise<void> {
-        if (asset.name !== "bitcoin") {
-            throw new Error(
-                `Cannot mint asset ${asset.name} with LightningWallet`
-            );
-        }
-
-        const startingBalance = await this.getBalanceByAsset(asset);
-        this.logger.debug("starting: ", startingBalance.toString());
-
-        const minimumExpectedBalance = BigInt(asset.quantity);
-        this.logger.debug("min expected: ", minimumExpectedBalance.toString());
-
-        await this.bitcoinWallet.mintToAddress(
-            minimumExpectedBalance,
-            await this.newFundingAddress()
-        );
-
-        await pollUntilMinted(
-            this,
-            startingBalance + minimumExpectedBalance,
-            asset
-        );
+    public async getBalance(): Promise<bigint> {
+        return this.client.getChannelBalance(this.chanId);
     }
 
-    public async newFundingAddress(): Promise<string> {
-        return this.lnd.lnrpc
-            .newAddress({ type: AddressType.NESTED_PUBKEY_HASH })
-            .then((r) => r.address);
-    }
-
-    public async getBalanceByAsset(asset: Asset): Promise<bigint> {
-        if (asset.name !== "bitcoin") {
-            throw new Error(
-                `Cannot read balance for asset ${asset.name} with LightningWallet`
-            );
-        }
-
-        const walletBalance = await this.lnd.lnrpc
-            .walletBalance()
-            .then((r) => r.confirmedBalance)
-            .then((b) => (b ? b : 0))
-            .then(BigInt);
-        const channelBalance = await this.lnd.lnrpc
-            .channelBalance()
-            .then((r) => r.balance)
-            .then((b) => (b ? b : 0))
-            .then(BigInt);
-
-        return walletBalance + channelBalance;
-    }
-
-    // This function does not have its place on a Wallet
-    public async getBlockchainTime(): Promise<number> {
-        throw new Error(
-            "getBlockchainTime should not be called for LightningWallet"
-        );
-    }
-
-    public async connectPeer(toWallet: LightningWallet) {
-        const pubkey = await toWallet.getPubkey();
-        const host = toWallet.p2pSocket;
-        return this.lnd.lnrpc.connectPeer({ addr: { pubkey, host } });
-    }
-
-    public async listPeers(): Promise<Peer[]> {
-        const response = await this.lnd.lnrpc.listPeers();
-        return response.peers ? response.peers : [];
-    }
-
-    public async getChannels(): Promise<Channel[]> {
-        const listChannelsResponse = await this.lnd.lnrpc.listChannels();
-
-        return listChannelsResponse.channels;
-    }
-
-    public async isSyncedToChain(): Promise<boolean> {
-        return this.lnd.lnrpc.getInfo().then((r) => r.syncedToChain);
-    }
-
-    public async openChannel(toWallet: LightningWallet, quantity: number) {
-        // First, need to check everyone is sync'd to the chain
-
-        while (
-            !(await this.isSyncedToChain()) ||
-            !(await toWallet.isSyncedToChain())
-        ) {
-            this.logger.info(`One of the lnd node is not yet synced, waiting.`);
-            await sleep(500);
-        }
-
-        const request = {
-            nodePubkey: Buffer.from(await toWallet.getPubkey(), "hex"),
-            localFundingAmount: quantity.toString(),
-        };
-        const openChannel = this.lnd.lnrpc.openChannel(request);
-
-        openChannel.on("error", (err: any) => {
-            throw new Error(
-                `Error encountered for Open Channel: ${JSON.stringify(err)}`
-            );
-        });
-
-        this.logger.debug("Channel opened, waiting for confirmations");
-
-        let outpoint;
-        while (!outpoint) {
-            const status: OpenStatusUpdate = await pEvent(openChannel, "data");
-            try {
-                outpoint = outpointFromChannelStatusUpdate(status);
-            } catch (e) {
-                // Let's wait for another update
-            }
-        }
-
-        await this.pollUntilChannelIsOpen(outpoint);
-    }
-
-    private async pollUntilChannelIsOpen(outpoint: Outpoint): Promise<void> {
-        const { txId, vout } = outpoint;
-        const channels = await this.getChannels();
-        if (channels) {
-            for (const channel of channels) {
-                this.logger.debug(`Looking for channel ${txId}:${vout}`);
-                if (channel.channelPoint === `${txId}:${vout}`) {
-                    this.logger.debug("Found a channel:", channel);
-                    return;
-                }
-            }
-        }
-        await sleep(500);
-        return this.pollUntilChannelIsOpen(outpoint);
-    }
-
-    async sendPayment(
+    public async sendPayment(
         publicKey: string,
         satAmount: string,
         secretHash: string,
@@ -230,17 +56,18 @@ export class LndWallet implements LightningWallet {
         const publicKeyBuf = Buffer.from(publicKey, "hex");
         const paymentHash = Buffer.from(secretHash, "hex");
 
-        const sendResponsePromise = this.lnd.lnrpc.sendPaymentSync({
+        const sendResponsePromise = this.client.lnrpc.sendPaymentSync({
             dest: publicKeyBuf,
             amt: satAmount,
             paymentHash,
             finalCltvDelta,
+            outgoingChanId: this.chanId,
         });
 
         let isInFlight = false;
 
         while (!isInFlight) {
-            const payments = await this.lnd.lnrpc
+            const payments = await this.client.lnrpc
                 .listPayments({
                     includeIncomplete: true,
                 })
@@ -261,7 +88,7 @@ export class LndWallet implements LightningWallet {
         return async () => sendResponsePromise;
     }
 
-    async addHoldInvoice(
+    public async addHoldInvoice(
         satAmount: string,
         secretHash: string,
         expiry: number,
@@ -270,7 +97,7 @@ export class LndWallet implements LightningWallet {
         const satAmountNum = parseInt(satAmount, 10);
         const hash = Buffer.from(secretHash, "hex");
         return (
-            await this.lnd.invoicesrpc.addHoldInvoice({
+            await this.client.invoicesrpc.addHoldInvoice({
                 value: satAmountNum,
                 hash,
                 cltvExpiry,
@@ -279,37 +106,9 @@ export class LndWallet implements LightningWallet {
         ).paymentRequest;
     }
 
-    async settleInvoice(secret: string): Promise<void> {
+    public async settleInvoice(secret: string): Promise<void> {
         const preimage = Buffer.from(secret, "hex");
-        await this.lnd.invoicesrpc.settleInvoice({ preimage });
-    }
-
-    public async getPubkey(): Promise<string> {
-        return this.lnd.lnrpc.getInfo().then((r) => r.identityPubkey);
-    }
-
-    public async getInfo(): Promise<GetInfoResponse> {
-        return this.lnd.lnrpc.getInfo();
-    }
-
-    public async lookupInvoice(secretHash: string): Promise<Invoice> {
-        return this.lnd.lnrpc.lookupInvoice({
-            rHashStr: secretHash,
-        });
-    }
-
-    public async addInvoice(
-        satAmount: string
-    ): Promise<{ rHash: string; paymentRequest: string }> {
-        const { rHash, paymentRequest } = await this.lnd.lnrpc.addInvoice({
-            value: satAmount,
-        });
-
-        if (typeof rHash === "string") {
-            return { rHash, paymentRequest };
-        } else {
-            return { rHash: rHash.toString("hex"), paymentRequest };
-        }
+        await this.client.invoicesrpc.settleInvoice({ preimage });
     }
 
     /**
@@ -320,12 +119,12 @@ export class LndWallet implements LightningWallet {
      * @param network
      * @throws Error if the lnd instance details mismatch
      */
-    async assertLndDetails(
+    public async assertLndDetails(
         selfPublicKey: string,
         chain: string,
         network: string
     ): Promise<void> {
-        const getinfo = await this.lnd.lnrpc.getInfo();
+        const getinfo = await this.client.lnrpc.getInfo();
 
         if (getinfo.identityPubkey !== selfPublicKey) {
             throw new Error(
@@ -350,43 +149,149 @@ export class LndWallet implements LightningWallet {
     }
 }
 
+/**
+ * A client for managing an instance of lnd.
+ *
+ * It is primary job is to open new channels between two nodes. We make this separation compared to other wallets because creating a channel is interactive and hence requires both parties. As such, the only place to do that is in the actual test after the actors have already been created. This also allows us to run our tests in parallel because each test gets its own channel and can therefore perform swaps and assert balances independently.
+ */
+export class LndClient {
+    public static async newInstance(
+        config: LightningNodeConfig,
+        logger: Logger
+    ): Promise<LndClient> {
+        const grpcConfig = {
+            server: config.grpcSocket,
+            tls: config.tlsCertPath,
+            macaroonPath: config.macaroonPath,
+        };
+
+        return new LndClient(
+            await createLnRpc(grpcConfig),
+            await createInvoicesRpc(grpcConfig),
+            config,
+            logger
+        );
+    }
+
+    private constructor(
+        public readonly lnrpc: LnRpc,
+        public readonly invoicesrpc: InvoicesRpc,
+        public readonly config: LightningNodeConfig,
+        private readonly logger: Logger
+    ) {}
+
+    public async openChannel(to: LndClient, quantity: bigint) {
+        await this.connectPeer(to);
+
+        // First, need to check everyone is sync'd to the chain
+        while (
+            !(await this.isSyncedToChain()) ||
+            !(await to.isSyncedToChain())
+        ) {
+            this.logger.info(`One of the lnd node is not yet synced, waiting.`);
+            await sleep(500);
+        }
+
+        const request = {
+            nodePubkeyString: await to.getPubkey(),
+            localFundingAmount: quantity.toString(10),
+        };
+
+        const openChannelResponse = await this.lnrpc.openChannelSync(request);
+        const channelPoint = serializeChannelPoint(openChannelResponse);
+
+        const waitForChannel = async () => {
+            let channel = await this.getChannelByPoint(channelPoint);
+            while (!channel) {
+                await sleep(500);
+                channel = await this.getChannelByPoint(channelPoint);
+            }
+            return channel;
+        };
+
+        const channel = await pTimeout(
+            waitForChannel(),
+            5000,
+            "Channel was not created after 5 seconds"
+        );
+
+        return new LndChannel(this, channel.chanId);
+    }
+
+    public async getPubkey(): Promise<string> {
+        return this.lnrpc.getInfo().then((r) => r.identityPubkey);
+    }
+
+    public async confirmedWalletBalance(): Promise<bigint> {
+        return this.lnrpc
+            .walletBalance()
+            .then((r) => (r.confirmedBalance ? r.confirmedBalance : ""))
+            .then(BigInt);
+    }
+
+    private async isSyncedToChain(): Promise<boolean> {
+        return this.lnrpc.getInfo().then((r) => r.syncedToChain);
+    }
+
+    private async connectPeer(to: LndClient) {
+        const pubkey = await to.lnrpc.getInfo().then((r) => r.identityPubkey);
+        const host = to.config.p2pSocket;
+        try {
+            await this.lnrpc.connectPeer({ addr: { pubkey, host } });
+        } catch (e) {
+            this.logger.warn("Error while connecting to peer", host);
+        }
+    }
+
+    public async newFundingAddress(): Promise<string> {
+        return this.lnrpc
+            .newAddress({ type: AddressType.NESTED_PUBKEY_HASH })
+            .then((r) => r.address);
+    }
+
+    public async getChannelBalance(id: string): Promise<bigint> {
+        const channel = await this.getChannelById(id);
+
+        if (!channel) {
+            throw new Error(`Channel with id ${id} does not exist`);
+        }
+
+        // as the counterparty, localBalance is undefined ...
+        if (!channel.localBalance) {
+            return BigInt(0);
+        }
+
+        return BigInt(channel.localBalance);
+    }
+
+    private async getChannelById(id: string) {
+        const channels = await this.lnrpc
+            .listChannels()
+            .then((r) => r.channels || []);
+
+        return channels.find((c) => c.chanId === id);
+    }
+
+    private async getChannelByPoint(point: string) {
+        const channels = await this.lnrpc
+            .listChannels()
+            .then((r) => r.channels || []);
+
+        return channels.find((c) => c.channelPoint === point);
+    }
+}
+
+function serializeChannelPoint(channel: ChannelPoint) {
+    const txId = channel.fundingTxidBytes;
+    const txIdReversed = Buffer.from(txId).reverse(); // remember, Bitcoin's txid are reversed!
+
+    const txIdHex = txIdReversed.toString("hex");
+    const utxoIndex = channel.outputIndex || 0; // index can be undefined if it is actually 0, wtf lnd ?!
+
+    return `${txIdHex}:${utxoIndex}`;
+}
+
 export interface Outpoint {
     txId: string;
     vout: number;
-}
-
-function outpointFromChannelStatusUpdate(status: OpenStatusUpdate): Outpoint {
-    let txId;
-    let vout;
-
-    if (status.chanOpen) {
-        const {
-            fundingTxidStr,
-            fundingTxidBytes,
-            outputIndex,
-        } = status.chanOpen.channelPoint;
-        if (fundingTxidStr) {
-            txId = fundingTxidStr;
-        } else if (fundingTxidBytes) {
-            txId = fundingTxidBytes;
-        }
-        vout = outputIndex;
-    }
-
-    if (status.chanPending) {
-        txId = status.chanPending.txid;
-        vout = status.chanPending.outputIndex;
-    }
-
-    if (vout) {
-        if (typeof txId === "string") {
-            return { txId, vout };
-        } else if (txId) {
-            /// We reverse the endianness of the buffer to match the encoding of transaction ids returned in ListChannels
-            const txIdStr = txId.reverse().toString("hex");
-            return { txId: txIdStr, vout };
-        }
-    }
-
-    throw new Error(`OpenStatusUpdate is malformed: ${JSON.stringify(status)}`);
 }

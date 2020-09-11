@@ -1,6 +1,6 @@
 import { Action } from "../src/action";
 import { Swap } from "../src/swap";
-import { SwapAction } from "../src/cnd/payload";
+import { SwapAction } from "../src/cnd_client/payload";
 
 const swapAction: SwapAction = { name: "redeem", href: "/redeem" };
 

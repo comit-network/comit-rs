@@ -7,19 +7,19 @@
  *
  * It is a replacement for a negotiation/order protocol that takes care of this in a real application.
  */
-import { Actor } from "./actor";
+import { CndActor } from "./actors/cnd_actor";
 import {
     HalbitHerc20Payload,
-    Herc20HalbitPayload,
-    HbitHerc20Payload,
-    Herc20HbitPayload,
     HalbitPayload,
-    Herc20Payload,
+    HbitHerc20Payload,
     HbitPayload,
-} from "../cnd/payload";
-import { HarnessGlobal } from "../utils";
-import { defaultExpiries, nowExpiries } from "./defaults";
-import { Peer } from "../cnd/cnd";
+    Herc20HalbitPayload,
+    Herc20HbitPayload,
+    Herc20Payload,
+    Peer,
+} from "./cnd_client/payload";
+import { defaultExpiries, nowExpiries } from "./actors/defaults";
+import { HarnessGlobal } from "./environment";
 
 declare var global: HarnessGlobal;
 
@@ -29,8 +29,8 @@ interface SwapSettings {
 
 export default class SwapFactory {
     public static async newSwap(
-        alice: Actor,
-        bob: Actor,
+        alice: CndActor,
+        bob: CndActor,
         settings: SwapSettings = { instantRefund: false }
     ): Promise<{
         herc20Halbit: {
@@ -63,11 +63,11 @@ export default class SwapFactory {
 
         const aliceEthereumAccount = alice.wallets.ethereum.getAccount();
         const aliceBitcoinAddress = await alice.wallets.bitcoin.getAddress();
-        const aliceLightningPubkey = await alice.wallets.lightning.getPubkey();
+        const aliceLightningPubkey = await alice.lndClient.getPubkey();
 
         const bobEthereumAccount = bob.wallets.ethereum.getAccount();
         const bobBitcoinAddress = await bob.wallets.bitcoin.getAddress();
-        const bobLightningPubkey = await bob.wallets.lightning.getPubkey();
+        const bobLightningPubkey = await bob.lndClient.getPubkey();
 
         const aliceAlphaHerc20 = defaultHerc20Payload(
             alphaAbsoluteExpiry,
@@ -190,7 +190,7 @@ export default class SwapFactory {
     }
 }
 
-async function makePeer(actor: Actor): Promise<Peer> {
+async function makePeer(actor: CndActor): Promise<Peer> {
     return {
         peer_id: await actor.cnd.getPeerId(),
         address_hint: await actor.cnd
@@ -216,7 +216,7 @@ function defaultHalbitPayload(
     lndPubkey: string
 ): HalbitPayload {
     return {
-        amount: "10000",
+        amount: "100000",
         network: "regtest",
         identity: lndPubkey,
         cltv_expiry: cltvExpiry,

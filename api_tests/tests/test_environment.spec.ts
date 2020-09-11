@@ -1,4 +1,4 @@
-import { extractCndConfigOverrides } from "../src/test_environment";
+import { extractCndConfigOverrides } from "../src/environment/test_environment";
 
 describe("extractCndConfigOverrides", () => {
     test("given no overrides, returns empty object", () => {

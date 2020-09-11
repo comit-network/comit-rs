@@ -1,5 +1,5 @@
-import { sleep } from "./utils";
-import { BitcoinNodeConfig } from "./ledgers";
+import { sleep } from "../utils";
+import { BitcoinNodeConfig } from "./index";
 import BitcoinRpcClient from "bitcoin-core";
 import { promises as asyncFs } from "fs";
 
