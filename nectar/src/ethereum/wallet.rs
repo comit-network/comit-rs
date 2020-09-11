@@ -110,7 +110,6 @@ impl Wallet {
         self.chain.chain_id()
     }
 
-    #[cfg(test)]
     pub fn dai_contract_address(&self) -> Address {
         self.chain.dai_contract_address()
     }

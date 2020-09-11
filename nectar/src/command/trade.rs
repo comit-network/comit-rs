@@ -4,26 +4,32 @@ use crate::{
     config::Settings,
     ethereum::{self, dai},
     history::History,
-    maker::PublishOrders,
+    maker::{PublishOrders, TakeRequestDecision},
     mid_market_rate::get_btc_dai_mid_market_rate,
-    network::{self, Swarm},
+    network::{self, new_swarm, ActivePeer, SetupSwapContext, Swarm},
+    order::BtcDaiOrderForm,
     swap::{Database, SwapKind, SwapParams},
-    Maker, MidMarketRate, Seed, Spread,
+    Maker, MidMarketRate, Seed, Spread, SwapId,
 };
-use anyhow::Context;
-use comit::btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
+use anyhow::{anyhow, bail, Context};
+use chrono::{NaiveDateTime, Utc};
+use comit::{
+    btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
+    identity,
+    network::{
+        orderbook,
+        setup_swap::{self, BobParams, CommonParams, RoleDependentParams},
+    },
+    order::SwapProtocol,
+    orderpool::Match,
+    Position, Role,
+};
 use futures::{
     channel::mpsc::{Receiver, Sender},
     Future, FutureExt, SinkExt, StreamExt, TryFutureExt,
 };
 use futures_timer::Delay;
-
-use crate::{
-    maker::TakeRequestDecision,
-    network::{new_swarm, ActivePeer, SetupSwapContext},
-};
-use comit::{Position, Role};
-use std::{sync::Arc, time::Duration};
+use std::{borrow::Borrow, sync::Arc, time::Duration};
 
 const ENSURED_CONSUME_ZERO_BUFFER: usize = 0;
 
@@ -49,13 +55,7 @@ pub async fn trade(
     #[cfg(test)]
     let db = Arc::new(Database::new_test()?);
 
-    let mut swarm = new_swarm(
-        network::Seed::new(seed.bytes()),
-        &settings,
-        Arc::clone(&bitcoin_wallet),
-        Arc::clone(&ethereum_wallet),
-        Arc::clone(&db),
-    )?;
+    let mut swarm = new_swarm(network::Seed::new(seed.bytes()), &settings)?;
 
     let initial_sell_order = maker
         .new_sell_order()
@@ -110,7 +110,9 @@ pub async fn trade(
                     handle_finished_swap(finished_swap, &mut maker, &db, &mut history, &mut swarm).await;
                 }
             },
-            network_event = swarm.next().fuse() => {
+            orderbook_event = swarm.next().fuse() => {
+                let network_event = pre_handle_network_event(orderbook_event, Arc::clone(&db), Arc::clone(&bitcoin_wallet), Arc::clone(&ethereum_wallet))?;
+
                 handle_network_event(
                     network_event,
                     &mut maker,
@@ -464,6 +466,342 @@ async fn handle_finished_swap(
         .remove_swap(&swap_id)
         .await
         .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
+}
+
+// TODO: merge with `handle_network_event`
+fn pre_handle_network_event(
+    event: network::BehaviourOutEvent,
+    database: impl Borrow<Database>,
+    bitcoin_wallet: impl Borrow<bitcoin::Wallet>,
+    ethereum_wallet: impl Borrow<ethereum::Wallet>,
+) -> anyhow::Result<network::Event> {
+    match event {
+        network::BehaviourOutEvent::Orderbook(event) => {
+            handle_orderbook_event(event, database, bitcoin_wallet, ethereum_wallet)
+        }
+        network::BehaviourOutEvent::SetupSwap(event) => {
+            handle_setup_swap_event(event, bitcoin_wallet)
+        }
+    }
+}
+
+fn handle_setup_swap_event(
+    event: setup_swap::BehaviourOutEvent<SetupSwapContext>,
+    bitcoin_wallet: impl Borrow<bitcoin::Wallet>,
+) -> anyhow::Result<network::Event> {
+    match event {
+        setup_swap::BehaviourOutEvent::ExecutableSwap(exec_swap) => {
+            let swap_id = exec_swap.context.swap_id;
+
+            let start_of_swap = chrono::DateTime::from_utc(
+                NaiveDateTime::from_timestamp(exec_swap.context.match_ref_point.timestamp(), 0),
+                Utc,
+            );
+
+            let bitcoin_transient_sk = bitcoin_wallet
+                .borrow()
+                .derive_transient_sk(exec_swap.context.bitcoin_transient_key_index)
+                .context("Could not derive Bitcoin transient key")?;
+
+            let swap_kind = match (exec_swap.our_role, exec_swap.swap_protocol) {
+                // Sell
+                (Role::Alice, setup_swap::SwapProtocol::HbitHerc20) => {
+                    SwapKind::HbitHerc20(SwapParams {
+                        hbit_params: crate::swap::hbit::Params::new(
+                            exec_swap.hbit,
+                            bitcoin_transient_sk,
+                        ),
+                        herc20_params: crate::swap::herc20::Params {
+                            asset: exec_swap.herc20.asset.clone(),
+                            redeem_identity: exec_swap.herc20.refund_identity,
+                            refund_identity: exec_swap.herc20.redeem_identity,
+                            expiry: exec_swap.herc20.expiry,
+                            secret_hash: exec_swap.herc20.secret_hash,
+                            chain_id: exec_swap.herc20.chain_id,
+                        },
+                        secret_hash: exec_swap.hbit.secret_hash,
+                        start_of_swap,
+                        swap_id,
+                        taker: ActivePeer {
+                            peer_id: exec_swap.peer_id,
+                        },
+                    })
+                }
+                // Buy
+                (Role::Bob, setup_swap::SwapProtocol::HbitHerc20) => {
+                    SwapKind::HbitHerc20(SwapParams {
+                        hbit_params: crate::swap::hbit::Params::new(
+                            exec_swap.hbit,
+                            bitcoin_transient_sk,
+                        ),
+                        herc20_params: crate::swap::herc20::Params {
+                            asset: exec_swap.herc20.asset.clone(),
+                            redeem_identity: exec_swap.herc20.redeem_identity,
+                            refund_identity: exec_swap.herc20.refund_identity,
+                            expiry: exec_swap.herc20.expiry,
+                            secret_hash: exec_swap.herc20.secret_hash,
+                            chain_id: exec_swap.herc20.chain_id,
+                        },
+                        secret_hash: exec_swap.hbit.secret_hash,
+                        start_of_swap,
+                        swap_id,
+                        taker: ActivePeer {
+                            peer_id: exec_swap.peer_id,
+                        },
+                    })
+                }
+                // Buy
+                (Role::Alice, setup_swap::SwapProtocol::Herc20Hbit) => {
+                    SwapKind::Herc20Hbit(SwapParams {
+                        hbit_params: crate::swap::hbit::Params::new(
+                            exec_swap.hbit,
+                            bitcoin_transient_sk,
+                        ),
+                        herc20_params: crate::swap::herc20::Params {
+                            asset: exec_swap.herc20.asset.clone(),
+                            redeem_identity: exec_swap.herc20.redeem_identity,
+                            refund_identity: exec_swap.herc20.refund_identity,
+                            expiry: exec_swap.herc20.expiry,
+                            secret_hash: exec_swap.herc20.secret_hash,
+                            chain_id: exec_swap.herc20.chain_id,
+                        },
+                        secret_hash: exec_swap.hbit.secret_hash,
+                        start_of_swap,
+                        swap_id,
+                        taker: ActivePeer {
+                            peer_id: exec_swap.peer_id,
+                        },
+                    })
+                }
+                // Sell
+                (Role::Bob, setup_swap::SwapProtocol::Herc20Hbit) => {
+                    SwapKind::Herc20Hbit(SwapParams {
+                        hbit_params: crate::swap::hbit::Params::new(
+                            exec_swap.hbit,
+                            bitcoin_transient_sk,
+                        ),
+                        herc20_params: crate::swap::herc20::Params {
+                            asset: exec_swap.herc20.asset.clone(),
+                            redeem_identity: exec_swap.herc20.redeem_identity,
+                            refund_identity: exec_swap.herc20.refund_identity,
+                            expiry: exec_swap.herc20.expiry,
+                            secret_hash: exec_swap.herc20.secret_hash,
+                            chain_id: exec_swap.herc20.chain_id,
+                        },
+                        secret_hash: exec_swap.hbit.secret_hash,
+                        start_of_swap,
+                        swap_id,
+                        taker: ActivePeer {
+                            peer_id: exec_swap.peer_id,
+                        },
+                    })
+                }
+            };
+            Ok(network::Event::SpawnSwap(swap_kind))
+        }
+        setup_swap::BehaviourOutEvent::AlreadyHaveRoleParams { peer, .. } => {
+            bail!("already received role params from {}", peer)
+        }
+    }
+}
+
+fn handle_orderbook_event(
+    event: orderbook::BehaviourOutEvent,
+    database: impl Borrow<Database>,
+    bitcoin_wallet: impl Borrow<bitcoin::Wallet>,
+    ethereum_wallet: impl Borrow<ethereum::Wallet>,
+) -> anyhow::Result<network::Event> {
+    match event {
+        orderbook::BehaviourOutEvent::OrderMatch(Match {
+            peer,
+            price,
+            quantity,
+            our_position,
+            swap_protocol,
+            match_reference_point,
+            ours,
+            ..
+        }) => {
+            // TODO: Just push this to the stream and process it in `trade.rs`.
+            let taker = ActivePeer {
+                peer_id: peer.clone(),
+            };
+
+            let ongoing_trade_with_taker_exists = database
+                .borrow()
+                .contains_active_peer(&taker)
+                .context(format!(
+                    "could not determine if taker has ongoing trade; taker: {}, order: {}",
+                    taker.peer_id(),
+                    ours,
+                ))?;
+
+            if ongoing_trade_with_taker_exists {
+                // TODO: We upgraded a warning to an error, think about it.
+                bail!(
+                        "ignoring take order request from taker with ongoing trade, taker: {:?}, order: {}",
+                        taker.peer_id(),
+                        ours,
+                    );
+            }
+
+            let swap_id = SwapId::default();
+            let index = database
+                .borrow()
+                .fetch_inc_bitcoin_transient_key_index()
+                .map_err(|err| {
+                    anyhow!(
+                        "Could not fetch the index for the Bitcoin transient key: {:#}",
+                        err
+                    )
+                })?;
+
+            let token_contract = ethereum_wallet.borrow().dai_contract_address();
+            let ethereum_identity = ethereum_wallet.borrow().account();
+            let bitcoin_transient_sk = bitcoin_wallet
+                .borrow()
+                .derive_transient_sk(index)
+                .map_err(|err| anyhow!("Could not derive Bitcoin transient key: {:?}", err))?;
+
+            let bitcoin_identity =
+                identity::Bitcoin::from_secret_key(&crate::SECP, &bitcoin_transient_sk);
+
+            let erc20_quantity = quantity * price.clone();
+
+            let form = BtcDaiOrderForm {
+                position: our_position,
+                quantity,
+                price,
+            };
+
+            let ethereum_chain_id = ethereum_wallet.borrow().chain_id();
+            let bitcoin_network = bitcoin_wallet.borrow().network.into();
+
+            let (role_dependant_params, common_params, swap_protocol) = match swap_protocol {
+                SwapProtocol::HbitHerc20 {
+                    hbit_expiry_offset,
+                    herc20_expiry_offset,
+                } => {
+                    // todo: do checked addition
+                    #[allow(clippy::cast_sign_loss)]
+                    #[allow(clippy::cast_possible_truncation)]
+                    let ethereum_absolute_expiry = (match_reference_point
+                        + time::Duration::from(herc20_expiry_offset))
+                    .timestamp() as u32;
+                    #[allow(clippy::cast_sign_loss)]
+                    #[allow(clippy::cast_possible_truncation)]
+                    let bitcoin_absolute_expiry = (match_reference_point
+                        + time::Duration::from(hbit_expiry_offset))
+                    .timestamp() as u32;
+
+                    match our_position {
+                        Position::Buy => (
+                            RoleDependentParams::Bob(BobParams {
+                                bitcoin_identity,
+                                ethereum_identity,
+                            }),
+                            CommonParams {
+                                erc20: comit::asset::Erc20 {
+                                    token_contract,
+                                    quantity: erc20_quantity,
+                                },
+                                bitcoin: quantity.to_inner(),
+                                ethereum_absolute_expiry,
+                                bitcoin_absolute_expiry,
+                                ethereum_chain_id,
+                                bitcoin_network,
+                            },
+                            comit::network::setup_swap::SwapProtocol::HbitHerc20,
+                        ),
+                        Position::Sell => (
+                            RoleDependentParams::Bob(BobParams {
+                                bitcoin_identity,
+                                ethereum_identity,
+                            }),
+                            CommonParams {
+                                erc20: comit::asset::Erc20 {
+                                    token_contract,
+                                    quantity: erc20_quantity,
+                                },
+                                bitcoin: quantity.to_inner(),
+                                ethereum_absolute_expiry,
+                                bitcoin_absolute_expiry,
+                                ethereum_chain_id,
+                                bitcoin_network,
+                            },
+                            comit::network::setup_swap::SwapProtocol::HbitHerc20,
+                        ),
+                    }
+                }
+                SwapProtocol::Herc20Hbit {
+                    hbit_expiry_offset,
+                    herc20_expiry_offset,
+                } => {
+                    // todo: do checked addition
+                    #[allow(clippy::cast_sign_loss)]
+                    #[allow(clippy::cast_possible_truncation)]
+                    let ethereum_absolute_expiry = (match_reference_point
+                        + time::Duration::from(herc20_expiry_offset))
+                    .timestamp() as u32;
+                    #[allow(clippy::cast_sign_loss)]
+                    #[allow(clippy::cast_possible_truncation)]
+                    let bitcoin_absolute_expiry = (match_reference_point
+                        + time::Duration::from(hbit_expiry_offset))
+                    .timestamp() as u32;
+
+                    match our_position {
+                        Position::Buy => (
+                            RoleDependentParams::Bob(BobParams {
+                                bitcoin_identity,
+                                ethereum_identity,
+                            }),
+                            CommonParams {
+                                erc20: comit::asset::Erc20 {
+                                    token_contract,
+                                    quantity: erc20_quantity,
+                                },
+                                bitcoin: quantity.to_inner(),
+                                ethereum_absolute_expiry,
+                                bitcoin_absolute_expiry,
+                                ethereum_chain_id,
+                                bitcoin_network,
+                            },
+                            comit::network::setup_swap::SwapProtocol::Herc20Hbit,
+                        ),
+                        Position::Sell => (
+                            RoleDependentParams::Bob(BobParams {
+                                bitcoin_identity,
+                                ethereum_identity,
+                            }),
+                            CommonParams {
+                                erc20: comit::asset::Erc20 {
+                                    token_contract,
+                                    quantity: erc20_quantity,
+                                },
+                                bitcoin: quantity.to_inner(),
+                                ethereum_absolute_expiry,
+                                bitcoin_absolute_expiry,
+                                ethereum_chain_id,
+                                bitcoin_network,
+                            },
+                            comit::network::setup_swap::SwapProtocol::HbitHerc20,
+                        ),
+                    }
+                }
+            };
+
+            Ok(network::Event::OrderMatch {
+                form,
+                to: peer,
+                to_send: role_dependant_params,
+                common: common_params,
+                swap_protocol,
+                swap_id,
+                match_ref_point: match_reference_point,
+                bitcoin_transient_key_index: index,
+            })
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
