@@ -42,8 +42,8 @@ const ETHEREUM_MINE_WITHIN_N_BLOCKS: u8 = 3; // Value arbitrarily chosen.
 const BITCOIN_CONFIRMATIONS: u8 = 6; // Standard in the Bitcoin ecosystem.
 const ETHEREUM_CONFIRMATIONS: u8 = 30; // Value used by Kraken.
 
-const ACT_IN_SOFTWARE_MINS: u32 = 15; // Value arbitrarily chosen.
-const ACT_WITH_USER_INTERACTION_MINS: u32 = 60; // Value arbitrarily chosen.
+const ACT_IN_SOFTWARE_SECS: u32 = 15 * 60; // Value arbitrarily chosen.
+const ACT_WITH_USER_INTERACTION_SECS: u32 = 60 * 60; // Value arbitrarily chosen.
 
 /// Configuration values used during transition period calculations.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -78,8 +78,8 @@ impl Config {
             beta_mine_fund_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
             alpha_mine_redeem_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
             beta_mine_redeem_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
-            act_in_software: ACT_IN_SOFTWARE_MINS,
-            act_with_user_interaction: ACT_WITH_USER_INTERACTION_MINS,
+            act_in_software: ACT_IN_SOFTWARE_SECS,
+            act_with_user_interaction: ACT_WITH_USER_INTERACTION_SECS,
         }
     }
 
@@ -97,8 +97,8 @@ impl Config {
             beta_mine_fund_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
             alpha_mine_redeem_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
             beta_mine_redeem_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
-            act_in_software: ACT_IN_SOFTWARE_MINS,
-            act_with_user_interaction: ACT_WITH_USER_INTERACTION_MINS,
+            act_in_software: ACT_IN_SOFTWARE_SECS,
+            act_with_user_interaction: ACT_WITH_USER_INTERACTION_SECS,
         }
     }
 
@@ -222,13 +222,13 @@ impl Config {
     /// If some action requires only software give the actor this long to
     /// act.
     pub const fn period_to_act_in_software(&self) -> Duration {
-        Duration::minutes(self.act_in_software as i64)
+        Duration::seconds(self.act_in_software as i64)
     }
 
     /// If some action requires user interaction give the actor this long
     /// to act.
     pub const fn period_to_act_with_user_interaction(&self) -> Duration {
-        Duration::minutes(self.act_with_user_interaction as i64)
+        Duration::seconds(self.act_with_user_interaction as i64)
     }
 
     /// Gets the protocol for this config object.
