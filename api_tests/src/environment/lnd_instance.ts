@@ -12,7 +12,8 @@ import { crashListener } from "./crash_listener";
 import { LedgerInstance, LightningNodeConfig } from "./index";
 import { waitUntilFileExists } from "./wait_until_file_exists";
 import { existsAsync } from "./async_fs";
-import { createLnRpc } from "@radar/lnrpc";
+import { AddressType, createLnRpc } from "@radar/lnrpc";
+import { BitcoinFaucet } from "../wallets/bitcoin";
 
 export class LndInstance implements LedgerInstance {
     private process: ChildProcess;
@@ -20,12 +21,14 @@ export class LndInstance implements LedgerInstance {
     public static async new(
         dataDir: string,
         logger: Logger,
+        bitcoinFaucet: BitcoinFaucet,
         bitcoindDataDir: string,
         pidFile: string
     ) {
         return new LndInstance(
             dataDir,
             logger,
+            bitcoinFaucet,
             bitcoindDataDir,
             pidFile,
             await getPort(),
@@ -37,6 +40,7 @@ export class LndInstance implements LedgerInstance {
     constructor(
         private readonly dataDir: string,
         private readonly logger: Logger,
+        private readonly bitcoinFaucet: BitcoinFaucet,
         private readonly bitcoindDataDir: string,
         private readonly pidFile: string,
         private readonly lndP2pPort: number,
@@ -64,6 +68,7 @@ export class LndInstance implements LedgerInstance {
             this.adminMacaroonPath()
         );
         await waitUntilFileExists(this.adminMacaroonPath());
+        await this.fundWallet();
 
         this.logger.debug("Waiting for lightning server to start");
         await waitForLogMessage(logFile, "[INF] BTCN: Server listening on ");
@@ -90,7 +95,7 @@ export class LndInstance implements LedgerInstance {
     }
 
     private async initWallet() {
-        this.logger.debug("Instantiating lnd connection:", this.config);
+        this.logger.debug("Connecting to lnd at", this.grpcSocket);
         const lnRpc = await createLnRpc({
             server: this.grpcSocket,
             tls: this.tlsCertPath(),
@@ -106,7 +111,31 @@ export class LndInstance implements LedgerInstance {
             walletPassword
         );
         await lnRpc.initWallet({ cipherSeedMnemonic, walletPassword });
+
         this.logger.debug("Lnd wallet initialized!");
+    }
+
+    private async fundWallet() {
+        const lnRpc = await createLnRpc({
+            server: this.grpcSocket,
+            tls: this.tlsCertPath(),
+            macaroonPath: this.adminMacaroonPath(),
+        });
+
+        await this.bitcoinFaucet.mint(
+            1_000_000_000n, // 10 BTC should be enough money in the LND instance for a few swaps :)
+            await lnRpc
+                .newAddress({ type: AddressType.NESTED_PUBKEY_HASH })
+                .then((r) => r.address),
+            async () =>
+                lnRpc
+                    .walletBalance()
+                    .then((r) =>
+                        r.confirmedBalance ? BigInt(r.confirmedBalance) : 0n
+                    )
+        );
+
+        this.logger.debug("Lnd wallet funded with 10 BTC!");
     }
 
     public isRunning() {
