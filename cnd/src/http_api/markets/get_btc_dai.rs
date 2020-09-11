@@ -10,11 +10,14 @@ use serde::Serialize;
 use warp::{reply, Filter, Rejection, Reply};
 
 /// The warp filter for getting the BTC/DAI market view.
-pub fn route(swarm: Swarm) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+pub fn route(
+    swarm: Swarm,
+    network: comit::Network,
+) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::get()
         .and(warp::path!("markets" / "BTC-DAI"))
         .and_then(move || {
-            handler(swarm.clone())
+            handler(swarm.clone(), network)
                 .map_err(problem::from_anyhow)
                 .map_err(warp::reject::custom)
         })
@@ -22,7 +25,7 @@ pub fn route(swarm: Swarm) -> impl Filter<Extract = impl Reply, Error = Rejectio
 
 /// Retrieves viable orders: orders that have expiries that match the safe
 /// expiries determined by the expiries module.
-async fn handler(swarm: Swarm) -> Result<impl Reply> {
+async fn handler(swarm: Swarm, network: comit::Network) -> Result<impl Reply> {
     let mut orders = siren::Entity::default();
     let local_peer_id = swarm.local_peer_id();
 
@@ -30,7 +33,7 @@ async fn handler(swarm: Swarm) -> Result<impl Reply> {
         .btc_dai_market()
         .await
         .into_iter()
-        .filter(|(_, order)| has_viable_expiries(order));
+        .filter(|(_, order)| has_viable_expiries(order, network));
 
     for (maker, order) in viable_orders {
         let market_item = siren::Entity::default()
@@ -50,16 +53,22 @@ async fn handler(swarm: Swarm) -> Result<impl Reply> {
     Ok(reply::json(&orders))
 }
 
-pub fn has_viable_expiries(order: &BtcDaiOrder) -> bool {
+pub fn has_viable_expiries(order: &BtcDaiOrder, network: comit::Network) -> bool {
     match order.swap_protocol {
         SwapProtocol::HbitHerc20 {
             hbit_expiry_offset,
             herc20_expiry_offset,
-        } => (hbit_expiry_offset, herc20_expiry_offset) == expiries::expiry_offsets_hbit_herc20(),
+        } => {
+            (hbit_expiry_offset, herc20_expiry_offset)
+                == expiries::expiry_offsets_hbit_herc20(network)
+        }
         SwapProtocol::Herc20Hbit {
             herc20_expiry_offset,
             hbit_expiry_offset,
-        } => (herc20_expiry_offset, hbit_expiry_offset) == expiries::expiry_offsets_herc20_hbit(),
+        } => {
+            (herc20_expiry_offset, hbit_expiry_offset)
+                == expiries::expiry_offsets_herc20_hbit(network)
+        }
     }
 }
 
@@ -91,7 +100,7 @@ mod tests {
 
         let filtered_orders = unfiltered_orders
             .into_iter()
-            .filter(|order| has_viable_expiries(order))
+            .filter(|order| has_viable_expiries(order, comit::Network::Dev))
             .collect::<Vec<BtcDaiOrder>>();
 
         assert_eq!(filtered_orders.len(), 1);
@@ -103,7 +112,7 @@ mod tests {
         BtcDaiOrder::sell(
             Quantity::new(asset::Bitcoin::ZERO),
             Price::from_wei_per_sat(asset::Erc20Quantity::zero()),
-            SwapProtocol::new(Role::Alice, Position::Sell),
+            SwapProtocol::new(Role::Alice, Position::Sell, comit::Network::Dev),
         )
     }
 

@@ -22,6 +22,7 @@ pub struct Maker {
     bitcoin_network: ledger::Bitcoin,
     ethereum_chain: ethereum::Chain,
     role: Role,
+    comit_network: comit::Network,
 }
 
 impl Maker {
@@ -37,6 +38,7 @@ impl Maker {
         bitcoin_network: ledger::Bitcoin,
         dai_chain: ethereum::Chain,
         role: Role,
+        comit_network: comit::Network,
     ) -> Self {
         Maker {
             btc_balance: Some(btc_balance),
@@ -51,6 +53,7 @@ impl Maker {
             bitcoin_network,
             ethereum_chain: dai_chain,
             role,
+            comit_network,
         }
     }
 
@@ -118,7 +121,7 @@ impl Maker {
     }
 
     pub fn swap_protocol(&self, position: Position) -> SwapProtocol {
-        SwapProtocol::new(self.role, position)
+        SwapProtocol::new(self.role, position, self.comit_network)
     }
 
     pub fn new_sell_order(&self) -> anyhow::Result<BtcDaiOrderForm> {
@@ -268,6 +271,7 @@ mod tests {
                 bitcoin_network: ledger::Bitcoin::Mainnet,
                 ethereum_chain: ethereum::Chain::static_stub(),
                 role: Role::Bob,
+                comit_network: comit::Network::Main,
             }
         }
     }

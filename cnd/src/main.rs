@@ -220,6 +220,7 @@ fn main() -> anyhow::Result<()> {
 
     runtime.spawn(make_http_api_worker(
         settings,
+        options.network.unwrap_or_default(),
         swarm.clone(),
         storage,
         connectors,
@@ -258,12 +259,13 @@ async fn bind_http_api_socket(settings: &Settings) -> anyhow::Result<tokio::net:
 /// Construct the worker that is going to process HTTP API requests.
 async fn make_http_api_worker(
     settings: Settings,
+    network: comit::Network,
     swarm: Swarm,
     storage: Storage,
     connectors: Connectors,
     incoming_requests: tokio::net::TcpListener,
 ) {
-    let routes = http_api::create_routes(swarm, storage, connectors, &settings);
+    let routes = http_api::create_routes(swarm, storage, connectors, &settings, network);
 
     match incoming_requests.local_addr() {
         Ok(socket) => {

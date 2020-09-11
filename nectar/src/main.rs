@@ -100,6 +100,7 @@ async fn main() -> Result<()> {
             settings,
             bitcoin_wallet.expect("could not initialise bitcoin wallet"),
             ethereum_wallet.expect("could not initialise ethereum wallet"),
+            options.network.unwrap_or_default(),
         )
         .await
         .expect("Start trading"),

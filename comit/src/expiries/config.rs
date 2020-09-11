@@ -1,6 +1,7 @@
 //! This module provides functionality for calculating the duration of actions
 //! required to determine the transition period from one swap state to the next.
 
+use crate::Network;
 use std::fmt;
 use time::Duration;
 
@@ -32,18 +33,36 @@ use time::Duration;
 // We use specific integer types to limit the upper bound, this reduces the need
 // to turn off lints.
 
-const BITCOIN_BLOCK_TIME_SECS: u16 = 600; // 10 minutes, average Bitcoin block time.
-const ETHEREUM_BLOCK_TIME_SECS: u16 = 20; // Conservative Ethereum block time.
+mod main {
+    pub const BITCOIN_BLOCK_TIME_SECS: u16 = 600; // 10 minutes, average Bitcoin block time.
+    pub const ETHEREUM_BLOCK_TIME_SECS: u16 = 20; // Conservative Ethereum block
+                                                  // time.
+
+    pub const BITCOIN_CONFIRMATIONS: u8 = 6; // Standard in the Bitcoin ecosystem.
+    pub const ETHEREUM_CONFIRMATIONS: u8 = 30; // Value used by Kraken.
+
+    pub const ACT_IN_SOFTWARE_SECS: u32 = 15 * 60; // Value arbitrarily chosen.
+    pub const ACT_WITH_USER_INTERACTION_SECS: u32 = 60 * 60; // Value arbitrarily
+                                                             // chosen.
+}
+
+mod dev {
+    // The local dev nets in the e2e tests have a block time of 1 second.
+    pub const BITCOIN_BLOCK_TIME_SECS: u16 = 1;
+    pub const ETHEREUM_BLOCK_TIME_SECS: u16 = 1;
+
+    // We don't need many confirmations during testing ...
+    pub const BITCOIN_CONFIRMATIONS: u8 = 1;
+    pub const ETHEREUM_CONFIRMATIONS: u8 = 1;
+
+    // The e2e tests act very fast :)
+    pub const ACT_IN_SOFTWARE_SECS: u32 = 1;
+    pub const ACT_WITH_USER_INTERACTION_SECS: u32 = 1;
+}
 
 // TODO: Fee recommendation must use this value of N.
 const BITCOIN_MINE_WITHIN_N_BLOCKS: u8 = 3; // Value arbitrarily chosen.
 const ETHEREUM_MINE_WITHIN_N_BLOCKS: u8 = 3; // Value arbitrarily chosen.
-
-const BITCOIN_CONFIRMATIONS: u8 = 6; // Standard in the Bitcoin ecosystem.
-const ETHEREUM_CONFIRMATIONS: u8 = 30; // Value used by Kraken.
-
-const ACT_IN_SOFTWARE_SECS: u32 = 15 * 60; // Value arbitrarily chosen.
-const ACT_WITH_USER_INTERACTION_SECS: u32 = 60 * 60; // Value arbitrarily chosen.
 
 /// Configuration values used during transition period calculations.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -65,40 +84,40 @@ pub struct Config {
 
 impl Config {
     /// Construct a config object suitable for a herc20-hbit swap.
-    pub const fn herc20_hbit() -> Self {
+    pub const fn herc20_hbit(network: Network) -> Self {
         Config {
             protocol: Protocol::Herc20Hbit,
-            alpha_required_confirmations: ETHEREUM_CONFIRMATIONS,
-            beta_required_confirmations: BITCOIN_CONFIRMATIONS,
-            alpha_average_block_time: ETHEREUM_BLOCK_TIME_SECS,
-            beta_average_block_time: BITCOIN_BLOCK_TIME_SECS,
+            alpha_required_confirmations: ethereum_confirmations(network),
+            beta_required_confirmations: bitcoin_confirmations(network),
+            alpha_average_block_time: ethereum_blocktime(network),
+            beta_average_block_time: bitcoin_blocktime(network),
             alpha_mine_deploy_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
             beta_mine_deploy_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
             alpha_mine_fund_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
             beta_mine_fund_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
             alpha_mine_redeem_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
             beta_mine_redeem_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
-            act_in_software: ACT_IN_SOFTWARE_SECS,
-            act_with_user_interaction: ACT_WITH_USER_INTERACTION_SECS,
+            act_in_software: act_in_software(network),
+            act_with_user_interaction: act_with_user_interaction(network),
         }
     }
 
     /// Construct a config object suitable for a hbit-herc20 swap.
-    pub const fn hbit_herc20() -> Self {
+    pub const fn hbit_herc20(network: Network) -> Self {
         Config {
             protocol: Protocol::HbitHerc20,
-            alpha_required_confirmations: BITCOIN_CONFIRMATIONS,
-            beta_required_confirmations: ETHEREUM_CONFIRMATIONS,
-            alpha_average_block_time: BITCOIN_BLOCK_TIME_SECS,
-            beta_average_block_time: ETHEREUM_BLOCK_TIME_SECS,
+            alpha_required_confirmations: bitcoin_confirmations(network),
+            beta_required_confirmations: ethereum_confirmations(network),
+            alpha_average_block_time: bitcoin_blocktime(network),
+            beta_average_block_time: ethereum_blocktime(network),
             alpha_mine_deploy_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
             beta_mine_deploy_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
             alpha_mine_fund_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
             beta_mine_fund_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
             alpha_mine_redeem_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
             beta_mine_redeem_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
-            act_in_software: ACT_IN_SOFTWARE_SECS,
-            act_with_user_interaction: ACT_WITH_USER_INTERACTION_SECS,
+            act_in_software: act_in_software(network),
+            act_with_user_interaction: act_with_user_interaction(network),
         }
     }
 
@@ -305,4 +324,46 @@ impl fmt::Display for Config {
 pub enum Protocol {
     Herc20Hbit,
     HbitHerc20,
+}
+
+const fn bitcoin_blocktime(network: Network) -> u16 {
+    match network {
+        Network::Main | Network::Test => main::BITCOIN_BLOCK_TIME_SECS,
+        Network::Dev => dev::BITCOIN_BLOCK_TIME_SECS,
+    }
+}
+
+const fn bitcoin_confirmations(network: Network) -> u8 {
+    match network {
+        Network::Main | Network::Test => main::BITCOIN_CONFIRMATIONS,
+        Network::Dev => dev::BITCOIN_CONFIRMATIONS,
+    }
+}
+
+const fn ethereum_blocktime(network: Network) -> u16 {
+    match network {
+        Network::Main | Network::Test => main::ETHEREUM_BLOCK_TIME_SECS,
+        Network::Dev => dev::ETHEREUM_BLOCK_TIME_SECS,
+    }
+}
+
+const fn ethereum_confirmations(network: Network) -> u8 {
+    match network {
+        Network::Main | Network::Test => main::ETHEREUM_CONFIRMATIONS,
+        Network::Dev => dev::ETHEREUM_CONFIRMATIONS,
+    }
+}
+
+const fn act_in_software(network: Network) -> u32 {
+    match network {
+        Network::Main | Network::Test => main::ACT_IN_SOFTWARE_SECS,
+        Network::Dev => dev::ACT_IN_SOFTWARE_SECS,
+    }
+}
+
+const fn act_with_user_interaction(network: Network) -> u32 {
+    match network {
+        Network::Main | Network::Test => main::ACT_WITH_USER_INTERACTION_SECS,
+        Network::Dev => dev::ACT_WITH_USER_INTERACTION_SECS,
+    }
 }

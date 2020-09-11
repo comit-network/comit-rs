@@ -2,7 +2,7 @@ use crate::{
     asset::{Bitcoin, Erc20Quantity},
     expiries,
     expiries::{AlphaOffset, BetaOffset},
-    Role,
+    Network, Role,
 };
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, marker::PhantomData, str::FromStr};
@@ -305,11 +305,11 @@ impl SwapProtocol {
         }
     }
 
-    pub fn new(role: Role, position: Position) -> Self {
+    pub fn new(role: Role, position: Position, network: Network) -> Self {
         match (role, position) {
             (Role::Bob, Position::Buy) | (Role::Alice, Position::Sell) => {
                 let (hbit_expiry_offset, herc20_expiry_offset) =
-                    expiries::expiry_offsets_hbit_herc20();
+                    expiries::expiry_offsets_hbit_herc20(network);
 
                 SwapProtocol::HbitHerc20 {
                     hbit_expiry_offset,
@@ -318,7 +318,7 @@ impl SwapProtocol {
             }
             (Role::Alice, Position::Buy) | (Role::Bob, Position::Sell) => {
                 let (herc20_expiry_offset, hbit_expiry_offset) =
-                    expiries::expiry_offsets_herc20_hbit();
+                    expiries::expiry_offsets_herc20_hbit(network);
 
                 SwapProtocol::Herc20Hbit {
                     hbit_expiry_offset,
@@ -339,7 +339,7 @@ mod tests {
         fn swap_protocol_and_position_interplay(swap_protocol in proptest::order::swap_protocol(), position in proptest::order::position()) {
             let role = swap_protocol.role(position);
 
-            let computed_position = SwapProtocol::new(role, position).position(role);
+            let computed_position = SwapProtocol::new(role, position, Network::Main).position(role);
 
             assert_eq!(computed_position, position);
         }
@@ -350,7 +350,7 @@ mod tests {
         fn swap_protocol_and_role_interplay(swap_protocol in proptest::order::swap_protocol(), role in proptest::role()) {
             let position = swap_protocol.position(role);
 
-            let computed_role = SwapProtocol::new(role, position).role(position);
+            let computed_role = SwapProtocol::new(role, position, Network::Main).role(position);
 
             assert_eq!(computed_role, role);
         }
