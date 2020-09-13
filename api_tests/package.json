@@ -33,7 +33,7 @@
         "ajv": "^6.12.4",
         "axios": "^0.20.0",
         "bitcoin-core": "^3.0.0",
-        "bitcoinjs-lib": "^5.1.10",
+        "bitcoinjs-lib": "^5.2.0",
         "chmod": "^0.2.1",
         "content-type": "^1.0.4",
         "download": "^8.0.0",
