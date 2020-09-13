@@ -12,7 +12,7 @@ use crate::{
     timestamp::Timestamp,
     transaction, Secret, SecretHash,
 };
-use blockchain_contracts::ethereum::rfc003::Erc20Htlc;
+use blockchain_contracts::ethereum::herc20::Htlc;
 use chrono::{DateTime, Utc};
 use conquer_once::Lazy;
 use futures::{
@@ -24,17 +24,17 @@ use std::cmp::Ordering;
 use tracing_futures::Instrument;
 
 static REDEEM_LOG_MSG: Lazy<Hash> = Lazy::new(|| {
-    blockchain_contracts::ethereum::rfc003::REDEEMED_LOG_MSG
+    blockchain_contracts::ethereum::REDEEMED_LOG_MSG
         .parse()
         .expect("to be valid hex")
 });
 static REFUND_LOG_MSG: Lazy<Hash> = Lazy::new(|| {
-    blockchain_contracts::ethereum::rfc003::REFUNDED_LOG_MSG
+    blockchain_contracts::ethereum::REFUNDED_LOG_MSG
         .parse()
         .expect("to be valid hex")
 });
 static TRANSFER_LOG_MSG: Lazy<Hash> = Lazy::new(|| {
-    blockchain_contracts::ethereum::rfc003::ERC20_TRANSFER
+    blockchain_contracts::ethereum::ERC20_TRANSFER
         .parse()
         .expect("to be valid hex")
 });
@@ -270,13 +270,13 @@ pub struct Params {
 
 impl Params {
     pub fn bytecode(&self) -> Vec<u8> {
-        Erc20Htlc::from(self.clone()).into()
+        Htlc::from(self.clone()).into()
     }
 
     pub fn build_deploy_action(&self) -> actions::ethereum::DeployContract {
         let chain_id = self.chain_id;
-        let htlc = Erc20Htlc::from(self.clone());
-        let gas_limit = Erc20Htlc::deploy_tx_gas_limit();
+        let htlc = Htlc::from(self.clone());
+        let gas_limit = Htlc::deploy_tx_gas_limit();
 
         actions::ethereum::DeployContract {
             data: htlc.into(),
@@ -293,10 +293,10 @@ impl Params {
         let to = self.asset.token_contract;
         let htlc_address = blockchain_contracts::ethereum::Address(htlc_location.into());
         let data =
-            Erc20Htlc::transfer_erc20_tx_payload(self.asset.clone().quantity.into(), htlc_address);
+            Htlc::transfer_erc20_tx_payload(self.asset.clone().quantity.into(), htlc_address);
         let data = Some(data);
 
-        let gas_limit = Erc20Htlc::fund_tx_gas_limit();
+        let gas_limit = Htlc::fund_tx_gas_limit();
         let min_block_timestamp = None;
 
         actions::ethereum::CallContract {
@@ -313,7 +313,7 @@ impl Params {
         htlc_location: htlc_location::Ethereum,
     ) -> actions::ethereum::CallContract {
         let data = None;
-        let gas_limit = Erc20Htlc::refund_tx_gas_limit();
+        let gas_limit = Htlc::refund_tx_gas_limit();
         let min_block_timestamp = Some(self.expiry);
 
         actions::ethereum::CallContract {
@@ -331,7 +331,7 @@ impl Params {
         secret: Secret,
     ) -> actions::ethereum::CallContract {
         let data = Some(secret.into_raw_secret().to_vec());
-        let gas_limit = Erc20Htlc::redeem_tx_gas_limit();
+        let gas_limit = Htlc::redeem_tx_gas_limit();
         let min_block_timestamp = None;
 
         actions::ethereum::CallContract {
@@ -344,14 +344,14 @@ impl Params {
     }
 }
 
-impl From<Params> for Erc20Htlc {
+impl From<Params> for Htlc {
     fn from(params: Params) -> Self {
         let refund_address = blockchain_contracts::ethereum::Address(params.refund_identity.into());
         let redeem_address = blockchain_contracts::ethereum::Address(params.redeem_identity.into());
         let token_contract_address =
             blockchain_contracts::ethereum::Address(params.asset.token_contract.into());
 
-        Erc20Htlc::new(
+        Htlc::new(
             params.expiry.into(),
             refund_address,
             redeem_address,
@@ -368,13 +368,13 @@ pub fn build_erc20_htlc(
     refund_identity: identity::Ethereum,
     expiry: Timestamp,
     secret_hash: SecretHash,
-) -> Erc20Htlc {
+) -> Htlc {
     let refund_address = blockchain_contracts::ethereum::Address(refund_identity.into());
     let redeem_address = blockchain_contracts::ethereum::Address(redeem_identity.into());
     let token_contract_address =
         blockchain_contracts::ethereum::Address(asset.token_contract.into());
 
-    Erc20Htlc::new(
+    Htlc::new(
         expiry.into(),
         refund_address,
         redeem_address,

@@ -110,7 +110,7 @@ pub mod bitcoin {
             public_key in identity::bitcoin(),
             network in ledger::bitcoin(),
         ) -> ::bitcoin::Address {
-            ::bitcoin::Address::p2wpkh(&public_key.into(), network.into())
+            ::bitcoin::Address::p2wpkh(&public_key.into(), network.into()).expect("our public keys are always compressed")
         }
     }
 }

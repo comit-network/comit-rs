@@ -10,7 +10,7 @@ anyhow = "1"
 async-trait = "0.1"
 atty = "0.2"
 base64 = "0.12.3"
-bitcoin = { version = "0.23", features = ["use-serde"] }
+bitcoin = { version = "0.25", features = ["use-serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 comit = { path = "../comit" }
 config = { version = "0.10", features = ["toml"], default-features = false }
@@ -64,7 +64,7 @@ void = "1"
 warp = { version = "0.2", default-features = false }
 
 [dev-dependencies]
-bitcoin = { version = "0.23", features = ["rand"] }
+bitcoin = { version = "0.25", features = ["rand"] }
 bitcoincore-rpc = "0.11.0"
 comit = { path = "../comit", features = ["test"] }
 proptest = "0.10.1"

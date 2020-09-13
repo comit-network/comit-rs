@@ -18,7 +18,7 @@ use bitcoin::{
     secp256k1::{Secp256k1, SecretKey, Signing},
     Address, Block, BlockHash, Transaction,
 };
-use blockchain_contracts::bitcoin::{rfc003::bitcoin_htlc::BitcoinHtlc, witness::UnlockParameters};
+use blockchain_contracts::bitcoin::{hbit::Htlc, witness::UnlockParameters};
 use chrono::{DateTime, Utc};
 use futures::{
     future::{self, Either},
@@ -248,13 +248,9 @@ impl Params {
     where
         C: Signing,
     {
-        self.build_spend_action(
-            &secp,
-            fund_amount,
-            fund_location,
-            refund_address,
-            |htlc: BitcoinHtlc| htlc.unlock_after_timeout(&secp, transient_refund_sk),
-        )
+        self.build_spend_action(&secp, fund_amount, fund_location, refund_address, |htlc| {
+            htlc.unlock_after_timeout(&secp, transient_refund_sk)
+        })
     }
 
     pub fn build_redeem_action<C>(
@@ -269,15 +265,9 @@ impl Params {
     where
         C: Signing,
     {
-        self.build_spend_action(
-            &secp,
-            fund_amount,
-            fund_location,
-            redeem_address,
-            |htlc: BitcoinHtlc| {
-                htlc.unlock_with_secret(secp, transient_redeem_sk, secret.into_raw_secret())
-            },
-        )
+        self.build_spend_action(&secp, fund_amount, fund_location, redeem_address, |htlc| {
+            htlc.unlock_with_secret(secp, transient_redeem_sk, secret.into_raw_secret())
+        })
     }
 
     fn build_spend_action<C>(
@@ -286,7 +276,7 @@ impl Params {
         fund_amount: asset::Bitcoin,
         fund_location: htlc_location::Bitcoin,
         spend_address: Address,
-        unlock_fn: impl Fn(BitcoinHtlc) -> UnlockParameters,
+        unlock_fn: impl Fn(Htlc) -> UnlockParameters,
     ) -> anyhow::Result<BroadcastSignedTransaction>
     where
         C: Signing,
@@ -314,7 +304,7 @@ impl Params {
     }
 }
 
-impl From<Params> for BitcoinHtlc {
+impl From<Params> for Htlc {
     fn from(params: Params) -> Self {
         build_bitcoin_htlc(
             params.redeem_identity,
@@ -327,7 +317,7 @@ impl From<Params> for BitcoinHtlc {
 
 impl Params {
     pub fn compute_address(&self) -> Address {
-        BitcoinHtlc::from(*self).compute_address(self.network.into())
+        Htlc::from(*self).compute_address(self.network.into())
     }
 }
 
@@ -348,14 +338,14 @@ pub fn build_bitcoin_htlc(
     refund_identity: identity::Bitcoin,
     expiry: Timestamp,
     secret_hash: SecretHash,
-) -> BitcoinHtlc {
+) -> Htlc {
     let refund_public_key = ::bitcoin::PublicKey::from(refund_identity);
     let redeem_public_key = ::bitcoin::PublicKey::from(redeem_identity);
 
     let refund_identity = hash160::Hash::hash(&refund_public_key.key.serialize());
     let redeem_identity = hash160::Hash::hash(&redeem_public_key.key.serialize());
 
-    BitcoinHtlc::new(
+    Htlc::new(
         expiry.into(),
         refund_identity,
         redeem_identity,

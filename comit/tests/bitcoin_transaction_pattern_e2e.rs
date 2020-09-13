@@ -1,4 +1,3 @@
-use bitcoin::Amount;
 use bitcoincore_rpc::RpcApi;
 use chrono::offset::Utc;
 use comit::btsieve::bitcoin::{watch_for_created_outpoint, BitcoindConnector};
@@ -44,7 +43,7 @@ async fn bitcoin_transaction_pattern_e2e_test() {
                 let transaction_hash = client
                     .send_to_address(
                         &target_address,
-                        Amount::from_sat(100_000_000),
+                        bitcoincore_rpc::bitcoin::Amount::from_sat(100_000_000),
                         None,
                         None,
                         None,
@@ -65,12 +64,18 @@ async fn bitcoin_transaction_pattern_e2e_test() {
         .await
         .expect("failed to send money to address");
 
-    let (funding_transaction, _out_point) =
-        watch_for_created_outpoint(&connector, start_of_swap, target_address)
-            .await
-            .unwrap();
+    let (funding_transaction, _out_point) = watch_for_created_outpoint(
+        &connector,
+        start_of_swap,
+        target_address.to_string().parse().unwrap(),
+    )
+    .await
+    .unwrap();
 
-    assert_eq!(funding_transaction.txid(), actual_transaction.unwrap())
+    assert_eq!(
+        funding_transaction.txid().to_string(),
+        actual_transaction.unwrap().to_string()
+    )
 }
 
 pub fn new_bitcoincore_client<D>(
