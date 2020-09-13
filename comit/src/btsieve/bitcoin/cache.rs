@@ -1,6 +1,6 @@
 use crate::btsieve::{BlockByHash, LatestBlock};
 use async_trait::async_trait;
-use bitcoin::{util::hash::BitcoinHash, Block, BlockHash as Hash, BlockHash};
+use bitcoin::{Block, BlockHash as Hash, BlockHash};
 use derivative::Derivative;
 use lru::LruCache;
 use std::sync::Arc;
@@ -34,7 +34,7 @@ where
     async fn latest_block(&self) -> anyhow::Result<Self::Block> {
         let block = self.connector.latest_block().await?;
 
-        let block_hash = block.bitcoin_hash();
+        let block_hash = block.block_hash();
         let mut guard = self.block_cache.lock().await;
         if !guard.contains(&block_hash) {
             guard.put(block_hash, block.clone());

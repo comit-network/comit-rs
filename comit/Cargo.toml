@@ -9,7 +9,7 @@ description = "Core components of the COMIT protocol"
 anyhow = "1"
 async-trait = "0.1"
 base64 = "0.12"
-bitcoin = { version = "0.23", features = ["rand", "use-serde"] }
+bitcoin = { version = "0.25", features = ["rand", "use-serde"] }
 blockchain_contracts = "0.3"
 byteorder = "1.3"
 chrono = { version = "0.4", features = ["serde"] }
