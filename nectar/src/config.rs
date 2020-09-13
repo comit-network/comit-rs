@@ -161,7 +161,7 @@ mod tests {
 
     #[test]
     fn read_config_uses_default_path() {
-        let tmp_dir = tempdir::TempDir::new("nectar_test").unwrap();
+        let tmp_dir = tempfile::TempDir::new().unwrap();
         let default_path = tmp_dir.path().join("config.toml");
 
         let mut file = fs::File::create(default_path.clone()).unwrap();

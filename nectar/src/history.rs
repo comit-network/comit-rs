@@ -211,14 +211,11 @@ impl History {
 mod tests {
     use super::*;
     use std::io::Read;
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     #[test]
     fn write_two_trades_with_headers() {
-        let temp_file = TempDir::new("nectar_test")
-            .unwrap()
-            .path()
-            .join("history.csv");
+        let temp_file = TempDir::new().unwrap().path().join("history.csv");
         let trade_1 = Trade::new_1();
         let trade_2 = Trade::new_2();
         let mut history = History::new(&temp_file).unwrap();
@@ -240,10 +237,7 @@ mod tests {
 
     #[test]
     fn re_use_existing_file_without_losing_data_or_re_writing_headers() {
-        let temp_file = TempDir::new("nectar_test")
-            .unwrap()
-            .path()
-            .join("history.csv");
+        let temp_file = TempDir::new().unwrap().path().join("history.csv");
         let trade_1 = Trade::new_1();
         let trade_2 = Trade::new_2();
         let mut history = History::new(&temp_file).unwrap();
