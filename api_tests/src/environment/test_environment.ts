@@ -281,16 +281,11 @@ export default class TestEnvironment extends NodeEnvironment {
      */
     private async startAliceLightning() {
         const config = await this.initLightningLedger("lnd-alice");
-        const alice = await LndClient.newInstance(config, this.logger);
-
-        this.global.lndClients.alice = alice;
-        this.global.ledgerConfigs.aliceLnd = config;
-
-        await this.bitcoinFaucet.mint(
-            1_000_000_000n, // 10 BTC should be enough money in the LND instance for a few swaps :)
-            await alice.newFundingAddress(),
-            async () => alice.confirmedWalletBalance()
+        this.global.lndClients.alice = await LndClient.newInstance(
+            config,
+            this.logger
         );
+        this.global.ledgerConfigs.aliceLnd = config;
     }
 
     /**
@@ -301,16 +296,11 @@ export default class TestEnvironment extends NodeEnvironment {
      */
     private async startBobLightning() {
         const config = await this.initLightningLedger("lnd-bob");
-        const bob = await LndClient.newInstance(config, this.logger);
-
-        this.global.lndClients.bob = bob;
-        this.global.ledgerConfigs.bobLnd = config;
-
-        await this.bitcoinFaucet.mint(
-            1_000_000_000n, // 10 BTC should be enough money in the LND instance for a few swaps :)
-            await bob.newFundingAddress(),
-            async () => bob.confirmedWalletBalance()
+        this.global.lndClients.bob = await LndClient.newInstance(
+            config,
+            this.logger
         );
+        this.global.ledgerConfigs.bobLnd = config;
     }
 
     private async initLightningLedger(
@@ -326,6 +316,7 @@ export default class TestEnvironment extends NodeEnvironment {
         const lnd = await LndInstance.new(
             await this.global.getDataDir(role),
             this.logger,
+            this.bitcoinFaucet,
             await this.global.getDataDir("bitcoind"),
             path.join(lockDir, "lnd.pid")
         );

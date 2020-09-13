@@ -1,6 +1,5 @@
 import { sleep } from "../utils";
 import createLnRpc, {
-    AddressType,
     ChannelPoint,
     createInvoicesRpc,
     InvoicesRpc,
@@ -222,14 +221,6 @@ export class LndClient {
         return this.lnrpc.getInfo().then((r) => r.identityPubkey);
     }
 
-    public async confirmedWalletBalance(): Promise<bigint> {
-        return this.lnrpc
-            .walletBalance()
-            .then((r) =>
-                r.confirmedBalance ? BigInt(r.confirmedBalance) : 0n
-            );
-    }
-
     private async isSyncedToChain(): Promise<boolean> {
         return this.lnrpc.getInfo().then((r) => r.syncedToChain);
     }
@@ -242,12 +233,6 @@ export class LndClient {
         } catch (e) {
             this.logger.warn("Error while connecting to peer", host);
         }
-    }
-
-    public async newFundingAddress(): Promise<string> {
-        return this.lnrpc
-            .newAddress({ type: AddressType.NESTED_PUBKEY_HASH })
-            .then((r) => r.address);
     }
 
     public async getChannelBalance(id: string): Promise<bigint> {
