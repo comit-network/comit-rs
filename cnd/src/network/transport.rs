@@ -1,18 +1,18 @@
 use libp2p::{
     core::{
         either::EitherError,
+        identity,
         muxing::StreamMuxerBox,
         transport::{boxed::Boxed, timeout::TransportTimeoutError},
         upgrade::{SelectUpgrade, Version},
-        UpgradeError,
+        Transport, UpgradeError,
     },
     dns::{DnsConfig, DnsErr},
-    identity,
     mplex::MplexConfig,
     multiaddr::Protocol,
-    secio::{SecioConfig, SecioError},
+    noise::{self, NoiseConfig, NoiseError, X25519Spec},
     tcp::TokioTcpConfig,
-    yamux, Multiaddr, PeerId, Transport,
+    yamux, Multiaddr, PeerId,
 };
 use libp2p_tokio_socks5::Socks5TokioTcpConfig;
 use std::{collections::HashMap, io, time::Duration};
@@ -34,15 +34,18 @@ pub fn build(keypair: identity::Keypair, listen: Vec<Multiaddr>) -> anyhow::Resu
 /// Builds a libp2p transport with the following features:
 /// - TcpConnection
 /// - DNS name resolution
-/// - authentication via secio
+/// - authentication via noise
 /// - multiplexing via yamux or mplex
-fn build_comit_transport(keypair: identity::Keypair) -> anyhow::Result<ComitTransport> {
-    let transport = TokioTcpConfig::new().nodelay(true);
-    let transport = DnsConfig::new(transport)?;
+pub fn build_comit_transport(id_keys: identity::Keypair) -> anyhow::Result<ComitTransport> {
+    let dh_keys = noise::Keypair::<X25519Spec>::new().into_authentic(&id_keys)?;
+    let noise = NoiseConfig::xx(dh_keys).into_authenticated();
 
-    let transport = transport
+    let tcp = TokioTcpConfig::new().nodelay(true);
+    let dns = DnsConfig::new(tcp)?;
+
+    let transport = dns
         .upgrade(Version::V1)
-        .authenticate(SecioConfig::new(keypair))
+        .authenticate(noise)
         .multiplex(SelectUpgrade::new(
             yamux::Config::default(),
             MplexConfig::new(),
@@ -57,21 +60,24 @@ fn build_comit_transport(keypair: identity::Keypair) -> anyhow::Result<ComitTran
 /// Builds a libp2p transport with the following features:
 /// - TCP connection over the Tor network
 /// - DNS name resolution
-/// - authentication via secio
+/// - authentication via noise
 /// - multiplexing via yamux or mplex
 fn build_tor_transport(
-    keypair: identity::Keypair,
+    id_keys: identity::Keypair,
     addr: Multiaddr,
 ) -> anyhow::Result<ComitTransport> {
     let mut map = HashMap::new();
     map.insert(addr, PORT);
 
-    let transport = Socks5TokioTcpConfig::default().nodelay(true).onion_map(map);
-    let transport = DnsConfig::new(transport)?;
+    let dh_keys = noise::Keypair::<X25519Spec>::new().into_authentic(&id_keys)?;
+    let noise = NoiseConfig::xx(dh_keys).into_authenticated();
 
-    let transport = transport
+    let socks = Socks5TokioTcpConfig::default().nodelay(true).onion_map(map);
+    let dns = DnsConfig::new(socks)?;
+
+    let transport = dns
         .upgrade(Version::V1)
-        .authenticate(SecioConfig::new(keypair))
+        .authenticate(noise)
         .multiplex(SelectUpgrade::new(
             yamux::Config::default(),
             MplexConfig::new(),
@@ -87,7 +93,7 @@ pub type ComitTransport = Boxed<
     (PeerId, StreamMuxerBox),
     TransportTimeoutError<
         EitherError<
-            EitherError<DnsErr<io::Error>, UpgradeError<SecioError>>,
+            EitherError<DnsErr<io::Error>, UpgradeError<NoiseError>>,
             UpgradeError<EitherError<io::Error, io::Error>>,
         >,
     >,
