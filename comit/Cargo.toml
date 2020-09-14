@@ -21,7 +21,7 @@ futures = { version = "0.3", default-features = false }
 genawaiter = { version = "0.99", default-features = false, features = ["futures03"] }
 hex = { version = "0.4", features = ["serde"] }
 levenshtein = "1"
-libp2p = { version = "0.24", default-features = false, features = ["gossipsub", "request-response"] }
+libp2p = { version = "0.28", default-features = false, features = ["gossipsub", "request-response"] }
 lru = "0.6"
 num = "0.3"
 primitive-types = { version = "0.7", features = ["serde"] }
@@ -45,7 +45,7 @@ uuid = { version = "0.8", features = ["serde", "v4"] }
 [dev-dependencies]
 atty = "0.2"
 bitcoincore-rpc = "0.11"
-libp2p = { version = "0.24", default-features = false, features = ["yamux"] }
+libp2p = { version = "0.28", default-features = false, features = ["yamux"] }
 log = { version = "0.4", features = ["serde"] }
 proptest = "0.10"
 spectral = { version = "0.6", default-features = false }
