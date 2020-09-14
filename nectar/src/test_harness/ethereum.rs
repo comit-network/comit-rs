@@ -7,6 +7,7 @@ use comit::{
 };
 use num256::Uint256;
 use std::str::FromStr;
+use tempfile::TempDir;
 use testcontainers::{
     clients,
     images::generic::{GenericImage, Stream, WaitFor},
@@ -14,24 +15,57 @@ use testcontainers::{
 };
 use url::Url;
 
-pub const TOKEN_CONTRACT: &str = include_str!("./erc20_token/contract.hex");
-pub const GETH_HOST_KEYSTORE_DIR: &str = "./.geth_datadir";
+const TOKEN_CONTRACT: &str = include_str!("./erc20_token/contract.hex");
 
 // We can decrypt the private key from the file in
 // "../../.geth_datadir/", but it takes more than 1 minute, which
 // slows down the tests unnecessarily
-pub const GETH_DEV_ACCOUNT_PRIVATE_KEY: &str =
+const GETH_DEV_ACCOUNT_PRIVATE_KEY: &str =
     "0x0bad9cdf7205a60039d5034b38cdadbbfc5e4f1c7436da011dd7d8c7684bcb1c";
+
+const GETH_DEV_ACCOUNT: &str = r#"{
+  "address": "88552c5d1a30ac899e3d17c63754f3f257e42663",
+  "crypto": {
+    "cipher": "aes-128-ctr",
+    "ciphertext": "234d429c739dad1084b8d73c4ea4d2a7d7e60cc88af5af437836145ca80253af",
+    "cipherparams": {
+      "iv": "005408cdd662315040c8293dc3027541"
+    },
+    "kdf": "scrypt",
+    "kdfparams": {
+      "dklen": 32,
+      "n": 262144,
+      "p": 1,
+      "r": 8,
+      "salt": "5cb5f7f5f1fa214f966c3e81f8ba442674d1c27364e7f619c8a0cdd23095b7cb"
+    },
+    "mac": "a6629e7c6c7dd421ca4017fe5b86a437c357d6d4ea9e22d909a03295f476f45d"
+  },
+  "id": "35e7c877-d306-4cba-8ddc-0546a4d4d7f3",
+  "version": 3
+}
+"#;
+
+const GETH_DEV_ACCOUNT_FILE_NAME: &str =
+    "UTC--2020-06-24T07-35-41.322460345Z--88552c5d1a30ac899e3d17c63754f3f257e42663";
 
 #[derive(Debug)]
 pub struct Blockchain<'c> {
     _container: Container<'c, clients::Cli, GenericImage>,
+    _volume: TempDir,
     dev_account_wallet: ethereum::Wallet,
     pub node_url: Url,
 }
 
 impl<'c> Blockchain<'c> {
     pub fn new(client: &'c clients::Cli) -> anyhow::Result<Self> {
+        let temp_dir = tempfile::tempdir()?;
+
+        std::fs::write(
+            temp_dir.path().join(GETH_DEV_ACCOUNT_FILE_NAME),
+            GETH_DEV_ACCOUNT,
+        )?;
+
         let geth_image = GenericImage::new("ethereum/client-go:v1.9.13")
             .with_wait_for(WaitFor::LogMessage {
                 message: String::from("mined potential block"),
@@ -49,9 +83,10 @@ impl<'c> Blockchain<'c> {
                 String::from("--rpcapi=db,eth,net,web3,personal"),
             ])
             .with_volume(
-                std::fs::canonicalize(GETH_HOST_KEYSTORE_DIR)?
+                temp_dir
+                    .path()
                     .to_str()
-                    .expect("valid unicode path"),
+                    .context("failed to print temp path to string")?,
                 "/.ethereum/",
             );
         let container = client.run(geth_image);
@@ -70,6 +105,7 @@ impl<'c> Blockchain<'c> {
 
         Ok(Self {
             _container: container,
+            _volume: temp_dir,
             node_url: url,
             dev_account_wallet,
         })
