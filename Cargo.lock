@@ -149,27 +149,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-stream"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22068c0c19514942eefcfd4daf8976ef1aad84e61539f95cd200c35202f80af5"
-dependencies = [
- "async-stream-impl",
- "futures-core",
-]
-
-[[package]]
-name = "async-stream-impl"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25f9db3b38af870bf7e5cc649167533b493928e50744e2c30ae350230b414670"
-dependencies = [
- "proc-macro2 1.0.21",
- "quote 1.0.7",
- "syn 1.0.41",
-]
-
-[[package]]
 name = "async-trait"
 version = "0.1.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -230,24 +209,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b20b618342cf9891c292c4f5ac2cde7287cc5c87e87e9c769d617793607dec1"
 
 [[package]]
-name = "base58"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5024ee8015f02155eee35c711107ddd9a9bf3cb689cf2a9089c97e79b6e1ae83"
-
-[[package]]
-name = "base58-monero"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06753f02479480272d4ffc2c850174e2c2e84c887ffa357bc0d8f61ff38791fc"
-dependencies = [
- "async-stream",
- "futures-util",
- "tiny-keccak 2.0.2",
- "tokio",
-]
-
-[[package]]
 name = "base64"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -268,12 +229,6 @@ name = "base64"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3441f0f7b02788e948e47f457ca01f1d7e6d92c693bc132c22b087d3141c03ff"
-
-[[package]]
-name = "bech32"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58946044516aa9dc922182e0d6e9d124a31aafe6b421614654eb27cf90cec09c"
 
 [[package]]
 name = "bech32"
@@ -302,7 +257,7 @@ version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a32c9d2fa897cfbb0db45d71e3d2838666194abc4828c0f994e4b5c3bf85ba4"
 dependencies = [
- "bech32 0.7.2",
+ "bech32",
  "bitcoin_hashes 0.7.6",
  "hex 0.3.2",
  "secp256k1 0.17.2",
@@ -833,27 +788,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crossbeam-channel"
-version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b153fe7cbef478c567df0f972e02e6d736db11affe43dfc9c56a9374d1adfb87"
-dependencies = [
- "crossbeam-utils",
- "maybe-uninit",
-]
-
-[[package]]
-name = "crossbeam-deque"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f02af974daeee82218205558e51ec8768b48cf524bd01d550abe5573a608285"
-dependencies = [
- "crossbeam-epoch",
- "crossbeam-utils",
- "maybe-uninit",
-]
-
-[[package]]
 name = "crossbeam-epoch"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1221,16 +1155,6 @@ name = "fake-simd"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
-
-[[package]]
-name = "ff"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4b967a3ee6ae993f0094174257d404a5818f58be79d67a1aea1ec8996d28906"
-dependencies = [
- "byteorder",
- "rand_core 0.5.1",
-]
 
 [[package]]
 name = "fixed-hash"
@@ -2476,8 +2400,6 @@ dependencies = [
  "tracing-subscriber",
  "url 2.1.1",
  "uuid",
- "wagyu-ethereum",
- "wagyu-model",
 ]
 
 [[package]]
@@ -2857,17 +2779,6 @@ dependencies = [
  "redox_syscall",
  "smallvec 1.4.2",
  "winapi 0.3.9",
-]
-
-[[package]]
-name = "pbkdf2"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "006c038a43a45995a9670da19e67600114740e8511d4333bf97a56e66a7542d9"
-dependencies = [
- "byteorder",
- "crypto-mac 0.7.0",
- "rayon",
 ]
 
 [[package]]
@@ -3326,31 +3237,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rayon"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfd016f0c045ad38b5251be2c9c0ab806917f82da4d36b2a327e5166adad9270"
-dependencies = [
- "autocfg 1.0.1",
- "crossbeam-deque",
- "either",
- "rayon-core",
-]
-
-[[package]]
-name = "rayon-core"
-version = "1.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91739a34c4355b5434ce54c9086c5895604a9c278586d1f1aa95e04f66b525a0"
-dependencies = [
- "crossbeam-channel",
- "crossbeam-deque",
- "crossbeam-utils",
- "lazy_static",
- "num_cpus",
-]
-
-[[package]]
 name = "rdrand"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3462,17 +3348,6 @@ dependencies = [
  "untrusted",
  "web-sys",
  "winapi 0.3.9",
-]
-
-[[package]]
-name = "ripemd160"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad5112e0dbbb87577bfbc56c42450235e3012ce336e29c5befd7807bd626da4a"
-dependencies = [
- "block-buffer 0.7.3",
- "digest 0.8.1",
- "opaque-debug 0.2.3",
 ]
 
 [[package]]
@@ -4705,54 +4580,6 @@ name = "void"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
-
-[[package]]
-name = "wagyu-ethereum"
-version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aeb4d0b9427a6d31cec58d50c51022cf23261d851d79d7dde2040613eb343e97"
-dependencies = [
- "base58",
- "bitvec",
- "ethereum-types",
- "hex 0.4.2",
- "hmac 0.7.1",
- "pbkdf2",
- "rand 0.7.3",
- "regex",
- "rlp",
- "secp256k1 0.17.2",
- "serde",
- "serde_json",
- "sha2 0.8.2",
- "tiny-keccak 1.5.0",
- "wagyu-model",
-]
-
-[[package]]
-name = "wagyu-model"
-version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98dcfd8275fadf569c386e111968827cb3ca49937dbe816e2f2d43723272635f"
-dependencies = [
- "base58",
- "base58-monero",
- "bech32 0.6.0",
- "byteorder",
- "crypto-mac 0.7.0",
- "ethereum-types",
- "failure",
- "ff",
- "hex 0.4.2",
- "rand 0.7.3",
- "rand_core 0.5.1",
- "ripemd160",
- "rlp",
- "secp256k1 0.17.2",
- "serde_json",
- "sha2 0.8.2",
- "uint",
-]
 
 [[package]]
 name = "wait-timeout"
