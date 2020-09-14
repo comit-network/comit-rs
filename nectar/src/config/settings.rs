@@ -4,6 +4,7 @@ use crate::{
     ethereum, Spread,
 };
 use anyhow::Context;
+use comit::Role;
 use log::LevelFilter;
 use std::convert::{TryFrom, TryInto};
 use url::Url;
@@ -122,6 +123,11 @@ pub struct Maker {
     /// balance. Fees are in the nominal native currency and per
     /// transaction.
     pub maximum_possible_fee: Fees,
+    /// Role that the maker wishes to take in the swap protocol. The role of
+    /// Alice means the maker will deploy the HTLC first on the blockchain.
+    /// If Bob fails to proceed with the swap, then the transaction fees to
+    /// deploy the contract are wasted.
+    pub role: Role,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -210,6 +216,7 @@ impl From<Maker> for file::Maker {
             maximum_possible_fee: Some(file::Fees {
                 bitcoin: Some(maker.maximum_possible_fee.bitcoin),
             }),
+            role: Some(maker.role),
         }
     }
 }
@@ -258,6 +265,16 @@ impl Settings {
                         Fees { bitcoin }
                     } else {
                         Fees::default()
+                    }
+                },
+                role: {
+                    match maker {
+                        // If the role is not specified, default to Bob to prevent loss of money
+                        Some(maker) => match maker.role {
+                            Some(role) => role,
+                            None => Role::Bob,
+                        },
+                        None => Role::Bob,
                     }
                 },
             },

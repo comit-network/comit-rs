@@ -22,7 +22,7 @@ use crate::{
     maker::TakeRequestDecision,
     network::{new_swarm, ActivePeer, SetupSwapContext},
 };
-use comit::{Position, Role};
+use comit::Position;
 use std::{sync::Arc, time::Duration};
 
 const ENSURED_CONSUME_ZERO_BUFFER: usize = 0;
@@ -171,8 +171,7 @@ async fn init_maker(
         spread,
         settings.bitcoin.network,
         settings.ethereum.chain,
-        // todo: get from config
-        Role::Bob,
+        settings.maker.role,
     ))
 }
 
@@ -556,7 +555,7 @@ mod tests {
         swap::herc20::asset::ethereum::FromWei,
         test_harness, Seed,
     };
-    use comit::{asset, asset::Erc20Quantity, ethereum::ChainId};
+    use comit::{asset, asset::Erc20Quantity, ethereum::ChainId, Role};
     use ethereum::ether;
     use log::LevelFilter;
 
@@ -581,6 +580,7 @@ mod tests {
                 },
                 spread: Default::default(),
                 maximum_possible_fee: Default::default(),
+                role: Role::Bob,
             },
             network: Network {
                 listen: vec!["/ip4/98.97.96.95/tcp/20500"

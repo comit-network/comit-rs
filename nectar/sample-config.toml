@@ -7,6 +7,7 @@
 [maker]
 # The spread to apply to the mid-market when publish an offer. It's a pyrimiad format, 12.34 = 12.34% spread.
 spread = 500
+role = "Bob"
 
 [maker.max_sell]
 # The maximum amount of bitcoin to sell in one order, optional field.
@@ -19,7 +20,7 @@ dai = 1000
 [maker.maximum_possible_fee]
 # An estimation of the maximum fee that we would expect to pay, used to ensure we always have enough
 # balance to execute an order we publish.
-bitcoin = 0.00009275 
+bitcoin = 0.00009275
 
 [network]
 # The libp2p socket on which nectar listens for COMIT messages.

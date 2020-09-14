@@ -79,6 +79,7 @@ where
 mod tests {
     use super::*;
     use crate::{bitcoin, config::file::Level, ethereum::ChainId, Spread};
+    use comit::Role;
     use std::{fs, io::Write};
 
     #[test]
@@ -125,6 +126,7 @@ mod tests {
                 maximum_possible_fee: Some(file::Fees {
                     bitcoin: Some(bitcoin::Amount::from_btc(0.00009275).unwrap()),
                 }),
+                role: Some(Role::Bob),
             }),
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],

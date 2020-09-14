@@ -3,7 +3,7 @@ use crate::{
     config::{Bitcoind, Data, MaxSell, Network},
     Spread,
 };
-use comit::ethereum::ChainId;
+use comit::{ethereum::ChainId, Role};
 use config as config_rs;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
@@ -30,6 +30,7 @@ pub struct Maker {
     pub spread: Option<Spread>,
     pub max_sell: Option<MaxSell>,
     pub maximum_possible_fee: Option<Fees>,
+    pub role: Option<Role>,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -162,6 +163,7 @@ mod tests {
 # 1000 is 10.00% spread
 spread = 1000
 maximum_possible_fee = { bitcoin = 0.01 }
+role = "Alice"
 
 [maker.max_sell]
 bitcoin = 1.23456
@@ -197,6 +199,7 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                 maximum_possible_fee: Some(Fees {
                     bitcoin: Some(bitcoin::Amount::from_btc(0.01).unwrap()),
                 }),
+                role: Some(Role::Alice),
             }),
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
@@ -247,6 +250,7 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                 maximum_possible_fee: Some(Fees {
                     bitcoin: Some(bitcoin::Amount::from_btc(0.01).unwrap()),
                 }),
+                role: Some(Role::Alice),
             }),
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
@@ -276,6 +280,7 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
 
         let expected = r#"[maker]
 spread = 1000
+role = "Alice"
 
 [maker.max_sell]
 bitcoin = 1.23456
