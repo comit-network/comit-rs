@@ -148,7 +148,7 @@ mod tests {
     };
     use spectral::prelude::*;
     use std::{io::Write, path::PathBuf};
-    use tempdir::TempDir;
+    use tempfile::TempDir;
 
     #[derive(serde::Deserialize, PartialEq, Debug)]
     struct LoggingOnlyConfig {
@@ -224,7 +224,7 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
             }),
         };
 
-        let tmp_dir = TempDir::new("nectar_test").unwrap();
+        let tmp_dir = TempDir::new().unwrap();
         let file_path = tmp_dir.path().join("config.toml");
 
         let mut file = std::fs::File::create(&file_path).unwrap();

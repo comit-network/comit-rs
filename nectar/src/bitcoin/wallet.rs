@@ -277,7 +277,7 @@ mod docker_tests {
         path::Path,
         process::{Command, Stdio},
     };
-    use tempdir::TempDir;
+    use tempfile::TempDir;
     use testcontainers::clients;
 
     #[tokio::test]
@@ -311,7 +311,7 @@ mod docker_tests {
 
         let _ = wallet.dump(wif_path_docker).await.unwrap();
 
-        let tmp_dir = TempDir::new("nectar_test").unwrap();
+        let tmp_dir = TempDir::new().unwrap();
         let path = tmp_dir.path().join("wallet.wif");
 
         Command::new("docker")

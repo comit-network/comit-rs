@@ -2449,7 +2449,7 @@ dependencies = [
  "structopt",
  "strum 0.18.0",
  "strum_macros 0.18.0",
- "tempdir",
+ "tempfile",
  "testcontainers 0.9.1",
  "thiserror",
  "time 0.2.19",
@@ -4203,16 +4203,6 @@ dependencies = [
  "quote 1.0.7",
  "syn 1.0.40",
  "unicode-xid 0.2.1",
-]
-
-[[package]]
-name = "tempdir"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15f2b5fb00ccdf689e0149d1b1b3c03fead81c2b37735d812fa8bddbbf41b6d8"
-dependencies = [
- "rand 0.4.6",
- "remove_dir_all",
 ]
 
 [[package]]

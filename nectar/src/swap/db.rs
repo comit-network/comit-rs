@@ -27,7 +27,7 @@ pub trait Save<T>: Send + Sync + 'static {
 pub struct Database {
     db: sled::Db,
     #[cfg(test)]
-    tmp_dir: tempdir::TempDir,
+    tmp_dir: tempfile::TempDir,
 }
 
 impl Database {
@@ -57,7 +57,7 @@ impl Database {
 
     #[cfg(test)]
     pub fn new_test() -> anyhow::Result<Self> {
-        let tmp_dir = tempdir::TempDir::new("nectar_test").unwrap();
+        let tmp_dir = tempfile::TempDir::new().unwrap();
         let db = sled::open(tmp_dir.path()).context(format!(
             "Could not open the DB at {}",
             tmp_dir.path().display()
