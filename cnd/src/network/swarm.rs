@@ -284,11 +284,11 @@ async fn handle_new_match(
     let (order_hbit, order_herc20) = storage
         .db
         .do_in_transaction(|conn| {
-            use crate::storage::tables;
+            use crate::storage::*;
 
-            let order = tables::Order::by_order_id(conn, order_id)?;
-            let hbit_params = tables::OrderHbitParams::by_order(conn, &order)?;
-            let herc20_params = tables::OrderHerc20Params::by_order(conn, &order)?;
+            let order = Order::by_order_id(conn, order_id)?;
+            let hbit_params = OrderHbitParams::by_order(conn, &order)?;
+            let herc20_params = OrderHerc20Params::by_order(conn, &order)?;
 
             Ok((hbit_params, herc20_params))
         })

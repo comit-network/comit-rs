@@ -12,11 +12,11 @@ use comit::{
         orderbook,
         protocols::setup_swap::{BobParams, RoleDependentParams},
         setup_swap,
-        setup_swap::{AliceParams, CommonParams},
+        setup_swap::CommonParams,
     },
     order::SwapProtocol,
     orderpool::Match,
-    Position, Role, Secret, SecretHash,
+    Position, Role,
 };
 use futures::Future;
 use libp2p::{
@@ -105,8 +105,6 @@ pub struct Nectar {
     pub orderbook: orderbook::Orderbook,
     pub setup_swap: setup_swap::SetupSwap<SetupSwapContext>,
     #[behaviour(ignore)]
-    seed: Seed,
-    #[behaviour(ignore)]
     identity: Keypair,
     #[behaviour(ignore)]
     events: VecDeque<Event>,
@@ -134,7 +132,6 @@ impl Nectar {
         let peer_id = PeerId::from(identity.public());
 
         Self {
-            seed,
             orderbook: comit::network::Orderbook::new(peer_id, identity.clone()),
             identity,
             setup_swap: Default::default(),
@@ -152,27 +149,6 @@ impl Nectar {
 
     pub fn peer_id(&self) -> PeerId {
         PeerId::from(self.identity.public())
-    }
-
-    fn derive_secret_hash(&self, swap_id: SwapId) -> SecretHash {
-        let secret: Secret = self
-            .sha256_with_seed(&[b"SECRET", swap_id.as_bytes()])
-            .into();
-        SecretHash::new(secret)
-    }
-
-    fn sha256_with_seed(&self, slices: &[&[u8]]) -> [u8; 32] {
-        let mut engine = sha256::HashEngine::default();
-
-        engine.input(&self.seed.bytes());
-        engine.input(b"TRANSIENT_KEY");
-        for slice in slices {
-            engine.input(slice);
-        }
-
-        let hash = sha256::Hash::from_engine(engine);
-
-        hash.into_inner()
     }
 
     fn ethereum_chain_id(&self) -> ethereum::ChainId {
@@ -244,7 +220,6 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::Be
 
                 let token_contract = self.dai_contract_address;
                 let swap_id = SwapId::default();
-                let secret_hash = self.derive_secret_hash(swap_id);
                 let index = match self.database.fetch_inc_bitcoin_transient_key_index() {
                     Err(err) => {
                         tracing::error!(
@@ -313,10 +288,9 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::Be
                                 comit::network::setup_swap::SwapProtocol::HbitHerc20,
                             ),
                             Position::Sell => (
-                                RoleDependentParams::Alice(AliceParams {
+                                RoleDependentParams::Bob(BobParams {
                                     bitcoin_identity,
                                     ethereum_identity,
-                                    secret_hash,
                                 }),
                                 CommonParams {
                                     erc20: comit::asset::Erc20 {
@@ -351,10 +325,9 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::Be
 
                         match our_position {
                             Position::Buy => (
-                                RoleDependentParams::Alice(AliceParams {
+                                RoleDependentParams::Bob(BobParams {
                                     bitcoin_identity,
                                     ethereum_identity,
-                                    secret_hash,
                                 }),
                                 CommonParams {
                                     erc20: comit::asset::Erc20 {
@@ -385,7 +358,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::orderbook::Be
                                     ethereum_chain_id: self.ethereum_chain_id(),
                                     bitcoin_network: self.bitcoin_network().into(),
                                 },
-                                comit::network::setup_swap::SwapProtocol::Herc20Hbit,
+                                comit::network::setup_swap::SwapProtocol::HbitHerc20,
                             ),
                         }
                     }

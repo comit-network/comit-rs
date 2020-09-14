@@ -251,7 +251,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<setup_swap::BehaviourOutEvent<S
     fn inject_event(&mut self, event: setup_swap::BehaviourOutEvent<SetupSwapContext>) {
         match event {
             setup_swap::BehaviourOutEvent::ExecutableSwap(exec_swap) => {
-                use crate::storage::tables::{InsertableHbit, InsertableHerc20, InsertableSwap};
+                use crate::storage::{InsertableHbit, InsertableHerc20, InsertableSwap};
                 use setup_swap::SwapProtocol::*;
 
                 let SetupSwapContext {
