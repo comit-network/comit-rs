@@ -10,6 +10,7 @@ import createLnRpc, {
 import { LightningNodeConfig } from "../environment";
 import { Logger } from "log4js";
 import pTimeout from "p-timeout";
+import pRetry from "p-retry";
 
 export interface LightningChannel {
     getBalance(): Promise<bigint>;
@@ -196,7 +197,15 @@ export class LndClient {
             localFundingAmount: quantity.toString(10),
         };
 
-        const openChannelResponse = await this.lnrpc.openChannelSync(request);
+        // Try to open the channel up to 5 times.
+        // We may be unlucky and try to open the channel while
+        // the other node is currently syncing a block.
+        // Given that we have blocks every second, this occurs unfortunately
+        // often enough to have the test suite fail regularly.
+        const openChannelResponse = await pRetry(
+            () => this.lnrpc.openChannelSync(request),
+            { retries: 5 }
+        );
         const channelPoint = serializeChannelPoint(openChannelResponse);
 
         const waitForChannel = async () => {
