@@ -11,7 +11,7 @@ bitcoin = { version = "0.23", features = ["rand", "use-serde"] }
 chrono = "0.4"
 clarity = "0.1"
 comit = { path = "../comit/", package = "comit" }
-config = "0.10"
+config = { version = "0.10", default-features = false, features = ["toml"] }
 conquer-once = "0.2"
 csv = "1.1"
 derivative = "2.1"
