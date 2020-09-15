@@ -22,7 +22,11 @@ export default async function killNodes(locksDir: any) {
             process.stderr.write(
                 `Found pid file ${pidFile}, sending SIGINT to process with PID ${pid}\n`
             );
-            process.kill(pid, "SIGTERM");
+            try {
+                process.kill(pid, "SIGTERM");
+            } catch (e) {
+                process.stderr.write(`Failed to kill process ${pid}\n`);
+            }
         }
     }
 
