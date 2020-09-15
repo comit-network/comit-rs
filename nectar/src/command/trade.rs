@@ -507,7 +507,6 @@ async fn handle_network_event(
 
 async fn handle_setup_swap_event(
     event: setup_swap::BehaviourOutEvent<SetupSwapContext>,
-    // TODO: Do not force Arc down the line
     database: Arc<Database>,
     bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum::Wallet>,
