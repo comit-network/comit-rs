@@ -1,6 +1,6 @@
 import { Network } from "../wallets/bitcoin";
 import { Global } from "@jest/types";
-import { CndConfigFile } from "../config";
+import { CndConfigFile } from "./cnd_config_file";
 import { Logger } from "log4js";
 import { LndClient } from "../wallets/lightning";
 

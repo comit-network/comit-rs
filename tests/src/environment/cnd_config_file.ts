@@ -1,12 +1,12 @@
 import * as tmp from "tmp";
 import getPort from "get-port";
-import { Role } from "./actors";
+import { Role } from "../actors";
 import {
     BitcoinNodeConfig,
     EthereumNodeConfig,
     LedgerConfig,
     LightningNodeConfig,
-} from "./environment";
+} from "./index";
 
 export interface CndConfigFile {
     http_api: HttpApi;
