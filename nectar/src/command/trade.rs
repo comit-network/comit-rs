@@ -111,19 +111,17 @@ pub async fn trade(
                 }
             },
             orderbook_event = swarm.next().fuse() => {
-                let network_event = pre_handle_network_event(orderbook_event, Arc::clone(&db), Arc::clone(&bitcoin_wallet), Arc::clone(&ethereum_wallet))?;
-
                 handle_network_event(
-                    network_event,
-                    &mut maker,
-                    &mut swarm,
-                    Arc::clone(&db),
-                    Arc::clone(&bitcoin_wallet),
-                    Arc::clone(&ethereum_wallet),
-                    Arc::clone(&bitcoin_connector),
-                    Arc::clone(&ethereum_connector),
-                    swap_execution_finished_sender.clone(),
-                ).await;
+                        orderbook_event,
+                        &mut maker,
+                        &mut swarm,
+                        Arc::clone(&db),
+                        Arc::clone(&bitcoin_wallet),
+                        Arc::clone(&ethereum_wallet),
+                        Arc::clone(&bitcoin_connector),
+                        Arc::clone(&ethereum_connector),
+                        swap_execution_finished_sender.clone()
+                    ).await?;
             },
             rate_update = rate_update_receiver.next().fuse() => {
                 handle_rate_update(rate_update.unwrap(), &mut maker, &mut swarm);
@@ -468,27 +466,55 @@ async fn handle_finished_swap(
         .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
 }
 
-// TODO: merge with `handle_network_event`
-fn pre_handle_network_event(
+#[allow(clippy::too_many_arguments)]
+async fn handle_network_event(
     event: network::BehaviourOutEvent,
-    database: impl Borrow<Database>,
-    bitcoin_wallet: impl Borrow<bitcoin::Wallet>,
-    ethereum_wallet: impl Borrow<ethereum::Wallet>,
-) -> anyhow::Result<network::Event> {
+    maker: &mut Maker,
+    swarm: &mut Swarm,
+    database: Arc<Database>,
+    bitcoin_wallet: Arc<bitcoin::Wallet>,
+    ethereum_wallet: Arc<ethereum::Wallet>,
+    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
+    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
+    finished_swap_sender: Sender<FinishedSwap>,
+) -> anyhow::Result<()> {
     match event {
         network::BehaviourOutEvent::Orderbook(event) => {
-            handle_orderbook_event(event, database, bitcoin_wallet, ethereum_wallet)
+            handle_orderbook_event(
+                event,
+                maker,
+                swarm,
+                database,
+                bitcoin_wallet,
+                ethereum_wallet,
+            )
+            .await
         }
         network::BehaviourOutEvent::SetupSwap(event) => {
-            handle_setup_swap_event(event, bitcoin_wallet)
+            handle_setup_swap_event(
+                event,
+                database,
+                bitcoin_wallet,
+                ethereum_wallet,
+                bitcoin_connector,
+                ethereum_connector,
+                finished_swap_sender,
+            )
+            .await
         }
     }
 }
 
-fn handle_setup_swap_event(
+async fn handle_setup_swap_event(
     event: setup_swap::BehaviourOutEvent<SetupSwapContext>,
-    bitcoin_wallet: impl Borrow<bitcoin::Wallet>,
-) -> anyhow::Result<network::Event> {
+    // TODO: Do not force Arc down the line
+    database: Arc<Database>,
+    bitcoin_wallet: Arc<bitcoin::Wallet>,
+    ethereum_wallet: Arc<ethereum::Wallet>,
+    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
+    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
+    finished_swap_sender: Sender<FinishedSwap>,
+) -> anyhow::Result<()> {
     match event {
         setup_swap::BehaviourOutEvent::ExecutableSwap(exec_swap) => {
             let swap_id = exec_swap.context.swap_id;
@@ -499,7 +525,6 @@ fn handle_setup_swap_event(
             );
 
             let bitcoin_transient_sk = bitcoin_wallet
-                .borrow()
                 .derive_transient_sk(exec_swap.context.bitcoin_transient_key_index)
                 .context("Could not derive Bitcoin transient key")?;
 
@@ -597,20 +622,45 @@ fn handle_setup_swap_event(
                     })
                 }
             };
-            Ok(network::Event::SpawnSwap(swap_kind))
+            let swap_id = swap_kind.swap_id();
+
+            let res = database
+                .insert_swap(swap_kind.clone())
+                .map_err(|e| tracing::error!("Could not insert swap {}: {:?}", swap_id, e))
+                .await;
+
+            if res.is_ok() {
+                let _ = tokio::spawn(execute_swap(
+                    database,
+                    bitcoin_wallet,
+                    ethereum_wallet,
+                    bitcoin_connector,
+                    ethereum_connector,
+                    finished_swap_sender,
+                    swap_kind,
+                ))
+                .await
+                .map_err(|e| {
+                    tracing::error!("Execution failed for swap swap {}: {:?}", swap_id, e)
+                });
+            }
         }
         setup_swap::BehaviourOutEvent::AlreadyHaveRoleParams { peer, .. } => {
             bail!("already received role params from {}", peer)
         }
     }
+
+    Ok(())
 }
 
-fn handle_orderbook_event(
+async fn handle_orderbook_event(
     event: orderbook::BehaviourOutEvent,
+    maker: &mut Maker,
+    swarm: &mut Swarm,
     database: impl Borrow<Database>,
     bitcoin_wallet: impl Borrow<bitcoin::Wallet>,
     ethereum_wallet: impl Borrow<ethereum::Wallet>,
-) -> anyhow::Result<network::Event> {
+) -> anyhow::Result<()> {
     match event {
         orderbook::BehaviourOutEvent::OrderMatch(Match {
             peer,
@@ -618,11 +668,10 @@ fn handle_orderbook_event(
             quantity,
             our_position,
             swap_protocol,
-            match_reference_point,
+            match_reference_point: match_ref_point,
             ours,
             ..
         }) => {
-            // TODO: Just push this to the stream and process it in `trade.rs`.
             let taker = ActivePeer {
                 peer_id: peer.clone(),
             };
@@ -685,12 +734,12 @@ fn handle_orderbook_event(
                     // todo: do checked addition
                     #[allow(clippy::cast_sign_loss)]
                     #[allow(clippy::cast_possible_truncation)]
-                    let ethereum_absolute_expiry = (match_reference_point
+                    let ethereum_absolute_expiry = (match_ref_point
                         + time::Duration::from(herc20_expiry_offset))
                     .timestamp() as u32;
                     #[allow(clippy::cast_sign_loss)]
                     #[allow(clippy::cast_possible_truncation)]
-                    let bitcoin_absolute_expiry = (match_reference_point
+                    let bitcoin_absolute_expiry = (match_ref_point
                         + time::Duration::from(hbit_expiry_offset))
                     .timestamp() as u32;
 
@@ -740,12 +789,12 @@ fn handle_orderbook_event(
                     // todo: do checked addition
                     #[allow(clippy::cast_sign_loss)]
                     #[allow(clippy::cast_possible_truncation)]
-                    let ethereum_absolute_expiry = (match_reference_point
+                    let ethereum_absolute_expiry = (match_ref_point
                         + time::Duration::from(herc20_expiry_offset))
                     .timestamp() as u32;
                     #[allow(clippy::cast_sign_loss)]
                     #[allow(clippy::cast_possible_truncation)]
-                    let bitcoin_absolute_expiry = (match_reference_point
+                    let bitcoin_absolute_expiry = (match_ref_point
                         + time::Duration::from(hbit_expiry_offset))
                     .timestamp() as u32;
 
@@ -790,63 +839,27 @@ fn handle_orderbook_event(
                 }
             };
 
-            Ok(network::Event::OrderMatch {
-                form,
-                to: peer,
-                to_send: role_dependant_params,
-                common: common_params,
-                swap_protocol,
-                swap_id,
-                match_ref_point: match_reference_point,
-                bitcoin_transient_key_index: index,
-            })
-        }
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-async fn handle_network_event(
-    network_event: network::Event,
-    maker: &mut Maker,
-    swarm: &mut Swarm,
-    db: Arc<Database>,
-    bitcoin_wallet: Arc<bitcoin::Wallet>,
-    ethereum_wallet: Arc<ethereum::Wallet>,
-    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
-    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    finished_swap_sender: Sender<FinishedSwap>,
-) {
-    match network_event {
-        network::Event::OrderMatch {
-            form,
-            to,
-            to_send,
-            common,
-            swap_protocol,
-            swap_id,
-            match_ref_point,
-            bitcoin_transient_key_index,
-        } => {
             let result = maker.process_taken_order(form);
 
             match result {
                 Ok(TakeRequestDecision::GoForSwap) => {
                     if let Err(e) = swarm.setup_swap.send(
-                        &to,
-                        to_send,
-                        common,
+                        &peer,
+                        role_dependant_params,
+                        common_params,
                         swap_protocol,
                         SetupSwapContext {
                             swap_id,
                             match_ref_point,
-                            bitcoin_transient_key_index,
+                            bitcoin_transient_key_index: index,
                         },
                     ) {
                         tracing::error!("Sending setup swap message yielded error: {}", e)
                     }
 
-                    let _ = db
-                        .insert_active_peer(ActivePeer { peer_id: to })
+                    let _ = database
+                        .borrow()
+                        .insert_active_peer(ActivePeer { peer_id: peer })
                         .await
                         .map_err(|e| tracing::error!("Failed to confirm order: {}", e));
 
@@ -859,31 +872,9 @@ async fn handle_network_event(
                 Err(e) => tracing::error!("Processing taken order yielded error: {}", e),
             };
         }
-        network::Event::SpawnSwap(swap) => {
-            let swap_id = swap.swap_id();
-
-            let res = db
-                .insert_swap(swap.clone())
-                .map_err(|e| tracing::error!("Could not insert swap {}: {:?}", swap_id, e))
-                .await;
-
-            if res.is_ok() {
-                let _ = tokio::spawn(execute_swap(
-                    Arc::clone(&db),
-                    Arc::clone(&bitcoin_wallet),
-                    Arc::clone(&ethereum_wallet),
-                    Arc::clone(&bitcoin_connector),
-                    Arc::clone(&ethereum_connector),
-                    finished_swap_sender,
-                    swap,
-                ))
-                .await
-                .map_err(|e| {
-                    tracing::error!("Execution failed for swap swap {}: {:?}", swap_id, e)
-                });
-            }
-        }
     }
+
+    Ok(())
 }
 
 #[cfg(all(test, feature = "test-docker"))]

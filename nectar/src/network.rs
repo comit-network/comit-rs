@@ -1,8 +1,6 @@
-use crate::{order::BtcDaiOrderForm, swap::SwapKind, SwapId};
+use crate::SwapId;
 use ::bitcoin::hashes::{sha256, Hash, HashEngine};
-use comit::network::{
-    orderbook, protocols::setup_swap::RoleDependentParams, setup_swap, setup_swap::CommonParams,
-};
+use comit::network::{orderbook, setup_swap};
 use futures::Future;
 use libp2p::{
     identity::{ed25519, Keypair},
@@ -43,22 +41,6 @@ pub fn new_swarm(seed: Seed, settings: &crate::config::Settings) -> anyhow::Resu
     }
 
     Ok(swarm)
-}
-
-#[allow(clippy::large_enum_variant)]
-#[derive(Debug)]
-pub enum Event {
-    SpawnSwap(SwapKind),
-    OrderMatch {
-        form: BtcDaiOrderForm,
-        to: PeerId,
-        to_send: RoleDependentParams,
-        common: CommonParams,
-        swap_protocol: comit::network::setup_swap::SwapProtocol,
-        swap_id: SwapId,
-        match_ref_point: OffsetDateTime,
-        bitcoin_transient_key_index: u32,
-    },
 }
 
 #[allow(clippy::large_enum_variant)]
