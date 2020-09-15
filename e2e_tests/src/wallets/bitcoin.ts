@@ -3,7 +3,7 @@ import { Logger } from "log4js";
 import BitcoinRpcClient from "bitcoin-core";
 import { toBitcoin, toSatoshi } from "satoshi-bitcoin";
 import axios, { AxiosError, AxiosInstance, Method } from "axios";
-import { BitcoinNodeConfig } from "../environment";
+import { BitcoinNode } from "../environment";
 import { sleep } from "../utils";
 import pTimeout from "p-timeout";
 
@@ -29,7 +29,7 @@ export interface BitcoinWallet {
 export class BitcoinFaucet {
     private readonly minerClient: BitcoinRpcClient;
 
-    constructor(config: BitcoinNodeConfig, private readonly logger: Logger) {
+    constructor(config: BitcoinNode, private readonly logger: Logger) {
         this.minerClient = new BitcoinRpcClient({
             network: config.network,
             port: config.rpcPort,
@@ -87,7 +87,7 @@ async function waitUntilBalanceReaches(
 }
 
 export class BitcoindWallet implements BitcoinWallet {
-    public static async newInstance(config: BitcoinNodeConfig, logger: Logger) {
+    public static async newInstance(config: BitcoinNode, logger: Logger) {
         const walletName = crypto.randomBytes(32).toString("hex");
         const auth = {
             username: config.username,

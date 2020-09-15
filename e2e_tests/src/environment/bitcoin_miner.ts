@@ -1,5 +1,5 @@
 import { sleep } from "../utils";
-import { BitcoinNodeConfig } from "./index";
+import { BitcoinNode } from "./index";
 import BitcoinRpcClient from "bitcoin-core";
 import { promises as asyncFs } from "fs";
 
@@ -9,7 +9,7 @@ const configFile = process.argv[2];
 run(configFile);
 
 async function run(configFile: string) {
-    const config: BitcoinNodeConfig = await asyncFs
+    const config: BitcoinNode = await asyncFs
         .readFile(configFile, {
             encoding: "utf-8",
         })

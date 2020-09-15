@@ -5,7 +5,7 @@ import { Logger } from "log4js";
 import { LndClient } from "../wallets/lightning";
 
 export interface HarnessGlobal extends Global.Global {
-    ledgerConfigs: LedgerConfig;
+    ledgerNodes: LedgerNodes;
     lndClients: {
         alice?: LndClient;
         bob?: LndClient;
@@ -19,7 +19,7 @@ export interface HarnessGlobal extends Global.Global {
     getLogger: (categories: string[]) => Logger;
 }
 
-export interface BitcoinNodeConfig {
+export interface BitcoinNode {
     network: Network;
     username: string;
     password: string;
@@ -31,7 +31,7 @@ export interface BitcoinNodeConfig {
     minerWallet?: string;
 }
 
-export interface LightningNodeConfig {
+export interface LightningNode {
     p2pSocket: string;
     grpcSocket: string;
     tlsCertPath: string;
@@ -40,18 +40,18 @@ export interface LightningNodeConfig {
     dataDir: string;
 }
 
-export interface EthereumNodeConfig {
+export interface EthereumNode {
     devAccount: string;
     rpc_url: string;
     tokenContract: string;
     chain_id: number;
 }
 
-export interface LedgerConfig {
-    bitcoin?: BitcoinNodeConfig;
-    ethereum?: EthereumNodeConfig;
-    aliceLnd?: LightningNodeConfig;
-    bobLnd?: LightningNodeConfig;
+export interface LedgerNodes {
+    bitcoin?: BitcoinNode;
+    ethereum?: EthereumNode;
+    aliceLnd?: LightningNode;
+    bobLnd?: LightningNode;
 }
 
 export interface LedgerInstance {

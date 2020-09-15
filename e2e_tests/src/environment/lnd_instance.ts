@@ -9,7 +9,7 @@ import download from "download";
 import { platform } from "os";
 import { lock } from "proper-lockfile";
 import { crashListener } from "./crash_listener";
-import { LedgerInstance, LightningNodeConfig } from "./index";
+import { LedgerInstance, LightningNode } from "./index";
 import { waitUntilFileExists } from "./wait_until_file_exists";
 import { existsAsync } from "./async_fs";
 import { AddressType, createLnRpc } from "@radar/lnrpc";
@@ -189,7 +189,7 @@ export class LndInstance implements LedgerInstance {
         return this.lndRestPort;
     }
 
-    get config(): LightningNodeConfig {
+    get config(): LightningNode {
         return {
             p2pSocket: this.p2pSocket,
             grpcSocket: this.grpcSocket,

@@ -7,7 +7,7 @@ import createLnRpc, {
     PaymentStatus,
     SendResponse,
 } from "@radar/lnrpc";
-import { LightningNodeConfig } from "../environment";
+import { LightningNode } from "../environment";
 import { Logger } from "log4js";
 import pTimeout from "p-timeout";
 import pRetry from "p-retry";
@@ -156,7 +156,7 @@ export class LndChannel implements LightningChannel {
  */
 export class LndClient {
     public static async newInstance(
-        config: LightningNodeConfig,
+        config: LightningNode,
         logger: Logger
     ): Promise<LndClient> {
         const grpcConfig = {
@@ -176,7 +176,7 @@ export class LndClient {
     private constructor(
         public readonly lnrpc: LnRpc,
         public readonly invoicesrpc: InvoicesRpc,
-        public readonly config: LightningNodeConfig,
+        public readonly config: LightningNode,
         private readonly logger: Logger
     ) {}
 
