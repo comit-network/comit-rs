@@ -1,4 +1,4 @@
-import { Role } from "./actors";
+import { DumpState, Role, Stoppable } from "./actors";
 import pTimeout from "p-timeout";
 import { HarnessGlobal, LedgerConfig } from "./environment";
 import { CndActor } from "./actors/cnd_actor";
@@ -85,24 +85,8 @@ export function startCndActorTest(
                 return newCndActor(role, true);
             })
         );
-        global
-            .getLogger(["test_environment"])
-            .info("All actors created, running test");
 
-        try {
-            await pTimeout(testFn(actors), 120_000);
-        } catch (e) {
-            global.getLogger(["test_environment"]).error("Test failed", e);
-            for (const actor of actors) {
-                await actor.dumpState();
-            }
-            throw e;
-        } finally {
-            for (const actor of actors) {
-                await actor.stop();
-            }
-        }
-        done();
+        await runTest(actors, () => testFn(actors)).then(done);
     };
 }
 
@@ -124,25 +108,32 @@ export function createCndActorTest(
                 return newCndActor(role, false);
             })
         );
-        global
-            .getLogger(["test_environment"])
-            .info("All actors created, running test");
 
-        try {
-            await pTimeout(testFn(actors), 120_000);
-        } catch (e) {
-            global.getLogger(["test_environment"]).error("Test failed", e);
-            for (const actor of actors) {
-                await actor.dumpState();
-            }
-            throw e;
-        } finally {
-            for (const actor of actors) {
-                await actor.stop();
-            }
-        }
-        done();
+        await runTest(actors, () => testFn(actors)).then(done);
     };
+}
+
+async function runTest<A extends Iterable<Stoppable & DumpState>>(
+    actors: A,
+    testFn: () => Promise<void>
+) {
+    const logger = global.getLogger(["test_environment"]);
+
+    logger.info("All actors created, running test");
+
+    try {
+        await pTimeout(testFn(), 120_000);
+    } catch (e) {
+        logger.error("Test failed", e);
+        for (const actor of actors) {
+            await actor.dumpState();
+        }
+        throw e;
+    } finally {
+        for (const actor of actors) {
+            await actor.stop();
+        }
+    }
 }
 
 async function newCndActor(role: Role, startCnd: boolean) {
