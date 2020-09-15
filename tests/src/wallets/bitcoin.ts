@@ -43,9 +43,9 @@ export class BitcoinFaucet {
     public async mint(
         satoshis: bigint,
         address: string,
-        getBalance: () => Promise<bigint>
+        getBalance?: () => Promise<bigint>
     ): Promise<void> {
-        const startingBalance = await getBalance();
+        const startingBalance = getBalance ? await getBalance() : 0n;
 
         const blockHeight = await this.minerClient.getBlockCount();
 
@@ -60,7 +60,12 @@ export class BitcoinFaucet {
         await this.minerClient.sendToAddress(address, btc);
         this.logger.info("Minted", btc, "BTC to", address);
 
-        await waitUntilBalanceReaches(getBalance, startingBalance + satoshis);
+        if (getBalance) {
+            await waitUntilBalanceReaches(
+                getBalance,
+                startingBalance + satoshis
+            );
+        }
     }
 }
 
