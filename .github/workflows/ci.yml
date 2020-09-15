@@ -127,14 +127,14 @@ jobs:
         if: matrix.e2e
         uses: actions/cache@v2
         with:
-          path: api_tests/node_modules
-          key: ${{ matrix.os }}-node-14-node-modules-directory-${{ hashFiles('api_tests/package.json') }}
+          path: tests/node_modules
+          key: ${{ matrix.os }}-node-14-node-modules-directory-${{ hashFiles('tests/package.json') }}
 
       - name: Run e2e tests
         if: matrix.e2e
         run: |
           export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH
-          cd api_tests
+          cd tests
           yarn install
           yarn ci
 
@@ -143,25 +143,25 @@ jobs:
         uses: actions/upload-artifact@v2-preview
         with:
           name: ${{ matrix.os }}-e2e-logs-bitcoind.log
-          path: api_tests/log/bitcoind/regtest/debug.log
+          path: tests/log/bitcoind/regtest/debug.log
 
       - name: Upload parity log
         if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
           name: ${{ matrix.os }}-e2e-logs-parity.log
-          path: api_tests/log/parity/parity.log
+          path: tests/log/parity/parity.log
 
       - name: Upload lnd logs
         if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
           name: ${{ matrix.os }}-e2e-logs-lnd
-          path: api_tests/log/lnd-*/logs/bitcoin/regtest/lnd.log
+          path: tests/log/lnd-*/logs/bitcoin/regtest/lnd.log
 
       - name: Upload e2e logs
         if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
           name: ${{ matrix.os }}-e2e-test-logs
-          path: api_tests/log/tests/
+          path: tests/log/tests/
