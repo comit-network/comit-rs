@@ -16,18 +16,18 @@ export class CndInstance {
         private readonly cargoTargetDirectory: string,
         private readonly logFile: string,
         private readonly logger: Logger,
-        private configFile: CndConfig
+        private _config: CndConfig
     ) {}
 
-    public getConfigFile() {
-        return this.configFile;
+    public get config() {
+        return this._config;
     }
 
     /**
      * Override the config of the node.
      */
-    public setConfigFile(config: CndConfig) {
-        this.configFile = config;
+    public set config(config: CndConfig) {
+        this._config = config;
     }
 
     public async start() {
@@ -38,7 +38,7 @@ export class CndInstance {
         this.logger.info("Using binary", bin);
 
         const configFile = await tempWrite(
-            stringify((this.configFile as unknown) as JsonMap),
+            stringify((this._config as unknown) as JsonMap),
             "config.toml"
         );
 

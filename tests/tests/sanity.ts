@@ -173,10 +173,10 @@ describe("Sanity", () => {
                 },
             };
 
-            const currentConfig = bob.cndInstance.getConfigFile();
+            const currentConfig = bob.cndInstance.config;
             const updatedConfig = merge(currentConfig, configOverride);
 
-            bob.cndInstance.setConfigFile(updatedConfig);
+            bob.cndInstance.config = updatedConfig;
             await bob.cndInstance.start();
 
             const aliceId = await alice.cnd.getPeerId();

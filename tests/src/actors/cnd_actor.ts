@@ -54,9 +54,9 @@ export class CndActor implements Stoppable, DumpState {
             "Created new actor in role",
             role,
             "with config",
-            cndInstance.getConfigFile()
+            cndInstance.config
         );
-        const socket = cndInstance.getConfigFile().http_api.socket;
+        const socket = cndInstance.config.http_api.socket;
         this.cnd = new CndClient(`http://${socket}`);
     }
 
@@ -357,7 +357,7 @@ export class CndActor implements Stoppable, DumpState {
     }
 
     public cndHttpApiUrl() {
-        const socket = this.cndInstance.getConfigFile().http_api.socket;
+        const socket = this.cndInstance.config.http_api.socket;
         return `http://${socket}`;
     }
 
