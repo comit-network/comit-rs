@@ -16,11 +16,11 @@ export class CndInstance {
         private readonly cargoTargetDirectory: string,
         private readonly logFile: string,
         private readonly logger: Logger,
-        private readonly configFile: CndConfig
+        private readonly _config: CndConfig
     ) {}
 
-    public getConfigFile() {
-        return this.configFile;
+    public get config() {
+        return this._config;
     }
 
     public async start() {
@@ -31,7 +31,7 @@ export class CndInstance {
         this.logger.info("Using binary", bin);
 
         const configFile = await tempWrite(
-            stringify((this.configFile as unknown) as JsonMap),
+            stringify((this._config as unknown) as JsonMap),
             "config.toml"
         );
 
