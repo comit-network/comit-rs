@@ -1,7 +1,7 @@
 import { JsonMap, stringify } from "@iarna/toml";
 import { ChildProcess, spawn } from "child_process";
 import tempWrite from "temp-write";
-import { CndConfigFile } from "./cnd_config_file";
+import { CndConfig } from "./cnd_config";
 import { sleep } from "../utils";
 import waitForLogMessage from "./wait_for_log_message";
 import { Logger } from "log4js";
@@ -16,7 +16,7 @@ export class CndInstance {
         private readonly cargoTargetDirectory: string,
         private readonly logFile: string,
         private readonly logger: Logger,
-        private readonly configFile: CndConfigFile
+        private readonly configFile: CndConfig
     ) {}
 
     public getConfigFile() {

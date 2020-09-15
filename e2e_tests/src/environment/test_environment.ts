@@ -11,7 +11,7 @@ import { Web3EthereumWallet } from "../wallets/ethereum";
 import { GethInstance } from "./geth_instance";
 import { LndInstance } from "./lnd_instance";
 import BitcoinRpcClient from "bitcoin-core";
-import { CndConfigFile } from "./cnd_config_file";
+import { CndConfig } from "./cnd_config";
 import { set } from "lodash";
 import { HarnessGlobal, LedgerInstance, LightningNode } from "./index";
 import { execAsync, existsAsync } from "./async_fs";
@@ -25,7 +25,7 @@ export default class TestEnvironment extends NodeEnvironment {
     private readonly locksDir: string;
     private readonly nodeModulesBinDir: string;
     private readonly srcDir: string;
-    private readonly cndConfigOverrides: Partial<CndConfigFile>;
+    private readonly cndConfigOverrides: Partial<CndConfig>;
 
     public global: HarnessGlobal;
 
@@ -407,7 +407,7 @@ function extractLedgersToBeStarted(
 
 export function extractCndConfigOverrides(
     docblockPragmas: Record<string, string | string[]>
-): Partial<CndConfigFile> {
+): Partial<CndConfig> {
     let configOverrides = docblockPragmas.cndConfigOverride;
     delete docblockPragmas.cndConfigOverride;
 
