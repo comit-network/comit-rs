@@ -13,6 +13,7 @@ pub fn init_tracing(level: log::LevelFilter) -> anyhow::Result<()> {
 
     let subscriber = FmtSubscriber::builder()
         .with_max_level(level_from_level_filter(level))
+        .with_writer(std::io::stderr)
         .finish();
 
     subscriber::set_global_default(subscriber)?;
