@@ -1,6 +1,6 @@
 import { Network } from "../wallets/bitcoin";
 import { Global } from "@jest/types";
-import { CndConfigFile } from "./cnd_config_file";
+import { CndConfig } from "./cnd_config";
 import { Logger } from "log4js";
 import { LndClient } from "../wallets/lightning";
 
@@ -12,7 +12,7 @@ export interface HarnessGlobal extends Global.Global {
     };
     tokenContract: string;
     cargoTargetDir: string;
-    cndConfigOverrides: Partial<CndConfigFile>;
+    cndConfigOverrides: Partial<CndConfig>;
 
     getDataDir: (program: string) => Promise<string>;
     getLogFile: (pathElements: string[]) => string;

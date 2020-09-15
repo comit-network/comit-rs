@@ -12,8 +12,7 @@ import {
     Wallets,
 } from "./wallets";
 import { EthereumWallet, Web3EthereumWallet } from "./wallets/ethereum";
-import { E2ETestActorConfig } from "./environment/cnd_config_file";
-import { merge } from "lodash";
+import { newCndConfig } from "./environment/cnd_config";
 import { CndInstance } from "./environment/cnd_instance";
 import ProvidesCallback = jest.ProvidesCallback;
 
@@ -145,21 +144,22 @@ async function newCndActor(role: Role, startCnd: boolean) {
         );
     }
 
-    const ledgerNodes = global.ledgerNodes;
     const logger = global.getLogger([testName, role]);
 
     logger.info("Creating new actor in role", role);
 
-    const actorConfig = await E2ETestActorConfig.for(role);
-    const generatedConfig = actorConfig.generateCndConfigFile(ledgerNodes);
-    const finalConfig = merge(generatedConfig, global.cndConfigOverrides);
+    const cndConfig = await newCndConfig(
+        role,
+        global.ledgerNodes,
+        global.cndConfigOverrides
+    );
     const cndLogFile = global.getLogFile([testName, `cnd-${role}.log`]);
 
     const cndInstance = new CndInstance(
         global.cargoTargetDir,
         cndLogFile,
         logger,
-        finalConfig
+        cndConfig
     );
 
     let cndStarting;
@@ -168,8 +168,8 @@ async function newCndActor(role: Role, startCnd: boolean) {
         cndStarting = cndInstance.start();
     }
 
-    const bitcoinWallet = newBitcoinWallet(ledgerNodes, logger);
-    const ethereumWallet = newEthereumWallet(ledgerNodes, logger);
+    const bitcoinWallet = newBitcoinWallet(global.ledgerNodes, logger);
+    const ethereumWallet = newEthereumWallet(global.ledgerNodes, logger);
 
     // Await all of the Promises that we started. In JS, Promises are eager and hence already started evaluating. This is an attempt to improve the startup performance of an actor.
     const wallets = new Wallets({
