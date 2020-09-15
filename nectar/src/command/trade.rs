@@ -274,11 +274,11 @@ async fn execute_swap(
     db.insert_swap(swap.clone()).await?;
 
     swap.execute(
-        Arc::clone(&db),
-        Arc::clone(&bitcoin_wallet),
-        Arc::clone(&ethereum_wallet),
-        Arc::clone(&bitcoin_connector),
-        Arc::clone(&ethereum_connector),
+        db,
+        bitcoin_wallet,
+        ethereum_wallet,
+        bitcoin_connector,
+        ethereum_connector,
     )
     .await?;
 
