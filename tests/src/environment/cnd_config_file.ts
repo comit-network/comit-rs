@@ -1,12 +1,7 @@
 import * as tmp from "tmp";
 import getPort from "get-port";
 import { Role } from "../actors";
-import {
-    BitcoinNodeConfig,
-    EthereumNodeConfig,
-    LedgerConfig,
-    LightningNodeConfig,
-} from "./index";
+import { BitcoinNode, EthereumNode, LedgerNodes, LightningNode } from "./index";
 
 export interface CndConfigFile {
     http_api: HttpApi;
@@ -46,7 +41,7 @@ export class E2ETestActorConfig {
         this.data = tmpobj.name;
     }
 
-    public generateCndConfigFile(ledgerConfig: LedgerConfig): CndConfigFile {
+    public generateCndConfigFile(ledgerNodes: LedgerNodes): CndConfigFile {
         return {
             http_api: {
                 socket: `0.0.0.0:${this.httpApiPort}`,
@@ -60,33 +55,31 @@ export class E2ETestActorConfig {
             logging: {
                 level: "Trace",
             },
-            ...this.createLedgerConnectors(ledgerConfig),
+            ...this.createLedgerConnectors(ledgerNodes),
         };
     }
 
-    private createLedgerConnectors(ledgerConfig: LedgerConfig): LedgerConfigs {
+    private createLedgerConnectors(ledgerNodes: LedgerNodes): LedgerConfigs {
         const config: LedgerConfigs = {};
 
-        if (ledgerConfig.bitcoin) {
-            config.bitcoin = bitcoinConnector(ledgerConfig.bitcoin);
+        if (ledgerNodes.bitcoin) {
+            config.bitcoin = bitcoinConnector(ledgerNodes.bitcoin);
         }
 
-        if (ledgerConfig.ethereum) {
-            config.ethereum = ethereumConnector(ledgerConfig.ethereum);
+        if (ledgerNodes.ethereum) {
+            config.ethereum = ethereumConnector(ledgerNodes.ethereum);
         }
 
         switch (this.role) {
             case "Alice": {
-                if (ledgerConfig.aliceLnd) {
-                    config.lightning = lightningConnector(
-                        ledgerConfig.aliceLnd
-                    );
+                if (ledgerNodes.aliceLnd) {
+                    config.lightning = lightningConnector(ledgerNodes.aliceLnd);
                 }
                 break;
             }
             case "Bob": {
-                if (ledgerConfig.bobLnd) {
-                    config.lightning = lightningConnector(ledgerConfig.bobLnd);
+                if (ledgerNodes.bobLnd) {
+                    config.lightning = lightningConnector(ledgerNodes.bobLnd);
                 }
                 break;
             }
@@ -135,7 +128,7 @@ interface LightningConfig {
     lnd: Lnd;
 }
 
-function bitcoinConnector(nodeConfig: BitcoinNodeConfig): BitcoinConfig {
+function bitcoinConnector(nodeConfig: BitcoinNode): BitcoinConfig {
     return {
         bitcoind: {
             node_url: nodeConfig.rpcUrl,
@@ -144,7 +137,7 @@ function bitcoinConnector(nodeConfig: BitcoinNodeConfig): BitcoinConfig {
     };
 }
 
-function ethereumConnector(nodeConfig: EthereumNodeConfig): EthereumConfig {
+function ethereumConnector(nodeConfig: EthereumNode): EthereumConfig {
     return {
         chain_id: nodeConfig.chain_id,
         geth: {
@@ -156,7 +149,7 @@ function ethereumConnector(nodeConfig: EthereumNodeConfig): EthereumConfig {
     };
 }
 
-function lightningConnector(nodeConfig: LightningNodeConfig): LightningConfig {
+function lightningConnector(nodeConfig: LightningNode): LightningConfig {
     return {
         network: "regtest",
         lnd: {

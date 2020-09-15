@@ -1,6 +1,6 @@
 import { DumpState, Role, Stoppable } from "./actors";
 import pTimeout from "p-timeout";
-import { HarnessGlobal, LedgerConfig } from "./environment";
+import { HarnessGlobal, LedgerNodes } from "./environment";
 import { CndActor } from "./actors/cnd_actor";
 import { Logger } from "log4js";
 import { BitcoindWallet, BitcoinWallet } from "./wallets/bitcoin";
@@ -145,13 +145,13 @@ async function newCndActor(role: Role, startCnd: boolean) {
         );
     }
 
-    const ledgerConfig = global.ledgerConfigs;
+    const ledgerNodes = global.ledgerNodes;
     const logger = global.getLogger([testName, role]);
 
     logger.info("Creating new actor in role", role);
 
     const actorConfig = await E2ETestActorConfig.for(role);
-    const generatedConfig = actorConfig.generateCndConfigFile(ledgerConfig);
+    const generatedConfig = actorConfig.generateCndConfigFile(ledgerNodes);
     const finalConfig = merge(generatedConfig, global.cndConfigOverrides);
     const cndLogFile = global.getLogFile([testName, `cnd-${role}.log`]);
 
@@ -168,8 +168,8 @@ async function newCndActor(role: Role, startCnd: boolean) {
         cndStarting = cndInstance.start();
     }
 
-    const bitcoinWallet = newBitcoinWallet(ledgerConfig, logger);
-    const ethereumWallet = newEthereumWallet(ledgerConfig, logger);
+    const bitcoinWallet = newBitcoinWallet(ledgerNodes, logger);
+    const ethereumWallet = newEthereumWallet(ledgerNodes, logger);
 
     // Await all of the Promises that we started. In JS, Promises are eager and hence already started evaluating. This is an attempt to improve the startup performance of an actor.
     const wallets = new Wallets({
@@ -201,20 +201,20 @@ async function newCndActor(role: Role, startCnd: boolean) {
 }
 
 async function newBitcoinWallet(
-    ledgerConfig: LedgerConfig,
+    ledgerNodes: LedgerNodes,
     logger: Logger
 ): Promise<BitcoinWallet> {
-    const bitcoinConfig = ledgerConfig.bitcoin;
+    const bitcoinConfig = ledgerNodes.bitcoin;
     return bitcoinConfig
         ? BitcoindWallet.newInstance(bitcoinConfig, logger)
         : Promise.resolve(newBitcoinStubWallet());
 }
 
 async function newEthereumWallet(
-    ledgerConfig: LedgerConfig,
+    ledgerNodes: LedgerNodes,
     logger: Logger
 ): Promise<EthereumWallet> {
-    const ethereumConfig = ledgerConfig.ethereum;
+    const ethereumConfig = ledgerNodes.ethereum;
     return ethereumConfig
         ? Web3EthereumWallet.newInstance(
               ethereumConfig.rpc_url,

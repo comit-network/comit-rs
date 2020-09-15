@@ -13,7 +13,7 @@ import { LndInstance } from "./lnd_instance";
 import BitcoinRpcClient from "bitcoin-core";
 import { CndConfigFile } from "./cnd_config_file";
 import { set } from "lodash";
-import { HarnessGlobal, LedgerInstance, LightningNodeConfig } from "./index";
+import { HarnessGlobal, LedgerInstance, LightningNode } from "./index";
 import { execAsync, existsAsync } from "./async_fs";
 import { LndClient } from "../wallets/lightning";
 import { BitcoinFaucet } from "../wallets/bitcoin";
@@ -62,7 +62,7 @@ export default class TestEnvironment extends NodeEnvironment {
             .then((metadata) => metadata.target_directory);
 
         // setup global variables
-        this.global.ledgerConfigs = {};
+        this.global.ledgerNodes = {};
         this.global.lndClients = {};
         this.global.cargoTargetDir = cargoTargetDir;
         this.global.cndConfigOverrides = this.cndConfigOverrides;
@@ -205,7 +205,7 @@ export default class TestEnvironment extends NodeEnvironment {
             );
         }
 
-        this.global.ledgerConfigs.bitcoin = config;
+        this.global.ledgerNodes.bitcoin = config;
         this.bitcoinFaucet = new BitcoinFaucet(config, this.logger);
 
         await release();
@@ -252,7 +252,7 @@ export default class TestEnvironment extends NodeEnvironment {
             };
         });
 
-        this.global.ledgerConfigs.ethereum = config;
+        this.global.ledgerNodes.ethereum = config;
         this.global.tokenContract = config.tokenContract;
 
         await release();
@@ -285,7 +285,7 @@ export default class TestEnvironment extends NodeEnvironment {
             config,
             this.logger
         );
-        this.global.ledgerConfigs.aliceLnd = config;
+        this.global.ledgerNodes.aliceLnd = config;
     }
 
     /**
@@ -300,12 +300,12 @@ export default class TestEnvironment extends NodeEnvironment {
             config,
             this.logger
         );
-        this.global.ledgerConfigs.bobLnd = config;
+        this.global.ledgerNodes.bobLnd = config;
     }
 
     private async initLightningLedger(
         role: "lnd-alice" | "lnd-bob"
-    ): Promise<LightningNodeConfig> {
+    ): Promise<LightningNode> {
         const lockDir = await this.getLockDirectory(role);
         const release = await ledgerLock(lockDir).catch(() =>
             Promise.reject(
