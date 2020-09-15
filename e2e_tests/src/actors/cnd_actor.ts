@@ -13,7 +13,7 @@ import {
 import { Logger } from "log4js";
 import { CndInstance } from "../environment/cnd_instance";
 import { sleep } from "../utils";
-import { Role } from "./index";
+import { DumpState, Role, Stoppable } from "./index";
 import { Wallets } from "../wallets";
 import pTimeout from "p-timeout";
 import { AxiosResponse } from "axios";
@@ -36,7 +36,7 @@ declare var global: HarnessGlobal;
  *
  * Although in reality instance of cnd can handle multiple swaps in different roles at the same time, the test framework limits an instance to one specific role.
  */
-export class CndActor {
+export class CndActor implements Stoppable, DumpState {
     readonly cnd: CndClient;
     public swap: Swap;
 
