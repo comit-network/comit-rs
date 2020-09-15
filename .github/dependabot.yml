@@ -18,7 +18,7 @@ updates:
     versions:
     - ">= 0"
 - package-ecosystem: npm
-  directory: "/api_tests"
+  directory: "/e2e_tests"
   schedule:
     interval: daily
     time: "00:00"

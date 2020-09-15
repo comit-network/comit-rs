@@ -127,8 +127,8 @@ jobs:
         if: matrix.e2e
         uses: actions/cache@v2
         with:
-          path: api_tests/node_modules
-          key: ${{ matrix.os }}-node-14-node-modules-directory-${{ hashFiles('api_tests/package.json') }}
+          path: e2e_tests/node_modules
+          key: ${{ matrix.os }}-node-14-node-modules-directory-${{ hashFiles('e2e_tests/package.json') }}
 
       - name: Run e2e tests
         if: matrix.e2e
@@ -143,25 +143,25 @@ jobs:
         uses: actions/upload-artifact@v2-preview
         with:
           name: ${{ matrix.os }}-e2e-logs-bitcoind.log
-          path: api_tests/log/bitcoind/regtest/debug.log
+          path: e2e_tests/log/bitcoind/regtest/debug.log
 
       - name: Upload parity log
         if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
           name: ${{ matrix.os }}-e2e-logs-parity.log
-          path: api_tests/log/parity/parity.log
+          path: e2e_tests/log/parity/parity.log
 
       - name: Upload lnd logs
         if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
           name: ${{ matrix.os }}-e2e-logs-lnd
-          path: api_tests/log/lnd-*/logs/bitcoin/regtest/lnd.log
+          path: e2e_tests/log/lnd-*/logs/bitcoin/regtest/lnd.log
 
       - name: Upload e2e logs
         if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
           name: ${{ matrix.os }}-e2e-test-logs
-          path: api_tests/log/tests/
+          path: e2e_tests/log/tests/

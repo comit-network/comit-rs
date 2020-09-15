@@ -84,7 +84,7 @@ doc:
 	$(CARGO) doc
 
 e2e: build
-	(cd ./api_tests; yarn install; yarn test)
+	(cd ./e2e_tests; yarn install; yarn test)
 
 check_format: check_rust_format check_toml_format check_ts_format
 
@@ -92,7 +92,7 @@ format: install_rustfmt install_tomlfmt
 	$(CARGO_NIGHTLY) fmt -- --files-with-diff | xargs -I{} git add {}
 	@$(foreach file,$(CARGO_TOML_FILES),$(CARGO) tomlfmt -p $(file) && git add $(file);)
 ifneq (,$(MODIFIED_TYPESCRIPT_FILES))
-	(cd ./api_tests; yarn install; yarn run fix)
+	(cd ./e2e_tests; yarn install; yarn run fix)
 endif
 
 check_rust_format: install_rustfmt
@@ -103,7 +103,7 @@ check_toml_format: install_tomlfmt
 
 check_ts_format:
 ifeq ($(CI),true)
-	(cd ./api_tests; yarn install; yarn run check)
+	(cd ./e2e_tests; yarn install; yarn run check)
 else ifneq (,$(STAGED_TYPESCRIPT_FILES))
-	(cd ./api_tests; yarn install; yarn run check)
+	(cd ./e2e_tests; yarn install; yarn run check)
 endif
