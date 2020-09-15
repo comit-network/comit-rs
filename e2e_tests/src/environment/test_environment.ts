@@ -11,7 +11,7 @@ import { Web3EthereumWallet } from "../wallets/ethereum";
 import { GethInstance } from "./geth_instance";
 import { LndInstance } from "./lnd_instance";
 import BitcoinRpcClient from "bitcoin-core";
-import { CndConfigFile } from "../config";
+import { CndConfigFile } from "./cnd_config_file";
 import { set } from "lodash";
 import { HarnessGlobal, LedgerInstance, LightningNodeConfig } from "./index";
 import { execAsync, existsAsync } from "./async_fs";

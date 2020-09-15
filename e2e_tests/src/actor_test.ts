@@ -12,7 +12,7 @@ import {
     Wallets,
 } from "./wallets";
 import { EthereumWallet, Web3EthereumWallet } from "./wallets/ethereum";
-import { E2ETestActorConfig } from "./config";
+import { E2ETestActorConfig } from "./environment/cnd_config_file";
 import { merge } from "lodash";
 import { CndInstance } from "./environment/cnd_instance";
 import ProvidesCallback = jest.ProvidesCallback;
