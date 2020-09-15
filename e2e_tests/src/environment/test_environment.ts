@@ -7,7 +7,7 @@ import { configure, Logger, shutdown as loggerShutdown } from "log4js";
 import { EnvironmentContext } from "@jest/environment";
 import ledgerLock from "./ledger_lock";
 import BitcoinMinerInstance from "./bitcoin_miner_instance";
-import { Web3EthereumWallet } from "../wallets/ethereum";
+import { EthereumFaucet } from "../wallets/ethereum";
 import { GethInstance } from "./geth_instance";
 import { LndInstance } from "./lnd_instance";
 import BitcoinRpcClient from "bitcoin-core";
@@ -231,13 +231,13 @@ export default class TestEnvironment extends NodeEnvironment {
         );
         const config = await this.startLedger(lockDir, geth, async (geth) => {
             const rpcUrl = geth.rpcUrl;
-            const erc20Wallet = await Web3EthereumWallet.newInstance(
-                rpcUrl,
+            const faucet = new EthereumFaucet(
+                geth.devAccount,
                 this.logger,
-                geth.CHAIN_ID,
-                geth.devAccount
+                rpcUrl,
+                geth.CHAIN_ID
             );
-            const erc20TokenContract = await erc20Wallet.deployErc20TokenContract();
+            const erc20TokenContract = await faucet.deployErc20TokenContract();
 
             this.logger.info(
                 "ERC20 token contract deployed at",

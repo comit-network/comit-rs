@@ -11,7 +11,11 @@ import {
     newLndStubClient,
     Wallets,
 } from "./wallets";
-import { EthereumWallet, Web3EthereumWallet } from "./wallets/ethereum";
+import {
+    EthereumFaucet,
+    EthereumWallet,
+    Web3EthereumWallet,
+} from "./wallets/ethereum";
 import { newCndConfig } from "./environment/cnd_config";
 import { CndInstance } from "./environment/cnd_instance";
 import ProvidesCallback = jest.ProvidesCallback;
@@ -169,8 +173,13 @@ async function newEthereumWallet(
         ? Web3EthereumWallet.newInstance(
               ethereumConfig.rpc_url,
               logger,
-              ethereumConfig.chain_id,
-              ethereumConfig.devAccount
+              new EthereumFaucet(
+                  ethereumConfig.devAccount,
+                  logger,
+                  ethereumConfig.rpc_url,
+                  ethereumConfig.chain_id
+              ),
+              ethereumConfig.chain_id
           )
         : Promise.resolve(newEthereumStubWallet());
 }
