@@ -303,10 +303,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a32c9d2fa897cfbb0db45d71e3d2838666194abc4828c0f994e4b5c3bf85ba4"
 dependencies = [
  "bech32 0.7.2",
- "bitcoin_hashes",
+ "bitcoin_hashes 0.7.6",
  "hex 0.3.2",
  "secp256k1 0.17.2",
  "serde",
+]
+
+[[package]]
+name = "bitcoin"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13c82d2d6e4ee70935df77021042cbc3262d0e6abf10e4f511364b3e04279780"
+dependencies = [
+ "bech32 0.7.2",
+ "bitcoin_hashes 0.9.0",
+ "secp256k1 0.19.0",
+ "serde 1.0.115",
 ]
 
 [[package]]
@@ -316,6 +328,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b375d62f341cef9cd9e77793ec8f1db3fc9ce2e4d57e982c8fe697a2c16af3b6"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "bitcoin_hashes"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ed2ce8078898876263683749be6f50af005cc77f93be1422f1c56fecf0b34d7"
+dependencies = [
+ "serde 1.0.115",
 ]
 
 [[package]]
@@ -337,7 +358,7 @@ version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea6d55f23cd516d515ae10911164c603ea1040024670ec109715a20d7f6c9d0c"
 dependencies = [
- "bitcoin",
+ "bitcoin 0.23.0",
  "hex 0.3.2",
  "serde",
  "serde_json",
@@ -442,19 +463,14 @@ checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
 
 [[package]]
 name = "blockchain_contracts"
-version = "0.3.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f92228e44179c99d5c61e0c8c3d869c070e6a6fe65ae62006eadc572568db1f"
+checksum = "5a03be37fcc500553a77460ac4879e0f6562d492ff958cfc40f96f800ee3ccdd"
 dependencies = [
- "bitcoin",
+ "bitcoin 0.25.0",
  "byteorder",
- "hex 0.4.2",
  "hex-literal",
- "itertools",
  "regex",
- "serde",
- "serde_json",
- "tiny-keccak 2.0.2",
 ]
 
 [[package]]
@@ -635,7 +651,7 @@ dependencies = [
  "async-trait",
  "atty",
  "base64 0.12.3",
- "bitcoin",
+ "bitcoin 0.25.0",
  "bitcoincore-rpc",
  "chrono",
  "comit",
@@ -704,7 +720,7 @@ dependencies = [
  "async-trait",
  "atty",
  "base64 0.12.3",
- "bitcoin",
+ "bitcoin 0.25.0",
  "bitcoincore-rpc",
  "blockchain_contracts",
  "byteorder",
@@ -2416,7 +2432,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "base64 0.12.3",
- "bitcoin",
+ "bitcoin 0.25.0",
  "chrono",
  "clarity",
  "comit",
@@ -3570,7 +3586,6 @@ version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2932dc07acd2066ff2e3921a4419606b220ba6cd03a9935123856cc534877056"
 dependencies = [
- "rand 0.6.5",
  "secp256k1-sys 0.1.2",
  "serde",
 ]
@@ -3581,7 +3596,9 @@ version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c6179428c22c73ac0fbb7b5579a56353ce78ba29759b3b8575183336ea74cdfb"
 dependencies = [
+ "rand 0.6.5",
  "secp256k1-sys 0.3.0",
+ "serde 1.0.115",
 ]
 
 [[package]]

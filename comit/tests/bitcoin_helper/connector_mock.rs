@@ -1,6 +1,6 @@
 use anyhow::Context;
 use async_trait::async_trait;
-use bitcoin::{util::hash::BitcoinHash, BlockHash};
+use bitcoin::BlockHash;
 use comit::btsieve::{BlockByHash, LatestBlock};
 use futures::{stream::BoxStream, StreamExt};
 use std::{collections::HashMap, time::Duration};
@@ -17,7 +17,7 @@ impl BitcoinConnectorMock {
             all_blocks: all_blocks
                 .into_iter()
                 .fold(HashMap::new(), |mut hm, block| {
-                    hm.insert(block.bitcoin_hash(), block);
+                    hm.insert(block.block_hash(), block);
                     hm
                 }),
             latest_blocks: Mutex::new(

@@ -11,7 +11,7 @@ use crate::{
     },
     identity,
 };
-use bitcoin::{self, BitcoinHash, OutPoint};
+use bitcoin::{self, OutPoint};
 use chrono::{DateTime, Utc};
 use genawaiter::GeneratorState;
 
@@ -22,7 +22,7 @@ impl BlockHash for Block {
     type BlockHash = Hash;
 
     fn block_hash(&self) -> Hash {
-        self.bitcoin_hash()
+        self.block_hash()
     }
 }
 
