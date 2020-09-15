@@ -698,6 +698,7 @@ async fn handle_orderbook_event(
             let index = database
                 .borrow()
                 .fetch_inc_bitcoin_transient_key_index()
+                .await
                 .map_err(|err| {
                     anyhow!(
                         "Could not fetch the index for the Bitcoin transient key: {:#}",

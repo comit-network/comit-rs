@@ -73,7 +73,7 @@ impl Database {
         Ok(Database { db, tmp_dir })
     }
 
-    pub fn fetch_inc_bitcoin_transient_key_index(&self) -> anyhow::Result<u32> {
+    pub async fn fetch_inc_bitcoin_transient_key_index(&self) -> anyhow::Result<u32> {
         let old_value = self.db.fetch_and_update(
             serialize(&Self::BITCOIN_TRANSIENT_KEYS_INDEX_KEY)?,
             |old| match old {
@@ -91,14 +91,18 @@ impl Database {
             },
         )?;
 
+        self.db
+            .flush_async()
+            .await
+            .map(|_| ())
+            .context("Could not flush db")?;
+
         match old_value {
             Some(index) => deserialize(&index),
             None => Err(anyhow!(
                 "The Bitcoin transient keys index was not properly instantiated in the db"
             )),
         }
-
-        // TODO: Flush the db
     }
 }
 /// Swap related functions
@@ -434,11 +438,11 @@ mod tests {
         }
     }
 
-    #[test]
-    fn increment_bitcoin_transient_key_index() {
+    #[tokio::test]
+    async fn increment_bitcoin_transient_key_index() {
         let db = Database::new_test().unwrap();
 
-        assert_eq!(db.fetch_inc_bitcoin_transient_key_index().unwrap(), 0);
-        assert_eq!(db.fetch_inc_bitcoin_transient_key_index().unwrap(), 1);
+        assert_eq!(db.fetch_inc_bitcoin_transient_key_index().await.unwrap(), 0);
+        assert_eq!(db.fetch_inc_bitcoin_transient_key_index().await.unwrap(), 1);
     }
 }
