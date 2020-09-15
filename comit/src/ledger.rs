@@ -3,17 +3,6 @@ use fmt::Display;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// The ledger network kind. We define this as a cross blockchain domain term.
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Kind {
-    /// The main public ledger network.
-    Mainnet,
-    /// A public test network.
-    Testnet,
-    /// A private test network.
-    Devnet,
-}
-
 #[derive(
     Clone,
     Copy,
@@ -32,34 +21,6 @@ pub enum Bitcoin {
     Mainnet,
     Testnet,
     Regtest,
-}
-
-pub trait LedgerKind {
-    fn ledger_kind(&self) -> Kind;
-}
-
-impl LedgerKind for Bitcoin {
-    fn ledger_kind(&self) -> Kind {
-        match self {
-            Bitcoin::Mainnet => Kind::Mainnet,
-            Bitcoin::Testnet => Kind::Testnet,
-            Bitcoin::Regtest => Kind::Devnet,
-        }
-    }
-}
-
-pub fn is_valid_ledger_pair<A, B>(a: A, b: B) -> bool
-where
-    A: LedgerKind,
-    B: LedgerKind,
-{
-    a.ledger_kind() == b.ledger_kind()
-}
-
-impl Default for Bitcoin {
-    fn default() -> Self {
-        Self::Regtest
-    }
 }
 
 impl From<Bitcoin> for ::bitcoin::Network {
@@ -109,31 +70,9 @@ impl Display for Ethereum {
     }
 }
 
-impl LedgerKind for Ethereum {
-    fn ledger_kind(&self) -> Kind {
-        let chain_id = u32::from(self.chain_id);
-        match chain_id {
-            1 => Kind::Mainnet,
-            3 => Kind::Testnet,  // Ropsten
-            4 => Kind::Testnet,  // Rinkeby
-            5 => Kind::Testnet,  // Goerli
-            42 => Kind::Testnet, // Kovan
-            _ => Kind::Devnet,
-        }
-    }
-}
-
 impl From<u32> for Ethereum {
     fn from(chain_id: u32) -> Self {
         Ethereum::new(chain_id.into())
-    }
-}
-
-impl Default for Ethereum {
-    fn default() -> Self {
-        Ethereum {
-            chain_id: ChainId::GETH_DEV,
-        }
     }
 }
 

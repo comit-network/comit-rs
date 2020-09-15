@@ -5,7 +5,7 @@ use crate::{
     rate::Spread,
     MidMarketRate,
 };
-use comit::{order::SwapProtocol, Position, Role};
+use comit::{ledger, order::SwapProtocol, Position, Role};
 
 // Bundles the state of the application
 #[derive(Debug)]
@@ -19,9 +19,10 @@ pub struct Maker {
     dai_max_sell_amount: Option<dai::Amount>,
     mid_market_rate: Option<MidMarketRate>,
     spread: Spread,
-    bitcoin_network: bitcoin::Network,
+    bitcoin_network: ledger::Bitcoin,
     ethereum_chain: ethereum::Chain,
     role: Role,
+    comit_network: comit::Network,
 }
 
 impl Maker {
@@ -34,9 +35,10 @@ impl Maker {
         dai_max_sell_amount: Option<dai::Amount>,
         mid_market_rate: MidMarketRate,
         spread: Spread,
-        bitcoin_network: bitcoin::Network,
+        bitcoin_network: ledger::Bitcoin,
         dai_chain: ethereum::Chain,
         role: Role,
+        comit_network: comit::Network,
     ) -> Self {
         Maker {
             btc_balance: Some(btc_balance),
@@ -51,6 +53,7 @@ impl Maker {
             bitcoin_network,
             ethereum_chain: dai_chain,
             role,
+            comit_network,
         }
     }
 
@@ -118,7 +121,7 @@ impl Maker {
     }
 
     pub fn swap_protocol(&self, position: Position) -> SwapProtocol {
-        SwapProtocol::new(self.role, position)
+        SwapProtocol::new(self.role, position, self.comit_network)
     }
 
     pub fn new_sell_order(&self) -> anyhow::Result<BtcDaiOrderForm> {
@@ -265,9 +268,10 @@ mod tests {
                 dai_max_sell_amount: None,
                 mid_market_rate: Some(MidMarketRate::static_stub()),
                 spread: Spread::default(),
-                bitcoin_network: bitcoin::Network::Bitcoin,
+                bitcoin_network: ledger::Bitcoin::Mainnet,
                 ethereum_chain: ethereum::Chain::static_stub(),
                 role: Role::Bob,
+                comit_network: comit::Network::Main,
             }
         }
     }

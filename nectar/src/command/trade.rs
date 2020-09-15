@@ -32,6 +32,7 @@ pub async fn trade(
     settings: Settings,
     bitcoin_wallet: bitcoin::Wallet,
     ethereum_wallet: ethereum::Wallet,
+    network: comit::Network,
 ) -> anyhow::Result<()> {
     let bitcoin_wallet = Arc::new(bitcoin_wallet);
     let ethereum_wallet = Arc::new(ethereum_wallet);
@@ -40,6 +41,7 @@ pub async fn trade(
         Arc::clone(&bitcoin_wallet),
         Arc::clone(&ethereum_wallet),
         settings.clone(),
+        network,
     )
     .await
     .context("Could not initialise Maker")?;
@@ -140,6 +142,7 @@ async fn init_maker(
     bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum::Wallet>,
     settings: Settings,
+    network: comit::Network,
 ) -> anyhow::Result<Maker> {
     let initial_btc_balance = bitcoin_wallet
         .balance()
@@ -173,6 +176,7 @@ async fn init_maker(
         settings.ethereum.chain,
         // todo: get from config
         Role::Bob,
+        network,
     ))
 }
 
@@ -556,7 +560,7 @@ mod tests {
         swap::herc20::asset::ethereum::FromWei,
         test_harness, Seed,
     };
-    use comit::{asset, asset::Erc20Quantity, ethereum::ChainId};
+    use comit::{asset, asset::Erc20Quantity, ethereum::ChainId, ledger};
     use ethereum::ether;
     use log::LevelFilter;
 
@@ -593,7 +597,7 @@ mod tests {
             logging: Logging {
                 level: LevelFilter::Trace,
             },
-            bitcoin: Default::default(),
+            bitcoin: settings::Bitcoin::new(ledger::Bitcoin::Regtest),
             ethereum: settings::Ethereum {
                 node_url: ethereum_blockchain.node_url.clone(),
                 chain: ethereum::Chain::new(
@@ -647,8 +651,14 @@ mod tests {
             .await
             .unwrap();
 
-        let _ = trade(&seed, settings, bitcoin_wallet, ethereum_wallet)
-            .await
-            .unwrap();
+        let _ = trade(
+            &seed,
+            settings,
+            bitcoin_wallet,
+            ethereum_wallet,
+            comit::Network::Dev,
+        )
+        .await
+        .unwrap();
     }
 }

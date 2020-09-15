@@ -31,14 +31,21 @@ pub fn route(
     storage: Storage,
     swarm: Swarm,
     settings: Settings,
+    network: comit::Network,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::post()
         .and(warp::path!("orders" / "BTC-DAI"))
         .and(warp::body::json())
         .and_then(move |body| {
-            handler(body, storage.clone(), swarm.clone(), settings.clone())
-                .map_err(problem::from_anyhow)
-                .map_err(warp::reject::custom)
+            handler(
+                body,
+                storage.clone(),
+                swarm.clone(),
+                settings.clone(),
+                network,
+            )
+            .map_err(problem::from_anyhow)
+            .map_err(warp::reject::custom)
         })
 }
 
@@ -47,6 +54,7 @@ async fn handler(
     storage: Storage,
     swarm: Swarm,
     settings: Settings,
+    network: comit::Network,
 ) -> Result<impl Reply> {
     let db = storage.db;
 
@@ -54,7 +62,7 @@ async fn handler(
         body.position,
         Quantity::new(body.quantity),
         Price::from_wei_per_sat(body.price),
-        SwapProtocol::new(body.swap.role, body.position),
+        SwapProtocol::new(body.swap.role, body.position, network),
     );
     let order_id = order.id;
 

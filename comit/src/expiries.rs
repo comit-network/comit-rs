@@ -7,7 +7,10 @@
 mod config;
 
 use self::config::{Config, Protocol};
-use crate::timestamp::{self, Timestamp};
+use crate::{
+    timestamp::{self, Timestamp},
+    Network,
+};
 use async_trait::async_trait;
 use num::integer;
 use std::{cmp, fmt};
@@ -20,15 +23,15 @@ use time::Duration;
 
 /// Calculate a pair of expiries suitable for use with the herc20-hbit COMIT
 /// protocol.
-pub fn expiry_offsets_herc20_hbit() -> (AlphaOffset, BetaOffset) {
-    let config = Config::herc20_hbit();
+pub fn expiry_offsets_herc20_hbit(network: Network) -> (AlphaOffset, BetaOffset) {
+    let config = Config::herc20_hbit(network);
     expiry_offsets(&config)
 }
 
 /// Calculate a pair of expiries suitable for use with the hbit-herc20 COMIT
 /// protocol.
-pub fn expiry_offsets_hbit_herc20() -> (AlphaOffset, BetaOffset) {
-    let config = Config::hbit_herc20();
+pub fn expiry_offsets_hbit_herc20(network: Network) -> (AlphaOffset, BetaOffset) {
+    let config = Config::hbit_herc20(network);
     expiry_offsets(&config)
 }
 
@@ -107,13 +110,23 @@ where
     A: CurrentTime,
     B: CurrentTime,
 {
-    pub fn new_herc20_hbit(start_at: Timestamp, alpha_connector: A, beta_connector: B) -> Self {
-        let config = Config::herc20_hbit();
+    pub fn new_herc20_hbit(
+        network: Network,
+        start_at: Timestamp,
+        alpha_connector: A,
+        beta_connector: B,
+    ) -> Self {
+        let config = Config::herc20_hbit(network);
         Expiries::new(config, start_at, alpha_connector, beta_connector)
     }
 
-    pub fn new_hbit_herc20(start_at: Timestamp, alpha_connector: A, beta_connector: B) -> Self {
-        let config = Config::hbit_herc20();
+    pub fn new_hbit_herc20(
+        network: Network,
+        start_at: Timestamp,
+        alpha_connector: A,
+        beta_connector: B,
+    ) -> Self {
+        let config = Config::hbit_herc20(network);
         Expiries::new(config, start_at, alpha_connector, beta_connector)
     }
 
@@ -875,11 +888,19 @@ mod tests {
             println!("{} expiry offsets: \n alpha: {} \n beta: {}", p, a, b);
         }
 
-        let (a, b) = expiry_offsets_herc20_hbit();
+        let (a, b) = expiry_offsets_herc20_hbit(Network::Main);
         print("herc20-hbit", a, b);
 
-        let (a, b) = expiry_offsets_hbit_herc20();
+        let (a, b) = expiry_offsets_hbit_herc20(Network::Main);
         print("hbit-herc20", a, b);
+    }
+
+    #[test]
+    fn dev_net_herc20_hbit_expiries() {
+        let (a, b) = expiry_offsets_herc20_hbit(Network::Dev);
+
+        assert_eq!(a, 44.seconds().into());
+        assert_eq!(b, 35.seconds().into());
     }
 
     #[tokio::test]
@@ -887,7 +908,7 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_hbit_herc20(start_at, ac.clone(), bc.clone());
+        let exp = Expiries::new_hbit_herc20(Network::Main, start_at, ac.clone(), bc.clone());
         let mut cur = AliceState::initial();
 
         let inc = 1.minutes();
@@ -908,7 +929,7 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+        let exp = Expiries::new_herc20_hbit(Network::Main, start_at, ac.clone(), bc.clone());
         let mut cur = AliceState::initial();
 
         let inc = 1.minutes();
@@ -929,7 +950,7 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+        let exp = Expiries::new_herc20_hbit(Network::Main, start_at, ac.clone(), bc.clone());
         let mut cur = BobState::initial();
 
         let inc = 1.minutes();
@@ -950,7 +971,7 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_hbit_herc20(start_at, ac.clone(), bc.clone());
+        let exp = Expiries::new_hbit_herc20(Network::Main, start_at, ac.clone(), bc.clone());
         let mut cur = BobState::initial();
 
         let inc = 1.minutes();
@@ -971,7 +992,7 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+        let exp = Expiries::new_herc20_hbit(Network::Main, start_at, ac.clone(), bc.clone());
         let inc = 50.minutes(); // Alice takes this long to start.
         inc_connectors(inc, ac.clone(), bc.clone()).await;
 
@@ -995,7 +1016,7 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_hbit_herc20(start_at, ac.clone(), bc.clone());
+        let exp = Expiries::new_hbit_herc20(Network::Main, start_at, ac.clone(), bc.clone());
         let inc = 50.minutes(); // Alice takes this long to start.
         inc_connectors(inc, ac.clone(), bc.clone()).await;
 
@@ -1019,7 +1040,7 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+        let exp = Expiries::new_herc20_hbit(Network::Main, start_at, ac.clone(), bc.clone());
 
         let inc = exp.beta_offset.0 + 1.minutes();
         inc_connectors(inc, ac, bc).await;
@@ -1037,7 +1058,7 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+        let exp = Expiries::new_herc20_hbit(Network::Main, start_at, ac.clone(), bc.clone());
 
         let inc = exp.beta_offset.0 + 1.minutes();
         inc_connectors(inc, ac, bc).await;
@@ -1055,7 +1076,7 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+        let exp = Expiries::new_herc20_hbit(Network::Main, start_at, ac.clone(), bc.clone());
 
         let inc = exp.beta_offset.0 + 1.minutes();
         inc_connectors(inc, ac, bc).await;
@@ -1073,7 +1094,7 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+        let exp = Expiries::new_herc20_hbit(Network::Main, start_at, ac.clone(), bc.clone());
 
         let inc = exp.beta_offset.0 + 1.minutes();
         inc_connectors(inc, ac, bc).await;
@@ -1091,7 +1112,7 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+        let exp = Expiries::new_herc20_hbit(Network::Main, start_at, ac.clone(), bc.clone());
 
         let inc = 2.hours();
         inc_connectors(inc, ac, bc).await;
@@ -1118,7 +1139,7 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+        let exp = Expiries::new_herc20_hbit(Network::Main, start_at, ac.clone(), bc.clone());
 
         let inc = exp.beta_offset.0 + 1.minutes();
         inc_connectors(inc, ac, bc).await;
@@ -1136,7 +1157,7 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+        let exp = Expiries::new_herc20_hbit(Network::Main, start_at, ac.clone(), bc.clone());
 
         let alice_state = AliceState::Started;
 
@@ -1151,7 +1172,7 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_hbit_herc20(start_at, ac.clone(), bc.clone());
+        let exp = Expiries::new_hbit_herc20(Network::Main, start_at, ac.clone(), bc.clone());
 
         let alice_state = AliceState::Started;
 
@@ -1166,7 +1187,7 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_hbit_herc20(start_at, ac.clone(), bc.clone());
+        let exp = Expiries::new_hbit_herc20(Network::Main, start_at, ac.clone(), bc.clone());
 
         let bob_state = BobState::AlphaFunded;
 
@@ -1181,7 +1202,7 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_herc20_hbit(start_at, ac.clone(), bc.clone());
+        let exp = Expiries::new_herc20_hbit(Network::Main, start_at, ac.clone(), bc.clone());
 
         let bob_state = BobState::AlphaFunded;
 

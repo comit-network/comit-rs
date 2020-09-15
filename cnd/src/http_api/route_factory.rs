@@ -21,6 +21,7 @@ pub fn create(
     storage: Storage,
     connectors: Connectors,
     settings: &Settings,
+    network: comit::Network,
 ) -> BoxedFilter<(impl Reply,)> {
     let swaps = warp::path(http_api::PATH);
     let swarm_filter = warp::any().map({
@@ -175,12 +176,13 @@ pub fn create(
             storage.clone(),
             swarm.clone(),
             settings.clone(),
+            network,
         ))
         .or(orders::get_single(storage.clone()))
         .or(orders::list_open(storage.clone()))
         .or(orders::cancel(storage, swarm.clone()))
         .or(tokens::list(settings.clone()))
-        .or(markets::get_btc_dai(swarm))
+        .or(markets::get_btc_dai(swarm, network))
         .or(post_dial_addr)
         .recover(http_api::unpack_problem)
         .with(warp::log("http"))
