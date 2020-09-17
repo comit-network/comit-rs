@@ -1,12 +1,12 @@
 import * as tmp from "tmp";
 import getPort from "get-port";
 import { Role } from "../actors";
-import { BitcoinNode, EthereumNode, LedgerNodes, LightningNode } from "./index";
+import { BitcoinNode, EthereumNode, Environment, LightningNode } from "./index";
 import { merge } from "lodash";
 
 export async function newCndConfig(
     role: Role,
-    ledgerNodes: LedgerNodes,
+    env: Environment,
     overrides: Partial<CndConfig>
 ): Promise<CndConfig> {
     const httpApiPort = await getPort();
@@ -27,7 +27,7 @@ export async function newCndConfig(
         logging: {
             level: "Trace",
         },
-        ...makeLedgerConfig(ledgerNodes, role),
+        ...makeLedgerConfig(env, role),
     };
 
     return merge(config, overrides);
@@ -86,31 +86,27 @@ interface LightningConfig {
     lnd: Lnd;
 }
 
-function makeLedgerConfig(ledgerNodes: LedgerNodes, role: Role) {
+function makeLedgerConfig(env: Environment, role: Role) {
     const ledgerConfig: LedgerConfig = {};
 
-    if (ledgerNodes.bitcoin) {
-        ledgerConfig.bitcoin = makeBitcoinConfig(ledgerNodes.bitcoin);
+    if (env.bitcoin) {
+        ledgerConfig.bitcoin = makeBitcoinConfig(env.bitcoin);
     }
 
-    if (ledgerNodes.ethereum) {
-        ledgerConfig.ethereum = makeEthereumConfig(ledgerNodes.ethereum);
+    if (env.ethereum) {
+        ledgerConfig.ethereum = makeEthereumConfig(env.ethereum);
     }
 
     switch (role) {
         case "Alice": {
-            if (ledgerNodes.aliceLnd) {
-                ledgerConfig.lightning = makeLightningConfig(
-                    ledgerNodes.aliceLnd
-                );
+            if (env.aliceLnd) {
+                ledgerConfig.lightning = makeLightningConfig(env.aliceLnd);
             }
             break;
         }
         case "Bob": {
-            if (ledgerNodes.bobLnd) {
-                ledgerConfig.lightning = makeLightningConfig(
-                    ledgerNodes.bobLnd
-                );
+            if (env.bobLnd) {
+                ledgerConfig.lightning = makeLightningConfig(env.bobLnd);
             }
             break;
         }

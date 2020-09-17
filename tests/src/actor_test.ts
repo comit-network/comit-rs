@@ -1,6 +1,6 @@
 import { DumpState, Role, Stoppable } from "./actors";
 import pTimeout from "p-timeout";
-import { HarnessGlobal, LedgerNodes } from "./environment";
+import { HarnessGlobal, Environment } from "./environment";
 import { CndActor } from "./actors/cnd_actor";
 import { Logger } from "log4js";
 import { BitcoindWallet, BitcoinWallet } from "./wallets/bitcoin";
@@ -154,7 +154,7 @@ async function newCndActor(role: Role, startCnd: boolean) {
 
     const cndConfig = await newCndConfig(
         role,
-        global.ledgerNodes,
+        global.environment,
         global.cndConfigOverrides
     );
     const cndLogFile = global.getLogFile([testName, `cnd-${role}.log`]);
@@ -172,8 +172,8 @@ async function newCndActor(role: Role, startCnd: boolean) {
         cndStarting = cndInstance.start();
     }
 
-    const bitcoinWallet = newBitcoinWallet(global.ledgerNodes, logger);
-    const ethereumWallet = newEthereumWallet(global.ledgerNodes, logger);
+    const bitcoinWallet = newBitcoinWallet(global.environment, logger);
+    const ethereumWallet = newEthereumWallet(global.environment, logger);
 
     // Await all of the Promises that we started. In JS, Promises are eager and hence already started evaluating. This is an attempt to improve the startup performance of an actor.
     const wallets = new Wallets({
@@ -205,20 +205,20 @@ async function newCndActor(role: Role, startCnd: boolean) {
 }
 
 async function newBitcoinWallet(
-    ledgerNodes: LedgerNodes,
+    env: Environment,
     logger: Logger
 ): Promise<BitcoinWallet> {
-    const bitcoinConfig = ledgerNodes.bitcoin;
+    const bitcoinConfig = env.bitcoin;
     return bitcoinConfig
         ? BitcoindWallet.newInstance(bitcoinConfig, logger)
         : Promise.resolve(newBitcoinStubWallet());
 }
 
 async function newEthereumWallet(
-    ledgerNodes: LedgerNodes,
+    env: Environment,
     logger: Logger
 ): Promise<EthereumWallet> {
-    const ethereumConfig = ledgerNodes.ethereum;
+    const ethereumConfig = env.ethereum;
     return ethereumConfig
         ? Web3EthereumWallet.newInstance(
               ethereumConfig.rpc_url,

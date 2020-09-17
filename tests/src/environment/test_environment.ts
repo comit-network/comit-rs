@@ -62,7 +62,7 @@ export default class TestEnvironment extends NodeEnvironment {
             .then((metadata) => metadata.target_directory);
 
         // setup global variables
-        this.global.ledgerNodes = {};
+        this.global.environment = {};
         this.global.lndClients = {};
         this.global.cargoTargetDir = cargoTargetDir;
         this.global.cndConfigOverrides = this.cndConfigOverrides;
@@ -205,7 +205,7 @@ export default class TestEnvironment extends NodeEnvironment {
             );
         }
 
-        this.global.ledgerNodes.bitcoin = config;
+        this.global.environment.bitcoin = config;
         this.bitcoinFaucet = new BitcoinFaucet(config, this.logger);
 
         await release();
@@ -252,7 +252,7 @@ export default class TestEnvironment extends NodeEnvironment {
             };
         });
 
-        this.global.ledgerNodes.ethereum = config;
+        this.global.environment.ethereum = config;
         this.global.tokenContract = config.tokenContract;
 
         await release();
@@ -285,7 +285,7 @@ export default class TestEnvironment extends NodeEnvironment {
             config,
             this.logger
         );
-        this.global.ledgerNodes.aliceLnd = config;
+        this.global.environment.aliceLnd = config;
     }
 
     /**
@@ -300,7 +300,7 @@ export default class TestEnvironment extends NodeEnvironment {
             config,
             this.logger
         );
-        this.global.ledgerNodes.bobLnd = config;
+        this.global.environment.bobLnd = config;
     }
 
     private async initLightningLedger(
