@@ -16,6 +16,7 @@ import { HarnessGlobal, Startable, LightningNode } from "./index";
 import { execAsync, existsAsync } from "./async_fs";
 import { LndClient } from "../wallets/lightning";
 import { BitcoinFaucet } from "../wallets/bitcoin";
+import FakeTreasuryServiceInstance from "./fake_treasury_service_instance";
 import properLockfile from "proper-lockfile";
 
 export default class TestEnvironment extends NodeEnvironment {
@@ -26,6 +27,7 @@ export default class TestEnvironment extends NodeEnvironment {
     private readonly nodeModulesBinDir: string;
     private readonly srcDir: string;
     private readonly cndConfigOverrides: Partial<CndConfig>;
+    private readonly shouldStartFakeTreasuryService: boolean;
 
     public global: HarnessGlobal;
 
@@ -37,6 +39,9 @@ export default class TestEnvironment extends NodeEnvironment {
 
         this.ledgers = extractLedgersToBeStarted(context.docblockPragmas);
         this.cndConfigOverrides = extractCndConfigOverrides(
+            context.docblockPragmas
+        );
+        this.shouldStartFakeTreasuryService = extractFakeTreasuryService(
             context.docblockPragmas
         );
         assertNoUnhandledPargmas(context.docblockPragmas);
@@ -108,6 +113,7 @@ export default class TestEnvironment extends NodeEnvironment {
         this.logger.info("Starting up test environment");
 
         await this.startLedgers();
+        await this.startFakeTreasuryService();
 
         this.logger.info("Test environment started");
     }
@@ -141,6 +147,57 @@ export default class TestEnvironment extends NodeEnvironment {
         }
 
         await Promise.all(tasks);
+    }
+
+    private async startFakeTreasuryService() {
+        if (this.shouldStartFakeTreasuryService) {
+            const lockDir = await this.getLockDirectory(
+                "fake_treasury_service"
+            );
+            const release = await lock(lockDir).catch(() =>
+                Promise.reject(
+                    new Error(
+                        `Failed to acquire lock for starting FakeTreasuryService`
+                    )
+                )
+            );
+            const servicePidFile = path.join(
+                lockDir,
+                "fake_treasury_service.pid"
+            );
+
+            const tsNode = path.join(this.nodeModulesBinDir, "ts-node");
+            const service = path.join(
+                this.srcDir,
+                "environment",
+                "fake_treasury_service.ts"
+            );
+
+            const dataDir = await this.global.getDataDir(
+                "fake_treasury_service"
+            );
+            const instance = await FakeTreasuryServiceInstance.new(
+                tsNode,
+                service,
+                9000,
+                servicePidFile,
+                path.join(dataDir, "service.log"),
+                this.logger
+            );
+            const config = await this.start(
+                lockDir,
+                instance,
+                async (instance) => ({
+                    host: instance.host,
+                })
+            );
+
+            this.global.environment.treasury = {
+                host: config.host,
+            };
+
+            await release();
+        }
     }
 
     /**
@@ -367,7 +424,12 @@ export default class TestEnvironment extends NodeEnvironment {
     }
 
     private async getLockDirectory(
-        process: "geth" | "bitcoind" | "lnd-alice" | "lnd-bob"
+        process:
+            | "geth"
+            | "bitcoind"
+            | "lnd-alice"
+            | "lnd-bob"
+            | "fake_treasury_service"
     ): Promise<string> {
         const dir = path.join(this.locksDir, process);
 
@@ -419,6 +481,19 @@ export function extractCndConfigOverrides(
 
             return config;
         }, {});
+}
+
+function extractFakeTreasuryService(
+    docblockPragmas: Record<string, string | string[]>
+): boolean {
+    const fakeTreasuryService = docblockPragmas.fakeTreasuryService;
+    delete docblockPragmas.fakeTreasuryService;
+
+    if (!fakeTreasuryService) {
+        return false;
+    }
+
+    return true;
 }
 
 export function assertNoUnhandledPargmas(
