@@ -1,3 +1,5 @@
+// TODO: Move outside swap module
+
 use self::{
     hbit::{HbitFunded, HbitRedeemed, HbitRefunded},
     herc20::{Herc20Deployed, Herc20Funded, Herc20Redeemed, Herc20Refunded},
