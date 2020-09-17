@@ -29,8 +29,8 @@ async function run(btcDaiPrice: number, port: number) {
             error: [],
             result: {
                 XBTDAI: {
-                    a: [btcDaiPrice.toString(), "1", "1.000"],
-                    b: [btcDaiPrice.toString(), "1", "1.000"],
+                    a: [`${btcDaiPrice}.00000`, "1", "1.000"],
+                    b: [`${btcDaiPrice}.00000`, "1", "1.000"],
                 },
             },
         });
