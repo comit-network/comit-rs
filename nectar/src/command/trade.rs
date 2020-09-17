@@ -3,7 +3,7 @@ mod event_loop;
 use crate::{
     bitcoin,
     command::{trade::event_loop::EventLoop, FinishedSwap},
-    config::Settings,
+    config::{KrakenApiHost, Settings},
     ethereum::{self, dai},
     history::History,
     mid_market_rate::get_btc_dai_mid_market_rate,
@@ -68,7 +68,8 @@ pub async fn trade(
 
     let update_interval = Duration::from_secs(15u64);
 
-    let (rate_future, rate_update_receiver) = init_rate_updates(update_interval);
+    let (rate_future, rate_update_receiver) =
+        init_rate_updates(update_interval, settings.maker.kraken_api_host);
     let (btc_balance_future, btc_balance_update_receiver) =
         init_bitcoin_balance_updates(update_interval, Arc::clone(&bitcoin_wallet));
     let (dai_balance_future, dai_balance_update_receiver) =
@@ -134,7 +135,7 @@ async fn init_maker(
     let dai_max_sell = settings.maker.max_sell.dai.clone();
     let btc_fee_reserve = settings.maker.maximum_possible_fee.bitcoin;
 
-    let initial_rate = get_btc_dai_mid_market_rate()
+    let initial_rate = get_btc_dai_mid_market_rate(&settings.maker.kraken_api_host)
         .await
         .context("Could not get rate")?;
 
@@ -158,6 +159,7 @@ async fn init_maker(
 
 fn init_rate_updates(
     update_interval: Duration,
+    kraken_api_host: KrakenApiHost,
 ) -> (
     impl Future<Output = comit::Never> + Send,
     Receiver<anyhow::Result<MidMarketRate>>,
@@ -168,7 +170,7 @@ fn init_rate_updates(
 
     let future = async move {
         loop {
-            let rate = get_btc_dai_mid_market_rate().await;
+            let rate = get_btc_dai_mid_market_rate(&kraken_api_host).await;
 
             let _ = sender.send(rate).await.map_err(|e| {
                 tracing::trace!(
@@ -364,6 +366,7 @@ mod tests {
                 },
                 spread: Default::default(),
                 maximum_possible_fee: Default::default(),
+                kraken_api_host: Default::default(),
             },
             network: Network {
                 listen: vec!["/ip4/98.97.96.95/tcp/20500"

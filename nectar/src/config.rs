@@ -126,6 +126,7 @@ mod tests {
                 maximum_possible_fee: Some(file::Fees {
                     bitcoin: Some(bitcoin::Amount::from_btc(0.00009275).unwrap()),
                 }),
+                kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
             }),
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
