@@ -4,16 +4,10 @@ use comit::network::{orderbook, setup_swap};
 use futures::Future;
 use libp2p::{
     identity::{ed25519, Keypair},
-    swarm::{NetworkBehaviourAction, PollParameters},
     NetworkBehaviour, PeerId,
 };
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
-use std::{
-    collections::VecDeque,
-    pin::Pin,
-    str::FromStr,
-    task::{Context, Poll},
-};
+use std::{pin::Pin, str::FromStr};
 use time::OffsetDateTime;
 
 pub type Swarm = libp2p::Swarm<Nectar>;
@@ -49,6 +43,18 @@ pub enum BehaviourOutEvent {
     SetupSwap(setup_swap::BehaviourOutEvent<SetupSwapContext>),
 }
 
+impl From<orderbook::BehaviourOutEvent> for BehaviourOutEvent {
+    fn from(event: orderbook::BehaviourOutEvent) -> Self {
+        BehaviourOutEvent::Orderbook(event)
+    }
+}
+
+impl From<setup_swap::BehaviourOutEvent<SetupSwapContext>> for BehaviourOutEvent {
+    fn from(event: setup_swap::BehaviourOutEvent<SetupSwapContext>) -> Self {
+        BehaviourOutEvent::SetupSwap(event)
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct SetupSwapContext {
     pub swap_id: SwapId,
@@ -59,15 +65,13 @@ pub struct SetupSwapContext {
 /// A `NetworkBehaviour` that delegates to the `Orderbook` and `SetupSwap`
 /// behaviours.
 #[derive(NetworkBehaviour)]
-#[behaviour(out_event = "BehaviourOutEvent", poll_method = "poll")]
+#[behaviour(out_event = "BehaviourOutEvent", event_process = false)]
 #[allow(missing_debug_implementations)]
 pub struct Nectar {
     pub orderbook: orderbook::Orderbook,
     pub setup_swap: setup_swap::SetupSwap<SetupSwapContext>,
     #[behaviour(ignore)]
     identity: Keypair,
-    #[behaviour(ignore)]
-    events: VecDeque<BehaviourOutEvent>,
 }
 
 impl Nectar {
@@ -79,7 +83,6 @@ impl Nectar {
             orderbook: comit::network::Orderbook::new(peer_id, identity.clone()),
             identity,
             setup_swap: Default::default(),
-            events: VecDeque::new(),
         }
     }
 
@@ -89,38 +92,6 @@ impl Nectar {
 
     pub fn peer_id(&self) -> PeerId {
         PeerId::from(self.identity.public())
-    }
-
-    fn poll<BIE>(
-        &mut self,
-        _cx: &mut Context<'_>,
-        _params: &mut impl PollParameters,
-    ) -> Poll<NetworkBehaviourAction<BIE, BehaviourOutEvent>> {
-        if let Some(event) = self.events.pop_front() {
-            return Poll::Ready(NetworkBehaviourAction::GenerateEvent(event));
-        }
-
-        // We trust libp2p to poll us.
-        Poll::Pending
-    }
-}
-
-impl libp2p::swarm::NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> for Nectar {
-    fn inject_event(&mut self, event: orderbook::BehaviourOutEvent) {
-        self.events.push_back(BehaviourOutEvent::Orderbook(event));
-    }
-}
-
-impl
-    libp2p::swarm::NetworkBehaviourEventProcess<
-        ::comit::network::setup_swap::BehaviourOutEvent<SetupSwapContext>,
-    > for Nectar
-{
-    fn inject_event(
-        &mut self,
-        event: ::comit::network::setup_swap::BehaviourOutEvent<SetupSwapContext>,
-    ) {
-        self.events.push_back(BehaviourOutEvent::SetupSwap(event));
     }
 }
 
