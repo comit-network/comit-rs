@@ -13,7 +13,13 @@ import {
 import { Logger } from "log4js";
 import { CndInstance } from "../environment/cnd_instance";
 import { sleep } from "../utils";
-import { DumpState, Role, Stoppable } from "./index";
+import {
+    DumpState,
+    GetListenAddress,
+    GetPeerId,
+    Role,
+    Stoppable,
+} from "./index";
 import { Wallets } from "../wallets";
 import pTimeout from "p-timeout";
 import { AxiosResponse } from "axios";
@@ -36,7 +42,8 @@ declare var global: HarnessGlobal;
  *
  * Although in reality instance of cnd can handle multiple swaps in different roles at the same time, the test framework limits an instance to one specific role.
  */
-export class CndActor implements Stoppable, DumpState {
+export class CndActor
+    implements Stoppable, DumpState, GetListenAddress, GetPeerId {
     readonly cnd: CndClient;
     public swap: Swap;
 
@@ -60,11 +67,32 @@ export class CndActor implements Stoppable, DumpState {
         this.cnd = new CndClient(`http://${socket}`);
     }
 
-    public async connect(other: CndActor) {
-        await this.cnd.dial(other.cnd);
+    async getPeerId(): Promise<string> {
+        return this.cnd.getPeerId();
+    }
 
-        const otherPeerId = await other.cnd.getPeerId();
+    async getListenAddress(): Promise<string> {
+        const listenAddresses = await this.cnd.getPeerListenAddresses();
+
+        return listenAddresses[0];
+    }
+
+    public async connect<O extends GetListenAddress & GetPeerId>(other: O) {
+        const listenAddress = await other.getListenAddress();
+        const otherPeerId = await other.getPeerId();
+
+        this.logger.info("Connecting to", otherPeerId, "on", listenAddress);
+
+        await this.cnd.dial(listenAddress);
+
         await this.pollUntilConnectedTo(otherPeerId);
+
+        this.logger.info(
+            "Successfully connected to",
+            otherPeerId,
+            "on",
+            listenAddress
+        );
     }
 
     public async openLnChannel(other: CndActor, amount: bigint): Promise<void> {
