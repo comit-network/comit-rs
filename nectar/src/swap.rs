@@ -6,15 +6,14 @@ mod alice;
 pub mod bitcoin;
 mod bob;
 mod comit;
-mod db;
 pub mod ethereum;
 
 use crate::{network::ActivePeer, swap::bob::Bob, SwapId};
 use std::sync::Arc;
 
 pub use self::comit::{hbit, herc20};
+pub use crate::database::Database;
 use chrono::{DateTime, Utc};
-pub use db::Database;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SwapKind {

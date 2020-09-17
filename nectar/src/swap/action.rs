@@ -1,5 +1,5 @@
 use crate::{
-    swap::db::{Load, Save},
+    database::{Load, Save},
     SwapId,
 };
 use anyhow::Context;

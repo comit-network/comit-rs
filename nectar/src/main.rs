@@ -18,6 +18,7 @@
 mod bitcoin;
 mod command;
 mod config;
+mod database;
 mod ethereum;
 mod float_maths;
 mod fs;
