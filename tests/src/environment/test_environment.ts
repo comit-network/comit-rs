@@ -13,7 +13,7 @@ import { LndInstance } from "./lnd_instance";
 import BitcoinRpcClient from "bitcoin-core";
 import { CndConfig } from "./cnd_config";
 import { set } from "lodash";
-import { HarnessGlobal, LedgerInstance, LightningNode } from "./index";
+import { HarnessGlobal, Startable, LightningNode } from "./index";
 import { execAsync, existsAsync } from "./async_fs";
 import { LndClient } from "../wallets/lightning";
 import { BitcoinFaucet } from "../wallets/bitcoin";
@@ -161,27 +161,23 @@ export default class TestEnvironment extends NodeEnvironment {
             path.join(lockDir, "bitcoind.pid"),
             this.logger
         );
-        const config = await this.startLedger(
-            lockDir,
-            bitcoind,
-            async (bitcoind) => {
-                const config = bitcoind.config;
-                const rpcClient = new BitcoinRpcClient({
-                    network: config.network,
-                    port: config.rpcPort,
-                    host: config.host,
-                    username: config.username,
-                    password: config.password,
-                });
+        const config = await this.start(lockDir, bitcoind, async (bitcoind) => {
+            const config = bitcoind.config;
+            const rpcClient = new BitcoinRpcClient({
+                network: config.network,
+                port: config.rpcPort,
+                host: config.host,
+                username: config.username,
+                password: config.password,
+            });
 
-                const name = "miner";
-                await rpcClient.createWallet(name);
+            const name = "miner";
+            await rpcClient.createWallet(name);
 
-                this.logger.info(`Created miner wallet with name ${name}`);
+            this.logger.info(`Created miner wallet with name ${name}`);
 
-                return { ...bitcoind.config, minerWallet: name };
-            }
-        );
+            return { ...bitcoind.config, minerWallet: name };
+        });
 
         const minerPidFile = path.join(lockDir, "miner.pid");
 
@@ -229,7 +225,7 @@ export default class TestEnvironment extends NodeEnvironment {
             path.join(lockDir, "geth.pid"),
             this.logger
         );
-        const config = await this.startLedger(lockDir, geth, async (geth) => {
+        const config = await this.start(lockDir, geth, async (geth) => {
             const rpcUrl = geth.rpcUrl;
             const faucet = new EthereumFaucet(
                 geth.devAccount,
@@ -321,7 +317,7 @@ export default class TestEnvironment extends NodeEnvironment {
             path.join(lockDir, "lnd.pid")
         );
 
-        const config = await this.startLedger(
+        const config = await this.start(
             lockDir,
             lnd,
             async (lnd) => lnd.config
@@ -332,7 +328,7 @@ export default class TestEnvironment extends NodeEnvironment {
         return config;
     }
 
-    private async startLedger<C, S extends LedgerInstance>(
+    private async start<C, S extends Startable>(
         lockDir: string,
         instance: S,
         makeConfig: (instance: S) => Promise<C>
@@ -354,7 +350,7 @@ export default class TestEnvironment extends NodeEnvironment {
 
             return JSON.parse(config);
         } catch (e) {
-            this.logger.info("No config file found, starting ledger");
+            this.logger.info("No config file found, starting new instance");
 
             await instance.start();
 

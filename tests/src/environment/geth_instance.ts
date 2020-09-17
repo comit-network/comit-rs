@@ -9,10 +9,10 @@ import { platform } from "os";
 import chmod from "chmod";
 import * as path from "path";
 import { crashListener } from "./crash_listener";
-import { LedgerInstance } from "./index";
+import { Startable } from "./index";
 import { existsAsync, openAsync } from "./async_fs";
 
-export class GethInstance implements LedgerInstance {
+export class GethInstance implements Startable {
     private process: ChildProcess;
     // The parameter --networkid does not seem to have an effect for dev chain.
     // Nevertheless we define it so that it is obvious where the chain_id is coming from

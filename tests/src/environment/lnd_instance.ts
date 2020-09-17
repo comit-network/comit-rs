@@ -9,13 +9,13 @@ import download from "download";
 import { platform } from "os";
 import { lock } from "proper-lockfile";
 import { crashListener } from "./crash_listener";
-import { LedgerInstance, LightningNode } from "./index";
+import { Startable, LightningNode } from "./index";
 import { waitUntilFileExists } from "./wait_until_file_exists";
 import { existsAsync } from "./async_fs";
 import { AddressType, createLnRpc } from "@radar/lnrpc";
 import { BitcoinFaucet } from "../wallets/bitcoin";
 
-export class LndInstance implements LedgerInstance {
+export class LndInstance implements Startable {
     private process: ChildProcess;
 
     public static async new(

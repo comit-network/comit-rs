@@ -54,6 +54,6 @@ export interface Environment {
     bobLnd?: LightningNode;
 }
 
-export interface LedgerInstance {
+export interface Startable {
     start(): Promise<void>;
 }
