@@ -29,7 +29,7 @@ pub struct Bitcoind {
     pub node_url: Url,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct MaxSell {
     #[serde(default)]
     #[serde(with = "crate::config::serde::bitcoin_amount")]
