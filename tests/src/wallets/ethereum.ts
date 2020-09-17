@@ -87,6 +87,18 @@ export class EthereumFaucet {
         );
     }
 
+    public async mintEther(toAddress: string, quantity: bigint): Promise<void> {
+        const tx: ethers.providers.TransactionRequest = {
+            to: toAddress,
+            gasLimit: "0x30000",
+            value: BigNumber.from(quantity).toHexString(),
+        };
+
+        await this.sendDevAccountTransaction(tx);
+
+        this.logger.info("Minted", quantity, "ETH to", toAddress);
+    }
+
     private async sendDevAccountTransaction(
         tx: ethers.providers.TransactionRequest
     ): Promise<ethers.providers.TransactionReceipt> {
