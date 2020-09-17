@@ -76,24 +76,21 @@ pub async fn trade(
     tokio::spawn(btc_balance_future);
     tokio::spawn(dai_balance_future);
 
-    let (swap_execution_finished_sender, swap_execution_finished_receiver) =
-        futures::channel::mpsc::channel::<FinishedSwap>(ENSURED_CONSUME_ZERO_BUFFER);
-
-    let history = History::new(settings.data.dir.join("history.csv").as_path())?;
-
     let bitcoin_connector = Arc::new(BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?);
     let ethereum_connector = Arc::new(Web3Connector::new(settings.ethereum.node_url));
 
-    respawn_swaps(
+    let (swap_executor, swap_execution_finished_receiver) = SwapExecutor::new(
         Arc::clone(&db),
-        &mut maker,
         Arc::clone(&bitcoin_wallet),
         Arc::clone(&ethereum_wallet),
-        Arc::clone(&bitcoin_connector),
-        Arc::clone(&ethereum_connector),
-        swap_execution_finished_sender.clone(),
-    )
-    .context("Could not respawn swaps")?;
+        bitcoin_connector,
+        ethereum_connector,
+    );
+
+    respawn_swaps(Arc::clone(&db), &mut maker, swap_executor.clone())
+        .context("Could not respawn swaps")?;
+
+    let history = History::new(settings.data.dir.join("history.csv").as_path())?;
 
     let event_loop = EventLoop::new(
         maker,
@@ -102,9 +99,7 @@ pub async fn trade(
         db,
         bitcoin_wallet,
         ethereum_wallet,
-        bitcoin_connector,
-        ethereum_connector,
-        swap_execution_finished_sender,
+        swap_executor,
         swap_execution_finished_receiver,
         rate_update_receiver,
         btc_balance_update_receiver,
@@ -239,50 +234,74 @@ fn init_dai_balance_updates(
     (future, receiver)
 }
 
-// TODO: Move this to a struct that owns the channel
-#[allow(clippy::too_many_arguments)]
-async fn execute_swap(
+#[derive(Debug, Clone)]
+struct SwapExecutor {
     db: Arc<Database>,
     bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum::Wallet>,
+    finished_swap_sender: Sender<FinishedSwap>,
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    mut finished_swap_sender: Sender<FinishedSwap>,
-    swap: SwapKind,
-) -> anyhow::Result<()> {
-    db.insert_swap(swap.clone()).await?;
+}
 
-    swap.execute(
-        db,
-        bitcoin_wallet,
-        ethereum_wallet,
-        bitcoin_connector,
-        ethereum_connector,
-    )
-    .await?;
+impl SwapExecutor {
+    pub fn new(
+        db: Arc<Database>,
+        bitcoin_wallet: Arc<bitcoin::Wallet>,
+        ethereum_wallet: Arc<ethereum::Wallet>,
+        bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
+        ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
+    ) -> (Self, Receiver<FinishedSwap>) {
+        let (finished_swap_sender, finished_swap_receiver) =
+            futures::channel::mpsc::channel::<FinishedSwap>(ENSURED_CONSUME_ZERO_BUFFER);
 
-    let _ = finished_swap_sender
-        .send(FinishedSwap::new(
-            swap.clone(),
-            swap.params().taker,
-            chrono::Utc::now(),
-        ))
-        .await
-        .map_err(|_| {
-            tracing::trace!("Error when sending execution finished from sender to receiver.")
-        });
+        (
+            Self {
+                db,
+                bitcoin_wallet,
+                ethereum_wallet,
+                finished_swap_sender,
+                bitcoin_connector,
+                ethereum_connector,
+            },
+            finished_swap_receiver,
+        )
+    }
+}
 
-    Ok(())
+impl SwapExecutor {
+    async fn run(mut self, swap: SwapKind) -> anyhow::Result<()> {
+        self.db.insert_swap(swap.clone()).await?;
+
+        swap.execute(
+            self.db,
+            self.bitcoin_wallet,
+            self.ethereum_wallet,
+            self.bitcoin_connector,
+            self.ethereum_connector,
+        )
+        .await?;
+
+        let _ = self
+            .finished_swap_sender
+            .send(FinishedSwap::new(
+                swap.clone(),
+                swap.params().taker,
+                chrono::Utc::now(),
+            ))
+            .await
+            .map_err(|_| {
+                tracing::trace!("Error when sending execution finished from sender to receiver.")
+            });
+
+        Ok(())
+    }
 }
 
 fn respawn_swaps(
     db: Arc<Database>,
     maker: &mut Maker,
-    bitcoin_wallet: Arc<bitcoin::Wallet>,
-    ethereum_wallet: Arc<ethereum::Wallet>,
-    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
-    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    finished_swap_sender: Sender<FinishedSwap>,
+    swap_executor: SwapExecutor,
 ) -> anyhow::Result<()> {
     for swap in db.all_swaps()?.into_iter() {
         // Reserve funds
@@ -299,15 +318,7 @@ fn respawn_swaps(
             }
         };
 
-        tokio::spawn(execute_swap(
-            Arc::clone(&db),
-            Arc::clone(&bitcoin_wallet),
-            Arc::clone(&ethereum_wallet),
-            Arc::clone(&bitcoin_connector),
-            Arc::clone(&ethereum_connector),
-            finished_swap_sender.clone(),
-            swap,
-        ));
+        tokio::spawn(swap_executor.clone().run(swap));
     }
 
     Ok(())

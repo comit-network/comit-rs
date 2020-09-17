@@ -1,6 +1,6 @@
 use crate::{
     bitcoin,
-    command::{into_history_trade, trade::execute_swap, FinishedSwap},
+    command::{into_history_trade, trade::SwapExecutor, FinishedSwap},
     ethereum::{self, dai},
     history::History,
     maker::{PublishOrders, TakeRequestDecision},
@@ -21,22 +21,17 @@ use comit::{
     orderpool::Match,
     Position, Role,
 };
-use futures::{
-    channel::mpsc::{Receiver, Sender},
-    FutureExt, StreamExt,
-};
+use futures::{channel::mpsc::Receiver, FutureExt, StreamExt};
 use std::sync::Arc;
 
-pub struct EventLoop {
+pub(super) struct EventLoop {
     maker: Maker,
     swarm: Swarm,
     history: History,
     database: Arc<Database>,
     bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum::Wallet>,
-    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
-    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    finished_swap_sender: Sender<FinishedSwap>,
+    swap_executor: SwapExecutor,
     finished_swap_receiver: Receiver<FinishedSwap>,
     rate_update_receiver: Receiver<Result<MidMarketRate>>,
     btc_balance_update_receiver: Receiver<Result<bitcoin::Amount>>,
@@ -44,7 +39,6 @@ pub struct EventLoop {
 }
 
 impl EventLoop {
-    // TODO: Improve interface, especially regarding the receivers/senders
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         maker: Maker,
@@ -53,9 +47,7 @@ impl EventLoop {
         database: Arc<Database>,
         bitcoin_wallet: Arc<bitcoin::Wallet>,
         ethereum_wallet: Arc<ethereum::Wallet>,
-        bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
-        ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-        finished_swap_sender: Sender<FinishedSwap>,
+        swap_executor: SwapExecutor,
         finished_swap_receiver: Receiver<FinishedSwap>,
         rate_update_receiver: Receiver<Result<MidMarketRate>>,
         btc_balance_update_receiver: Receiver<Result<bitcoin::Amount>>,
@@ -68,9 +60,7 @@ impl EventLoop {
             database,
             bitcoin_wallet,
             ethereum_wallet,
-            bitcoin_connector,
-            ethereum_connector,
-            finished_swap_sender,
+            swap_executor,
             finished_swap_receiver,
             rate_update_receiver,
             btc_balance_update_receiver,
@@ -358,17 +348,9 @@ impl EventLoop {
                     .await
                     .context(format!("Could not insert swap {}", swap_id))?;
 
-                let _ = tokio::spawn(execute_swap(
-                    Arc::clone(&self.database),
-                    Arc::clone(&self.bitcoin_wallet),
-                    Arc::clone(&self.ethereum_wallet),
-                    Arc::clone(&self.bitcoin_connector),
-                    Arc::clone(&self.ethereum_connector),
-                    self.finished_swap_sender.clone(),
-                    swap_kind,
-                ))
-                .await
-                .context(format!("Execution failed for swap {}", swap_id))?;
+                let _ = tokio::spawn(self.swap_executor.clone().run(swap_kind))
+                    .await
+                    .context(format!("Execution failed for swap {}", swap_id))?;
             }
             setup_swap::BehaviourOutEvent::AlreadyHaveRoleParams { peer, .. } => {
                 bail!("already received role params from {}", peer)
