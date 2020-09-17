@@ -5,7 +5,6 @@ import path from "path";
 import { BitcoindInstance } from "./bitcoind_instance";
 import { configure, Logger, shutdown as loggerShutdown } from "log4js";
 import { EnvironmentContext } from "@jest/environment";
-import ledgerLock from "./ledger_lock";
 import BitcoinMinerInstance from "./bitcoin_miner_instance";
 import { EthereumFaucet } from "../wallets/ethereum";
 import { GethInstance } from "./geth_instance";
@@ -17,6 +16,7 @@ import { HarnessGlobal, Startable, LightningNode } from "./index";
 import { execAsync, existsAsync } from "./async_fs";
 import { LndClient } from "../wallets/lightning";
 import { BitcoinFaucet } from "../wallets/bitcoin";
+import properLockfile from "proper-lockfile";
 
 export default class TestEnvironment extends NodeEnvironment {
     private readonly testSuite: string;
@@ -150,7 +150,7 @@ export default class TestEnvironment extends NodeEnvironment {
      */
     private async startBitcoin() {
         const lockDir = await this.getLockDirectory("bitcoind");
-        const release = await ledgerLock(lockDir).catch(() =>
+        const release = await lock(lockDir).catch(() =>
             Promise.reject(
                 new Error(`Failed to acquire lock for starting bitcoind`)
             )
@@ -214,7 +214,7 @@ export default class TestEnvironment extends NodeEnvironment {
      */
     private async startEthereum() {
         const lockDir = await this.getLockDirectory("geth");
-        const release = await ledgerLock(lockDir).catch(() =>
+        const release = await lock(lockDir).catch(() =>
             Promise.reject(
                 new Error(`Failed to acquire lock for starting geth`)
             )
@@ -303,7 +303,7 @@ export default class TestEnvironment extends NodeEnvironment {
         role: "lnd-alice" | "lnd-bob"
     ): Promise<LightningNode> {
         const lockDir = await this.getLockDirectory(role);
-        const release = await ledgerLock(lockDir).catch(() =>
+        const release = await lock(lockDir).catch(() =>
             Promise.reject(
                 new Error(`Failed to acquire lock for starting ${role}`)
             )
@@ -427,4 +427,17 @@ export function assertNoUnhandledPargmas(
     for (const [pragma] of Object.entries(docblockPragmas)) {
         throw new Error(`Unhandled pragma '${pragma}'! Typo?`);
     }
+}
+
+/**
+ * Locks the given directory for exclusive access.
+ */
+async function lock(lockDir: string): Promise<() => Promise<void>> {
+    return properLockfile.lock(lockDir, {
+        retries: {
+            retries: 60,
+            factor: 1,
+            minTimeout: 500,
+        },
+    });
 }
