@@ -32,14 +32,9 @@ pub(super) struct EventLoop {
     bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum::Wallet>,
     swap_executor: SwapExecutor,
-    finished_swap_receiver: Receiver<FinishedSwap>,
-    rate_update_receiver: Receiver<Result<MidMarketRate>>,
-    btc_balance_update_receiver: Receiver<Result<bitcoin::Amount>>,
-    dai_balance_update_receiver: Receiver<Result<dai::Amount>>,
 }
 
 impl EventLoop {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         maker: Maker,
         swarm: Swarm,
@@ -48,10 +43,6 @@ impl EventLoop {
         bitcoin_wallet: Arc<bitcoin::Wallet>,
         ethereum_wallet: Arc<ethereum::Wallet>,
         swap_executor: SwapExecutor,
-        finished_swap_receiver: Receiver<FinishedSwap>,
-        rate_update_receiver: Receiver<Result<MidMarketRate>>,
-        btc_balance_update_receiver: Receiver<Result<bitcoin::Amount>>,
-        dai_balance_update_receiver: Receiver<Result<dai::Amount>>,
     ) -> Self {
         Self {
             maker,
@@ -61,17 +52,19 @@ impl EventLoop {
             bitcoin_wallet,
             ethereum_wallet,
             swap_executor,
-            finished_swap_receiver,
-            rate_update_receiver,
-            btc_balance_update_receiver,
-            dai_balance_update_receiver,
         }
     }
 
-    pub async fn run(mut self) -> anyhow::Result<()> {
+    pub async fn run(
+        mut self,
+        mut finished_swap_receiver: Receiver<FinishedSwap>,
+        mut rate_update_receiver: Receiver<Result<MidMarketRate>>,
+        mut btc_balance_update_receiver: Receiver<Result<bitcoin::Amount>>,
+        mut dai_balance_update_receiver: Receiver<Result<dai::Amount>>,
+    ) -> anyhow::Result<()> {
         loop {
             futures::select! {
-                finished_swap = self.finished_swap_receiver.next().fuse() => {
+                finished_swap = finished_swap_receiver.next().fuse() => {
                     if let Some(finished_swap) = finished_swap {
                         if let Err(err) = self.handle_finished_swap(finished_swap).await {
                             tracing::error!("Could handle finished swap: {:#}", err);
@@ -83,7 +76,7 @@ impl EventLoop {
                         tracing::error!("Network event handling failed: {:#}", err);
                     }
                 },
-                new_rate = self.rate_update_receiver.next().fuse() => {
+                new_rate = rate_update_receiver.next().fuse() => {
                     if let Some(new_rate) = new_rate {
                         match new_rate {
                             Ok(new_rate) => {
@@ -95,7 +88,7 @@ impl EventLoop {
                         }
                     }
                 },
-                new_btc_balance = self.btc_balance_update_receiver.next().fuse() => {
+                new_btc_balance = btc_balance_update_receiver.next().fuse() => {
                     if let Some(new_btc_balance) = new_btc_balance {
                         match new_btc_balance {
                             Ok(new_btc_balance) => {
@@ -107,7 +100,7 @@ impl EventLoop {
                         }
                     }
                 },
-                new_dai_balance = self.dai_balance_update_receiver.next().fuse() => {
+                new_dai_balance = dai_balance_update_receiver.next().fuse() => {
                     if let Some(new_dai_balance) = new_dai_balance {
                         match new_dai_balance {
                             Ok(new_dai_balance) => {

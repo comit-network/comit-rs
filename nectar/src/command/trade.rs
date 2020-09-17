@@ -100,13 +100,16 @@ pub async fn trade(
         bitcoin_wallet,
         ethereum_wallet,
         swap_executor,
-        swap_execution_finished_receiver,
-        rate_update_receiver,
-        btc_balance_update_receiver,
-        dai_balance_update_receiver,
     );
 
-    event_loop.run().await
+    event_loop
+        .run(
+            swap_execution_finished_receiver,
+            rate_update_receiver,
+            btc_balance_update_receiver,
+            dai_balance_update_receiver,
+        )
+        .await
 }
 
 async fn init_maker(
