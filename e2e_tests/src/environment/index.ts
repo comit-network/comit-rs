@@ -5,7 +5,7 @@ import { Logger } from "log4js";
 import { LndClient } from "../wallets/lightning";
 
 export interface HarnessGlobal extends Global.Global {
-    ledgerNodes: LedgerNodes;
+    environment: Environment;
     lndClients: {
         alice?: LndClient;
         bob?: LndClient;
@@ -47,7 +47,7 @@ export interface EthereumNode {
     chain_id: number;
 }
 
-export interface LedgerNodes {
+export interface Environment {
     bitcoin?: BitcoinNode;
     ethereum?: EthereumNode;
     aliceLnd?: LightningNode;
