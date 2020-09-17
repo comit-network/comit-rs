@@ -47,11 +47,16 @@ export interface EthereumNode {
     chain_id: number;
 }
 
+export interface FakeTreasuryService {
+    host: string;
+}
+
 export interface Environment {
     bitcoin?: BitcoinNode;
     ethereum?: EthereumNode;
     aliceLnd?: LightningNode;
     bobLnd?: LightningNode;
+    treasury?: FakeTreasuryService;
 }
 
 export interface Startable {
