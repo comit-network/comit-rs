@@ -7,3 +7,11 @@ export interface Stoppable {
 export interface DumpState {
     dumpState(): Promise<void>;
 }
+
+export interface GetListenAddress {
+    getListenAddress(): Promise<string>;
+}
+
+export interface GetPeerId {
+    getPeerId(): Promise<string>;
+}

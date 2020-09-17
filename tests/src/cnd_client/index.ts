@@ -44,9 +44,8 @@ export default class CndClient {
         return info.id;
     }
 
-    public async dial(other: CndClient) {
-        const addr = await other.getPeerListenAddresses();
-        await this.client.post("dial", { addresses: addr });
+    public async dial(address: string) {
+        await this.client.post("dial", { addresses: [address] });
     }
 
     /**
