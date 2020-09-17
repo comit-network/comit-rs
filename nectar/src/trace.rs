@@ -1,5 +1,5 @@
 use log::LevelFilter;
-use tracing::{info, subscriber, Level};
+use tracing::{info, subscriber};
 use tracing_log::LogTracer;
 use tracing_subscriber::FmtSubscriber;
 
@@ -13,7 +13,10 @@ pub fn init_tracing(level: log::LevelFilter) -> anyhow::Result<()> {
 
     let is_terminal = atty::is(atty::Stream::Stderr);
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(level_from_level_filter(level))
+        .with_env_filter(format!(
+            "nectar={},comit={},http=info,warp=info",
+            level, level
+        ))
         .with_writer(std::io::stderr)
         .with_ansi(is_terminal)
         .finish();
@@ -22,15 +25,4 @@ pub fn init_tracing(level: log::LevelFilter) -> anyhow::Result<()> {
     info!("Initialized tracing with level: {}", level);
 
     Ok(())
-}
-
-fn level_from_level_filter(level: LevelFilter) -> Level {
-    match level {
-        LevelFilter::Off => unreachable!(),
-        LevelFilter::Error => Level::ERROR,
-        LevelFilter::Warn => Level::WARN,
-        LevelFilter::Info => Level::INFO,
-        LevelFilter::Debug => Level::DEBUG,
-        LevelFilter::Trace => Level::TRACE,
-    }
 }
