@@ -37,7 +37,7 @@
         "chmod": "^0.2.1",
         "content-type": "^1.0.4",
         "download": "^8.0.0",
-        "ethers": "^5.0.13",
+        "ethers": "^5.0.14",
         "find-cache-dir": "^3.3.1",
         "get-port": "^5.1.1",
         "glob": "^7.1.6",
