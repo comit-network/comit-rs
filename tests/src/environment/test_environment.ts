@@ -367,12 +367,7 @@ export default class TestEnvironment extends NodeEnvironment {
     }
 
     private async getLockDirectory(
-        process:
-            | "geth"
-            | "bitcoind"
-            | "lnd-alice"
-            | "lnd-bob"
-            | "ethereum-dev-account"
+        process: "geth" | "bitcoind" | "lnd-alice" | "lnd-bob"
     ): Promise<string> {
         const dir = path.join(this.locksDir, process);
 
