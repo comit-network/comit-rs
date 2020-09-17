@@ -31,7 +31,7 @@ pub fn new_swarm(seed: Seed, settings: &crate::config::Settings) -> anyhow::Resu
         .build();
     for addr in settings.network.listen.clone() {
         Swarm::listen_on(&mut swarm, addr.clone())
-            .with_context(|| format!("Address is not supported: {:?}", addr))?;
+            .with_context(|| format!("Address is not supported: {:#}", addr))?;
     }
 
     Ok(swarm)

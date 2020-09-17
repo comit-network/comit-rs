@@ -403,7 +403,7 @@ impl EventLoop {
 
                 if ongoing_trade_with_taker_exists {
                     bail!(
-                        "ignoring take order request from taker with ongoing trade, taker: {:?}, order: {}",
+                        "ignoring take order request from taker with ongoing trade, taker: {:#}, order: {}",
                         taker.peer_id(),
                         ours,
                     );

@@ -70,7 +70,7 @@ impl Wallet {
     pub fn private_key_from_seed(seed: &Seed) -> anyhow::Result<clarity::PrivateKey> {
         let private_key = Self::root_extended_private_key_from_seed(seed)?
             .derive(&DERIVATION_PATH)
-            .map_err(|err| anyhow!("Could not derive private key: {:?}", err))?
+            .map_err(|err| anyhow!("Could not derive private key: {:#}", err))?
             .to_private_key();
         let private_key =
             clarity::PrivateKey::from_slice(&private_key.to_secp256k1_secret_key()[..])
@@ -89,7 +89,7 @@ impl Wallet {
                 seed.bytes().as_ref(),
                 &EthereumFormat::Standard,
             )
-            .map_err(|err| anyhow!("Could not generate extended private key: {:?}", err))?,
+            .map_err(|err| anyhow!("Could not generate extended private key: {:#}", err))?,
         )
     }
 
@@ -370,7 +370,7 @@ impl Wallet {
         let actual = self.geth_client.chain_id().await?;
 
         if expected != actual {
-            anyhow::bail!("Wrong chain_id: expected {:?}, got {:?}", expected, actual);
+            anyhow::bail!("Wrong chain_id: expected {:#}, got {:#}", expected, actual);
         }
 
         Ok(())

@@ -118,7 +118,7 @@ fn handle_finished_swap(
             .expect("No thread panicked while holding the lock");
         let _ = history.write(trade).map_err(|error| {
             tracing::error!(
-                "Unable to register history entry: {}; {:?}",
+                "Unable to register history entry: {:#}; {:?}",
                 error,
                 finished_swap
             )
@@ -129,9 +129,9 @@ fn handle_finished_swap(
 
     let _ = db
         .remove_active_peer(&finished_swap.peer)
-        .map_err(|error| tracing::error!("Unable to remove from active peers: {}", error));
+        .map_err(|error| tracing::error!("Unable to remove from active peers: {:#}", error));
 
     let _ = db
         .remove_swap(&swap_id)
-        .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
+        .map_err(|error| tracing::error!("Unable to delete swap from db: {:#}", error));
 }
