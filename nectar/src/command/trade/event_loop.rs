@@ -9,7 +9,7 @@ use crate::{
     swap::{Database, SwapKind, SwapParams},
     Maker, MidMarketRate, SwapId,
 };
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use chrono::{NaiveDateTime, Utc};
 use comit::{
     identity,
@@ -23,7 +23,7 @@ use comit::{
 };
 use futures::{
     channel::mpsc::{Receiver, Sender},
-    FutureExt, StreamExt, TryFutureExt,
+    FutureExt, StreamExt,
 };
 use std::sync::Arc;
 
@@ -83,120 +83,107 @@ impl EventLoop {
             futures::select! {
                 finished_swap = self.finished_swap_receiver.next().fuse() => {
                     if let Some(finished_swap) = finished_swap {
-                        self.handle_finished_swap(finished_swap).await;
+                        if let Err(err) = self.handle_finished_swap(finished_swap).await {
+                            tracing::error!("Could handle finished swap: {:#}", err);
+                        }
                     }
                 },
                 event = self.swarm.next().fuse() => {
-                    self.handle_network_event(
-                            event,
-                        ).await?;
-                },
-                rate_update = self.rate_update_receiver.next().fuse() => {
-                    self.handle_rate_update(rate_update.unwrap());
-                },
-                btc_balance_update = self.btc_balance_update_receiver.next().fuse() => {
-                    self.handle_btc_balance_update(btc_balance_update.unwrap());
-                },
-                dai_balance_update = self.dai_balance_update_receiver.next().fuse() => {
-                    self.handle_dai_balance_update(dai_balance_update.unwrap());
-                }
-            }
-        }
-    }
-
-    fn handle_rate_update(&mut self, rate_update: Result<MidMarketRate>) {
-        match rate_update {
-            Ok(new_rate) => {
-                let result = self.maker.update_rate(new_rate);
-                match result {
-                    Ok(Some(PublishOrders {
-                        new_sell_order,
-                        new_buy_order,
-                    })) => {
-                        self.swarm.orderbook.publish(
-                            new_sell_order.to_comit_order(self.maker.swap_protocol(Position::Sell)),
-                        );
-                        self.swarm.orderbook.publish(
-                            new_buy_order.to_comit_order(self.maker.swap_protocol(Position::Buy)),
-                        );
-                        self.swarm.orderbook.clear_own_orders();
+                    if let Err(err) = self.handle_network_event(event).await {
+                        tracing::error!("Network event handling failed: {:#}", err);
                     }
-
-                    Ok(None) => (),
-                    Err(e) => tracing::warn!("Rate update yielded error: {}", e),
+                },
+                new_rate = self.rate_update_receiver.next().fuse() => {
+                    if let Some(new_rate) = new_rate {
+                        match new_rate {
+                            Ok(new_rate) => {
+                                if let Err(err) = self.handle_rate_update(new_rate) {
+                                    tracing::error!("Rate update handling failed: {:#}", err)
+                                }
+                            }
+                            Err(err) => tracing::error!("Rate retrieval failed: {:#}", err),
+                        }
+                    }
+                },
+                new_btc_balance = self.btc_balance_update_receiver.next().fuse() => {
+                    if let Some(new_btc_balance) = new_btc_balance {
+                        match new_btc_balance {
+                            Ok(new_btc_balance) => {
+                                if let Err(err) = self.handle_btc_balance_update(new_btc_balance) {
+                                    tracing::error!("BTC balance update handing failed: {:#}", err);
+                                }
+                            }
+                            Err(err) => tracing::error!("BTC balance update failed: {:#}", err),
+                        }
+                    }
+                },
+                new_dai_balance = self.dai_balance_update_receiver.next().fuse() => {
+                    if let Some(new_dai_balance) = new_dai_balance {
+                        match new_dai_balance {
+                            Ok(new_dai_balance) => {
+                                if let Err(err) = self.handle_dai_balance_update(new_dai_balance) {
+                                    tracing::error!("Dai balance update handing failed: {:#}", err);
+                                }
+                            }
+                            Err(err) => tracing::error!("Dai balance update failed: {:#}", err),
+                        }
+                    }
                 }
-            }
-            Err(e) => {
-                self.maker.invalidate_rate();
-                tracing::error!(
-                    "Unable to fetch latest rate! Fetching rate yielded error: {}",
-                    e
-                );
             }
         }
     }
 
-    fn handle_btc_balance_update(&mut self, btc_balance_update: Result<bitcoin::Amount>) {
-        match btc_balance_update {
-            Ok(btc_balance) => match self.maker.update_bitcoin_balance(btc_balance) {
-                Ok(Some(new_sell_order)) => {
-                    let order =
-                        new_sell_order.to_comit_order(self.maker.swap_protocol(Position::Sell));
-                    self.swarm.orderbook.clear_own_orders();
-                    self.swarm.orderbook.publish(order);
-                }
-                Ok(None) => (),
-                Err(e) => tracing::warn!("Bitcoin balance update yielded error: {}", e),
-            },
-            Err(e) => {
-                self.maker.invalidate_bitcoin_balance();
-                tracing::error!(
-                    "Unable to fetch bitcoin balance! Fetching balance yielded error: {}",
-                    e
-                );
-            }
-        }
-    }
-
-    fn handle_dai_balance_update(&mut self, dai_balance_update: Result<dai::Amount>) {
-        match dai_balance_update {
-            Ok(dai_balance) => match self.maker.update_dai_balance(dai_balance) {
-                Ok(Some(new_buy_order)) => {
-                    let order =
-                        new_buy_order.to_comit_order(self.maker.swap_protocol(Position::Buy));
-                    self.swarm.orderbook.clear_own_orders();
-                    self.swarm.orderbook.publish(order);
-                }
-                Ok(None) => (),
-                Err(e) => tracing::warn!("Dai balance update yielded error: {}", e),
-            },
-            Err(e) => {
-                self.maker.invalidate_dai_balance();
-                tracing::error!(
-                    "Unable to fetch dai balance! Fetching balance yielded error: {}",
-                    e
-                );
-            }
-        }
-    }
-
-    async fn handle_finished_swap(&mut self, finished_swap: FinishedSwap) {
+    fn handle_rate_update(&mut self, new_rate: MidMarketRate) -> Result<()> {
+        let publish_order = self.maker.update_rate(new_rate)?;
+        if let Some(PublishOrders {
+            new_sell_order,
+            new_buy_order,
+        }) = publish_order
         {
-            let trade = into_history_trade(
-                finished_swap.peer.peer_id(),
-                finished_swap.swap.clone(),
-                #[cfg(not(test))]
-                finished_swap.final_timestamp,
-            );
-
-            let _ = self.history.write(trade).map_err(|error| {
-                tracing::error!(
-                    "Unable to register history entry: {}; {:?}",
-                    error,
-                    finished_swap
-                )
-            });
+            self.swarm
+                .orderbook
+                .publish(new_sell_order.to_comit_order(self.maker.swap_protocol(Position::Sell)));
+            self.swarm
+                .orderbook
+                .publish(new_buy_order.to_comit_order(self.maker.swap_protocol(Position::Buy)));
+            self.swarm.orderbook.clear_own_orders();
         }
+
+        Ok(())
+    }
+
+    fn handle_btc_balance_update(&mut self, new_btc_balance: bitcoin::Amount) -> Result<()> {
+        if let Some(new_sell_order) = self.maker.update_bitcoin_balance(new_btc_balance)? {
+            let order = new_sell_order.to_comit_order(self.maker.swap_protocol(Position::Sell));
+            self.swarm.orderbook.clear_own_orders();
+            self.swarm.orderbook.publish(order);
+        }
+
+        Ok(())
+    }
+
+    fn handle_dai_balance_update(&mut self, new_dai_balance: dai::Amount) -> Result<()> {
+        if let Some(new_buy_order) = self.maker.update_dai_balance(new_dai_balance)? {
+            let order = new_buy_order.to_comit_order(self.maker.swap_protocol(Position::Buy));
+            self.swarm.orderbook.clear_own_orders();
+            self.swarm.orderbook.publish(order);
+        }
+
+        Ok(())
+    }
+
+    async fn handle_finished_swap(&mut self, finished_swap: FinishedSwap) -> Result<()> {
+        let trade = into_history_trade(
+            finished_swap.peer.peer_id(),
+            finished_swap.swap.clone(),
+            #[cfg(not(test))]
+            finished_swap.final_timestamp,
+        );
+
+        let history_res = self.history.write(trade).context(format!(
+            "Unable to register history entry: {:?}",
+            finished_swap
+        ));
 
         let (dai, btc, swap_id) = match finished_swap.swap {
             SwapKind::HbitHerc20(swap) => {
@@ -211,17 +198,33 @@ impl EventLoop {
 
         self.maker.free_funds(dai, btc);
 
-        let _ = self
+        let peer_db_res = self
             .database
             .remove_active_peer(&finished_swap.peer)
             .await
-            .map_err(|error| tracing::error!("Unable to remove from active takers: {}", error));
+            .context("Unable to remove from active takers");
 
-        let _ = self
+        let swap_db_res = self
             .database
             .remove_swap(&swap_id)
             .await
-            .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
+            .context("Unable to delete swap from db");
+
+        if let Err(history_err) = history_res {
+            Err(history_err.context(format!(
+                "Issue inserting in history; peer db: {:?}; swap db: {:?}",
+                peer_db_res, swap_db_res
+            )))
+        } else if let Err(peer_db_err) = peer_db_res {
+            Err(peer_db_err.context(format!(
+                "Issue removing active peer from db; swap db: {:?}",
+                swap_db_res
+            )))
+        } else if let Err(swap_db_err) = swap_db_res {
+            Err(swap_db_err.context("Issue with removing swap from db"))
+        } else {
+            Ok(())
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -350,27 +353,22 @@ impl EventLoop {
                 };
                 let swap_id = swap_kind.swap_id();
 
-                let res = self
-                    .database
+                self.database
                     .insert_swap(swap_kind.clone())
-                    .map_err(|e| tracing::error!("Could not insert swap {}: {:?}", swap_id, e))
-                    .await;
-
-                if res.is_ok() {
-                    let _ = tokio::spawn(execute_swap(
-                        Arc::clone(&self.database),
-                        Arc::clone(&self.bitcoin_wallet),
-                        Arc::clone(&self.ethereum_wallet),
-                        Arc::clone(&self.bitcoin_connector),
-                        Arc::clone(&self.ethereum_connector),
-                        self.finished_swap_sender.clone(),
-                        swap_kind,
-                    ))
                     .await
-                    .map_err(|e| {
-                        tracing::error!("Execution failed for swap swap {}: {:?}", swap_id, e)
-                    });
-                }
+                    .context(format!("Could not insert swap {}", swap_id))?;
+
+                let _ = tokio::spawn(execute_swap(
+                    Arc::clone(&self.database),
+                    Arc::clone(&self.bitcoin_wallet),
+                    Arc::clone(&self.ethereum_wallet),
+                    Arc::clone(&self.bitcoin_connector),
+                    Arc::clone(&self.ethereum_connector),
+                    self.finished_swap_sender.clone(),
+                    swap_kind,
+                ))
+                .await
+                .context(format!("Execution failed for swap {}", swap_id))?;
             }
             setup_swap::BehaviourOutEvent::AlreadyHaveRoleParams { peer, .. } => {
                 bail!("already received role params from {}", peer)
@@ -404,7 +402,6 @@ impl EventLoop {
                     ))?;
 
                 if ongoing_trade_with_taker_exists {
-                    // TODO: We upgraded a warning to an error, think about it.
                     bail!(
                         "ignoring take order request from taker with ongoing trade, taker: {:?}, order: {}",
                         taker.peer_id(),
@@ -417,19 +414,14 @@ impl EventLoop {
                     .database
                     .fetch_inc_bitcoin_transient_key_index()
                     .await
-                    .map_err(|err| {
-                        anyhow!(
-                            "Could not fetch the index for the Bitcoin transient key: {:#}",
-                            err
-                        )
-                    })?;
+                    .context("Could not fetch the index for the Bitcoin transient key")?;
 
                 let token_contract = self.ethereum_wallet.dai_contract_address();
                 let ethereum_identity = self.ethereum_wallet.account();
                 let bitcoin_transient_sk = self
                     .bitcoin_wallet
                     .derive_transient_sk(index)
-                    .map_err(|err| anyhow!("Could not derive Bitcoin transient key: {:?}", err))?;
+                    .context("Could not derive Bitcoin transient key")?;
 
                 let bitcoin_identity =
                     identity::Bitcoin::from_secret_key(&crate::SECP, &bitcoin_transient_sk);
@@ -558,41 +550,40 @@ impl EventLoop {
                     }
                 };
 
-                let result = self.maker.process_taken_order(form);
+                let decision = self
+                    .maker
+                    .process_taken_order(form)
+                    .context("Processing taken order yielded error")?;
 
-                match result {
-                    Ok(TakeRequestDecision::GoForSwap) => {
-                        if let Err(e) = self.swarm.setup_swap.send(
-                            &peer,
-                            role_dependant_params,
-                            common_params,
-                            swap_protocol,
-                            SetupSwapContext {
-                                swap_id,
-                                match_ref_point,
-                                bitcoin_transient_key_index: index,
-                            },
-                        ) {
-                            tracing::error!("Sending setup swap message yielded error: {}", e)
-                        }
+                match decision {
+                    TakeRequestDecision::GoForSwap => {
+                        self.swarm
+                            .setup_swap
+                            .send(
+                                &peer,
+                                role_dependant_params,
+                                common_params,
+                                swap_protocol,
+                                SetupSwapContext {
+                                    swap_id,
+                                    match_ref_point,
+                                    bitcoin_transient_key_index: index,
+                                },
+                            )
+                            .context("Sending setup swap message yielded error")?;
 
                         let _ = self
                             .database
                             .insert_active_peer(ActivePeer { peer_id: peer })
                             .await
-                            .map_err(|e| tracing::error!("Failed to confirm order: {}", e));
+                            .context("Failed to confirm order")?;
 
                         // todo: publish new order here?
                         // What if i publish a new order here and the does go
                         // through?
                     }
-                    Ok(TakeRequestDecision::InsufficientFunds) => {
-                        tracing::info!("Insufficient funds")
-                    }
-                    Ok(TakeRequestDecision::RateNotProfitable) => {
-                        tracing::info!("Rate not profitable")
-                    }
-                    Err(e) => tracing::error!("Processing taken order yielded error: {}", e),
+                    TakeRequestDecision::InsufficientFunds => bail!("Insufficient funds"),
+                    TakeRequestDecision::RateNotProfitable => bail!("Rate not profitable"),
                 };
             }
         }
