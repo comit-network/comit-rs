@@ -167,6 +167,30 @@ pub struct Maker {
     /// balance. Fees are in the nominal native currency and per
     /// transaction.
     pub maximum_possible_fee: Fees,
+    pub kraken_api_host: KrakenApiHost,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct KrakenApiHost(Url);
+
+impl KrakenApiHost {
+    pub fn with_trading_pair(&self, trading_pair: &str) -> Result<Url> {
+        let url = self
+            .0
+            .join(&format!("/0/public/Ticker?pair={}", trading_pair))?;
+
+        Ok(url)
+    }
+}
+
+impl Default for KrakenApiHost {
+    fn default() -> Self {
+        let url = "https://api.kraken.com"
+            .parse()
+            .expect("static url always parses correctly");
+
+        Self(url)
+    }
 }
 
 impl Maker {
@@ -179,6 +203,9 @@ impl Maker {
             maximum_possible_fee: file
                 .maximum_possible_fee
                 .map_or_else(Fees::default, Fees::from_file),
+            kraken_api_host: file
+                .kraken_api_host
+                .map_or_else(KrakenApiHost::default, KrakenApiHost),
         }
     }
 }
@@ -189,6 +216,7 @@ impl Default for Maker {
             max_sell: MaxSell::default(),
             spread: Spread::new(500).expect("500 is a valid spread value"),
             maximum_possible_fee: Fees::default(),
+            kraken_api_host: KrakenApiHost::default(),
         }
     }
 }
@@ -265,6 +293,7 @@ impl From<Maker> for file::Maker {
             maximum_possible_fee: Some(file::Fees {
                 bitcoin: Some(maker.maximum_possible_fee.bitcoin),
             }),
+            kraken_api_host: Some(maker.kraken_api_host.0),
         }
     }
 }
