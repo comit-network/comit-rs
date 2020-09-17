@@ -1,4 +1,3 @@
-import { Network } from "../wallets/bitcoin";
 import { Global } from "@jest/types";
 import { CndConfig } from "./cnd_config";
 import { Logger } from "log4js";
@@ -20,7 +19,7 @@ export interface HarnessGlobal extends Global.Global {
 }
 
 export interface BitcoinNode {
-    network: Network;
+    network: "regtest";
     username: string;
     password: string;
     host: string;
