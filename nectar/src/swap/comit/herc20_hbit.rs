@@ -1,4 +1,8 @@
-use crate::swap::{hbit, herc20};
+use crate::swap::{
+    comit::{SwapFailedNoRefund, SwapFailedShouldRefund},
+    hbit, herc20,
+};
+use anyhow::Context;
 use chrono::{DateTime, Utc};
 use comit::{
     btsieve,
@@ -21,13 +25,11 @@ where
     BC: LatestBlock<Block = ::bitcoin::Block>
         + BlockByHash<Block = ::bitcoin::Block, BlockHash = ::bitcoin::BlockHash>,
 {
-    use Herc20HbitAliceError::*;
-
-    let happy_path = async {
+    let swap_result = async {
         let herc20_deployed = alice
             .execute_deploy(herc20_params.clone())
             .await
-            .map_err(|_| AliceDeploy)?;
+            .context(SwapFailedNoRefund)?;
 
         let _herc20_funded = alice
             .execute_fund(
@@ -36,28 +38,23 @@ where
                 utc_start_of_swap,
             )
             .await
-            .map_err(|_| AliceFund)?;
+            .context(SwapFailedNoRefund)?;
 
         let hbit_funded =
             hbit::watch_for_funded(bitcoin_connector, &hbit_params.shared, utc_start_of_swap)
                 .await
-                .map_err(|_| BobFund(herc20_deployed.clone()))?;
+                .context(SwapFailedShouldRefund(herc20_deployed.clone()))?;
 
         let _hbit_redeemed = alice
             .execute_redeem(hbit_params, hbit_funded, secret)
             .await
-            .map_err(|_| AliceRedeem(herc20_deployed))?;
+            .context(SwapFailedShouldRefund(herc20_deployed))?;
 
         Ok(())
-    };
+    }
+    .await;
 
-    if let Err(BobFund(herc20_deployed)) | Err(AliceRedeem(herc20_deployed)) = happy_path.await {
-        alice
-            .execute_refund(herc20_params, herc20_deployed, utc_start_of_swap)
-            .await?;
-    };
-
-    Ok(())
+    herc20::refund_if_necessary(alice, herc20_params, utc_start_of_swap, swap_result).await
 }
 
 /// Execute a Herc20<->Hbit swap for Bob.
@@ -77,16 +74,14 @@ where
     BC: LatestBlock<Block = ::bitcoin::Block>
         + BlockByHash<Block = ::bitcoin::Block, BlockHash = ::bitcoin::BlockHash>,
 {
-    use Herc20HbitBobError::*;
-
-    let happy_path = async {
+    let swap_result = async {
         let herc20_deployed = herc20::watch_for_deployed(
             ethereum_connector,
             herc20_params.clone(),
             utc_start_of_swap,
         )
         .await
-        .map_err(|_| AliceDeploy)?;
+        .context(SwapFailedNoRefund)?;
 
         let _herc20_funded = herc20::watch_for_funded(
             ethereum_connector,
@@ -95,9 +90,12 @@ where
             herc20_deployed.clone(),
         )
         .await
-        .map_err(|_| AliceFund)?;
+        .context(SwapFailedNoRefund)?;
 
-        let hbit_funded = bob.execute_fund(&hbit_params).await.map_err(|_| BobFund)?;
+        let hbit_funded = bob
+            .execute_fund(&hbit_params)
+            .await
+            .context(SwapFailedNoRefund)?;
 
         let hbit_redeemed = hbit::watch_for_redeemed(
             bitcoin_connector,
@@ -106,7 +104,7 @@ where
             utc_start_of_swap,
         )
         .await
-        .map_err(|_| AliceRedeem(hbit_funded))?;
+        .context(SwapFailedShouldRefund(hbit_funded))?;
 
         let _herc20_redeem = bob
             .execute_redeem(
@@ -116,40 +114,11 @@ where
                 utc_start_of_swap,
             )
             .await
-            .map_err(|_| BobRedeem)?;
+            .context(SwapFailedNoRefund)?;
 
         Ok(())
-    };
+    }
+    .await;
 
-    if let Err(AliceRedeem(hbit_funded)) = happy_path.await {
-        bob.execute_refund(hbit_params, hbit_funded).await?;
-    };
-
-    Ok(())
-}
-
-#[derive(Debug, Clone, thiserror::Error)]
-enum Herc20HbitAliceError {
-    #[error("Alice failed to deploy.")]
-    AliceDeploy,
-    #[error("Alice failed to fund.")]
-    AliceFund,
-    #[error("Bob failed to fund.")]
-    BobFund(herc20::Deployed),
-    #[error("Alice failed to redeem.")]
-    AliceRedeem(herc20::Deployed),
-}
-
-#[derive(Debug, Copy, Clone, thiserror::Error)]
-enum Herc20HbitBobError {
-    #[error("Alice failed to deploy.")]
-    AliceDeploy,
-    #[error("Alice failed to fund.")]
-    AliceFund,
-    #[error("Bob failed to fund.")]
-    BobFund,
-    #[error("Alice failed to redeem.")]
-    AliceRedeem(hbit::Funded),
-    #[error("Bob failed to redeem.")]
-    BobRedeem,
+    hbit::refund_if_necessary(bob, hbit_params, swap_result).await
 }
