@@ -320,7 +320,7 @@ fn respawn_swaps(
                 maker.dai_reserved_funds = maker.dai_reserved_funds.clone() + fund_amount;
             }
             SwapKind::Herc20Hbit(SwapParams { hbit_params, .. }) => {
-                let fund_amount = hbit_params.shared.asset.into();
+                let fund_amount = hbit_params.shared.asset;
                 maker.btc_reserved_funds = maker.btc_reserved_funds + fund_amount + maker.btc_fee;
             }
         };
@@ -405,7 +405,7 @@ mod tests {
         bitcoin_blockchain
             .mint(
                 bitcoin_wallet.new_address().await.unwrap(),
-                asset::Bitcoin::from_sat(1_000_000_000).into(),
+                asset::Bitcoin::from_sat(1_000_000_000),
             )
             .await
             .unwrap();

@@ -192,9 +192,8 @@ impl Maker {
                     },
                     Position::Sell => match self.btc_balance {
                         Some(btc_balance) => {
-                            let updated_btc_reserved_funds = self.btc_reserved_funds
-                                + bitcoin::Amount::from(order.quantity)
-                                + self.btc_fee;
+                            let updated_btc_reserved_funds =
+                                self.btc_reserved_funds + order.quantity.to_inner() + self.btc_fee;
                             if updated_btc_reserved_funds > btc_balance {
                                 return Ok(TakeRequestDecision::InsufficientFunds);
                             }
@@ -217,7 +216,7 @@ impl Maker {
         }
 
         if let Some(amount) = bitcoin {
-            self.btc_reserved_funds = self.btc_reserved_funds - (amount + self.btc_fee);
+            self.btc_reserved_funds -= amount + self.btc_fee;
         }
     }
 }
@@ -595,7 +594,7 @@ mod tests {
         };
 
         let new_buy_order = maker.new_buy_order().unwrap();
-        assert_eq!(bitcoin::Amount::from(new_buy_order.quantity), btc(0.002));
+        assert_eq!(new_buy_order.quantity.to_inner(), btc(0.002));
         assert_eq!(dai::Amount::from(new_buy_order.quote()), dai(18.0));
     }
 }

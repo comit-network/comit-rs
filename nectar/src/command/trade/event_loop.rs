@@ -174,11 +174,7 @@ impl EventLoop {
             SwapKind::HbitHerc20(swap) => {
                 (Some(swap.herc20_params.asset.into()), None, swap.swap_id)
             }
-            SwapKind::Herc20Hbit(swap) => (
-                None,
-                Some(swap.hbit_params.shared.asset.into()),
-                swap.swap_id,
-            ),
+            SwapKind::Herc20Hbit(swap) => (None, Some(swap.hbit_params.shared.asset), swap.swap_id),
         };
 
         self.database

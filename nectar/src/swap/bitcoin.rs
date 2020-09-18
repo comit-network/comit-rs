@@ -22,7 +22,7 @@ impl hbit::ExecuteFund for Wallet {
 
         let txid = self
             .inner
-            .send_to_address(action.to, action.amount.into(), action.network.into())
+            .send_to_address(action.to, action.amount, action.network.into())
             .await?;
 
         // we send money to a single address, vout is always 0
