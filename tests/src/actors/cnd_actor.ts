@@ -511,9 +511,15 @@ export class CndActor {
     }
 
     public async waitForSwap(): Promise<void> {
-        const response = await this.pollCndUntil<Entity>(
+        const poller = this.pollCndUntil<Entity>(
             "/swaps",
             (body) => body.entities.length > 0
+        );
+
+        const response = await pTimeout(
+            poller,
+            10_000,
+            "no swap appeared after 10 seconds"
         );
 
         this.swap = new Swap(
