@@ -74,6 +74,8 @@ where
     BC: LatestBlock<Block = ::bitcoin::Block>
         + BlockByHash<Block = ::bitcoin::Block, BlockHash = ::bitcoin::BlockHash>,
 {
+    tracing::info!("starting swap");
+
     let swap_result = async {
         let herc20_deployed = herc20::watch_for_deployed(
             ethereum_connector,
@@ -82,6 +84,8 @@ where
         )
         .await
         .context(SwapFailedNoRefund)?;
+
+        tracing::info!("alice deployed the herc20 htlc");
 
         let _herc20_funded = herc20::watch_for_funded(
             ethereum_connector,
@@ -92,10 +96,14 @@ where
         .await
         .context(SwapFailedNoRefund)?;
 
+        tracing::info!("alice funded the herc20 htlc");
+
         let hbit_funded = bob
             .execute_fund(&hbit_params)
             .await
             .context(SwapFailedNoRefund)?;
+
+        tracing::info!("we funded the hbit htlc");
 
         let hbit_redeemed = hbit::watch_for_redeemed(
             bitcoin_connector,
@@ -106,6 +114,8 @@ where
         .await
         .context(SwapFailedShouldRefund(hbit_funded))?;
 
+        tracing::info!("alice redeemed the hbit htlc");
+
         let _herc20_redeem = bob
             .execute_redeem(
                 herc20_params,
@@ -115,6 +125,8 @@ where
             )
             .await
             .context(SwapFailedNoRefund)?;
+
+        tracing::info!("we redeemed the herc20 htlc");
 
         Ok(())
     }

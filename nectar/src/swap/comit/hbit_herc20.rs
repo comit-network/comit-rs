@@ -78,16 +78,22 @@ where
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + btsieve::ethereum::ReceiptByHash,
 {
+    tracing::info!("starting swap");
+
     let swap_result = async {
         let hbit_funded =
             hbit::watch_for_funded(bitcoin_connector, &hbit_params.shared, utc_start_of_swap)
                 .await
                 .context(SwapFailedNoRefund)?;
 
+        tracing::info!("alice funded the hbit htlc");
+
         let herc20_deployed = bob
             .execute_deploy(herc20_params.clone())
             .await
             .context(SwapFailedNoRefund)?;
+
+        tracing::info!("we deployed the herc20 htlc");
 
         let _herc20_funded = bob
             .execute_fund(
@@ -98,6 +104,8 @@ where
             .await
             .context(SwapFailedNoRefund)?;
 
+        tracing::info!("we funded the herc20 htlc");
+
         let herc20_redeemed = herc20::watch_for_redeemed(
             ethereum_connector,
             utc_start_of_swap,
@@ -106,10 +114,14 @@ where
         .await
         .context(SwapFailedShouldRefund(herc20_deployed.clone()))?;
 
+        tracing::info!("alice redeemed the herc20 htlc");
+
         let _hbit_redeem = bob
             .execute_redeem(hbit_params, hbit_funded, herc20_redeemed.secret)
             .await
             .context(SwapFailedNoRefund)?;
+
+        tracing::info!("we redeemed the hbit htlc");
 
         Ok(())
     }
