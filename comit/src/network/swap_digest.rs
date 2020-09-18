@@ -1,5 +1,5 @@
-use crate::{asset, identity, RelativeTime, Timestamp};
-use digest::Digest;
+use crate::{asset, ethereum, identity, RelativeTime, Timestamp};
+use digest::{Digest, ToDigestInput};
 use libp2p::multihash::Multihash;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
@@ -145,7 +145,7 @@ impl digest::Hash for Sha3_256 {
     }
 }
 
-impl digest::ToDigestInput for Sha3_256 {
+impl ToDigestInput for Sha3_256 {
     fn to_digest_input(&self) -> Vec<u8> {
         self.0.to_vec()
     }
@@ -154,5 +154,41 @@ impl digest::ToDigestInput for Sha3_256 {
 impl From<Sha3_256> for SwapDigest {
     fn from(sha3256: Sha3_256) -> Self {
         SwapDigest(sha3256.0)
+    }
+}
+
+impl ToDigestInput for Timestamp {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.clone().to_bytes().to_vec()
+    }
+}
+
+impl ToDigestInput for RelativeTime {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.to_bytes().to_vec()
+    }
+}
+
+impl ToDigestInput for ethereum::Address {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.clone().as_bytes().to_vec()
+    }
+}
+
+impl ToDigestInput for asset::Bitcoin {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.to_le_bytes().to_vec()
+    }
+}
+
+impl ToDigestInput for asset::Ether {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.to_bytes()
+    }
+}
+
+impl ToDigestInput for asset::Erc20Quantity {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.to_bytes()
     }
 }
