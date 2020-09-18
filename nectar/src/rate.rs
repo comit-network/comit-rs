@@ -6,13 +6,24 @@ use comit::{
 use num::{BigUint, Integer, ToPrimitive};
 use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
+use std::{convert::TryFrom, fmt};
 
 /// Represent a rate. Note this is designed to support Bitcoin/Dai buy and sell
 /// rates (Bitcoin being in the range of 10k-100kDai) A rate has a maximum
 /// precision of 9 digits after the decimal rate = self.0 * 10e-9
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, PartialOrd)]
 pub struct Rate(u64);
+
+impl fmt::Display for Rate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut decimal = Decimal::from(self.0);
+        decimal
+            .set_scale(Self::PRECISION as u32)
+            .expect("Self::PRECISION < Decimal::MAX_PRECISION");
+
+        decimal.fmt(f)
+    }
+}
 
 impl Rate {
     pub const PRECISION: u16 = 10;
