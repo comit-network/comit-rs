@@ -57,27 +57,6 @@ mod kraken {
         Ok(rate)
     }
 
-    #[derive(Clone, Copy, Debug, Deserialize)]
-    #[serde(try_from = "TickerData")]
-    pub struct AskAndBid {
-        pub ask: f64,
-        pub bid: f64,
-    }
-
-    impl TryFrom<AskAndBid> for MidMarketRate {
-        type Error = anyhow::Error;
-
-        fn try_from(AskAndBid { ask, bid }: AskAndBid) -> anyhow::Result<Self> {
-            let value = (bid + ask) / 2f64;
-
-            // `Rate::try_from`'s maximum precision is 9 decimal places
-            let value = truncate(value, 9);
-            let value = Rate::try_from(value)?;
-
-            Ok(Self { 0: value })
-        }
-    }
-
     #[derive(Deserialize)]
     struct TickerResponse {
         result: Ticker,
@@ -87,6 +66,13 @@ mod kraken {
     struct Ticker {
         #[serde(rename = "XBTDAI")]
         xbtdai: AskAndBid,
+    }
+
+    #[derive(Clone, Copy, Debug, Deserialize)]
+    #[serde(try_from = "TickerData")]
+    pub struct AskAndBid {
+        pub ask: f64,
+        pub bid: f64,
     }
 
     #[derive(Deserialize)]
@@ -120,6 +106,21 @@ mod kraken {
             })
         }
     }
+
+    impl TryFrom<AskAndBid> for MidMarketRate {
+        type Error = anyhow::Error;
+
+        fn try_from(AskAndBid { ask, bid }: AskAndBid) -> anyhow::Result<Self> {
+            let value = (bid + ask) / 2f64;
+
+            // `Rate::try_from`'s maximum precision is 9 decimal places
+            let value = truncate(value, 9);
+            let value = Rate::try_from(value)?;
+
+            Ok(Self { 0: value })
+        }
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
