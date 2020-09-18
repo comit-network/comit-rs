@@ -77,15 +77,12 @@ impl EventLoop {
                     }
                 },
                 new_rate = rate_update_receiver.next().fuse() => {
-                    if let Some(new_rate) = new_rate {
-                        match new_rate {
-                            Ok(new_rate) => {
-                                if let Err(err) = self.handle_rate_update(new_rate) {
-                                    tracing::error!("Rate update handling failed: {:#}", err)
-                                }
-                            }
-                            Err(err) => tracing::error!("Rate retrieval failed: {:#}", err),
+                    if let Some(Ok(new_rate)) = new_rate {
+                        if let Err(err) = self.handle_rate_update(new_rate) {
+                            tracing::error!("Rate update handling failed: {:#}", err);
                         }
+                    } else if let Some(Err(err)) = new_rate {
+                        tracing::error!("Rate retrieval failed: {:#}", err);
                     }
                 },
                 new_btc_balance = btc_balance_update_receiver.next().fuse() => {
