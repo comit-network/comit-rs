@@ -1,3 +1,4 @@
+use anyhow::Result;
 use bitcoin::{secp256k1::SecretKey, Block, BlockHash};
 use chrono::{DateTime, Utc};
 use comit::asset;
@@ -28,7 +29,7 @@ impl Params {
 
 #[async_trait::async_trait]
 pub trait ExecuteFund {
-    async fn execute_fund(&self, params: &Params) -> anyhow::Result<Funded>;
+    async fn execute_fund(&self, params: &Params) -> Result<Funded>;
 }
 
 #[async_trait::async_trait]
@@ -38,12 +39,12 @@ pub trait ExecuteRedeem {
         params: Params,
         fund_event: Funded,
         secret: Secret,
-    ) -> anyhow::Result<Redeemed>;
+    ) -> Result<Redeemed>;
 }
 
 #[async_trait::async_trait]
 pub trait ExecuteRefund {
-    async fn execute_refund(&self, params: Params, fund_event: Funded) -> anyhow::Result<Refunded>;
+    async fn execute_refund(&self, params: Params, fund_event: Funded) -> Result<Refunded>;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -56,7 +57,7 @@ pub async fn watch_for_funded<C>(
     connector: &C,
     params: &SharedParams,
     utc_start_of_swap: DateTime<Utc>,
-) -> anyhow::Result<Funded>
+) -> Result<Funded>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
 {
