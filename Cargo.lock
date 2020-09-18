@@ -696,6 +696,7 @@ dependencies = [
  "proptest",
  "rand 0.7.3",
  "reqwest",
+ "rust_decimal",
  "serde",
  "serde-hex",
  "serde_derive",
@@ -2389,6 +2390,7 @@ dependencies = [
  "quickcheck_async",
  "rand 0.6.5",
  "reqwest",
+ "rust_decimal",
  "serde",
  "serde-hex",
  "serde_cbor",
@@ -3378,6 +3380,16 @@ dependencies = [
  "blake2b_simd",
  "constant_time_eq",
  "crossbeam-utils",
+]
+
+[[package]]
+name = "rust_decimal"
+version = "1.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9e81662973c7a8d9663e64a0de4cd642b89a21d64966e3d99606efdc5fb0cc6"
+dependencies = [
+ "num-traits",
+ "serde",
 ]
 
 [[package]]

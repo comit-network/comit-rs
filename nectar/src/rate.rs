@@ -4,6 +4,7 @@ use comit::{
     Position, Price,
 };
 use num::{BigUint, Integer, ToPrimitive};
+use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, iter::FromIterator, str::FromStr};
 
@@ -24,6 +25,18 @@ impl Rate {
     /// integer = rate * 10ePRECISION
     pub fn integer(self) -> BigUint {
         BigUint::from(self.0)
+    }
+}
+
+impl TryFrom<Decimal> for Rate {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Decimal) -> Result<Self, Self::Error> {
+        let value = value
+            .to_u64()
+            .context("Rate is too big, cannot be expressed within given precision")?;
+
+        Ok(Rate(value))
     }
 }
 
