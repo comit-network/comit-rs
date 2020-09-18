@@ -156,6 +156,12 @@ impl EventLoop {
     }
 
     async fn handle_finished_swap(&mut self, finished_swap: FinishedSwap) -> Result<()> {
+        let peer_db_res = self
+            .database
+            .remove_active_peer(&finished_swap.peer)
+            .await
+            .context("Unable to remove from active takers");
+
         let trade = into_history_trade(
             finished_swap.peer.peer_id(),
             finished_swap.swap.clone(),
@@ -163,10 +169,9 @@ impl EventLoop {
             finished_swap.final_timestamp,
         );
 
-        let history_res = self.history.write(trade).context(format!(
-            "Unable to register history entry: {:?}",
-            finished_swap
-        ));
+        self.history
+            .write(trade)
+            .with_context(|| format!("Unable to register history entry: {:?}", finished_swap))?;
 
         let (dai, btc, swap_id) = match finished_swap.swap {
             SwapKind::HbitHerc20(swap) => {
@@ -179,35 +184,15 @@ impl EventLoop {
             ),
         };
 
-        self.maker.free_funds(dai, btc);
-
-        let peer_db_res = self
-            .database
-            .remove_active_peer(&finished_swap.peer)
-            .await
-            .context("Unable to remove from active takers");
-
-        let swap_db_res = self
-            .database
+        self.database
             .remove_swap(&swap_id)
             .await
-            .context("Unable to delete swap from db");
+            .context("Unable to delete swap from db")?;
 
-        if let Err(history_err) = history_res {
-            Err(history_err.context(format!(
-                "Issue inserting in history; peer db: {:?}; swap db: {:?}",
-                peer_db_res, swap_db_res
-            )))
-        } else if let Err(peer_db_err) = peer_db_res {
-            Err(peer_db_err.context(format!(
-                "Issue removing active peer from db; swap db: {:?}",
-                swap_db_res
-            )))
-        } else if let Err(swap_db_err) = swap_db_res {
-            Err(swap_db_err.context("Issue with removing swap from db"))
-        } else {
-            Ok(())
-        }
+        // Only free funds if the swap was removed from the db
+        self.maker.free_funds(dai, btc);
+
+        peer_db_res
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -339,11 +324,11 @@ impl EventLoop {
                 self.database
                     .insert_swap(swap_kind.clone())
                     .await
-                    .context(format!("Could not insert swap {}", swap_id))?;
+                    .with_context(|| format!("Could not insert swap {}", swap_id))?;
 
                 let _ = tokio::spawn(self.swap_executor.clone().run(swap_kind))
                     .await
-                    .context(format!("Execution failed for swap {}", swap_id))?;
+                    .with_context(|| format!("Execution failed for swap {}", swap_id))?;
             }
             setup_swap::BehaviourOutEvent::AlreadyHaveRoleParams { peer, .. } => {
                 bail!("already received role params from {}", peer)
@@ -369,12 +354,16 @@ impl EventLoop {
                     peer_id: peer.clone(),
                 };
 
-                let ongoing_trade_with_taker_exists =
-                    self.database.contains_active_peer(&taker).context(format!(
-                        "could not determine if taker has ongoing trade; taker: {}, order: {}",
-                        taker.peer_id(),
-                        ours,
-                    ))?;
+                let ongoing_trade_with_taker_exists = self
+                    .database
+                    .contains_active_peer(&taker)
+                    .with_context(|| {
+                        format!(
+                            "could not determine if taker has ongoing trade; taker: {}, order: {}",
+                            taker.peer_id(),
+                            ours,
+                        )
+                    })?;
 
                 if ongoing_trade_with_taker_exists {
                     bail!(

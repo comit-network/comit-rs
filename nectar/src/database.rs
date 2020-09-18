@@ -39,7 +39,7 @@ impl Database {
         let path = path
             .to_str()
             .ok_or_else(|| anyhow!("The path is not utf-8 valid: {:?}", path))?;
-        let db = sled::open(path).context(format!("Could not open the DB at {}", path))?;
+        let db = sled::open(path).with_context(|| format!("Could not open the DB at {}", path))?;
 
         if !db.contains_key(Self::ACTIVE_PEER_KEY)? {
             let peers = Vec::<ActivePeer>::new();
@@ -58,10 +58,8 @@ impl Database {
     #[cfg(test)]
     pub fn new_test() -> anyhow::Result<Self> {
         let tmp_dir = tempfile::TempDir::new().unwrap();
-        let db = sled::open(tmp_dir.path()).context(format!(
-            "Could not open the DB at {}",
-            tmp_dir.path().display()
-        ))?;
+        let db = sled::open(tmp_dir.path())
+            .with_context(|| format!("Could not open the DB at {}", tmp_dir.path().display()))?;
 
         let peers = Vec::<ActivePeer>::new();
         let peers = serialize(&peers)?;
@@ -160,7 +158,7 @@ impl Database {
 
         self.db
             .remove(key)
-            .context(format!("Could not delete swap {}", swap_id))
+            .with_context(|| format!("Could not delete swap {}", swap_id))
             .map(|_| ())?;
 
         self.db
