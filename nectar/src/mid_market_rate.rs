@@ -47,12 +47,12 @@ mod kraken {
     ) -> anyhow::Result<MidMarketRate> {
         let endpoint = host.with_trading_pair("XBTDAI")?;
 
-        let ask_and_bid = reqwest::get(endpoint)
+        let rate = reqwest::get(endpoint)
             .await?
             .json::<TickerResponse>()
             .await
-            .map(|response| response.result.xbtdai)?;
-        let rate = ask_and_bid.try_into()?;
+            .map(|response| response.result.xbtdai)?
+            .try_into()?;
 
         Ok(rate)
     }
