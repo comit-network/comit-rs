@@ -2405,6 +2405,7 @@ dependencies = [
  "tokio",
  "toml",
  "tracing",
+ "tracing-futures",
  "tracing-log",
  "tracing-subscriber",
  "url 2.1.1",

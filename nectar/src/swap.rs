@@ -9,11 +9,12 @@ mod comit;
 pub mod ethereum;
 
 use crate::{network::ActivePeer, swap::bob::Bob, SwapId};
+use chrono::{DateTime, Utc};
 use std::sync::Arc;
+use tracing_futures::Instrument;
 
 pub use self::comit::{hbit, herc20};
 pub use crate::database::Database;
-use chrono::{DateTime, Utc};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SwapKind {
@@ -76,6 +77,7 @@ impl SwapKind {
                     herc20_params.clone(),
                     *start_of_swap,
                 )
+                .instrument(tracing::error_span!("hbit_herc20_bob", %swap_id))
                 .await?
             }
             SwapKind::Herc20Hbit(SwapParams {
@@ -104,6 +106,7 @@ impl SwapKind {
                     *hbit_params,
                     *start_of_swap,
                 )
+                .instrument(tracing::error_span!("herc20_hbit_bob", %swap_id))
                 .await?
             }
         };
