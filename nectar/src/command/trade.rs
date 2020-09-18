@@ -1,28 +1,26 @@
+mod event_loop;
+
 use crate::{
     bitcoin,
-    command::{into_history_trade, FinishedSwap},
+    command::{trade::event_loop::EventLoop, FinishedSwap},
     config::Settings,
     ethereum::{self, dai},
     history::History,
-    maker::PublishOrders,
     mid_market_rate::get_btc_dai_mid_market_rate,
-    network::{self, Swarm},
+    network::{self, new_swarm},
     swap::{Database, SwapKind, SwapParams},
     Maker, MidMarketRate, Seed, Spread,
 };
 use anyhow::Context;
-use comit::btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
+use comit::{
+    btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
+    Position, Role,
+};
 use futures::{
     channel::mpsc::{Receiver, Sender},
-    Future, FutureExt, SinkExt, StreamExt, TryFutureExt,
+    Future, SinkExt,
 };
 use futures_timer::Delay;
-
-use crate::{
-    maker::TakeRequestDecision,
-    network::{new_swarm, ActivePeer, SetupSwapContext},
-};
-use comit::{Position, Role};
 use std::{sync::Arc, time::Duration};
 
 const ENSURED_CONSUME_ZERO_BUFFER: usize = 0;
@@ -51,13 +49,7 @@ pub async fn trade(
     #[cfg(test)]
     let db = Arc::new(Database::new_test()?);
 
-    let mut swarm = new_swarm(
-        network::Seed::new(seed.bytes()),
-        &settings,
-        Arc::clone(&bitcoin_wallet),
-        Arc::clone(&ethereum_wallet),
-        Arc::clone(&db),
-    )?;
+    let mut swarm = new_swarm(network::Seed::new(seed.bytes()), &settings)?;
 
     let initial_sell_order = maker
         .new_sell_order()
@@ -76,66 +68,50 @@ pub async fn trade(
 
     let update_interval = Duration::from_secs(15u64);
 
-    let (rate_future, mut rate_update_receiver) = init_rate_updates(update_interval);
-    let (btc_balance_future, mut btc_balance_update_receiver) =
+    let (rate_future, rate_update_receiver) = init_rate_updates(update_interval);
+    let (btc_balance_future, btc_balance_update_receiver) =
         init_bitcoin_balance_updates(update_interval, Arc::clone(&bitcoin_wallet));
-    let (dai_balance_future, mut dai_balance_update_receiver) =
+    let (dai_balance_future, dai_balance_update_receiver) =
         init_dai_balance_updates(update_interval, Arc::clone(&ethereum_wallet));
 
     tokio::spawn(rate_future);
     tokio::spawn(btc_balance_future);
     tokio::spawn(dai_balance_future);
 
-    let (swap_execution_finished_sender, mut swap_execution_finished_receiver) =
-        futures::channel::mpsc::channel::<FinishedSwap>(ENSURED_CONSUME_ZERO_BUFFER);
-
-    let mut history = History::new(settings.data.dir.join("history.csv").as_path())?;
-
     let bitcoin_connector = Arc::new(BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?);
     let ethereum_connector = Arc::new(Web3Connector::new(settings.ethereum.node_url));
 
-    respawn_swaps(
+    let (swap_executor, swap_execution_finished_receiver) = SwapExecutor::new(
         Arc::clone(&db),
-        &mut maker,
         Arc::clone(&bitcoin_wallet),
         Arc::clone(&ethereum_wallet),
-        Arc::clone(&bitcoin_connector),
-        Arc::clone(&ethereum_connector),
-        swap_execution_finished_sender.clone(),
-    )
-    .context("Could not respawn swaps")?;
+        bitcoin_connector,
+        ethereum_connector,
+    );
 
-    loop {
-        futures::select! {
-            finished_swap = swap_execution_finished_receiver.next().fuse() => {
-                if let Some(finished_swap) = finished_swap {
-                    handle_finished_swap(finished_swap, &mut maker, &db, &mut history, &mut swarm).await;
-                }
-            },
-            network_event = swarm.next().fuse() => {
-                handle_network_event(
-                    network_event,
-                    &mut maker,
-                    &mut swarm,
-                    Arc::clone(&db),
-                    Arc::clone(&bitcoin_wallet),
-                    Arc::clone(&ethereum_wallet),
-                    Arc::clone(&bitcoin_connector),
-                    Arc::clone(&ethereum_connector),
-                    swap_execution_finished_sender.clone(),
-                ).await;
-            },
-            rate_update = rate_update_receiver.next().fuse() => {
-                handle_rate_update(rate_update.unwrap(), &mut maker, &mut swarm);
-            },
-            btc_balance_update = btc_balance_update_receiver.next().fuse() => {
-                handle_btc_balance_update(btc_balance_update.unwrap(), &mut maker, &mut swarm);
-            },
-            dai_balance_update = dai_balance_update_receiver.next().fuse() => {
-                handle_dai_balance_update(dai_balance_update.unwrap(), &mut maker, &mut swarm);
-            }
-        }
-    }
+    respawn_swaps(Arc::clone(&db), &mut maker, swap_executor.clone())
+        .context("Could not respawn swaps")?;
+
+    let history = History::new(settings.data.dir.join("history.csv").as_path())?;
+
+    let event_loop = EventLoop::new(
+        maker,
+        swarm,
+        history,
+        db,
+        bitcoin_wallet,
+        ethereum_wallet,
+        swap_executor,
+    );
+
+    event_loop
+        .run(
+            swap_execution_finished_receiver,
+            rate_update_receiver,
+            btc_balance_update_receiver,
+            dai_balance_update_receiver,
+        )
+        .await
 }
 
 async fn init_maker(
@@ -265,49 +241,74 @@ fn init_dai_balance_updates(
     (future, receiver)
 }
 
-#[allow(clippy::too_many_arguments)]
-async fn execute_swap(
+#[derive(Debug, Clone)]
+struct SwapExecutor {
     db: Arc<Database>,
     bitcoin_wallet: Arc<bitcoin::Wallet>,
     ethereum_wallet: Arc<ethereum::Wallet>,
+    finished_swap_sender: Sender<FinishedSwap>,
     bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    mut finished_swap_sender: Sender<FinishedSwap>,
-    swap: SwapKind,
-) -> anyhow::Result<()> {
-    db.insert_swap(swap.clone()).await?;
+}
 
-    swap.execute(
-        Arc::clone(&db),
-        Arc::clone(&bitcoin_wallet),
-        Arc::clone(&ethereum_wallet),
-        Arc::clone(&bitcoin_connector),
-        Arc::clone(&ethereum_connector),
-    )
-    .await?;
+impl SwapExecutor {
+    pub fn new(
+        db: Arc<Database>,
+        bitcoin_wallet: Arc<bitcoin::Wallet>,
+        ethereum_wallet: Arc<ethereum::Wallet>,
+        bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
+        ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
+    ) -> (Self, Receiver<FinishedSwap>) {
+        let (finished_swap_sender, finished_swap_receiver) =
+            futures::channel::mpsc::channel::<FinishedSwap>(ENSURED_CONSUME_ZERO_BUFFER);
 
-    let _ = finished_swap_sender
-        .send(FinishedSwap::new(
-            swap.clone(),
-            swap.params().taker,
-            chrono::Utc::now(),
-        ))
-        .await
-        .map_err(|_| {
-            tracing::trace!("Error when sending execution finished from sender to receiver.")
-        });
+        (
+            Self {
+                db,
+                bitcoin_wallet,
+                ethereum_wallet,
+                finished_swap_sender,
+                bitcoin_connector,
+                ethereum_connector,
+            },
+            finished_swap_receiver,
+        )
+    }
+}
 
-    Ok(())
+impl SwapExecutor {
+    async fn run(mut self, swap: SwapKind) -> anyhow::Result<()> {
+        self.db.insert_swap(swap.clone()).await?;
+
+        swap.execute(
+            self.db,
+            self.bitcoin_wallet,
+            self.ethereum_wallet,
+            self.bitcoin_connector,
+            self.ethereum_connector,
+        )
+        .await?;
+
+        let _ = self
+            .finished_swap_sender
+            .send(FinishedSwap::new(
+                swap.clone(),
+                swap.params().taker,
+                chrono::Utc::now(),
+            ))
+            .await
+            .map_err(|_| {
+                tracing::trace!("Error when sending execution finished from sender to receiver.")
+            });
+
+        Ok(())
+    }
 }
 
 fn respawn_swaps(
     db: Arc<Database>,
     maker: &mut Maker,
-    bitcoin_wallet: Arc<bitcoin::Wallet>,
-    ethereum_wallet: Arc<ethereum::Wallet>,
-    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
-    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    finished_swap_sender: Sender<FinishedSwap>,
+    swap_executor: SwapExecutor,
 ) -> anyhow::Result<()> {
     for swap in db.all_swaps()?.into_iter() {
         // Reserve funds
@@ -324,232 +325,10 @@ fn respawn_swaps(
             }
         };
 
-        tokio::spawn(execute_swap(
-            Arc::clone(&db),
-            Arc::clone(&bitcoin_wallet),
-            Arc::clone(&ethereum_wallet),
-            Arc::clone(&bitcoin_connector),
-            Arc::clone(&ethereum_connector),
-            finished_swap_sender.clone(),
-            swap,
-        ));
+        tokio::spawn(swap_executor.clone().run(swap));
     }
 
     Ok(())
-}
-
-fn handle_rate_update(
-    rate_update: anyhow::Result<MidMarketRate>,
-    maker: &mut Maker,
-    swarm: &mut Swarm,
-) {
-    match rate_update {
-        Ok(new_rate) => {
-            let result = maker.update_rate(new_rate);
-            match result {
-                Ok(Some(PublishOrders {
-                    new_sell_order,
-                    new_buy_order,
-                })) => {
-                    swarm.orderbook.publish(
-                        new_sell_order.to_comit_order(maker.swap_protocol(Position::Sell)),
-                    );
-                    swarm
-                        .orderbook
-                        .publish(new_buy_order.to_comit_order(maker.swap_protocol(Position::Buy)));
-                    swarm.orderbook.clear_own_orders();
-                }
-
-                Ok(None) => (),
-                Err(e) => tracing::warn!("Rate update yielded error: {}", e),
-            }
-        }
-        Err(e) => {
-            maker.invalidate_rate();
-            tracing::error!(
-                "Unable to fetch latest rate! Fetching rate yielded error: {}",
-                e
-            );
-        }
-    }
-}
-
-fn handle_btc_balance_update(
-    btc_balance_update: anyhow::Result<bitcoin::Amount>,
-    maker: &mut Maker,
-    swarm: &mut Swarm,
-) {
-    match btc_balance_update {
-        Ok(btc_balance) => match maker.update_bitcoin_balance(btc_balance) {
-            Ok(Some(new_sell_order)) => {
-                let order = new_sell_order.to_comit_order(maker.swap_protocol(Position::Sell));
-                swarm.orderbook.clear_own_orders();
-                swarm.orderbook.publish(order);
-            }
-            Ok(None) => (),
-            Err(e) => tracing::warn!("Bitcoin balance update yielded error: {}", e),
-        },
-        Err(e) => {
-            maker.invalidate_bitcoin_balance();
-            tracing::error!(
-                "Unable to fetch bitcoin balance! Fetching balance yielded error: {}",
-                e
-            );
-        }
-    }
-}
-
-fn handle_dai_balance_update(
-    dai_balance_update: anyhow::Result<dai::Amount>,
-    maker: &mut Maker,
-    swarm: &mut Swarm,
-) {
-    match dai_balance_update {
-        Ok(dai_balance) => match maker.update_dai_balance(dai_balance) {
-            Ok(Some(new_buy_order)) => {
-                let order = new_buy_order.to_comit_order(maker.swap_protocol(Position::Buy));
-                swarm.orderbook.clear_own_orders();
-                swarm.orderbook.publish(order);
-            }
-            Ok(None) => (),
-            Err(e) => tracing::warn!("Dai balance update yielded error: {}", e),
-        },
-        Err(e) => {
-            maker.invalidate_dai_balance();
-            tracing::error!(
-                "Unable to fetch dai balance! Fetching balance yielded error: {}",
-                e
-            );
-        }
-    }
-}
-
-async fn handle_finished_swap(
-    finished_swap: FinishedSwap,
-    maker: &mut Maker,
-    db: &Database,
-    history: &mut History,
-    _swarm: &mut Swarm,
-) {
-    {
-        let trade = into_history_trade(
-            finished_swap.peer.peer_id(),
-            finished_swap.swap.clone(),
-            #[cfg(not(test))]
-            finished_swap.final_timestamp,
-        );
-
-        let _ = history.write(trade).map_err(|error| {
-            tracing::error!(
-                "Unable to register history entry: {}; {:?}",
-                error,
-                finished_swap
-            )
-        });
-    }
-
-    let (dai, btc, swap_id) = match finished_swap.swap {
-        SwapKind::HbitHerc20(swap) => (Some(swap.herc20_params.asset.into()), None, swap.swap_id),
-        SwapKind::Herc20Hbit(swap) => (
-            None,
-            Some(swap.hbit_params.shared.asset.into()),
-            swap.swap_id,
-        ),
-    };
-
-    maker.free_funds(dai, btc);
-
-    let _ = db
-        .remove_active_peer(&finished_swap.peer)
-        .await
-        .map_err(|error| tracing::error!("Unable to remove from active takers: {}", error));
-
-    let _ = db
-        .remove_swap(&swap_id)
-        .await
-        .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
-}
-
-#[allow(clippy::too_many_arguments)]
-async fn handle_network_event(
-    network_event: network::Event,
-    maker: &mut Maker,
-    swarm: &mut Swarm,
-    db: Arc<Database>,
-    bitcoin_wallet: Arc<bitcoin::Wallet>,
-    ethereum_wallet: Arc<ethereum::Wallet>,
-    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
-    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    finished_swap_sender: Sender<FinishedSwap>,
-) {
-    match network_event {
-        network::Event::OrderMatch {
-            form,
-            to,
-            to_send,
-            common,
-            swap_protocol,
-            swap_id,
-            match_ref_point,
-            bitcoin_transient_key_index,
-        } => {
-            let result = maker.process_taken_order(form);
-
-            match result {
-                Ok(TakeRequestDecision::GoForSwap) => {
-                    if let Err(e) = swarm.setup_swap.send(
-                        &to,
-                        to_send,
-                        common,
-                        swap_protocol,
-                        SetupSwapContext {
-                            swap_id,
-                            match_ref_point,
-                            bitcoin_transient_key_index,
-                        },
-                    ) {
-                        tracing::error!("Sending setup swap message yielded error: {}", e)
-                    }
-
-                    let _ = db
-                        .insert_active_peer(ActivePeer { peer_id: to })
-                        .await
-                        .map_err(|e| tracing::error!("Failed to confirm order: {}", e));
-
-                    // todo: publish new order here?
-                    // What if i publish a new order here and the does go
-                    // through?
-                }
-                Ok(TakeRequestDecision::InsufficientFunds) => tracing::info!("Insufficient funds"),
-                Ok(TakeRequestDecision::RateNotProfitable) => tracing::info!("Rate not profitable"),
-                Err(e) => tracing::error!("Processing taken order yielded error: {}", e),
-            };
-        }
-        network::Event::SpawnSwap(swap) => {
-            let swap_id = swap.swap_id();
-
-            let res = db
-                .insert_swap(swap.clone())
-                .map_err(|e| tracing::error!("Could not insert swap {}: {:?}", swap_id, e))
-                .await;
-
-            if res.is_ok() {
-                let _ = tokio::spawn(execute_swap(
-                    Arc::clone(&db),
-                    Arc::clone(&bitcoin_wallet),
-                    Arc::clone(&ethereum_wallet),
-                    Arc::clone(&bitcoin_connector),
-                    Arc::clone(&ethereum_connector),
-                    finished_swap_sender,
-                    swap,
-                ))
-                .await
-                .map_err(|e| {
-                    tracing::error!("Execution failed for swap swap {}: {:?}", swap_id, e)
-                });
-            }
-        }
-    }
 }
 
 #[cfg(all(test, feature = "test-docker"))]

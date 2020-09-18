@@ -31,7 +31,7 @@ where
                 Some(value) => {
                     let amount = Amount::from_dai_trunc(value).map_err(|error| {
                         serde::de::Error::custom(format!(
-                            "Could not deserialize dai amount: {:?}",
+                            "Could not deserialize dai amount: {:#}",
                             error
                         ))
                     })?;
@@ -46,7 +46,7 @@ where
             E: de::Error,
         {
             Ok(Some(Amount::from_dai_trunc(value).map_err(|error| {
-                E::custom(format!("Could not deserialize dai amount: {:?}", error))
+                E::custom(format!("Could not deserialize dai amount: {:#}", error))
             })?))
         }
 
@@ -55,13 +55,13 @@ where
             E: de::Error,
         {
             let value = u32::try_from(value).map_err(|error| {
-                E::custom(format!("Could not deserialize dai amount: {:?}", error))
+                E::custom(format!("Could not deserialize dai amount: {:#}", error))
             })?;
             let value = f64::try_from(value).map_err(|error| {
-                E::custom(format!("Could not deserialize dai amount: {:?}", error))
+                E::custom(format!("Could not deserialize dai amount: {:#}", error))
             })?;
             Ok(Some(Amount::from_dai_trunc(value).map_err(|error| {
-                E::custom(format!("Could not deserialize dai amount: {:?}", error))
+                E::custom(format!("Could not deserialize dai amount: {:#}", error))
             })?))
         }
 
@@ -70,13 +70,13 @@ where
             E: de::Error,
         {
             let value = i32::try_from(value).map_err(|error| {
-                E::custom(format!("Could not deserialize dai amount: {:?}", error))
+                E::custom(format!("Could not deserialize dai amount: {:#}", error))
             })?;
             let value = f64::try_from(value).map_err(|error| {
-                E::custom(format!("Could not deserialize dai amount: {:?}", error))
+                E::custom(format!("Could not deserialize dai amount: {:#}", error))
             })?;
             Ok(Some(Amount::from_dai_trunc(value as f64).map_err(
-                |error| E::custom(format!("Could not deserialize dai amount: {:?}", error)),
+                |error| E::custom(format!("Could not deserialize dai amount: {:#}", error)),
             )?))
         }
     }

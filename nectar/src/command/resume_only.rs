@@ -16,27 +16,24 @@ pub async fn resume_only(
     bitcoin_wallet: bitcoin::Wallet,
     ethereum_wallet: ethereum::Wallet,
 ) -> anyhow::Result<()> {
-    let bitcoin_wallet = Arc::new(bitcoin_wallet);
-    let ethereum_wallet = Arc::new(ethereum_wallet);
-
     #[cfg(not(test))]
-    let db = Arc::new(Database::new(&settings.data.dir.join("database"))?);
+    let db = Database::new(&settings.data.dir.join("database"))?;
     #[cfg(test)]
-    let db = Arc::new(Database::new_test()?);
+    let db = Database::new_test()?;
 
     let history = Arc::new(Mutex::new(History::new(
         settings.data.dir.join("history.csv").as_path(),
     )?));
 
-    let bitcoin_connector = Arc::new(BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?);
-    let ethereum_connector = Arc::new(Web3Connector::new(settings.ethereum.node_url));
+    let bitcoin_connector = BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?;
+    let ethereum_connector = Web3Connector::new(settings.ethereum.node_url);
 
     respawn_swaps(
-        Arc::clone(&db),
-        Arc::clone(&bitcoin_wallet),
-        Arc::clone(&ethereum_wallet),
-        Arc::clone(&bitcoin_connector),
-        Arc::clone(&ethereum_connector),
+        db,
+        bitcoin_wallet,
+        ethereum_wallet,
+        bitcoin_connector,
+        ethereum_connector,
         history,
     )
     .await?;
@@ -45,13 +42,19 @@ pub async fn resume_only(
 }
 
 async fn respawn_swaps(
-    db: Arc<Database>,
-    bitcoin_wallet: Arc<bitcoin::Wallet>,
-    ethereum_wallet: Arc<ethereum::Wallet>,
-    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
-    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
+    db: Database,
+    bitcoin_wallet: bitcoin::Wallet,
+    ethereum_wallet: ethereum::Wallet,
+    bitcoin_connector: comit::btsieve::bitcoin::BitcoindConnector,
+    ethereum_connector: comit::btsieve::ethereum::Web3Connector,
     history: Arc<Mutex<History>>,
 ) -> anyhow::Result<()> {
+    let db = Arc::new(db);
+    let bitcoin_wallet = Arc::new(bitcoin_wallet);
+    let ethereum_wallet = Arc::new(ethereum_wallet);
+    let bitcoin_connector = Arc::new(bitcoin_connector);
+    let ethereum_connector = Arc::new(ethereum_connector);
+
     let futures = db.all_swaps()?.into_iter().map(|swap| {
         execute_swap(
             Arc::clone(&db),
@@ -83,7 +86,7 @@ async fn execute_swap(
 ) -> anyhow::Result<FinishedSwap> {
     swap.execute(
         Arc::clone(&db),
-        Arc::clone(&bitcoin_wallet),
+        bitcoin_wallet,
         Arc::clone(&ethereum_wallet),
         Arc::clone(&bitcoin_connector),
         Arc::clone(&ethereum_connector),
@@ -115,7 +118,7 @@ fn handle_finished_swap(
             .expect("No thread panicked while holding the lock");
         let _ = history.write(trade).map_err(|error| {
             tracing::error!(
-                "Unable to register history entry: {}; {:?}",
+                "Unable to register history entry: {:#}; {:?}",
                 error,
                 finished_swap
             )
@@ -126,9 +129,9 @@ fn handle_finished_swap(
 
     let _ = db
         .remove_active_peer(&finished_swap.peer)
-        .map_err(|error| tracing::error!("Unable to remove from active peers: {}", error));
+        .map_err(|error| tracing::error!("Unable to remove from active peers: {:#}", error));
 
     let _ = db
         .remove_swap(&swap_id)
-        .map_err(|error| tracing::error!("Unable to delete swap from db: {}", error));
+        .map_err(|error| tracing::error!("Unable to delete swap from db: {:#}", error));
 }

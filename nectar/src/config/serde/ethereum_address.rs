@@ -30,7 +30,7 @@ where
             match s {
                 Some(value) => Ok(Some(Address::from_str(value).map_err(|error| {
                     serde::de::Error::custom(format!(
-                        "Could not deserialize ethereum address: {:?}",
+                        "Could not deserialize ethereum address: {:#}",
                         error
                     ))
                 })?)),
@@ -44,7 +44,7 @@ where
         {
             Ok(Some(Address::from_str(v).map_err(|error| {
                 E::custom(format!(
-                    "Could not deserialize ethereum address: {:?}",
+                    "Could not deserialize ethereum address: {:#}",
                     error
                 ))
             })?))

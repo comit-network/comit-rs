@@ -1,8 +1,6 @@
 use crate::{
-    swap::{
-        db::{serialize, Database, Load, Save},
-        hbit,
-    },
+    database::{serialize, Database, Load, Save},
+    swap::hbit,
     SwapId,
 };
 use ::bitcoin::secp256k1;
@@ -297,10 +295,8 @@ impl crate::StaticStub for Params {
 mod tests {
     use super::*;
     use crate::{
-        swap::{
-            db::{Database, Swap},
-            SwapKind,
-        },
+        database::{Database, Swap},
+        swap::SwapKind,
         StaticStub,
     };
 

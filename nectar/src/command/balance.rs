@@ -8,17 +8,17 @@ pub async fn balance(
         .balance()
         .await
         .map(|amount| amount.to_string())
-        .unwrap_or_else(|e| format!("Problem encountered: {:?}", e));
+        .unwrap_or_else(|e| format!("Problem encountered: {:#}", e));
     let dai_balance = ethereum_wallet
         .dai_balance()
         .await
         .map(|amount| amount.to_string())
-        .unwrap_or_else(|e| format!("Problem encountered: {:?}", e));
+        .unwrap_or_else(|e| format!("Problem encountered: {:#}", e));
     let ether_balance = ethereum_wallet
         .ether_balance()
         .await
         .map(|amount| amount.to_string())
-        .unwrap_or_else(|e| format!("Problem encountered: {:?}", e));
+        .unwrap_or_else(|e| format!("Problem encountered: {:#}", e));
 
     Ok(format!(
         "Bitcoin: {}\nDai: {}\nEther: {}",

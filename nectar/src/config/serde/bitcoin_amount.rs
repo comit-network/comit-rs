@@ -29,12 +29,7 @@ where
             let s: Option<f64> = Option::deserialize(deserializer)?;
             match s {
                 Some(value) => {
-                    let amount = Amount::from_btc(value).map_err(|error| {
-                        serde::de::Error::custom(format!(
-                            "Could not deserialize bitcoin amount: {:?}",
-                            error
-                        ))
-                    })?;
+                    let amount = Amount::from_btc(value).map_err(serde::de::Error::custom)?;
                     Ok(Some(amount))
                 }
                 None => Ok(None),
@@ -46,7 +41,7 @@ where
             E: de::Error,
         {
             Ok(Some(Amount::from_btc(value).map_err(|error| {
-                E::custom(format!("Could not deserialize bitcoin amount: {:?}", error))
+                E::custom(format!("Could not deserialize bitcoin amount: {:#}", error))
             })?))
         }
 
@@ -55,13 +50,13 @@ where
             E: de::Error,
         {
             let value = u32::try_from(value).map_err(|error| {
-                E::custom(format!("Could not deserialize bitcoin amount: {:?}", error))
+                E::custom(format!("Could not deserialize bitcoin amount: {:#}", error))
             })?;
             let value = f64::try_from(value).map_err(|error| {
-                E::custom(format!("Could not deserialize bitcoin amount: {:?}", error))
+                E::custom(format!("Could not deserialize bitcoin amount: {:#}", error))
             })?;
             Ok(Some(Amount::from_btc(value).map_err(|error| {
-                E::custom(format!("Could not deserialize bitcoin amount: {:?}", error))
+                E::custom(format!("Could not deserialize bitcoin amount: {:#}", error))
             })?))
         }
 
@@ -70,13 +65,13 @@ where
             E: de::Error,
         {
             let value = i32::try_from(value).map_err(|error| {
-                E::custom(format!("Could not deserialize bitcoin amount: {:?}", error))
+                E::custom(format!("Could not deserialize bitcoin amount: {:#}", error))
             })?;
             let value = f64::try_from(value).map_err(|error| {
-                E::custom(format!("Could not deserialize bitcoin amount: {:?}", error))
+                E::custom(format!("Could not deserialize bitcoin amount: {:#}", error))
             })?;
             Ok(Some(Amount::from_btc(value as f64).map_err(|error| {
-                E::custom(format!("Could not deserialize bitcoin amount: {:?}", error))
+                E::custom(format!("Could not deserialize bitcoin amount: {:#}", error))
             })?))
         }
     }

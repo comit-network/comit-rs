@@ -8,7 +8,7 @@ pub async fn deposit(
         .new_address()
         .await
         .map(|address| address.to_string())
-        .unwrap_or_else(|e| format!("Problem encountered: {:?}", e));
+        .unwrap_or_else(|e| format!("Problem encountered: {:#}", e));
     let ethereum_address = ethereum_wallet.account();
 
     Ok(format!(

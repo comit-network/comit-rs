@@ -39,7 +39,7 @@ impl Database {
         let path = path
             .to_str()
             .ok_or_else(|| anyhow!("The path is not utf-8 valid: {:?}", path))?;
-        let db = sled::open(path).context(format!("Could not open the DB at {}", path))?;
+        let db = sled::open(path).with_context(|| format!("Could not open the DB at {}", path))?;
 
         if !db.contains_key(Self::ACTIVE_PEER_KEY)? {
             let peers = Vec::<ActivePeer>::new();
@@ -58,10 +58,8 @@ impl Database {
     #[cfg(test)]
     pub fn new_test() -> anyhow::Result<Self> {
         let tmp_dir = tempfile::TempDir::new().unwrap();
-        let db = sled::open(tmp_dir.path()).context(format!(
-            "Could not open the DB at {}",
-            tmp_dir.path().display()
-        ))?;
+        let db = sled::open(tmp_dir.path())
+            .with_context(|| format!("Could not open the DB at {}", tmp_dir.path().display()))?;
 
         let peers = Vec::<ActivePeer>::new();
         let peers = serialize(&peers)?;
@@ -73,7 +71,7 @@ impl Database {
         Ok(Database { db, tmp_dir })
     }
 
-    pub fn fetch_inc_bitcoin_transient_key_index(&self) -> anyhow::Result<u32> {
+    pub async fn fetch_inc_bitcoin_transient_key_index(&self) -> anyhow::Result<u32> {
         let old_value = self.db.fetch_and_update(
             serialize(&Self::BITCOIN_TRANSIENT_KEYS_INDEX_KEY)?,
             |old| match old {
@@ -91,14 +89,18 @@ impl Database {
             },
         )?;
 
+        self.db
+            .flush_async()
+            .await
+            .map(|_| ())
+            .context("Could not flush db")?;
+
         match old_value {
             Some(index) => deserialize(&index),
             None => Err(anyhow!(
                 "The Bitcoin transient keys index was not properly instantiated in the db"
             )),
         }
-
-        // TODO: Flush the db
     }
 }
 /// Swap related functions
@@ -156,7 +158,7 @@ impl Database {
 
         self.db
             .remove(key)
-            .context(format!("Could not delete swap {}", swap_id))
+            .with_context(|| format!("Could not delete swap {}", swap_id))
             .map(|_| ())?;
 
         self.db
@@ -434,11 +436,11 @@ mod tests {
         }
     }
 
-    #[test]
-    fn increment_bitcoin_transient_key_index() {
+    #[tokio::test]
+    async fn increment_bitcoin_transient_key_index() {
         let db = Database::new_test().unwrap();
 
-        assert_eq!(db.fetch_inc_bitcoin_transient_key_index().unwrap(), 0);
-        assert_eq!(db.fetch_inc_bitcoin_transient_key_index().unwrap(), 1);
+        assert_eq!(db.fetch_inc_bitcoin_transient_key_index().await.unwrap(), 0);
+        assert_eq!(db.fetch_inc_bitcoin_transient_key_index().await.unwrap(), 1);
     }
 }

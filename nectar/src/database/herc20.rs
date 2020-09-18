@@ -1,8 +1,6 @@
 use crate::{
-    swap::{
-        db::{serialize, Database, Load, Save},
-        herc20,
-    },
+    database::{serialize, Database, Load, Save},
+    swap::herc20,
     SwapId,
 };
 use anyhow::{anyhow, Context};
@@ -391,10 +389,7 @@ impl crate::StaticStub for Params {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        swap::{db::Swap, SwapKind},
-        StaticStub,
-    };
+    use crate::{database::Swap, swap::SwapKind, StaticStub};
 
     #[tokio::test]
     async fn save_and_load_herc20_deployed() {
