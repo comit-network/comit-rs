@@ -6,24 +6,25 @@ use crate::{
     },
     Seed,
 };
-use anyhow::anyhow;
+use anyhow::{Context, Result};
+use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
 use comit::{
     actions::ethereum::{CallContract, DeployContract},
     asset::Erc20,
     ethereum::{Transaction, TransactionReceipt},
 };
+use conquer_once::Lazy;
 use num::BigUint;
 use num256::Uint256;
 use std::time::Duration;
 use url::Url;
-use wagyu_ethereum::{EthereumDerivationPath, EthereumFormat, EthereumNetwork};
-use wagyu_model::{derivation_path::ChildIndex, ExtendedPrivateKey};
-
-pub use wagyu_ethereum::EthereumExtendedPrivateKey;
 
 /// Ethereum Standard - m/44'/60'/0'/0/0
-const DERIVATION_PATH: EthereumDerivationPath<wagyu_ethereum::network::Mainnet> =
-    EthereumDerivationPath::Ethereum(ChildIndex::Normal(0));
+static DERIVATION_PATH: Lazy<DerivationPath> = Lazy::new(|| {
+    "m/44'/60'/0'/0"
+        .parse()
+        .expect("static derivation path to parse")
+});
 
 #[derive(Debug, Clone)]
 pub struct Wallet {
@@ -69,28 +70,30 @@ impl Wallet {
 
     pub fn private_key_from_seed(seed: &Seed) -> anyhow::Result<clarity::PrivateKey> {
         let private_key = Self::root_extended_private_key_from_seed(seed)?
-            .derive(&DERIVATION_PATH)
-            .map_err(|err| anyhow!("Could not derive private key: {:#}", err))?
-            .to_private_key();
-        let private_key =
-            clarity::PrivateKey::from_slice(&private_key.to_secp256k1_secret_key()[..])
-                .map_err(|_| anyhow::anyhow!("Failed to derive private key from slice"))?;
+            .derive_priv(&*crate::SECP, &*DERIVATION_PATH)
+            .with_context(|| {
+                format!(
+                    "failed to derive private key using derivation path {}",
+                    DERIVATION_PATH
+                )
+            })?
+            .private_key;
+
+        let private_key = clarity::PrivateKey::from_slice(&private_key[..])
+            .map_err(|e| anyhow::anyhow!("{}", e))
+            .context("failed to create private key from byte slice")?;
+
         Ok(private_key)
     }
 
-    fn root_extended_private_key_from_seed<N>(
-        seed: &Seed,
-    ) -> anyhow::Result<EthereumExtendedPrivateKey<N>>
-    where
-        N: EthereumNetwork,
-    {
-        Ok(
-            EthereumExtendedPrivateKey::new_master(
-                seed.bytes().as_ref(),
-                &EthereumFormat::Standard,
-            )
-            .map_err(|err| anyhow!("Could not generate extended private key: {:#}", err))?,
+    fn root_extended_private_key_from_seed(seed: &Seed) -> anyhow::Result<ExtendedPrivKey> {
+        let master = ExtendedPrivKey::new_master(
+            bitcoin::Network::Bitcoin, // doesn't matter for derivation
+            &seed.bytes().as_ref(),
         )
+        .context("failed to create master private key from seed")?;
+
+        Ok(master)
     }
 
     pub fn account(&self) -> Address {
@@ -194,14 +197,11 @@ impl Wallet {
             }
         };
 
-        let to = clarity::Address::from_slice(to.as_bytes())
-            .map_err(|_| anyhow::anyhow!("Failed to deserialize slice into clarity::Address"))?;
-
         let transaction = clarity::Transaction {
             nonce: nonce.into(),
             gas_price,
             gas_limit,
-            to,
+            to: to_clarity_address(to)?,
             value: value.into(),
             data: data.unwrap_or_default(),
             signature: None,
@@ -229,13 +229,8 @@ impl Wallet {
         let nonce = self.get_transaction_count().await?;
         let gas_price = self.gas_price().await?;
 
-        let to = clarity::Address::from_slice(to.as_bytes())
-            .map_err(|_| anyhow::anyhow!("Failed to deserialize slice into clarity::Address"))?;
-
-        let dai_contract_addr = clarity::Address::from_slice(
-            self.chain.dai_contract_address().as_bytes(),
-        )
-        .map_err(|_| anyhow::anyhow!("Failed to deserialize slice into clarity::Address"))?;
+        let to = to_clarity_address(to)?;
+        let dai_contract_addr = to_clarity_address(self.chain.dai_contract_address())?;
 
         let data = clarity::abi::encode_call("transfer(address,uint256)", &[
             clarity::abi::Token::Address(to),
@@ -282,9 +277,7 @@ impl Wallet {
             nonce: nonce.into(),
             gas_price,
             gas_limit: gas_limit.into(),
-            to: clarity::Address::from_slice(to.as_bytes()).map_err(|_| {
-                anyhow::anyhow!("Failed to deserialize slice into clarity::Address")
-            })?,
+            to: to_clarity_address(to)?,
             value: 0u32.into(),
             data: data.unwrap_or_default(),
             signature: None,
@@ -615,4 +608,10 @@ mod tests {
             .await
             .unwrap();
     }
+}
+
+fn to_clarity_address(to: Address) -> Result<clarity::Address> {
+    clarity::Address::from_slice(to.as_bytes())
+        .map_err(|e| anyhow::anyhow!("{}", e))
+        .context("failed to create private key from byte slice")
 }
