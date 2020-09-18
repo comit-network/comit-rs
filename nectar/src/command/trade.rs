@@ -61,10 +61,10 @@ pub async fn trade(
 
     swarm
         .orderbook
-        .publish(initial_sell_order.to_comit_order(maker.swap_protocol(Position::Buy)));
+        .publish(initial_sell_order.to_comit_order(maker.swap_protocol(Position::Sell)));
     swarm
         .orderbook
-        .publish(initial_buy_order.to_comit_order(maker.swap_protocol(Position::Sell)));
+        .publish(initial_buy_order.to_comit_order(maker.swap_protocol(Position::Buy)));
 
     let update_interval = Duration::from_secs(15u64);
 
