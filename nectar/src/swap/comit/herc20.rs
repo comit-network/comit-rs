@@ -1,3 +1,4 @@
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 
 pub use comit::{
@@ -11,7 +12,7 @@ pub use comit::{
 
 #[async_trait::async_trait]
 pub trait ExecuteDeploy {
-    async fn execute_deploy(&self, params: Params) -> anyhow::Result<Deployed>;
+    async fn execute_deploy(&self, params: Params) -> Result<Deployed>;
 }
 
 #[async_trait::async_trait]
@@ -21,7 +22,7 @@ pub trait ExecuteFund {
         params: Params,
         deploy_event: Deployed,
         utc_start_of_swap: DateTime<Utc>,
-    ) -> anyhow::Result<Funded>;
+    ) -> Result<Funded>;
 }
 
 #[async_trait::async_trait]
@@ -32,7 +33,7 @@ pub trait ExecuteRedeem {
         secret: Secret,
         deploy_event: Deployed,
         utc_start_of_swap: DateTime<Utc>,
-    ) -> anyhow::Result<Redeemed>;
+    ) -> Result<Redeemed>;
 }
 
 #[async_trait::async_trait]
@@ -42,7 +43,7 @@ pub trait ExecuteRefund {
         params: Params,
         deploy_event: Deployed,
         utc_start_of_swap: DateTime<Utc>,
-    ) -> anyhow::Result<Refunded>;
+    ) -> Result<Refunded>;
 }
 
 #[derive(Debug, Clone)]
@@ -56,7 +57,7 @@ pub async fn watch_for_funded<C>(
     params: Params,
     utc_start_of_swap: DateTime<Utc>,
     deployed: Deployed,
-) -> anyhow::Result<Funded>
+) -> Result<Funded>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
