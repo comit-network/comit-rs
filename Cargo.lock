@@ -696,7 +696,6 @@ dependencies = [
  "proptest",
  "rand 0.7.3",
  "reqwest",
- "rust_decimal",
  "serde",
  "serde-hex",
  "serde_derive",
