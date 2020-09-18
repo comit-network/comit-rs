@@ -222,9 +222,9 @@ async function assertSuccessful(
     logger: Logger
 ) {
     logger.debug(
-        "Transaction: ",
+        "Transaction:",
         transactionResponse.hash,
-        " sent, waiting to be confirmed."
+        "sent, waiting to be confirmed."
     );
 
     const transactionReceipt = await transactionResponse.wait(1);
@@ -235,9 +235,9 @@ async function assertSuccessful(
     }
 
     logger.debug(
-        "Transaction: ",
+        "Transaction:",
         transactionReceipt.transactionHash,
-        " confirmed in block: ",
+        "confirmed in block:",
         transactionReceipt.blockHash
     );
 
