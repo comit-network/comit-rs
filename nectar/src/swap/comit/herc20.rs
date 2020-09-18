@@ -1,3 +1,4 @@
+use crate::swap::comit::SwapFailedShouldRefund;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 
@@ -69,6 +70,29 @@ where
             anyhow::bail!("Ethereum HTLC incorrectly funded")
         }
     }
+}
+
+/// Executes refund if deemed necessary based on the result of the swap.
+pub async fn refund_if_necessary<A>(
+    actor: A,
+    herc20: Params,
+    utc_start_of_swap: DateTime<Utc>,
+    swap_result: Result<()>,
+) -> Result<()>
+where
+    A: ExecuteRefund,
+{
+    if let Err(e) = swap_result {
+        if let Some(swap_failed) = e.downcast_ref::<SwapFailedShouldRefund<Deployed>>() {
+            actor
+                .execute_refund(herc20, swap_failed.0.clone(), utc_start_of_swap)
+                .await?;
+        }
+
+        return Err(e);
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

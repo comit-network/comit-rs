@@ -1,3 +1,4 @@
+use crate::swap::comit::SwapFailedShouldRefund;
 use anyhow::Result;
 use bitcoin::{secp256k1::SecretKey, Block, BlockHash};
 use chrono::{DateTime, Utc};
@@ -67,6 +68,22 @@ where
         } => Ok(Funded { asset, location }),
         comit::hbit::Funded::Incorrectly { .. } => anyhow::bail!("Bitcoin HTLC incorrectly funded"),
     }
+}
+
+/// Executes refund if deemed necessary based on the result of the swap.
+pub async fn refund_if_necessary<A>(actor: A, hbit: Params, swap_result: Result<()>) -> Result<()>
+where
+    A: ExecuteRefund,
+{
+    if let Err(e) = swap_result {
+        if let Some(swap_failed) = e.downcast_ref::<SwapFailedShouldRefund<Funded>>() {
+            actor.execute_refund(hbit, swap_failed.0).await?;
+        }
+
+        return Err(e);
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
