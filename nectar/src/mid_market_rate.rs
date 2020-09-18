@@ -47,14 +47,14 @@ mod kraken {
     ) -> anyhow::Result<MidMarketRate> {
         let endpoint = host.with_trading_pair("XBTDAI")?;
 
-        let rate = reqwest::get(endpoint)
+        let mid_market_rate = reqwest::get(endpoint)
             .await?
             .json::<TickerResponse>()
             .await
             .map(|response| response.result.xbtdai)?
             .try_into()?;
 
-        Ok(rate)
+        Ok(mid_market_rate)
     }
 
     #[derive(Deserialize)]
@@ -114,7 +114,16 @@ mod kraken {
 
             let value = value * Decimal::from(kraken_precision * rate_precision);
 
-            Ok(Self(Rate::try_from(value)?))
+            let rate = Rate::try_from(value)?;
+
+            tracing::trace!(
+                "Computed Kraken BTC/DAI mid-market rate {} from bid {} and ask {}",
+                rate,
+                bid,
+                ask
+            );
+
+            Ok(Self(rate))
         }
     }
 
