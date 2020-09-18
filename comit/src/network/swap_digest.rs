@@ -34,7 +34,7 @@ pub struct Herc20Halbit {
     #[digest(prefix = "3001")]
     pub lightning_cltv_expiry: RelativeTime,
     #[digest(prefix = "3002")]
-    pub lightning_amount: asset::Bitcoin,
+    pub lightning_amount: Digestable<asset::Bitcoin>,
 }
 
 /// This represents the information that we use to create a swap digest for
@@ -45,7 +45,7 @@ pub struct HalbitHerc20 {
     #[digest(prefix = "2001")]
     pub lightning_cltv_expiry: RelativeTime,
     #[digest(prefix = "2002")]
-    pub lightning_amount: asset::Bitcoin,
+    pub lightning_amount: Digestable<asset::Bitcoin>,
     #[digest(prefix = "3001")]
     pub ethereum_absolute_expiry: Timestamp,
     #[digest(prefix = "3002")]
@@ -68,7 +68,7 @@ pub struct Herc20Hbit {
     #[digest(prefix = "3001")]
     pub bitcoin_expiry: Timestamp,
     #[digest(prefix = "3002")]
-    pub bitcoin_amount: asset::Bitcoin,
+    pub bitcoin_amount: Digestable<asset::Bitcoin>,
 }
 
 /// This represents the information that we use to create a swap digest for
@@ -79,7 +79,7 @@ pub struct HbitHerc20 {
     #[digest(prefix = "2001")]
     pub bitcoin_expiry: Timestamp,
     #[digest(prefix = "2002")]
-    pub bitcoin_amount: asset::Bitcoin,
+    pub bitcoin_amount: Digestable<asset::Bitcoin>,
     #[digest(prefix = "3001")]
     pub ethereum_expiry: Timestamp,
     #[digest(prefix = "3002")]
@@ -87,6 +87,10 @@ pub struct HbitHerc20 {
     #[digest(prefix = "3003")]
     pub token_contract: identity::Ethereum,
 }
+
+/// A new-type that allows us to implemented `ToDigestInput` on foreign types.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Digestable<T>(pub T);
 
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct SwapDigest(Multihash);
@@ -175,9 +179,9 @@ impl ToDigestInput for ethereum::Address {
     }
 }
 
-impl ToDigestInput for asset::Bitcoin {
+impl ToDigestInput for Digestable<asset::Bitcoin> {
     fn to_digest_input(&self) -> Vec<u8> {
-        self.to_le_bytes().to_vec()
+        self.0.as_sat().to_le_bytes().to_vec()
     }
 }
 

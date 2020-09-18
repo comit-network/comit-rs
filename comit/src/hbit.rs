@@ -291,7 +291,7 @@ impl Params {
             );
             let input_parameters = unlock_fn(htlc);
             let spend_output =
-                SpendOutput::new(fund_location, fund_amount.into(), input_parameters, network);
+                SpendOutput::new(fund_location, fund_amount, input_parameters, network);
 
             spend_output.spend_to(spend_address)
         };

@@ -1,61 +1,4 @@
-use bitcoin::{util::amount::Denomination, Amount};
-use std::{
-    fmt,
-    ops::{AddAssign, Sub, SubAssign},
-};
-
-#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Default)]
-pub struct Bitcoin(Amount);
-
-impl Bitcoin {
-    pub const ZERO: Bitcoin = Bitcoin(Amount::ZERO);
-    pub const ONE_BTC: Bitcoin = Bitcoin(Amount::ONE_BTC);
-
-    pub fn from_sat(sat: u64) -> Bitcoin {
-        Bitcoin(Amount::from_sat(sat))
-    }
-
-    pub fn as_sat(self) -> u64 {
-        Amount::as_sat(self.0)
-    }
-
-    pub fn to_le_bytes(self) -> [u8; 8] {
-        self.0.as_sat().to_le_bytes()
-    }
-}
-
-impl From<Bitcoin> for Amount {
-    fn from(bitcoin: Bitcoin) -> Self {
-        Amount::from_sat(bitcoin.as_sat())
-    }
-}
-
-impl fmt::Display for Bitcoin {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        let bitcoin = self.0.to_string_in(Denomination::Bitcoin);
-        write!(f, "{} BTC", bitcoin)
-    }
-}
-
-impl AddAssign for Bitcoin {
-    fn add_assign(&mut self, rhs: Self) {
-        self.0.add_assign(rhs.0);
-    }
-}
-
-impl SubAssign for Bitcoin {
-    fn sub_assign(&mut self, rhs: Self) {
-        self.0.sub_assign(rhs.0);
-    }
-}
-
-impl Sub for Bitcoin {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        Self(self.0.sub(rhs.0))
-    }
-}
+pub use bitcoin::Amount as Bitcoin;
 
 /// Module specifically desgined for use with the `serde(with)` attribute.
 ///
@@ -99,18 +42,5 @@ pub mod sats_as_string {
         let amount = Bitcoin::from_sat(value);
 
         Ok(amount)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn display_bitcoin() {
-        assert_eq!(
-            Bitcoin::from_sat(900_000_000_000).to_string(),
-            "9000.00000000 BTC"
-        );
     }
 }

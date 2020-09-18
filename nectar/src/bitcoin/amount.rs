@@ -57,18 +57,6 @@ impl From<Amount> for ::bitcoin::Amount {
     }
 }
 
-impl From<Amount> for comit::asset::Bitcoin {
-    fn from(from: Amount) -> Self {
-        Self::from_sat(from.as_sat())
-    }
-}
-
-impl From<comit::asset::Bitcoin> for Amount {
-    fn from(from: comit::asset::Bitcoin) -> Self {
-        Self(from.into())
-    }
-}
-
 impl From<comit::Quantity<comit::asset::Bitcoin>> for Amount {
     fn from(from: comit::Quantity<comit::asset::Bitcoin>) -> Self {
         Self::from_sat(from.sats())

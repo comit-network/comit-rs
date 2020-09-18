@@ -8,6 +8,7 @@ use crate::{
     storage::{Save, Storage},
     LocalSwapId,
 };
+use comit::network::swap_digest::Digestable;
 use warp::{http::StatusCode, Rejection, Reply};
 
 pub async fn post_swap(
@@ -54,7 +55,7 @@ impl From<PostBody<Herc20, Halbit>> for swap_digest::Herc20Halbit {
             erc20_amount: body.alpha.amount,
             token_contract: body.alpha.token_contract,
             lightning_cltv_expiry: body.beta.cltv_expiry.into(),
-            lightning_amount: body.beta.amount,
+            lightning_amount: Digestable(body.beta.amount),
         }
     }
 }
