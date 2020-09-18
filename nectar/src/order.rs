@@ -33,7 +33,7 @@ impl BtcDaiOrderForm {
     pub fn quote(&self) -> Erc20Quantity {
         self.quantity * self.price.clone()
     }
-    #[allow(clippy::too_many_arguments)]
+
     pub fn new_sell(
         base_balance: bitcoin::Amount,
         base_fees: bitcoin::Amount,
@@ -71,7 +71,6 @@ impl BtcDaiOrderForm {
         })
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn new_buy(
         quote_balance: dai::Amount,
         quote_reserved_funds: dai::Amount,
