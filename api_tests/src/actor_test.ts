@@ -186,7 +186,10 @@ async function newCndActor(role: Role, startCnd: boolean) {
         ethereum: await ethereumWallet,
         lightning: newLightningStubChannel(), // Lightning channels are initialized lazily
     });
-    await cndStarting;
+
+    if (cndStarting !== undefined) {
+        await cndStarting;
+    }
 
     const lndClient = (() => {
         switch (role) {

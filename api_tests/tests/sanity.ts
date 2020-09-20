@@ -166,10 +166,7 @@ describe("Sanity", () => {
         createAliceAndBob(async ([alice, bob]) => {
             await alice.cndInstance.start();
 
-            const aliceId = await alice.cnd.getPeerId();
-
             const aliceAddresses = await alice.cnd.getPeerListenAddresses();
-
             const configOverride = {
                 network: {
                     peer_addresses: aliceAddresses,
@@ -177,13 +174,12 @@ describe("Sanity", () => {
             };
 
             const currentConfig = bob.cndInstance.getConfigFile();
-
-            const updatedConfig = merge(configOverride, currentConfig);
+            const updatedConfig = merge(currentConfig, configOverride);
 
             bob.cndInstance.setConfigFile(updatedConfig);
-
             await bob.cndInstance.start();
 
+            const aliceId = await alice.cnd.getPeerId();
             await bob.pollUntilConnectedTo(aliceId);
         })
     );

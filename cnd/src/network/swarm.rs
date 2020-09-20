@@ -47,7 +47,7 @@ pub struct Swarm {
 }
 
 impl Swarm {
-    pub fn new(
+    pub async fn new(
         settings: &Settings,
         seed: RootSeed,
         task_executor: tokio::runtime::Handle,
@@ -81,6 +81,13 @@ impl Swarm {
         for addr in settings.network.listen.clone() {
             libp2p::Swarm::listen_on(&mut swarm, addr.clone())
                 .with_context(|| format!("Address is not supported: {:?}", addr))?;
+        }
+
+        for peer_addr in &settings.network.peer_addresses {
+            tracing::info!("Dialing peer address {} from config", peer_addr);
+            if let Err(err) = Self::dial_addr_on_swarm(&mut swarm, peer_addr.clone()).await {
+                tracing::warn!("Could not dial peer address {}: {}", peer_addr, err)
+            }
         }
 
         let swarm = Arc::new(Mutex::new(swarm));
@@ -143,6 +150,15 @@ impl Swarm {
     pub async fn dial_addr(&self, addr: Multiaddr) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
         let _ = libp2p::Swarm::dial_addr(&mut *guard, addr)?;
+        Ok(())
+    }
+
+    async fn dial_addr_on_swarm(
+        swarm: &mut libp2p::Swarm<ComitNode>,
+        address: Multiaddr,
+    ) -> anyhow::Result<()> {
+        let _ = libp2p::Swarm::dial_addr(swarm, address)?;
+
         Ok(())
     }
 
