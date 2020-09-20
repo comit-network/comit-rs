@@ -19,7 +19,7 @@ use comit::{
     },
     order::SwapProtocol,
     orderpool::Match,
-    Position, Role,
+    Position,
 };
 use futures::{channel::mpsc::Receiver, FutureExt, StreamExt};
 use std::sync::Arc;
@@ -222,99 +222,33 @@ impl EventLoop {
                     .derive_transient_sk(exec_swap.context.bitcoin_transient_key_index)
                     .context("Could not derive Bitcoin transient key")?;
 
-                let swap_kind = match (exec_swap.our_role, exec_swap.swap_protocol) {
-                    // Sell
-                    (Role::Alice, setup_swap::SwapProtocol::HbitHerc20) => {
-                        SwapKind::HbitHerc20(SwapParams {
-                            hbit_params: crate::swap::hbit::Params::new(
-                                exec_swap.hbit,
-                                bitcoin_transient_sk,
-                            ),
-                            herc20_params: crate::swap::herc20::Params {
-                                asset: exec_swap.herc20.asset.clone(),
-                                redeem_identity: exec_swap.herc20.refund_identity,
-                                refund_identity: exec_swap.herc20.redeem_identity,
-                                expiry: exec_swap.herc20.expiry,
-                                secret_hash: exec_swap.herc20.secret_hash,
-                                chain_id: exec_swap.herc20.chain_id,
-                            },
-                            secret_hash: exec_swap.hbit.secret_hash,
-                            start_of_swap,
-                            swap_id,
-                            taker: ActivePeer {
-                                peer_id: exec_swap.peer_id,
-                            },
-                        })
-                    }
-                    // Buy
-                    (Role::Bob, setup_swap::SwapProtocol::HbitHerc20) => {
-                        SwapKind::HbitHerc20(SwapParams {
-                            hbit_params: crate::swap::hbit::Params::new(
-                                exec_swap.hbit,
-                                bitcoin_transient_sk,
-                            ),
-                            herc20_params: crate::swap::herc20::Params {
-                                asset: exec_swap.herc20.asset.clone(),
-                                redeem_identity: exec_swap.herc20.redeem_identity,
-                                refund_identity: exec_swap.herc20.refund_identity,
-                                expiry: exec_swap.herc20.expiry,
-                                secret_hash: exec_swap.herc20.secret_hash,
-                                chain_id: exec_swap.herc20.chain_id,
-                            },
-                            secret_hash: exec_swap.hbit.secret_hash,
-                            start_of_swap,
-                            swap_id,
-                            taker: ActivePeer {
-                                peer_id: exec_swap.peer_id,
-                            },
-                        })
-                    }
-                    // Buy
-                    (Role::Alice, setup_swap::SwapProtocol::Herc20Hbit) => {
-                        SwapKind::Herc20Hbit(SwapParams {
-                            hbit_params: crate::swap::hbit::Params::new(
-                                exec_swap.hbit,
-                                bitcoin_transient_sk,
-                            ),
-                            herc20_params: crate::swap::herc20::Params {
-                                asset: exec_swap.herc20.asset.clone(),
-                                redeem_identity: exec_swap.herc20.redeem_identity,
-                                refund_identity: exec_swap.herc20.refund_identity,
-                                expiry: exec_swap.herc20.expiry,
-                                secret_hash: exec_swap.herc20.secret_hash,
-                                chain_id: exec_swap.herc20.chain_id,
-                            },
-                            secret_hash: exec_swap.hbit.secret_hash,
-                            start_of_swap,
-                            swap_id,
-                            taker: ActivePeer {
-                                peer_id: exec_swap.peer_id,
-                            },
-                        })
-                    }
-                    // Sell
-                    (Role::Bob, setup_swap::SwapProtocol::Herc20Hbit) => {
-                        SwapKind::Herc20Hbit(SwapParams {
-                            hbit_params: crate::swap::hbit::Params::new(
-                                exec_swap.hbit,
-                                bitcoin_transient_sk,
-                            ),
-                            herc20_params: crate::swap::herc20::Params {
-                                asset: exec_swap.herc20.asset.clone(),
-                                redeem_identity: exec_swap.herc20.redeem_identity,
-                                refund_identity: exec_swap.herc20.refund_identity,
-                                expiry: exec_swap.herc20.expiry,
-                                secret_hash: exec_swap.herc20.secret_hash,
-                                chain_id: exec_swap.herc20.chain_id,
-                            },
-                            secret_hash: exec_swap.hbit.secret_hash,
-                            start_of_swap,
-                            swap_id,
-                            taker: ActivePeer {
-                                peer_id: exec_swap.peer_id,
-                            },
-                        })
-                    }
+                let swap_kind = match exec_swap.swap_protocol {
+                    setup_swap::SwapProtocol::HbitHerc20 => SwapKind::HbitHerc20(SwapParams {
+                        hbit_params: crate::swap::hbit::Params::new(
+                            exec_swap.hbit,
+                            bitcoin_transient_sk,
+                        ),
+                        herc20_params: exec_swap.herc20,
+                        secret_hash: exec_swap.hbit.secret_hash,
+                        start_of_swap,
+                        swap_id,
+                        taker: ActivePeer {
+                            peer_id: exec_swap.peer_id,
+                        },
+                    }),
+                    setup_swap::SwapProtocol::Herc20Hbit => SwapKind::Herc20Hbit(SwapParams {
+                        hbit_params: crate::swap::hbit::Params::new(
+                            exec_swap.hbit,
+                            bitcoin_transient_sk,
+                        ),
+                        herc20_params: exec_swap.herc20,
+                        secret_hash: exec_swap.hbit.secret_hash,
+                        start_of_swap,
+                        swap_id,
+                        taker: ActivePeer {
+                            peer_id: exec_swap.peer_id,
+                        },
+                    }),
                 };
                 let swap_id = swap_kind.swap_id();
 
@@ -398,118 +332,53 @@ impl EventLoop {
                 let ethereum_chain_id = self.ethereum_wallet.chain_id();
                 let bitcoin_network = self.bitcoin_wallet.network.into();
 
-                let (role_dependant_params, common_params, swap_protocol) = match swap_protocol {
-                    SwapProtocol::HbitHerc20 {
-                        hbit_expiry_offset,
-                        herc20_expiry_offset,
-                    } => {
-                        // todo: do checked addition
-                        #[allow(clippy::cast_sign_loss)]
-                        #[allow(clippy::cast_possible_truncation)]
-                        let ethereum_absolute_expiry = (match_ref_point
-                            + time::Duration::from(herc20_expiry_offset))
-                        .timestamp() as u32;
-                        #[allow(clippy::cast_sign_loss)]
-                        #[allow(clippy::cast_possible_truncation)]
-                        let bitcoin_absolute_expiry = (match_ref_point
-                            + time::Duration::from(hbit_expiry_offset))
-                        .timestamp() as u32;
+                let (ethereum_absolute_expiry, bitcoin_absolute_expiry, swap_protocol) =
+                    match swap_protocol {
+                        SwapProtocol::HbitHerc20 {
+                            hbit_expiry_offset,
+                            herc20_expiry_offset,
+                        } => {
+                            // todo: do checked addition
+                            #[allow(clippy::cast_sign_loss)]
+                            #[allow(clippy::cast_possible_truncation)]
+                            let ethereum_absolute_expiry =
+                                (match_ref_point + time::Duration::from(herc20_expiry_offset))
+                                    .timestamp() as u32;
+                            #[allow(clippy::cast_sign_loss)]
+                            #[allow(clippy::cast_possible_truncation)]
+                            let bitcoin_absolute_expiry =
+                                (match_ref_point + time::Duration::from(hbit_expiry_offset))
+                                    .timestamp() as u32;
 
-                        match our_position {
-                            Position::Buy => (
-                                RoleDependentParams::Bob(BobParams {
-                                    bitcoin_identity,
-                                    ethereum_identity,
-                                }),
-                                CommonParams {
-                                    erc20: comit::asset::Erc20 {
-                                        token_contract,
-                                        quantity: erc20_quantity,
-                                    },
-                                    bitcoin: quantity.to_inner(),
-                                    ethereum_absolute_expiry,
-                                    bitcoin_absolute_expiry,
-                                    ethereum_chain_id,
-                                    bitcoin_network,
-                                },
-                                comit::network::setup_swap::SwapProtocol::HbitHerc20,
-                            ),
-                            Position::Sell => (
-                                RoleDependentParams::Bob(BobParams {
-                                    bitcoin_identity,
-                                    ethereum_identity,
-                                }),
-                                CommonParams {
-                                    erc20: comit::asset::Erc20 {
-                                        token_contract,
-                                        quantity: erc20_quantity,
-                                    },
-                                    bitcoin: quantity.to_inner(),
-                                    ethereum_absolute_expiry,
-                                    bitcoin_absolute_expiry,
-                                    ethereum_chain_id,
-                                    bitcoin_network,
-                                },
-                                comit::network::setup_swap::SwapProtocol::HbitHerc20,
-                            ),
+                            (
+                                ethereum_absolute_expiry,
+                                bitcoin_absolute_expiry,
+                                setup_swap::SwapProtocol::HbitHerc20,
+                            )
                         }
-                    }
-                    SwapProtocol::Herc20Hbit {
-                        hbit_expiry_offset,
-                        herc20_expiry_offset,
-                    } => {
-                        // todo: do checked addition
-                        #[allow(clippy::cast_sign_loss)]
-                        #[allow(clippy::cast_possible_truncation)]
-                        let ethereum_absolute_expiry = (match_ref_point
-                            + time::Duration::from(herc20_expiry_offset))
-                        .timestamp() as u32;
-                        #[allow(clippy::cast_sign_loss)]
-                        #[allow(clippy::cast_possible_truncation)]
-                        let bitcoin_absolute_expiry = (match_ref_point
-                            + time::Duration::from(hbit_expiry_offset))
-                        .timestamp() as u32;
+                        SwapProtocol::Herc20Hbit {
+                            hbit_expiry_offset,
+                            herc20_expiry_offset,
+                        } => {
+                            // todo: do checked addition
+                            #[allow(clippy::cast_sign_loss)]
+                            #[allow(clippy::cast_possible_truncation)]
+                            let ethereum_absolute_expiry =
+                                (match_ref_point + time::Duration::from(herc20_expiry_offset))
+                                    .timestamp() as u32;
+                            #[allow(clippy::cast_sign_loss)]
+                            #[allow(clippy::cast_possible_truncation)]
+                            let bitcoin_absolute_expiry =
+                                (match_ref_point + time::Duration::from(hbit_expiry_offset))
+                                    .timestamp() as u32;
 
-                        match our_position {
-                            Position::Buy => (
-                                RoleDependentParams::Bob(BobParams {
-                                    bitcoin_identity,
-                                    ethereum_identity,
-                                }),
-                                CommonParams {
-                                    erc20: comit::asset::Erc20 {
-                                        token_contract,
-                                        quantity: erc20_quantity,
-                                    },
-                                    bitcoin: quantity.to_inner(),
-                                    ethereum_absolute_expiry,
-                                    bitcoin_absolute_expiry,
-                                    ethereum_chain_id,
-                                    bitcoin_network,
-                                },
-                                comit::network::setup_swap::SwapProtocol::Herc20Hbit,
-                            ),
-                            Position::Sell => (
-                                RoleDependentParams::Bob(BobParams {
-                                    bitcoin_identity,
-                                    ethereum_identity,
-                                }),
-                                CommonParams {
-                                    erc20: comit::asset::Erc20 {
-                                        token_contract,
-                                        quantity: erc20_quantity,
-                                    },
-                                    bitcoin: quantity.to_inner(),
-                                    ethereum_absolute_expiry,
-                                    bitcoin_absolute_expiry,
-                                    ethereum_chain_id,
-                                    bitcoin_network,
-                                },
-                                comit::network::setup_swap::SwapProtocol::HbitHerc20,
-                            ),
+                            (
+                                ethereum_absolute_expiry,
+                                bitcoin_absolute_expiry,
+                                setup_swap::SwapProtocol::Herc20Hbit,
+                            )
                         }
-                    }
-                };
+                    };
 
                 let decision = self
                     .maker
@@ -522,8 +391,21 @@ impl EventLoop {
                             .setup_swap
                             .send(
                                 &peer,
-                                role_dependant_params,
-                                common_params,
+                                RoleDependentParams::Bob(BobParams {
+                                    bitcoin_identity,
+                                    ethereum_identity,
+                                }),
+                                CommonParams {
+                                    erc20: comit::asset::Erc20 {
+                                        token_contract,
+                                        quantity: erc20_quantity,
+                                    },
+                                    bitcoin: quantity.to_inner(),
+                                    ethereum_absolute_expiry,
+                                    bitcoin_absolute_expiry,
+                                    ethereum_chain_id,
+                                    bitcoin_network,
+                                },
                                 swap_protocol,
                                 SetupSwapContext {
                                     swap_id,
