@@ -8,6 +8,7 @@ use crate::{
     storage::{Save, Storage},
     LocalSwapId, Side,
 };
+use comit::network::swap_digest::Digestable;
 use warp::{http::StatusCode, Rejection, Reply};
 
 #[allow(clippy::needless_pass_by_value)]
@@ -54,7 +55,7 @@ impl From<PostBody<Hbit, Herc20>> for swap_digest::HbitHerc20 {
     fn from(body: PostBody<Hbit, Herc20>) -> Self {
         Self {
             bitcoin_expiry: body.alpha.absolute_expiry.into(),
-            bitcoin_amount: body.alpha.amount,
+            bitcoin_amount: Digestable(body.alpha.amount),
             ethereum_expiry: body.beta.absolute_expiry.into(),
             erc20_amount: body.beta.amount,
             token_contract: body.beta.token_contract,

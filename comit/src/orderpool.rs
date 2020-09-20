@@ -404,7 +404,7 @@ mod tests {
         let sell = BtcDaiOrder::sell(btc(1.0), dai_per_btc(9000), herc20_hbit());
         let buy = BtcDaiOrder::buy(btc(1.0), dai_per_btc(9000), herc20_hbit());
 
-        let r#match = match_orders(&sell, &buy, &Bitcoin::ONE, &Bitcoin::ZERO);
+        let r#match = match_orders(&sell, &buy, &Bitcoin::ONE_BTC, &Bitcoin::ZERO);
 
         assert_that(&r#match).is_none();
     }

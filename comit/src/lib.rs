@@ -66,7 +66,6 @@ pub use self::{
     timestamp::{RelativeTime, Timestamp},
 };
 
-use digest::ToDigestInput;
 use serde::{Deserialize, Serialize};
 
 /// Defines the set of locking protocol available in COMIT.
@@ -173,39 +172,3 @@ impl From<Network> for ethereum::ChainId {
 }
 
 pub type Never = std::convert::Infallible;
-
-impl ToDigestInput for Timestamp {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.clone().to_bytes().to_vec()
-    }
-}
-
-impl ToDigestInput for RelativeTime {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.to_bytes().to_vec()
-    }
-}
-
-impl ToDigestInput for ethereum::Address {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.clone().as_bytes().to_vec()
-    }
-}
-
-impl ToDigestInput for asset::Bitcoin {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.to_le_bytes().to_vec()
-    }
-}
-
-impl ToDigestInput for asset::Ether {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.to_bytes()
-    }
-}
-
-impl ToDigestInput for asset::Erc20Quantity {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.to_bytes()
-    }
-}

@@ -1,5 +1,5 @@
-use crate::{asset, identity, RelativeTime, Timestamp};
-use digest::Digest;
+use crate::{asset, ethereum, identity, RelativeTime, Timestamp};
+use digest::{Digest, ToDigestInput};
 use libp2p::multihash::Multihash;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
@@ -34,7 +34,7 @@ pub struct Herc20Halbit {
     #[digest(prefix = "3001")]
     pub lightning_cltv_expiry: RelativeTime,
     #[digest(prefix = "3002")]
-    pub lightning_amount: asset::Bitcoin,
+    pub lightning_amount: Digestable<asset::Bitcoin>,
 }
 
 /// This represents the information that we use to create a swap digest for
@@ -45,7 +45,7 @@ pub struct HalbitHerc20 {
     #[digest(prefix = "2001")]
     pub lightning_cltv_expiry: RelativeTime,
     #[digest(prefix = "2002")]
-    pub lightning_amount: asset::Bitcoin,
+    pub lightning_amount: Digestable<asset::Bitcoin>,
     #[digest(prefix = "3001")]
     pub ethereum_absolute_expiry: Timestamp,
     #[digest(prefix = "3002")]
@@ -68,7 +68,7 @@ pub struct Herc20Hbit {
     #[digest(prefix = "3001")]
     pub bitcoin_expiry: Timestamp,
     #[digest(prefix = "3002")]
-    pub bitcoin_amount: asset::Bitcoin,
+    pub bitcoin_amount: Digestable<asset::Bitcoin>,
 }
 
 /// This represents the information that we use to create a swap digest for
@@ -79,7 +79,7 @@ pub struct HbitHerc20 {
     #[digest(prefix = "2001")]
     pub bitcoin_expiry: Timestamp,
     #[digest(prefix = "2002")]
-    pub bitcoin_amount: asset::Bitcoin,
+    pub bitcoin_amount: Digestable<asset::Bitcoin>,
     #[digest(prefix = "3001")]
     pub ethereum_expiry: Timestamp,
     #[digest(prefix = "3002")]
@@ -87,6 +87,10 @@ pub struct HbitHerc20 {
     #[digest(prefix = "3003")]
     pub token_contract: identity::Ethereum,
 }
+
+/// A new-type that allows us to implemented `ToDigestInput` on foreign types.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Digestable<T>(pub T);
 
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct SwapDigest(Multihash);
@@ -145,7 +149,7 @@ impl digest::Hash for Sha3_256 {
     }
 }
 
-impl digest::ToDigestInput for Sha3_256 {
+impl ToDigestInput for Sha3_256 {
     fn to_digest_input(&self) -> Vec<u8> {
         self.0.to_vec()
     }
@@ -154,5 +158,41 @@ impl digest::ToDigestInput for Sha3_256 {
 impl From<Sha3_256> for SwapDigest {
     fn from(sha3256: Sha3_256) -> Self {
         SwapDigest(sha3256.0)
+    }
+}
+
+impl ToDigestInput for Timestamp {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.clone().to_bytes().to_vec()
+    }
+}
+
+impl ToDigestInput for RelativeTime {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.to_bytes().to_vec()
+    }
+}
+
+impl ToDigestInput for ethereum::Address {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.clone().as_bytes().to_vec()
+    }
+}
+
+impl ToDigestInput for Digestable<asset::Bitcoin> {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.0.as_sat().to_le_bytes().to_vec()
+    }
+}
+
+impl ToDigestInput for asset::Ether {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.to_bytes()
+    }
+}
+
+impl ToDigestInput for asset::Erc20Quantity {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.to_bytes()
     }
 }

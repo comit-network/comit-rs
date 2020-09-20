@@ -386,7 +386,7 @@ mod tests {
                 bitcoin_blockchain
                     .mint(
                         wallet.new_address().await?,
-                        asset::Bitcoin::from_sat(1_000_000_000).into(),
+                        asset::Bitcoin::from_sat(1_000_000_000),
                     )
                     .await?;
 
@@ -587,11 +587,11 @@ mod tests {
 
         assert!(
             alice_bitcoin_final_balance
-                >= alice_bitcoin_starting_balance - hbit_params.asset.into() - bitcoin_max_fee
+                >= alice_bitcoin_starting_balance - hbit_params.asset - bitcoin_max_fee
         );
         assert!(
             bob_bitcoin_final_balance
-                >= bob_bitcoin_starting_balance + hbit_params.asset.into() - bitcoin_max_fee
+                >= bob_bitcoin_starting_balance + hbit_params.asset - bitcoin_max_fee
         );
 
         assert_eq!(

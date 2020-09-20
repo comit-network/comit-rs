@@ -66,7 +66,7 @@ impl BtcDaiOrderForm {
 
         Ok(BtcDaiOrderForm {
             position: Position::Sell,
-            quantity: base_amount.into(),
+            quantity: Quantity::new(base_amount),
             price: rate.into(),
         })
     }
@@ -93,7 +93,7 @@ impl BtcDaiOrderForm {
 
         Ok(BtcDaiOrderForm {
             position: Position::Buy,
-            quantity: base_amount.into(),
+            quantity: Quantity::new(base_amount),
             price: rate.into(),
         })
     }
@@ -168,7 +168,7 @@ pub fn btc_dai_order_form(
 ) -> BtcDaiOrderForm {
     BtcDaiOrderForm {
         position,
-        quantity: btc_quantity.into(),
+        quantity: Quantity::new(btc_quantity),
         price: btc_dai_rate.into(),
     }
 }
@@ -198,7 +198,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(bitcoin::Amount::from(order.quantity), btc(10.0));
+        assert_eq!(order.quantity.to_inner(), btc(10.0));
 
         let order = BtcDaiOrderForm::new_buy(
             dai(10.0),
@@ -225,7 +225,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(bitcoin::Amount::from(order.quantity), btc(8.0));
+        assert_eq!(order.quantity.to_inner(), btc(8.0));
 
         let order =
             BtcDaiOrderForm::new_buy(dai(10.0), dai(2.0), None, rate, Spread::new(0).unwrap())
@@ -247,7 +247,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(bitcoin::Amount::from(order.quantity), btc(2.0));
+        assert_eq!(order.quantity.to_inner(), btc(2.0));
 
         let order = BtcDaiOrderForm::new_buy(
             dai(10.0),
@@ -286,26 +286,26 @@ mod tests {
 
         // 1 Sell => 0.1 Buy
         // 1000 Sell => 100 Buy
-        assert_eq!(bitcoin::Amount::from(order.quantity), btc(1000.0));
+        assert_eq!(order.quantity.to_inner(), btc(1000.0));
         assert_eq!(dai::Amount::from(order.quote()), dai(100.0));
 
         let rate = Rate::try_from(10.0).unwrap();
         let order = BtcDaiOrderForm::new_sell(btc(1051.0), btc(1.0), btc(50.0), None, rate, spread)
             .unwrap();
 
-        assert_eq!(bitcoin::Amount::from(order.quantity), btc(1000.0));
+        assert_eq!(order.quantity.to_inner(), btc(1000.0));
         assert_eq!(dai::Amount::from(order.quote()), dai(10_000.0));
 
         let rate = Rate::try_from(0.1).unwrap();
         let order = BtcDaiOrderForm::new_buy(dai(1050.0), dai(50.0), None, rate, spread).unwrap();
 
-        assert_eq!(bitcoin::Amount::from(order.quantity), btc(10_000.0));
+        assert_eq!(order.quantity.to_inner(), btc(10_000.0));
         assert_eq!(dai::Amount::from(order.quote()), dai(1000.0));
 
         let rate = Rate::try_from(10.0).unwrap();
         let order = BtcDaiOrderForm::new_buy(dai(1050.0), dai(50.0), None, rate, spread).unwrap();
 
-        assert_eq!(bitcoin::Amount::from(order.quantity), btc(100.0));
+        assert_eq!(order.quantity.to_inner(), btc(100.0));
         assert_eq!(dai::Amount::from(order.quote()), dai(1000.0));
     }
 
@@ -322,7 +322,7 @@ mod tests {
         let order =
             BtcDaiOrderForm::new_sell(btc(1.51), btc(0.01), btc(0.5), None, rate, spread).unwrap();
 
-        assert_eq!(bitcoin::Amount::from(order.quantity), btc(1.0));
+        assert_eq!(order.quantity.to_inner(), btc(1.0));
         assert_eq!(dai::Amount::from(order.quote()), dai(10_300.0));
 
         assert_eq!(
@@ -332,7 +332,7 @@ mod tests {
 
         let order = BtcDaiOrderForm::new_buy(dai(10_051.0), dai(51.0), None, rate, spread).unwrap();
 
-        assert_eq!(bitcoin::Amount::from(order.quantity), btc(1.03092783));
+        assert_eq!(order.quantity.to_inner(), btc(1.03092783));
         assert_eq!(dai::Amount::from(order.quote()), dai(9999.999951));
     }
 
