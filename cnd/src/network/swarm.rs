@@ -105,16 +105,10 @@ impl Swarm {
         let mut guard = self.inner.lock().await;
 
         if let Some(address_hint) = address_hint {
-            if let Some(addr) = guard
+            guard
                 .peer_tracker
-                .add_address_hint(peer.clone(), address_hint.clone())
-            {
-                tracing::warn!(
-                    "clobbered old address hint, old: {}, new: {}",
-                    addr,
-                    address_hint,
-                );
-            }
+                .add_recent_address_hint(peer.clone(), address_hint);
+
             let existing_connection_to_peer =
                 libp2p::Swarm::connection_info(&mut guard, &peer).is_some();
 
@@ -253,14 +247,17 @@ async fn new_match_worker(
 
         let mut guard = swarm.lock().await;
 
-        if let Err(e) = guard
-            .setup_swap
-            .send(&peer, role, common, protocol, SetupSwapContext {
+        if let Err(e) = guard.setup_swap.send(
+            &peer,
+            role,
+            common,
+            protocol,
+            SetupSwapContext {
                 swap: swap_id,
                 order: order_id,
                 match_reference_point,
-            })
-        {
+            },
+        ) {
             tracing::warn!("failed to setup swap for order {}: {:#}", order_id, e);
         }
     }

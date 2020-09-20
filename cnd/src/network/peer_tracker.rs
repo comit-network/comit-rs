@@ -9,7 +9,7 @@ use libp2p::{
     Multiaddr, PeerId,
 };
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{hash_map::Entry, HashMap, VecDeque},
     task::Poll,
 };
 
@@ -17,7 +17,7 @@ use std::{
 #[derive(Default, Debug)]
 pub struct PeerTracker {
     connected_peers: HashMap<PeerId, Vec<Multiaddr>>,
-    address_hints: HashMap<PeerId, Multiaddr>,
+    address_hints: HashMap<PeerId, VecDeque<Multiaddr>>,
 }
 
 impl PeerTracker {
@@ -25,8 +25,22 @@ impl PeerTracker {
         self.connected_peers.clone().into_iter()
     }
 
-    pub fn add_address_hint(&mut self, id: PeerId, addr: Multiaddr) -> Option<Multiaddr> {
-        self.address_hints.insert(id, addr)
+    /// Adds an address hint for the given peer id. The added address is
+    /// considered most recent and hence is added at the start of the list
+    /// because libp2p tries to connect with the first address first.
+    pub fn add_recent_address_hint(&mut self, id: PeerId, addr: Multiaddr) {
+        let old_addresses = self.address_hints.get_mut(&id);
+
+        match old_addresses {
+            None => {
+                let mut hints = VecDeque::new();
+                hints.push_back(addr);
+                self.address_hints.insert(id, hints);
+            }
+            Some(hints) => {
+                hints.push_front(addr);
+            }
+        }
     }
 }
 
@@ -38,16 +52,24 @@ impl NetworkBehaviour for PeerTracker {
         DummyProtocolsHandler::default()
     }
 
+    /// Note (from libp2p doc):
+    /// The addresses will be tried in the order returned by this function,
+    /// which means that they should be ordered by decreasing likelihood of
+    /// reachability. In other words, the first address should be the most
+    /// likely to be reachable.
     fn addresses_of_peer(&mut self, peer: &PeerId) -> Vec<Multiaddr> {
         let mut addresses: Vec<Multiaddr> = vec![];
 
-        if let Some(addr) = self.address_hints.get(peer) {
-            addresses.push(addr.clone());
-        }
-
+        // If we are connected then this address is most likely to be valid
         if let Some(connected) = self.connected_peers.get(peer) {
             for addr in connected.iter() {
                 addresses.push(addr.clone())
+            }
+        }
+
+        if let Some(hints) = self.address_hints.get(peer) {
+            for hint in hints {
+                addresses.push(hint.clone());
             }
         }
 
