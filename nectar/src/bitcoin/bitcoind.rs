@@ -4,6 +4,7 @@ use crate::{
 };
 use ::bitcoin::{consensus::encode::serialize_hex, hashes::hex::FromHex, Transaction, Txid};
 use anyhow::Context;
+use bitcoin::OutPoint;
 use serde::Deserialize;
 
 pub const JSONRPC_VERSION: &str = "1.0";
@@ -188,6 +189,98 @@ impl Client {
         Ok(txid)
     }
 
+    pub async fn fund_htlc(
+        &self,
+        wallet_name: &str,
+        address: Address,
+        amount: Amount,
+    ) -> anyhow::Result<OutPoint> {
+        let address = address.to_string();
+
+        let response: CreatePsbtResponse = self
+            .rpc_client
+            .send_with_path(
+                format!("/wallet/{}", wallet_name),
+                jsonrpc::Request::new(
+                    "walletcreatefundedpsbt",
+                    serde_json::json! (
+                        [
+                            [],
+                            [
+                                {
+                                    address: amount.as_btc()
+                                }
+                            ],
+                            null,
+                            {
+                                "changePosition": 1 // this allows us to assume that the HTLC will always be at output position 0
+                            }
+                        ]
+                    ),
+                    JSONRPC_VERSION.into(),
+                ),
+            )
+            .await
+            .context("failed create funded psbt")?;
+
+        let response: ProcessPsbtResponse = self
+            .rpc_client
+            .send_with_path(
+                format!("/wallet/{}", wallet_name),
+                jsonrpc::Request::new(
+                    "walletprocesspsbt",
+                    serde_json::json!([
+                        response.psbt,
+                        true,  // sign,
+                        "ALL", // sighashtype,
+                    ]),
+                    JSONRPC_VERSION.into(),
+                ),
+            )
+            .await
+            .context("failed process psbt")?;
+
+        let response: FinalizePsbtResponse = self
+            .rpc_client
+            .send_with_path(
+                format!("/wallet/{}", wallet_name),
+                jsonrpc::Request::new(
+                    "finalizepsbt",
+                    serde_json::json!([
+                        response.psbt,
+                        true, // extract,
+                    ]),
+                    JSONRPC_VERSION.into(),
+                ),
+            )
+            .await
+            .context("failed finalize psbt")?;
+
+        if !response.complete {
+            anyhow::bail!("failed to finalize psbt")
+        }
+
+        let txid: String = self
+            .rpc_client
+            .send_with_path(
+                format!("/wallet/{}", wallet_name),
+                jsonrpc::Request::new(
+                    "sendrawtransaction",
+                    vec![response.hex.expect("to be set if response.complete = true")],
+                    JSONRPC_VERSION.into(),
+                ),
+            )
+            .await
+            .context("failed to send raw transaction")?;
+
+        let txid = Txid::from_hex(&txid)?;
+
+        Ok(OutPoint {
+            txid,
+            vout: 0, // we always put the change output on index 1, hence this must be 0
+        })
+    }
+
     pub async fn send_raw_transaction(
         &self,
         wallet_name: &str,
@@ -364,6 +457,24 @@ pub struct GetDescriptorInfoResponse {
 pub enum ScanProgress {
     Bool(bool),
     Progress { duration: u32, progress: f64 },
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+struct CreatePsbtResponse {
+    psbt: String,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+struct ProcessPsbtResponse {
+    psbt: String,
+    complete: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+struct FinalizePsbtResponse {
+    psbt: Option<String>,
+    hex: Option<String>,
+    complete: bool,
 }
 
 #[cfg(all(test, feature = "test-docker"))]
