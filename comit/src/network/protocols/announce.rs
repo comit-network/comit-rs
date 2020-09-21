@@ -189,7 +189,10 @@ impl<C: fmt::Display + Send>
         match event {
             RequestResponseEvent::Message {
                 peer,
-                message: RequestResponseMessage::Request { request, channel },
+                message:
+                    RequestResponseMessage::Request {
+                        request, channel, ..
+                    },
             } => {
                 let span = tracing::info_span!("incoming_announcement", digest = %request);
                 let _enter = span.enter();

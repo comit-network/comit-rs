@@ -21,7 +21,7 @@ ethereum-types = "0.9"
 futures = "0.3"
 futures-timer = "3.0"
 hex = "0.4"
-libp2p = { version = "0.24", default-features = false, features = ["tcp-tokio", "noise", "yamux", "mplex", "dns"] }
+libp2p = { version = "0.28", default-features = false, features = ["tcp-tokio", "noise", "yamux", "mplex", "dns"] }
 log = "0.4"
 num = "0.3"
 num256 = "0.2"
