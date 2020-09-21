@@ -1,12 +1,12 @@
-use crate::Rate;
+use crate::{config::KrakenApiHost, Rate};
 use std::convert::TryInto;
 
 /// Get mid-market rate for the trading pair BTC-DAI.
 ///
 /// Currently, this function only delegates to Kraken. Eventually, it
 /// could return a value based on multiple sources.
-pub async fn get_btc_dai_mid_market_rate() -> anyhow::Result<MidMarketRate> {
-    kraken::get_btc_dai_mid_market_rate().await
+pub async fn get_btc_dai_mid_market_rate(host: &KrakenApiHost) -> anyhow::Result<MidMarketRate> {
+    kraken::get_btc_dai_mid_market_rate(host).await
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -42,8 +42,12 @@ mod kraken {
     /// More info here: https://www.kraken.com/features/api
     /// Rate limits: For public API a frequency of 1 call per second is
     /// acceptable, More info here: https://support.kraken.com/hc/en-us/articles/206548367-What-are-the-REST-API-rate-limits-
-    pub async fn get_btc_dai_mid_market_rate() -> anyhow::Result<MidMarketRate> {
-        let ask_and_bid = reqwest::get("https://api.kraken.com/0/public/Ticker?pair=XBTDAI")
+    pub async fn get_btc_dai_mid_market_rate(
+        host: &KrakenApiHost,
+    ) -> anyhow::Result<MidMarketRate> {
+        let endpoint = host.with_trading_pair("XBTDAI")?;
+
+        let ask_and_bid = reqwest::get(endpoint)
             .await?
             .json::<TickerResponse>()
             .await

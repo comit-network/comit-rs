@@ -167,6 +167,58 @@ pub struct Maker {
     /// balance. Fees are in the nominal native currency and per
     /// transaction.
     pub maximum_possible_fee: Fees,
+    pub kraken_api_host: KrakenApiHost,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct KrakenApiHost(Url);
+
+impl KrakenApiHost {
+    pub fn with_trading_pair(&self, trading_pair: &str) -> Result<Url> {
+        let url = self
+            .0
+            .join(&format!("/0/public/Ticker?pair={}", trading_pair))?;
+
+        Ok(url)
+    }
+}
+
+impl Default for KrakenApiHost {
+    fn default() -> Self {
+        let url = "https://api.kraken.com"
+            .parse()
+            .expect("static url always parses correctly");
+
+        Self(url)
+    }
+}
+
+impl Maker {
+    fn from_file(file: file::Maker) -> Self {
+        Self {
+            max_sell: file.max_sell.unwrap_or_default(),
+            spread: file
+                .spread
+                .unwrap_or_else(|| Spread::new(500).expect("500 is a valid spread value")),
+            maximum_possible_fee: file
+                .maximum_possible_fee
+                .map_or_else(Fees::default, Fees::from_file),
+            kraken_api_host: file
+                .kraken_api_host
+                .map_or_else(KrakenApiHost::default, KrakenApiHost),
+        }
+    }
+}
+
+impl Default for Maker {
+    fn default() -> Self {
+        Self {
+            max_sell: MaxSell::default(),
+            spread: Spread::new(500).expect("500 is a valid spread value"),
+            maximum_possible_fee: Fees::default(),
+            kraken_api_host: KrakenApiHost::default(),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -174,12 +226,24 @@ pub struct Fees {
     pub bitcoin: bitcoin::Amount,
 }
 
+impl Fees {
+    fn from_file(file: file::Fees) -> Self {
+        Self {
+            bitcoin: file.bitcoin.unwrap_or_else(Self::default_bitcoin_fee),
+        }
+    }
+
+    // ~265 vbytes (2 inputs 2 outputs segwit transaction)
+    // * 35 sat/vbytes (Looking at https://bitcoinfees.github.io/#1m)
+    fn default_bitcoin_fee() -> bitcoin::Amount {
+        bitcoin::Amount::from_sat(265 * 35)
+    }
+}
+
 impl Default for Fees {
     fn default() -> Self {
         Fees {
-            // ~265 vbytes (2 inputs 2 outputs segwit transaction)
-            // * 35 sat/vbytes (Looking at https://bitcoinfees.github.io/#1m)
-            bitcoin: bitcoin::Amount::from_sat(265 * 35),
+            bitcoin: Self::default_bitcoin_fee(),
         }
     }
 }
@@ -229,6 +293,7 @@ impl From<Maker> for file::Maker {
             maximum_possible_fee: Some(file::Fees {
                 bitcoin: Some(maker.maximum_possible_fee.bitcoin),
             }),
+            kraken_api_host: Some(maker.kraken_api_host.0),
         }
     }
 }
@@ -248,41 +313,7 @@ impl Settings {
         } = config_file;
 
         Ok(Self {
-            maker: Maker {
-                max_sell: if let Some(file::Maker {
-                    max_sell: Some(ref max_sell),
-                    ..
-                }) = maker
-                {
-                    max_sell.clone()
-                } else {
-                    MaxSell {
-                        bitcoin: None,
-                        dai: None,
-                    }
-                },
-                spread: match maker {
-                    Some(file::Maker {
-                        spread: Some(spread),
-                        ..
-                    }) => spread,
-                    _ => Spread::new(500).expect("500 is a valid spread value"),
-                },
-                maximum_possible_fee: {
-                    if let Some(file::Maker {
-                        maximum_possible_fee:
-                            Some(file::Fees {
-                                bitcoin: Some(bitcoin),
-                            }),
-                        ..
-                    }) = maker
-                    {
-                        Fees { bitcoin }
-                    } else {
-                        Fees::default()
-                    }
-                },
-            },
+            maker: maker.map_or_else(Maker::default, Maker::from_file),
             network: network.unwrap_or_else(|| {
                 let default_socket = "/ip4/0.0.0.0/tcp/9939"
                     .parse()
