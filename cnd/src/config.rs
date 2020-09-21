@@ -59,19 +59,6 @@ impl Data {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Network {
-    pub listen: Vec<Multiaddr>,
-}
-
-impl Default for Network {
-    fn default() -> Self {
-        Self {
-            listen: vec![COMIT_SOCKET.clone()],
-        }
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Bitcoin {
     pub network: ledger::Bitcoin,
     pub bitcoind: Bitcoind,
@@ -366,38 +353,6 @@ where
 mod tests {
     use super::*;
     use spectral::prelude::*;
-
-    #[test]
-    fn network_deserializes_correctly() {
-        let file_contents = vec![
-            r#"
-            listen = ["/ip4/0.0.0.0/tcp/9939"]
-            "#,
-            r#"
-            listen = ["/ip4/0.0.0.0/tcp/9939", "/ip4/127.0.0.1/tcp/9939"]
-            "#,
-        ];
-
-        let expected = vec![
-            Network {
-                listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
-            },
-            Network {
-                listen: (vec![
-                    "/ip4/0.0.0.0/tcp/9939".parse().unwrap(),
-                    "/ip4/127.0.0.1/tcp/9939".parse().unwrap(),
-                ]),
-            },
-        ];
-
-        let actual = file_contents
-            .into_iter()
-            .map(toml::from_str)
-            .collect::<Result<Vec<Network>, toml::de::Error>>()
-            .unwrap();
-
-        assert_eq!(actual, expected);
-    }
 
     #[test]
     fn lnd_deserializes_correctly() {

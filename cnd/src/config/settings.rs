@@ -1,4 +1,5 @@
-use crate::config::{file, Bitcoin, Data, Ethereum, File, Lightning, Network};
+use crate::config::{file, Bitcoin, Data, Ethereum, File, Lightning, COMIT_SOCKET};
+use libp2p::core::Multiaddr;
 use log::LevelFilter;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
@@ -32,7 +33,10 @@ impl From<Settings> for File {
         } = settings;
 
         File {
-            network: Some(network),
+            network: Some(file::Network {
+                listen: network.listen,
+                peer_addresses: Some(network.peer_addresses),
+            }),
             http_api: Some(file::HttpApi {
                 socket,
                 cors: Some(file::Cors {
@@ -50,6 +54,33 @@ impl From<Settings> for File {
             bitcoin: Some(bitcoin.into()),
             ethereum: Some(ethereum.into()),
             lightning: Some(lightning.into()),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Network {
+    pub listen: Vec<Multiaddr>,
+    pub peer_addresses: Vec<Multiaddr>,
+}
+
+impl Default for Network {
+    fn default() -> Self {
+        Self {
+            listen: vec![COMIT_SOCKET.clone()],
+            peer_addresses: vec![],
+        }
+    }
+}
+
+impl From<file::Network> for Network {
+    fn from(network: file::Network) -> Self {
+        let listen = network.listen;
+        let peer_addresses = network.peer_addresses.unwrap_or_default();
+
+        Self {
+            listen,
+            peer_addresses,
         }
     }
 }
@@ -144,7 +175,7 @@ impl Settings {
         } = config_file;
 
         Ok(Self {
-            network: network.unwrap_or_default(),
+            network: network.map_or_else(Network::default, Network::from),
             http_api: http_api.map_or_else(HttpApi::default, HttpApi::from),
             data: data.map_or_else(Data::default, Ok)?,
             logging: logging.map_or_else(Logging::default, Logging::from),
@@ -247,6 +278,7 @@ mod tests {
             .map(|settings| &settings.network)
             .is_equal_to(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
+                peer_addresses: vec![],
             })
     }
 
