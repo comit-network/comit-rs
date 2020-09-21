@@ -262,7 +262,7 @@ fn respawn_swaps(
             }
         };
 
-        tokio::spawn(swap_executor.clone().execute(swap));
+        swap_executor.execute(swap);
     }
 
     Ok(())

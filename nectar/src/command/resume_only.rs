@@ -31,7 +31,7 @@ pub async fn resume_only(
     );
 
     for swap in db.all_swaps()? {
-        let _ = tokio::spawn(executor.clone().execute(swap));
+        executor.execute(swap);
     }
 
     while let Some(finished_swap) = finished_swap_receiver.next().await {
