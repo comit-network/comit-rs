@@ -604,10 +604,6 @@ async fn execute(
     db: Arc<Database>,
     mut sender: mpsc::Sender<FinishedSwap>,
 ) -> Result<()> {
-    db.insert_swap(swap.clone())
-        .await
-        .context("failed to insert swap into database")?;
-
     match swap.clone() {
         SwapKind::HbitHerc20(SwapParams {
             hbit_params,
