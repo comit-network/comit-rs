@@ -16,11 +16,18 @@ export class CndInstance {
         private readonly cargoTargetDirectory: string,
         private readonly logFile: string,
         private readonly logger: Logger,
-        private readonly configFile: CndConfigFile
+        private configFile: CndConfigFile
     ) {}
 
     public getConfigFile() {
         return this.configFile;
+    }
+
+    /**
+     * Override the config of the node.
+     */
+    public setConfigFile(config: CndConfigFile) {
+        this.configFile = config;
     }
 
     public async start() {

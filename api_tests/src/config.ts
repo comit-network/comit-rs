@@ -11,7 +11,10 @@ import {
 export interface CndConfigFile {
     http_api: HttpApi;
     data?: { dir: string };
-    network: { listen: string[] };
+    network: {
+        listen: string[];
+        peer_addresses?: string[];
+    };
     logging: { level: string };
     bitcoin?: BitcoinConfig;
     ethereum?: EthereumConfig;

@@ -3,8 +3,16 @@
  * @cndConfigOverride ethereum.tokens.dai = 0x0000000000000000000000000000000000000000
  */
 
-import { startAlice, startAliceAndBob } from "../src/actor_test";
+import {
+    startAlice,
+    startAliceAndBob,
+    createAliceAndBob,
+} from "../src/actor_test";
 import SwapFactory from "../src/swap_factory";
+import { merge } from "lodash";
+import { HarnessGlobal } from "../src/environment";
+
+declare var global: HarnessGlobal;
 
 // ******************************************** //
 // Sanity tests                                 //
@@ -150,6 +158,33 @@ describe("Sanity", () => {
             await expect(
                 bob.cnd.createHalbitHerc20(bodies.bob)
             ).rejects.toMatchObject(expectedProblem);
+        })
+    );
+
+    it(
+        "bob-connects-to-alice-using-config",
+        createAliceAndBob(async ([alice, bob]) => {
+            await alice.cndInstance.start();
+
+            const aliceId = await alice.cnd.getPeerId();
+
+            const aliceAddresses = await alice.cnd.getPeerListenAddresses();
+
+            const configOverride = {
+                network: {
+                    peer_addresses: aliceAddresses,
+                },
+            };
+
+            const currentConfig = bob.cndInstance.getConfigFile();
+
+            const updatedConfig = merge(configOverride, currentConfig);
+
+            bob.cndInstance.setConfigFile(updatedConfig);
+
+            await bob.cndInstance.start();
+
+            await bob.pollUntilConnectedTo(aliceId);
         })
     );
 });

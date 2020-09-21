@@ -50,7 +50,7 @@ export default class CndClient {
     }
 
     /**
-     * Get the address on which cnd is listening for peer-to-peer/COMIT messages.
+     * Get the addresses on which cnd is listening for peer-to-peer/COMIT messages.
      *
      * @returns An array of multiaddresses
      * @throws A {@link Problem} from the cnd REST API or an {@link Error}.
