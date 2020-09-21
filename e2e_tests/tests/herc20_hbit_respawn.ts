@@ -11,8 +11,8 @@ describe("herc20-hbit-respawn", () => {
     it(
         "herc20-hbit-alice-misses-bob-funds",
         startConnectedAliceAndBob(async ([alice, bob]) => {
-            await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
-            await bob.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
+            await alice.makeBtcDaiOrder(Position.Buy, "0.2", "9000");
+            await bob.makeBtcDaiOrder(Position.Sell, "0.2", "9000");
 
             await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
 
@@ -41,8 +41,8 @@ describe("herc20-hbit-respawn", () => {
     it(
         "herc20-hbit-bob-misses-alice-redeems",
         startConnectedAliceAndBob(async ([alice, bob]) => {
-            await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
-            await bob.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
+            await alice.makeBtcDaiOrder(Position.Buy, "0.2", "9000");
+            await bob.makeBtcDaiOrder(Position.Sell, "0.2", "9000");
 
             await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
 
@@ -72,8 +72,8 @@ describe("herc20-hbit-respawn", () => {
     it(
         "hbit-herc20-alice-misses-bob-deploys-and-funds",
         startConnectedAliceAndBob(async ([alice, bob]) => {
-            await alice.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
-            await bob.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
+            await alice.makeBtcDaiOrder(Position.Sell, "0.2", "9000");
+            await bob.makeBtcDaiOrder(Position.Buy, "0.2", "9000");
 
             await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
 
@@ -102,8 +102,8 @@ describe("herc20-hbit-respawn", () => {
     it(
         "hbit-herc20-bob-down-misses-alice-redeems",
         startConnectedAliceAndBob(async ([alice, bob]) => {
-            await alice.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
-            await bob.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
+            await alice.makeBtcDaiOrder(Position.Sell, "0.2", "9000");
+            await bob.makeBtcDaiOrder(Position.Buy, "0.2", "9000");
 
             await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
 
