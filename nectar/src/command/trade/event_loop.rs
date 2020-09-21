@@ -6,7 +6,7 @@ use crate::{
     maker::{PublishOrders, TakeRequestDecision},
     network::{self, ActivePeer, SetupSwapContext, Swarm},
     order::BtcDaiOrderForm,
-    swap::{Database, SwapKind, SwapParams},
+    swap::{hbit, Database, SwapKind, SwapParams},
     Maker, MidMarketRate, SwapId,
 };
 use anyhow::{bail, Context, Result};
@@ -207,46 +207,30 @@ impl EventLoop {
         match event {
             setup_swap::BehaviourOutEvent::ExecutableSwap(exec_swap) => {
                 let swap_id = exec_swap.context.swap_id;
-
                 let start_of_swap = chrono::DateTime::from_utc(
                     NaiveDateTime::from_timestamp(exec_swap.context.match_ref_point.timestamp(), 0),
                     Utc,
                 );
-
                 let bitcoin_transient_sk = self
                     .bitcoin_wallet
                     .derive_transient_sk(exec_swap.context.bitcoin_transient_key_index)
                     .context("Could not derive Bitcoin transient key")?;
+                let hbit_params = hbit::Params::new(exec_swap.hbit, bitcoin_transient_sk);
 
-                let swap_kind = match exec_swap.swap_protocol {
-                    setup_swap::SwapProtocol::HbitHerc20 => SwapKind::HbitHerc20(SwapParams {
-                        hbit_params: crate::swap::hbit::Params::new(
-                            exec_swap.hbit,
-                            bitcoin_transient_sk,
-                        ),
-                        herc20_params: exec_swap.herc20,
-                        secret_hash: exec_swap.hbit.secret_hash,
-                        start_of_swap,
-                        swap_id,
-                        taker: ActivePeer {
-                            peer_id: exec_swap.peer_id,
-                        },
-                    }),
-                    setup_swap::SwapProtocol::Herc20Hbit => SwapKind::Herc20Hbit(SwapParams {
-                        hbit_params: crate::swap::hbit::Params::new(
-                            exec_swap.hbit,
-                            bitcoin_transient_sk,
-                        ),
-                        herc20_params: exec_swap.herc20,
-                        secret_hash: exec_swap.hbit.secret_hash,
-                        start_of_swap,
-                        swap_id,
-                        taker: ActivePeer {
-                            peer_id: exec_swap.peer_id,
-                        },
-                    }),
+                let params = SwapParams {
+                    swap_id,
+                    start_of_swap,
+                    hbit_params,
+                    herc20_params: exec_swap.herc20,
+                    secret_hash: exec_swap.hbit.secret_hash,
+                    taker: ActivePeer {
+                        peer_id: exec_swap.peer_id,
+                    },
                 };
-                let swap_id = swap_kind.swap_id();
+                let swap_kind = match exec_swap.swap_protocol {
+                    setup_swap::SwapProtocol::HbitHerc20 => SwapKind::HbitHerc20(params),
+                    setup_swap::SwapProtocol::Herc20Hbit => SwapKind::Herc20Hbit(params),
+                };
 
                 self.database
                     .insert_swap(swap_kind.clone())
