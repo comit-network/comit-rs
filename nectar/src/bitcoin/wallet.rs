@@ -8,7 +8,7 @@ use ::bitcoin::{
     util::bip32::{ChainCode, ChildNumber, ExtendedPrivKey},
     PrivateKey, Transaction, Txid,
 };
-use bitcoin::util::bip32::DerivationPath;
+use bitcoin::{util::bip32::DerivationPath, OutPoint};
 use std::str::FromStr;
 use url::Url;
 
@@ -221,6 +221,21 @@ impl Wallet {
             .send_to_address(&self.name, address, amount)
             .await?;
         Ok(txid)
+    }
+
+    pub async fn fund_htlc(
+        &self,
+        address: Address,
+        amount: Amount,
+        network: Network,
+    ) -> anyhow::Result<OutPoint> {
+        self.assert_network(network).await?;
+
+        let outpoint = self
+            .bitcoind_client
+            .fund_htlc(&self.name, address, amount)
+            .await?;
+        Ok(outpoint)
     }
 
     pub async fn send_raw_transaction(
