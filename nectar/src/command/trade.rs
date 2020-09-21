@@ -279,7 +279,7 @@ impl SwapExecutor {
 }
 
 impl SwapExecutor {
-    async fn run(mut self, swap: SwapKind) -> anyhow::Result<()> {
+    async fn execute(mut self, swap: SwapKind) -> anyhow::Result<()> {
         self.db.insert_swap(swap.clone()).await?;
 
         swap.execute(
@@ -327,7 +327,7 @@ fn respawn_swaps(
             }
         };
 
-        tokio::spawn(swap_executor.clone().run(swap));
+        tokio::spawn(swap_executor.clone().execute(swap));
     }
 
     Ok(())
