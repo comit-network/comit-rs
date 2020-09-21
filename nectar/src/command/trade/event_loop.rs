@@ -1,12 +1,12 @@
 use crate::{
     bitcoin,
-    command::{into_history_trade, trade::SwapExecutor, FinishedSwap},
+    command::{into_history_trade, FinishedSwap},
     ethereum::{self, dai},
     history::History,
     maker::{PublishOrders, TakeRequestDecision},
     network::{self, ActivePeer, SetupSwapContext, Swarm},
     order::BtcDaiOrderForm,
-    swap::{Database, SwapKind, SwapParams},
+    swap::{Database, SwapExecutor, SwapKind, SwapParams},
     Maker, MidMarketRate, SwapId,
 };
 use anyhow::{bail, Context, Result};

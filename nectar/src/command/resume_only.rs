@@ -4,11 +4,10 @@ use crate::{
     config::Settings,
     ethereum,
     history::History,
-    swap::{Database, SwapKind},
+    swap::{Database, SwapExecutor},
 };
-use chrono::Utc;
 use comit::btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
-use futures::future::{join_all, TryFutureExt};
+use futures::{future::TryFutureExt, StreamExt};
 use std::sync::{Arc, Mutex};
 
 pub async fn resume_only(
@@ -20,6 +19,7 @@ pub async fn resume_only(
     let db = Database::new(&settings.data.dir.join("database"))?;
     #[cfg(test)]
     let db = Database::new_test()?;
+    let db = Arc::new(db);
 
     let history = Arc::new(Mutex::new(History::new(
         settings.data.dir.join("history.csv").as_path(),
@@ -27,77 +27,23 @@ pub async fn resume_only(
 
     let bitcoin_connector = BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?;
     let ethereum_connector = Web3Connector::new(settings.ethereum.node_url);
+    let (executor, mut finished_swap_receiver) = SwapExecutor::new(
+        db.clone(),
+        Arc::new(bitcoin_wallet),
+        Arc::new(ethereum_wallet),
+        Arc::new(bitcoin_connector),
+        Arc::new(ethereum_connector),
+    );
 
-    respawn_swaps(
-        db,
-        bitcoin_wallet,
-        ethereum_wallet,
-        bitcoin_connector,
-        ethereum_connector,
-        history,
-    )
-    .await?;
+    for swap in db.all_swaps()? {
+        let _ = tokio::spawn(executor.clone().execute(swap));
+    }
 
-    Ok(())
-}
-
-async fn respawn_swaps(
-    db: Database,
-    bitcoin_wallet: bitcoin::Wallet,
-    ethereum_wallet: ethereum::Wallet,
-    bitcoin_connector: comit::btsieve::bitcoin::BitcoindConnector,
-    ethereum_connector: comit::btsieve::ethereum::Web3Connector,
-    history: Arc<Mutex<History>>,
-) -> anyhow::Result<()> {
-    let db = Arc::new(db);
-    let bitcoin_wallet = Arc::new(bitcoin_wallet);
-    let ethereum_wallet = Arc::new(ethereum_wallet);
-    let bitcoin_connector = Arc::new(bitcoin_connector);
-    let ethereum_connector = Arc::new(ethereum_connector);
-
-    let futures = db.all_swaps()?.into_iter().map(|swap| {
-        execute_swap(
-            Arc::clone(&db),
-            Arc::clone(&bitcoin_wallet),
-            Arc::clone(&ethereum_wallet),
-            Arc::clone(&bitcoin_connector),
-            Arc::clone(&ethereum_connector),
-            swap,
-        )
-        .and_then(|finished_swap| async {
-            handle_finished_swap(finished_swap, Arc::clone(&db), Arc::clone(&history));
-            Ok(())
-        })
-    });
-
-    join_all(futures).await;
+    while let Some(finished_swap) = finished_swap_receiver.next().await {
+        handle_finished_swap(finished_swap, db.clone(), history.clone())
+    }
 
     Ok(())
-}
-
-#[allow(clippy::too_many_arguments)]
-async fn execute_swap(
-    db: Arc<Database>,
-    bitcoin_wallet: Arc<bitcoin::Wallet>,
-    ethereum_wallet: Arc<ethereum::Wallet>,
-    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
-    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    swap: SwapKind,
-) -> anyhow::Result<FinishedSwap> {
-    swap.execute(
-        Arc::clone(&db),
-        bitcoin_wallet,
-        Arc::clone(&ethereum_wallet),
-        Arc::clone(&bitcoin_connector),
-        Arc::clone(&ethereum_connector),
-    )
-    .await?;
-
-    Ok(FinishedSwap::new(
-        swap.clone(),
-        swap.params().taker,
-        Utc::now(),
-    ))
 }
 
 fn handle_finished_swap(
