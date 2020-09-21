@@ -33,87 +33,6 @@ impl SwapKind {
     pub fn swap_id(&self) -> SwapId {
         self.params().swap_id
     }
-
-    pub async fn execute(
-        &self,
-        db: Arc<Database>,
-        bitcoin_wallet: Arc<crate::bitcoin::Wallet>,
-        ethereum_wallet: Arc<crate::ethereum::Wallet>,
-        bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
-        ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    ) -> anyhow::Result<()> {
-        let bitcoin_wallet = bitcoin::Wallet {
-            inner: bitcoin_wallet,
-            connector: Arc::clone(&bitcoin_connector),
-        };
-        let ethereum_wallet = ethereum::Wallet {
-            inner: ethereum_wallet,
-            connector: Arc::clone(&ethereum_connector),
-        };
-
-        match self {
-            SwapKind::HbitHerc20(SwapParams {
-                hbit_params,
-                herc20_params,
-                secret_hash,
-                start_of_swap,
-                swap_id,
-                ..
-            }) => {
-                let bob = Bob {
-                    alpha_wallet: bitcoin_wallet,
-                    beta_wallet: ethereum_wallet,
-                    db,
-                    swap_id: *swap_id,
-                    secret_hash: *secret_hash,
-                    utc_start_of_swap: *start_of_swap,
-                    beta_expiry: herc20_params.expiry,
-                };
-
-                comit::hbit_herc20_bob(
-                    bob,
-                    bitcoin_connector.as_ref(),
-                    ethereum_connector.as_ref(),
-                    *hbit_params,
-                    herc20_params.clone(),
-                    *start_of_swap,
-                )
-                .instrument(tracing::error_span!("hbit_herc20_bob", %swap_id))
-                .await?
-            }
-            SwapKind::Herc20Hbit(SwapParams {
-                hbit_params,
-                herc20_params,
-                secret_hash,
-                start_of_swap,
-                swap_id,
-                ..
-            }) => {
-                let bob = Bob {
-                    alpha_wallet: ethereum_wallet,
-                    beta_wallet: bitcoin_wallet,
-                    db,
-                    swap_id: *swap_id,
-                    secret_hash: *secret_hash,
-                    utc_start_of_swap: *start_of_swap,
-                    beta_expiry: herc20_params.expiry,
-                };
-
-                comit::herc20_hbit_bob(
-                    bob,
-                    ethereum_connector.as_ref(),
-                    bitcoin_connector.as_ref(),
-                    herc20_params.clone(),
-                    *hbit_params,
-                    *start_of_swap,
-                )
-                .instrument(tracing::error_span!("herc20_hbit_bob", %swap_id))
-                .await?
-            }
-        };
-
-        Ok(())
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -652,22 +571,81 @@ impl SwapExecutor {
     pub async fn execute(mut self, swap: SwapKind) -> anyhow::Result<()> {
         self.db.insert_swap(swap.clone()).await?;
 
-        swap.execute(
-            self.db,
-            self.bitcoin_wallet,
-            self.ethereum_wallet,
-            self.bitcoin_connector,
-            self.ethereum_connector,
-        )
-        .await?;
+        let bitcoin_wallet = bitcoin::Wallet {
+            inner: self.bitcoin_wallet.clone(),
+            connector: self.bitcoin_connector.clone(),
+        };
+        let ethereum_wallet = ethereum::Wallet {
+            inner: self.ethereum_wallet.clone(),
+            connector: self.ethereum_connector.clone(),
+        };
+        let db = self.db.clone();
 
+        match swap.clone() {
+            SwapKind::HbitHerc20(SwapParams {
+                hbit_params,
+                herc20_params,
+                secret_hash,
+                start_of_swap,
+                swap_id,
+                ..
+            }) => {
+                let bob = Bob {
+                    alpha_wallet: bitcoin_wallet,
+                    beta_wallet: ethereum_wallet,
+                    db,
+                    swap_id,
+                    secret_hash,
+                    utc_start_of_swap: start_of_swap,
+                    beta_expiry: herc20_params.expiry,
+                };
+
+                comit::hbit_herc20_bob(
+                    bob,
+                    self.bitcoin_connector.as_ref(),
+                    self.ethereum_connector.as_ref(),
+                    hbit_params,
+                    herc20_params,
+                    start_of_swap,
+                )
+                .instrument(tracing::error_span!("hbit_herc20_bob", %swap_id))
+                .await?
+            }
+            SwapKind::Herc20Hbit(SwapParams {
+                hbit_params,
+                herc20_params,
+                secret_hash,
+                start_of_swap,
+                swap_id,
+                ..
+            }) => {
+                let bob = Bob {
+                    alpha_wallet: ethereum_wallet,
+                    beta_wallet: bitcoin_wallet,
+                    db,
+                    swap_id,
+                    secret_hash,
+                    utc_start_of_swap: start_of_swap,
+                    beta_expiry: herc20_params.expiry,
+                };
+
+                comit::herc20_hbit_bob(
+                    bob,
+                    self.ethereum_connector.as_ref(),
+                    self.bitcoin_connector.as_ref(),
+                    herc20_params,
+                    hbit_params,
+                    start_of_swap,
+                )
+                .instrument(tracing::error_span!("herc20_hbit_bob", %swap_id))
+                .await?
+            }
+        };
+
+        let active_peer = swap.params().taker;
         let _ = self
             .finished_swap_sender
-            .send(FinishedSwap::new(
-                swap.clone(),
-                swap.params().taker,
-                chrono::Utc::now(),
-            ))
+            .send(FinishedSwap::new(swap, active_peer, chrono::Utc::now()))
             .await
             .map_err(|_| {
                 tracing::trace!("Error when sending execution finished from sender to receiver.")
