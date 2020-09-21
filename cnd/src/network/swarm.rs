@@ -263,17 +263,14 @@ async fn new_match_worker(
 
         let mut guard = swarm.lock().await;
 
-        if let Err(e) = guard.setup_swap.send(
-            &peer,
-            role,
-            common,
-            protocol,
-            SetupSwapContext {
+        if let Err(e) = guard
+            .setup_swap
+            .send(&peer, role, common, protocol, SetupSwapContext {
                 swap: swap_id,
                 order: order_id,
                 match_reference_point,
-            },
-        ) {
+            })
+        {
             tracing::warn!("failed to setup swap for order {}: {:#}", order_id, e);
         }
     }
