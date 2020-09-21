@@ -4,6 +4,7 @@ use crate::{
 };
 use anyhow::Result;
 use libp2p::PeerId;
+use lru::LruCache;
 use std::{
     collections::{hash_map::Entry, HashMap},
     iter,
@@ -13,7 +14,7 @@ use std::{
 use time::OffsetDateTime;
 
 /// A collection of orders gathered from several makers.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct OrderPool {
     inner: HashMap<PeerId, HashMap<OrderId, BtcDaiOrder>>,
 
@@ -22,6 +23,22 @@ pub struct OrderPool {
     ///
     /// Allows us to filter out our own orders.
     me: PeerId,
+
+    /// A cache for storing which orders don't match.
+    no_match_cache: LruCache<NoMatch, ()>,
+}
+
+/// Serves as the key in our no-match cache.
+///
+/// Using both orders for the key has two advantages:
+///
+/// 1. We don't consume as much memory because only the hash of this struct is
+/// stored. 2. It allows our cache to automatically invalidate itself if the
+/// quantity of any of the orders change.
+#[derive(Debug, PartialEq, Eq, Hash)]
+struct NoMatch {
+    ours: BtcDaiOrder,
+    theirs: BtcDaiOrder,
 }
 
 impl OrderPool {
@@ -30,6 +47,8 @@ impl OrderPool {
             inner: Default::default(),
             reserved_quantities: Default::default(),
             me,
+            no_match_cache: LruCache::new(100), /* cap this at a 100 entries to avoid unbounded
+                                                 * memory growth */
         }
     }
 
@@ -193,6 +212,14 @@ impl OrderPool {
                     .get(&theirs.id)
                     .unwrap_or(&asset::Bitcoin::ZERO);
 
+                // TODO: Avoid the .clone() here somehow
+                if self.no_match_cache.contains(&NoMatch {
+                    ours: ours.clone(),
+                    theirs: theirs.clone(),
+                }) {
+                    continue;
+                }
+
                 if let Some(r#match) = match_orders(ours, theirs, reserved_ours, reserved_theirs) {
                     let quantity = r#match.quantity;
 
@@ -220,6 +247,14 @@ impl OrderPool {
                         .entry(theirs.id)
                         .or_default()
                         .add_assign(quantity.to_inner());
+                } else {
+                    self.no_match_cache.put(
+                        NoMatch {
+                            ours: ours.clone(),
+                            theirs: theirs.clone(),
+                        },
+                        (),
+                    );
                 }
             }
         }
@@ -303,7 +338,7 @@ fn match_orders(
 
     let quantity = remaining_left;
 
-    tracing::trace!("matched with {} at price {}", quantity, price.wei_per_sat());
+    tracing::info!("matched with {} at price {}", quantity, price.wei_per_sat());
 
     Some(InternalMatch {
         price: price.clone(),

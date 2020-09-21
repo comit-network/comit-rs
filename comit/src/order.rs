@@ -42,7 +42,7 @@ impl From<Uuid> for OrderId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BtcDaiOrder {
     pub id: OrderId,
     pub position: Position,
@@ -87,7 +87,7 @@ impl BtcDaiOrder {
 }
 
 /// A newtype representing a quantity in a certain base currency B.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Quantity<B> {
     inner: B,
 }
@@ -121,7 +121,7 @@ pub fn btc(btc: f64) -> Quantity<Bitcoin> {
 /// The core idea around of this type is to enforce the unit of the rate when
 /// doing calculations. We achieve that by adding "loud" constructors and
 /// accessors for combinations of base and quote currency.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Price<B, Q> {
     inner: Q,
     _base: PhantomData<B>,
@@ -242,7 +242,7 @@ pub enum Position {
 /// (waiting for some number of confirmations) before he moves forward with the
 /// lock on the [`Beta`](Side::Beta) side. Hence, the _duration_ of the lock
 /// differs from the offset specified here.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum SwapProtocol {
     HbitHerc20 {
         hbit_expiry_offset: AlphaOffset,
