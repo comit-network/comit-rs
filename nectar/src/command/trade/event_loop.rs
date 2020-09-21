@@ -253,9 +253,7 @@ impl EventLoop {
                     .await
                     .with_context(|| format!("Could not insert swap {}", swap_id))?;
 
-                let _ = tokio::spawn(self.swap_executor.clone().execute(swap_kind))
-                    .await
-                    .with_context(|| format!("Execution failed for swap {}", swap_id))?;
+                self.swap_executor.execute(swap_kind);
             }
             setup_swap::BehaviourOutEvent::AlreadyHaveRoleParams { peer, .. } => {
                 bail!("already received role params from {}", peer)
