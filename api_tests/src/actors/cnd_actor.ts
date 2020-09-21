@@ -526,7 +526,7 @@ export class CndActor {
         );
     }
 
-    private async pollUntilConnectedTo(peer: string) {
+    public async pollUntilConnectedTo(peer: string) {
         interface Peers {
             peers: Peer[];
         }

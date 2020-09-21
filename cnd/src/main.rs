@@ -204,13 +204,13 @@ fn main() -> anyhow::Result<()> {
         storage.clone(),
     );
 
-    let swarm = Swarm::new(
+    let swarm = runtime.block_on(Swarm::new(
         &settings,
         seed,
         runtime.handle().clone(),
         storage.clone(),
         protocol_spawner.clone(),
-    )?;
+    ))?;
 
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;
     match runtime.block_on(respawn(storage.clone(), protocol_spawner)) {

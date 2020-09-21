@@ -1,9 +1,10 @@
 use crate::{
-    config::{Bitcoind, Data, Geth, Network},
+    config::{Bitcoind, Data, Geth},
     ethereum,
     ethereum::ChainId,
 };
 use comit::ledger;
+use libp2p::core::Multiaddr;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -26,6 +27,12 @@ pub struct File {
     pub bitcoin: Option<Bitcoin>,
     pub ethereum: Option<Ethereum>,
     pub lightning: Option<Lightning>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Network {
+    pub listen: Vec<Multiaddr>,
+    pub peer_addresses: Option<Vec<Multiaddr>>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -170,6 +177,48 @@ mod tests {
     }
 
     #[test]
+    fn network_deserializes_correctly() {
+        let file_contents = vec![
+            r#"
+            listen = ["/ip4/0.0.0.0/tcp/9939"]
+            peer_addresses = [ "/ip4/1.1.1.1/tcp/9939" ]
+            "#,
+            r#"
+            listen = ["/ip4/0.0.0.0/tcp/9939", "/ip4/127.0.0.1/tcp/9939"]
+            peer_addresses = [
+                "/ip4/1.1.1.1/tcp/9939",
+                "/ip4/2.2.2.2/tcp/3456"
+            ]
+            "#,
+        ];
+
+        let expected = vec![
+            Network {
+                listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
+                peer_addresses: Some(vec!["/ip4/1.1.1.1/tcp/9939".parse().unwrap()]),
+            },
+            Network {
+                listen: (vec![
+                    "/ip4/0.0.0.0/tcp/9939".parse().unwrap(),
+                    "/ip4/127.0.0.1/tcp/9939".parse().unwrap(),
+                ]),
+                peer_addresses: Some(vec![
+                    "/ip4/1.1.1.1/tcp/9939".parse().unwrap(),
+                    "/ip4/2.2.2.2/tcp/3456".parse().unwrap(),
+                ]),
+            },
+        ];
+
+        let actual = file_contents
+            .into_iter()
+            .map(toml::from_str)
+            .collect::<Result<Vec<Network>, toml::de::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn cors_deserializes_correctly() {
         let file_contents = vec![
             r#"
@@ -250,6 +299,7 @@ dir = "/foo/bar"
         let file = File {
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
+                peer_addresses: None,
             }),
             http_api: Some(HttpApi {
                 socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8000),

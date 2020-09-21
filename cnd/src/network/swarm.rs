@@ -47,7 +47,7 @@ pub struct Swarm {
 }
 
 impl Swarm {
-    pub fn new(
+    pub async fn new(
         settings: &Settings,
         seed: RootSeed,
         task_executor: tokio::runtime::Handle,
@@ -83,6 +83,13 @@ impl Swarm {
                 .with_context(|| format!("Address is not supported: {:?}", addr))?;
         }
 
+        for peer_addr in &settings.network.peer_addresses {
+            tracing::info!("Dialing peer address {} from config", peer_addr);
+            if let Err(err) = Self::dial_addr_on_swarm(&mut swarm, peer_addr.clone()).await {
+                tracing::warn!("Could not dial peer address {}: {}", peer_addr, err)
+            }
+        }
+
         let swarm = Arc::new(Mutex::new(swarm));
 
         task_executor.spawn(new_match_worker(swarm.clone(), receiver, storage, seed));
@@ -105,16 +112,10 @@ impl Swarm {
         let mut guard = self.inner.lock().await;
 
         if let Some(address_hint) = address_hint {
-            if let Some(addr) = guard
+            guard
                 .peer_tracker
-                .add_address_hint(peer.clone(), address_hint.clone())
-            {
-                tracing::warn!(
-                    "clobbered old address hint, old: {}, new: {}",
-                    addr,
-                    address_hint,
-                );
-            }
+                .add_recent_address_hint(peer.clone(), address_hint);
+
             let existing_connection_to_peer =
                 libp2p::Swarm::connection_info(&mut guard, &peer).is_some();
 
@@ -149,6 +150,15 @@ impl Swarm {
     pub async fn dial_addr(&self, addr: Multiaddr) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
         let _ = libp2p::Swarm::dial_addr(&mut *guard, addr)?;
+        Ok(())
+    }
+
+    async fn dial_addr_on_swarm(
+        swarm: &mut libp2p::Swarm<ComitNode>,
+        address: Multiaddr,
+    ) -> anyhow::Result<()> {
+        let _ = libp2p::Swarm::dial_addr(swarm, address)?;
+
         Ok(())
     }
 
