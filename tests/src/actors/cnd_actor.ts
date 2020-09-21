@@ -34,6 +34,7 @@ import {
     OnChainBitcoinBalanceAsserter,
 } from "./balance_asserter";
 import { LndChannel, LndClient } from "../wallets/lightning";
+import { parseFixed } from "@ethersproject/bignumber";
 
 declare var global: HarnessGlobal;
 
@@ -273,15 +274,14 @@ export class CndActor
      */
     public async makeBtcDaiOrder(
         position: Position,
-        quantity: number,
-        price: number
+        quantity: string,
+        price: string
     ): Promise<string> {
-        const sats = BigInt(quantity * 100_000_000);
-        const daiPerBtc = BigInt(price);
+        const sats = BigInt(parseFixed(quantity, 8).toString());
+        const weiPerBtc = BigInt(parseFixed(price, 18).toString());
 
-        const weiPerDai = 1000000000000000000n;
         const satsPerBtc = 100000000n;
-        const weiPerSat = (daiPerBtc * weiPerDai) / satsPerBtc;
+        const weiPerSat = weiPerBtc / satsPerBtc;
         const dai = sats * weiPerSat;
 
         switch (position) {
