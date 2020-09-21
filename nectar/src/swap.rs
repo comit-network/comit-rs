@@ -8,8 +8,9 @@ mod bob;
 mod comit;
 pub mod ethereum;
 
-use crate::{network::ActivePeer, swap::bob::Bob, SwapId};
+use crate::{command::FinishedSwap, network::ActivePeer, swap::bob::Bob, SwapId};
 use chrono::{DateTime, Utc};
+use futures::{channel::mpsc, SinkExt};
 use std::sync::Arc;
 use tracing_futures::Instrument;
 
@@ -606,6 +607,71 @@ mod tests {
             bob_erc20_final_balance.quantity.to_u256(),
             bob_erc20_starting_balance.quantity.to_u256() - herc20_params.asset.quantity.to_u256()
         );
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SwapExecutor {
+    db: Arc<Database>,
+    bitcoin_wallet: Arc<crate::bitcoin::Wallet>,
+    ethereum_wallet: Arc<crate::ethereum::Wallet>,
+    finished_swap_sender: mpsc::Sender<FinishedSwap>,
+    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
+    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
+}
+
+impl SwapExecutor {
+    pub fn new(
+        db: Arc<Database>,
+        bitcoin_wallet: Arc<crate::bitcoin::Wallet>,
+        ethereum_wallet: Arc<crate::ethereum::Wallet>,
+        bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
+        ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
+    ) -> (Self, mpsc::Receiver<FinishedSwap>) {
+        // buffer increases by 1 for every clone of `Sender` and we use every sender
+        // only once, hence making the initial buffer size 0 is good enough
+        let buffer_size = 0;
+        let (finished_swap_sender, finished_swap_receiver) = mpsc::channel(buffer_size);
+
+        let executor = Self {
+            db,
+            bitcoin_wallet,
+            ethereum_wallet,
+            finished_swap_sender,
+            bitcoin_connector,
+            ethereum_connector,
+        };
+
+        (executor, finished_swap_receiver)
+    }
+}
+
+impl SwapExecutor {
+    pub async fn execute(mut self, swap: SwapKind) -> anyhow::Result<()> {
+        self.db.insert_swap(swap.clone()).await?;
+
+        swap.execute(
+            self.db,
+            self.bitcoin_wallet,
+            self.ethereum_wallet,
+            self.bitcoin_connector,
+            self.ethereum_connector,
+        )
+        .await?;
+
+        let _ = self
+            .finished_swap_sender
+            .send(FinishedSwap::new(
+                swap.clone(),
+                swap.params().taker,
+                chrono::Utc::now(),
+            ))
+            .await
+            .map_err(|_| {
+                tracing::trace!("Error when sending execution finished from sender to receiver.")
+            });
 
         Ok(())
     }
