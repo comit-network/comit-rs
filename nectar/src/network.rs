@@ -211,7 +211,7 @@ mod transport {
     /// Builds a libp2p transport with the following features:
     /// - TcpConnection
     /// - DNS name resolution
-    /// - authentication via secio
+    /// - authentication via noise
     /// - multiplexing via yamux or mplex
     pub fn build_transport(keypair: libp2p::identity::Keypair) -> anyhow::Result<NectarTransport> {
         let dh_keys = noise::Keypair::<X25519Spec>::new().into_authentic(&keypair)?;
