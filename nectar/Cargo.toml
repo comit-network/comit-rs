@@ -9,7 +9,7 @@ anyhow = "1"
 async-trait = "0.1"
 bitcoin = { version = "0.25", features = ["rand", "use-serde"] }
 chrono = "0.4"
-clarity = "0.1"
+clarity = "0.2"
 comit = { path = "../comit/", package = "comit" }
 config = { version = "0.10", default-features = false, features = ["toml"] }
 conquer-once = "0.2"
@@ -24,7 +24,6 @@ hex = "0.4"
 libp2p = { version = "0.28", default-features = false, features = ["tcp-tokio", "noise", "yamux", "mplex", "dns"] }
 log = "0.4"
 num = "0.3"
-num256 = "0.2"
 pem = "0.8"
 reqwest = { version = "0.10", default-features = false, features = ["json", "native-tls"] }
 rust_decimal = "1.8"

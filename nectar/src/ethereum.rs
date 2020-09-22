@@ -73,6 +73,7 @@ impl crate::StaticStub for Chain {
 pub mod ether {
     use crate::float_maths::multiply_pow_ten;
     use anyhow::Context;
+    use clarity::Uint256;
     use comit::{
         asset::{
             ethereum::{FromWei, TryFromWei},
@@ -81,7 +82,6 @@ pub mod ether {
         ethereum::U256,
     };
     use num::{BigUint, Num};
-    use num256::Uint256;
     use std::{
         convert::{TryFrom, TryInto},
         fmt,

@@ -4,13 +4,13 @@ use crate::{
 };
 use anyhow::Context;
 use asset::Erc20Quantity;
+use clarity::Uint256;
 use comit::{
     asset::{self, ethereum::TryFromWei},
     ethereum::{ChainId, Hash, Transaction, TransactionReceipt},
 };
 use ethereum_types::U256;
 use num::{BigUint, Num};
-use num256::Uint256;
 use serde_hex::{SerHexSeq, StrictPfx};
 
 pub const JSONRPC_VERSION: &str = "2.0";
@@ -159,7 +159,7 @@ impl Client {
         Ok(amount)
     }
 
-    pub async fn gas_price(&self) -> anyhow::Result<num256::Uint256> {
+    pub async fn gas_price(&self) -> anyhow::Result<clarity::Uint256> {
         let amount = self
             .rpc_client
             .send::<Vec<()>, String>(jsonrpc::Request::new(
@@ -169,12 +169,12 @@ impl Client {
             ))
             .await
             .context("failed to get gas price")?;
-        let amount = num256::Uint256::from_str_radix(&amount[2..], 16)?;
+        let amount = clarity::Uint256::from_str_radix(&amount[2..], 16)?;
 
         Ok(amount)
     }
 
-    pub async fn gas_limit(&self, request: EstimateGasRequest) -> anyhow::Result<num256::Uint256> {
+    pub async fn gas_limit(&self, request: EstimateGasRequest) -> anyhow::Result<clarity::Uint256> {
         let gas_limit: String = self
             .rpc_client
             .send(jsonrpc::Request::new(
@@ -184,7 +184,7 @@ impl Client {
             ))
             .await
             .context("failed to get gas price")?;
-        let gas_limit = num256::Uint256::from_str_radix(&gas_limit[2..], 16)?;
+        let gas_limit = clarity::Uint256::from_str_radix(&gas_limit[2..], 16)?;
 
         Ok(gas_limit)
     }

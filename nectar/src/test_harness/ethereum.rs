@@ -1,11 +1,10 @@
 use crate::ethereum::{self, ether, Address, ChainId};
 use anyhow::Context;
-use clarity::PrivateKey;
+use clarity::{PrivateKey, Uint256};
 use comit::{
     actions::ethereum::DeployContract,
     asset::{Erc20, Erc20Quantity, Ether},
 };
-use num256::Uint256;
 use std::str::FromStr;
 use tempfile::TempDir;
 use testcontainers::{
