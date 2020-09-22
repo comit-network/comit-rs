@@ -8,10 +8,10 @@ import findCacheDir from "find-cache-dir";
 import download from "download";
 import { platform } from "os";
 import { crashListener } from "./crash_listener";
-import { BitcoinNodeConfig, LedgerInstance } from "./index";
+import { BitcoinNode, Startable } from "./index";
 import { existsAsync } from "./async_fs";
 
-export class BitcoindInstance implements LedgerInstance {
+export class BitcoindInstance implements Startable {
     private process: ChildProcess;
     private username: string;
     private password: string;
@@ -77,7 +77,7 @@ export class BitcoindInstance implements LedgerInstance {
         });
     }
 
-    public get config(): BitcoinNodeConfig {
+    public get config(): BitcoinNode {
         return {
             network: "regtest",
             host: "localhost",

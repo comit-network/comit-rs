@@ -11,8 +11,8 @@ describe("orderbook", () => {
     it(
         "herc20-hbit",
         startConnectedAliceAndBob(async ([alice, bob]) => {
-            await alice.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
-            await bob.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
+            await alice.makeBtcDaiOrder(Position.Buy, "0.2", "9000");
+            await bob.makeBtcDaiOrder(Position.Sell, "0.2", "9000");
 
             await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
 
@@ -35,8 +35,8 @@ describe("orderbook", () => {
     it(
         "hbit-herc20",
         startConnectedAliceAndBob(async ([alice, bob]) => {
-            await alice.makeBtcDaiOrder(Position.Sell, 0.2, 9000);
-            await bob.makeBtcDaiOrder(Position.Buy, 0.2, 9000);
+            await alice.makeBtcDaiOrder(Position.Sell, "0.2", "9000");
+            await bob.makeBtcDaiOrder(Position.Buy, "0.2", "9000");
 
             await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
 

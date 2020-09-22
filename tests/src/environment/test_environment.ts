@@ -5,18 +5,19 @@ import path from "path";
 import { BitcoindInstance } from "./bitcoind_instance";
 import { configure, Logger, shutdown as loggerShutdown } from "log4js";
 import { EnvironmentContext } from "@jest/environment";
-import ledgerLock from "./ledger_lock";
 import BitcoinMinerInstance from "./bitcoin_miner_instance";
-import { Web3EthereumWallet } from "../wallets/ethereum";
+import { EthereumFaucet } from "../wallets/ethereum";
 import { GethInstance } from "./geth_instance";
 import { LndInstance } from "./lnd_instance";
 import BitcoinRpcClient from "bitcoin-core";
-import { CndConfigFile } from "../config";
+import { CndConfig } from "./cnd_config";
 import { set } from "lodash";
-import { HarnessGlobal, LedgerInstance, LightningNodeConfig } from "./index";
+import { HarnessGlobal, Startable, LightningNode } from "./index";
 import { execAsync, existsAsync } from "./async_fs";
 import { LndClient } from "../wallets/lightning";
 import { BitcoinFaucet } from "../wallets/bitcoin";
+import FakeTreasuryServiceInstance from "./fake_treasury_service_instance";
+import properLockfile from "proper-lockfile";
 
 export default class TestEnvironment extends NodeEnvironment {
     private readonly testSuite: string;
@@ -25,7 +26,8 @@ export default class TestEnvironment extends NodeEnvironment {
     private readonly locksDir: string;
     private readonly nodeModulesBinDir: string;
     private readonly srcDir: string;
-    private readonly cndConfigOverrides: Partial<CndConfigFile>;
+    private readonly cndConfigOverrides: Partial<CndConfig>;
+    private readonly shouldStartFakeTreasuryService: boolean;
 
     public global: HarnessGlobal;
 
@@ -37,6 +39,9 @@ export default class TestEnvironment extends NodeEnvironment {
 
         this.ledgers = extractLedgersToBeStarted(context.docblockPragmas);
         this.cndConfigOverrides = extractCndConfigOverrides(
+            context.docblockPragmas
+        );
+        this.shouldStartFakeTreasuryService = extractFakeTreasuryService(
             context.docblockPragmas
         );
         assertNoUnhandledPargmas(context.docblockPragmas);
@@ -62,7 +67,7 @@ export default class TestEnvironment extends NodeEnvironment {
             .then((metadata) => metadata.target_directory);
 
         // setup global variables
-        this.global.ledgerConfigs = {};
+        this.global.environment = {};
         this.global.lndClients = {};
         this.global.cargoTargetDir = cargoTargetDir;
         this.global.cndConfigOverrides = this.cndConfigOverrides;
@@ -108,6 +113,7 @@ export default class TestEnvironment extends NodeEnvironment {
         this.logger.info("Starting up test environment");
 
         await this.startLedgers();
+        await this.startFakeTreasuryService();
 
         this.logger.info("Test environment started");
     }
@@ -143,6 +149,57 @@ export default class TestEnvironment extends NodeEnvironment {
         await Promise.all(tasks);
     }
 
+    private async startFakeTreasuryService() {
+        if (this.shouldStartFakeTreasuryService) {
+            const lockDir = await this.getLockDirectory(
+                "fake_treasury_service"
+            );
+            const release = await lock(lockDir).catch(() =>
+                Promise.reject(
+                    new Error(
+                        `Failed to acquire lock for starting FakeTreasuryService`
+                    )
+                )
+            );
+            const servicePidFile = path.join(
+                lockDir,
+                "fake_treasury_service.pid"
+            );
+
+            const tsNode = path.join(this.nodeModulesBinDir, "ts-node");
+            const service = path.join(
+                this.srcDir,
+                "environment",
+                "fake_treasury_service.ts"
+            );
+
+            const dataDir = await this.global.getDataDir(
+                "fake_treasury_service"
+            );
+            const instance = await FakeTreasuryServiceInstance.new(
+                tsNode,
+                service,
+                9000,
+                servicePidFile,
+                path.join(dataDir, "service.log"),
+                this.logger
+            );
+            const config = await this.start(
+                lockDir,
+                instance,
+                async (instance) => ({
+                    host: instance.host,
+                })
+            );
+
+            this.global.environment.treasury = {
+                host: config.host,
+            };
+
+            await release();
+        }
+    }
+
     /**
      * Start the Bitcoin Ledger
      *
@@ -150,7 +207,7 @@ export default class TestEnvironment extends NodeEnvironment {
      */
     private async startBitcoin() {
         const lockDir = await this.getLockDirectory("bitcoind");
-        const release = await ledgerLock(lockDir).catch(() =>
+        const release = await lock(lockDir).catch(() =>
             Promise.reject(
                 new Error(`Failed to acquire lock for starting bitcoind`)
             )
@@ -161,27 +218,23 @@ export default class TestEnvironment extends NodeEnvironment {
             path.join(lockDir, "bitcoind.pid"),
             this.logger
         );
-        const config = await this.startLedger(
-            lockDir,
-            bitcoind,
-            async (bitcoind) => {
-                const config = bitcoind.config;
-                const rpcClient = new BitcoinRpcClient({
-                    network: config.network,
-                    port: config.rpcPort,
-                    host: config.host,
-                    username: config.username,
-                    password: config.password,
-                });
+        const config = await this.start(lockDir, bitcoind, async (bitcoind) => {
+            const config = bitcoind.config;
+            const rpcClient = new BitcoinRpcClient({
+                network: config.network,
+                port: config.rpcPort,
+                host: config.host,
+                username: config.username,
+                password: config.password,
+            });
 
-                const name = "miner";
-                await rpcClient.createWallet(name);
+            const name = "miner";
+            await rpcClient.createWallet(name);
 
-                this.logger.info(`Created miner wallet with name ${name}`);
+            this.logger.info(`Created miner wallet with name ${name}`);
 
-                return { ...bitcoind.config, minerWallet: name };
-            }
-        );
+            return { ...bitcoind.config, minerWallet: name };
+        });
 
         const minerPidFile = path.join(lockDir, "miner.pid");
 
@@ -205,7 +258,7 @@ export default class TestEnvironment extends NodeEnvironment {
             );
         }
 
-        this.global.ledgerConfigs.bitcoin = config;
+        this.global.environment.bitcoin = config;
         this.bitcoinFaucet = new BitcoinFaucet(config, this.logger);
 
         await release();
@@ -218,7 +271,7 @@ export default class TestEnvironment extends NodeEnvironment {
      */
     private async startEthereum() {
         const lockDir = await this.getLockDirectory("geth");
-        const release = await ledgerLock(lockDir).catch(() =>
+        const release = await lock(lockDir).catch(() =>
             Promise.reject(
                 new Error(`Failed to acquire lock for starting geth`)
             )
@@ -229,15 +282,15 @@ export default class TestEnvironment extends NodeEnvironment {
             path.join(lockDir, "geth.pid"),
             this.logger
         );
-        const config = await this.startLedger(lockDir, geth, async (geth) => {
+        const config = await this.start(lockDir, geth, async (geth) => {
             const rpcUrl = geth.rpcUrl;
-            const erc20Wallet = await Web3EthereumWallet.newInstance(
-                rpcUrl,
+            const faucet = new EthereumFaucet(
+                geth.devAccount,
                 this.logger,
-                geth.CHAIN_ID,
-                geth.devAccount
+                rpcUrl,
+                geth.CHAIN_ID
             );
-            const erc20TokenContract = await erc20Wallet.deployErc20TokenContract();
+            const erc20TokenContract = await faucet.deployErc20TokenContract();
 
             this.logger.info(
                 "ERC20 token contract deployed at",
@@ -252,7 +305,7 @@ export default class TestEnvironment extends NodeEnvironment {
             };
         });
 
-        this.global.ledgerConfigs.ethereum = config;
+        this.global.environment.ethereum = config;
         this.global.tokenContract = config.tokenContract;
 
         await release();
@@ -285,7 +338,7 @@ export default class TestEnvironment extends NodeEnvironment {
             config,
             this.logger
         );
-        this.global.ledgerConfigs.aliceLnd = config;
+        this.global.environment.aliceLnd = config;
     }
 
     /**
@@ -300,14 +353,14 @@ export default class TestEnvironment extends NodeEnvironment {
             config,
             this.logger
         );
-        this.global.ledgerConfigs.bobLnd = config;
+        this.global.environment.bobLnd = config;
     }
 
     private async initLightningLedger(
         role: "lnd-alice" | "lnd-bob"
-    ): Promise<LightningNodeConfig> {
+    ): Promise<LightningNode> {
         const lockDir = await this.getLockDirectory(role);
-        const release = await ledgerLock(lockDir).catch(() =>
+        const release = await lock(lockDir).catch(() =>
             Promise.reject(
                 new Error(`Failed to acquire lock for starting ${role}`)
             )
@@ -321,7 +374,7 @@ export default class TestEnvironment extends NodeEnvironment {
             path.join(lockDir, "lnd.pid")
         );
 
-        const config = await this.startLedger(
+        const config = await this.start(
             lockDir,
             lnd,
             async (lnd) => lnd.config
@@ -332,7 +385,7 @@ export default class TestEnvironment extends NodeEnvironment {
         return config;
     }
 
-    private async startLedger<C, S extends LedgerInstance>(
+    private async start<C, S extends Startable>(
         lockDir: string,
         instance: S,
         makeConfig: (instance: S) => Promise<C>
@@ -354,7 +407,7 @@ export default class TestEnvironment extends NodeEnvironment {
 
             return JSON.parse(config);
         } catch (e) {
-            this.logger.info("No config file found, starting ledger");
+            this.logger.info("No config file found, starting new instance");
 
             await instance.start();
 
@@ -376,7 +429,7 @@ export default class TestEnvironment extends NodeEnvironment {
             | "bitcoind"
             | "lnd-alice"
             | "lnd-bob"
-            | "ethereum-dev-account"
+            | "fake_treasury_service"
     ): Promise<string> {
         const dir = path.join(this.locksDir, process);
 
@@ -407,7 +460,7 @@ function extractLedgersToBeStarted(
 
 export function extractCndConfigOverrides(
     docblockPragmas: Record<string, string | string[]>
-): Partial<CndConfigFile> {
+): Partial<CndConfig> {
     let configOverrides = docblockPragmas.cndConfigOverride;
     delete docblockPragmas.cndConfigOverride;
 
@@ -430,10 +483,36 @@ export function extractCndConfigOverrides(
         }, {});
 }
 
+function extractFakeTreasuryService(
+    docblockPragmas: Record<string, string | string[]>
+): boolean {
+    const fakeTreasuryService = docblockPragmas.fakeTreasuryService;
+    delete docblockPragmas.fakeTreasuryService;
+
+    if (!fakeTreasuryService) {
+        return false;
+    }
+
+    return true;
+}
+
 export function assertNoUnhandledPargmas(
     docblockPragmas: Record<string, string | string[]>
 ) {
     for (const [pragma] of Object.entries(docblockPragmas)) {
         throw new Error(`Unhandled pragma '${pragma}'! Typo?`);
     }
+}
+
+/**
+ * Locks the given directory for exclusive access.
+ */
+async function lock(lockDir: string): Promise<() => Promise<void>> {
+    return properLockfile.lock(lockDir, {
+        retries: {
+            retries: 60,
+            factor: 1,
+            minTimeout: 500,
+        },
+    });
 }

@@ -47,7 +47,7 @@ Please see `cnd --help` for help with command line options.
 ## Setup testing/dev environment
 
 1. Install `docker`,
-2. Install `node` (check the version required in api_tests/package.json) & `yarn`,
+2. Install `node` (check the version required in tests/package.json) & `yarn`,
 3. Run `make` in the root folder of the repository, this will install various crates & tools such as clippy.
 
 ## Testing
@@ -55,7 +55,7 @@ Please see `cnd --help` for help with command line options.
 - `make test` is just a wrapper around `cargo test --all`
 - `make e2e` will run all the end-to-end tests
 
-To run individual end-to-end tests, use `yarn` inside the `api_tests` folder:
+To run individual end-to-end tests, use `yarn` inside the `tests` folder:
 - `yarn run test`: run all tests
 - `yarn run test <directory>`: run all tests in the directory
 - `yarn run test <path to test file>`: run all tests in this test file, supports shell glob on the path

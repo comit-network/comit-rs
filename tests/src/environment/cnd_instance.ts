@@ -1,7 +1,7 @@
 import { JsonMap, stringify } from "@iarna/toml";
 import { ChildProcess, spawn } from "child_process";
 import tempWrite from "temp-write";
-import { CndConfigFile } from "../config";
+import { CndConfig } from "./cnd_config";
 import { sleep } from "../utils";
 import waitForLogMessage from "./wait_for_log_message";
 import { Logger } from "log4js";
@@ -16,18 +16,18 @@ export class CndInstance {
         private readonly cargoTargetDirectory: string,
         private readonly logFile: string,
         private readonly logger: Logger,
-        private configFile: CndConfigFile
+        private _config: CndConfig
     ) {}
 
-    public getConfigFile() {
-        return this.configFile;
+    public get config() {
+        return this._config;
     }
 
     /**
      * Override the config of the node.
      */
-    public setConfigFile(config: CndConfigFile) {
-        this.configFile = config;
+    public set config(config: CndConfig) {
+        this._config = config;
     }
 
     public async start() {
@@ -38,7 +38,7 @@ export class CndInstance {
         this.logger.info("Using binary", bin);
 
         const configFile = await tempWrite(
-            stringify((this.configFile as unknown) as JsonMap),
+            stringify((this._config as unknown) as JsonMap),
             "config.toml"
         );
 

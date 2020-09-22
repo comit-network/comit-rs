@@ -1,6 +1,6 @@
-import { Role } from "./actors";
+import { DumpState, Role, Stoppable } from "./actors";
 import pTimeout from "p-timeout";
-import { HarnessGlobal, LedgerConfig } from "./environment";
+import { HarnessGlobal, Environment } from "./environment";
 import { CndActor } from "./actors/cnd_actor";
 import { Logger } from "log4js";
 import { BitcoindWallet, BitcoinWallet } from "./wallets/bitcoin";
@@ -11,9 +11,12 @@ import {
     newLndStubClient,
     Wallets,
 } from "./wallets";
-import { EthereumWallet, Web3EthereumWallet } from "./wallets/ethereum";
-import { E2ETestActorConfig } from "./config";
-import { merge } from "lodash";
+import {
+    EthereumFaucet,
+    EthereumWallet,
+    Web3EthereumWallet,
+} from "./wallets/ethereum";
+import { newCndConfig } from "./environment/cnd_config";
 import { CndInstance } from "./environment/cnd_instance";
 import ProvidesCallback = jest.ProvidesCallback;
 
@@ -85,24 +88,8 @@ export function startCndActorTest(
                 return newCndActor(role, true);
             })
         );
-        global
-            .getLogger(["test_environment"])
-            .info("All actors created, running test");
 
-        try {
-            await pTimeout(testFn(actors), 120_000);
-        } catch (e) {
-            global.getLogger(["test_environment"]).error("Test failed", e);
-            for (const actor of actors) {
-                await actor.dumpState();
-            }
-            throw e;
-        } finally {
-            for (const actor of actors) {
-                await actor.stop();
-            }
-        }
-        done();
+        await runTest(actors, () => testFn(actors)).then(done);
     };
 }
 
@@ -124,25 +111,32 @@ export function createCndActorTest(
                 return newCndActor(role, false);
             })
         );
-        global
-            .getLogger(["test_environment"])
-            .info("All actors created, running test");
 
-        try {
-            await pTimeout(testFn(actors), 120_000);
-        } catch (e) {
-            global.getLogger(["test_environment"]).error("Test failed", e);
-            for (const actor of actors) {
-                await actor.dumpState();
-            }
-            throw e;
-        } finally {
-            for (const actor of actors) {
-                await actor.stop();
-            }
-        }
-        done();
+        await runTest(actors, () => testFn(actors)).then(done);
     };
+}
+
+async function runTest<A extends Iterable<Stoppable & DumpState>>(
+    actors: A,
+    testFn: () => Promise<void>
+) {
+    const logger = global.getLogger(["test_environment"]);
+
+    logger.info("All actors created, running test");
+
+    try {
+        await pTimeout(testFn(), 120_000);
+    } catch (e) {
+        logger.error("Test failed", e);
+        for (const actor of actors) {
+            await actor.dumpState();
+        }
+        throw e;
+    } finally {
+        for (const actor of actors) {
+            await actor.stop();
+        }
+    }
 }
 
 async function newCndActor(role: Role, startCnd: boolean) {
@@ -154,21 +148,22 @@ async function newCndActor(role: Role, startCnd: boolean) {
         );
     }
 
-    const ledgerConfig = global.ledgerConfigs;
     const logger = global.getLogger([testName, role]);
 
     logger.info("Creating new actor in role", role);
 
-    const actorConfig = await E2ETestActorConfig.for(role);
-    const generatedConfig = actorConfig.generateCndConfigFile(ledgerConfig);
-    const finalConfig = merge(generatedConfig, global.cndConfigOverrides);
+    const cndConfig = await newCndConfig(
+        role,
+        global.environment,
+        global.cndConfigOverrides
+    );
     const cndLogFile = global.getLogFile([testName, `cnd-${role}.log`]);
 
     const cndInstance = new CndInstance(
         global.cargoTargetDir,
         cndLogFile,
         logger,
-        finalConfig
+        cndConfig
     );
 
     let cndStarting;
@@ -177,8 +172,8 @@ async function newCndActor(role: Role, startCnd: boolean) {
         cndStarting = cndInstance.start();
     }
 
-    const bitcoinWallet = newBitcoinWallet(ledgerConfig, logger);
-    const ethereumWallet = newEthereumWallet(ledgerConfig, logger);
+    const bitcoinWallet = newBitcoinWallet(global.environment, logger);
+    const ethereumWallet = newEthereumWallet(global.environment, logger);
 
     // Await all of the Promises that we started. In JS, Promises are eager and hence already started evaluating. This is an attempt to improve the startup performance of an actor.
     const wallets = new Wallets({
@@ -210,26 +205,31 @@ async function newCndActor(role: Role, startCnd: boolean) {
 }
 
 async function newBitcoinWallet(
-    ledgerConfig: LedgerConfig,
+    env: Environment,
     logger: Logger
 ): Promise<BitcoinWallet> {
-    const bitcoinConfig = ledgerConfig.bitcoin;
+    const bitcoinConfig = env.bitcoin;
     return bitcoinConfig
         ? BitcoindWallet.newInstance(bitcoinConfig, logger)
         : Promise.resolve(newBitcoinStubWallet());
 }
 
 async function newEthereumWallet(
-    ledgerConfig: LedgerConfig,
+    env: Environment,
     logger: Logger
 ): Promise<EthereumWallet> {
-    const ethereumConfig = ledgerConfig.ethereum;
+    const ethereumConfig = env.ethereum;
     return ethereumConfig
         ? Web3EthereumWallet.newInstance(
               ethereumConfig.rpc_url,
               logger,
-              ethereumConfig.chain_id,
-              ethereumConfig.devAccount
+              new EthereumFaucet(
+                  ethereumConfig.devAccount,
+                  logger,
+                  ethereumConfig.rpc_url,
+                  ethereumConfig.chain_id
+              ),
+              ethereumConfig.chain_id
           )
         : Promise.resolve(newEthereumStubWallet());
 }
