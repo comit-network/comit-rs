@@ -4,14 +4,26 @@ use comit::{
     Position, Price,
 };
 use num::{BigUint, Integer, ToPrimitive};
+use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, iter::FromIterator, str::FromStr};
+use std::{convert::TryFrom, fmt};
 
 /// Represent a rate. Note this is designed to support Bitcoin/Dai buy and sell
 /// rates (Bitcoin being in the range of 10k-100kDai) A rate has a maximum
 /// precision of 9 digits after the decimal rate = self.0 * 10e-9
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, PartialOrd)]
 pub struct Rate(u64);
+
+impl fmt::Display for Rate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut decimal = Decimal::from(self.0);
+        decimal
+            .set_scale(Self::PRECISION as u32)
+            .expect("Self::PRECISION < Decimal::MAX_PRECISION");
+
+        decimal.fmt(f)
+    }
+}
 
 impl Rate {
     pub const PRECISION: u16 = 10;
@@ -27,43 +39,31 @@ impl Rate {
     }
 }
 
+impl TryFrom<Decimal> for Rate {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Decimal) -> Result<Self, Self::Error> {
+        let value = value
+            .to_u64()
+            .context("Rate is too big, cannot be expressed within given precision")?;
+
+        Ok(Rate(value))
+    }
+}
+
 impl TryFrom<f64> for Rate {
     type Error = anyhow::Error;
 
     fn try_from(rate: f64) -> Result<Self, Self::Error> {
-        if rate.is_sign_negative() {
-            anyhow::bail!("Rate must be positive");
-        }
+        let decimal = Decimal::from_f64(rate).context("Rate exeeds precision of decimal")?;
+        let rate_precision = Decimal::from(10_000_000_000u64);
+        let adjusted_rate = decimal
+            .checked_mul(rate_precision)
+            .context("scaling rate to precision of 10 overflowed")?;
 
-        if !rate.is_finite() {
-            anyhow::bail!("Rate must be finite")
-        }
+        let rate = Rate::try_from(adjusted_rate)?;
 
-        let mut rate = rate.to_string();
-        let decimal_index = rate.find('.');
-        let mantissa = match decimal_index {
-            None => String::new(),
-            Some(decimal_index) => {
-                let mantissa = rate.split_off(decimal_index + 1);
-                if mantissa.len() > Self::PRECISION as usize {
-                    anyhow::bail!(format!(
-                        "Precision of the rate is too high (max is {}).",
-                        Self::PRECISION
-                    ))
-                }
-                rate.truncate(rate.len() - 1); // Removes the trailing decimal point
-                mantissa
-            }
-        };
-
-        let mantissa_length = mantissa.len();
-        let integer = rate;
-
-        let zeros = vec!['0'].repeat(Self::PRECISION as usize - mantissa_length);
-        let zeros = String::from_iter(zeros.into_iter());
-        let integer = u64::from_str(&format!("{}{}{}", integer, mantissa, zeros))
-            .context("Rate is unexpectedly large")?;
-        Ok(Rate::new(integer))
+        Ok(rate)
     }
 }
 

@@ -27,6 +27,7 @@ num = "0.3"
 num256 = "0.2"
 pem = "0.8"
 reqwest = { version = "0.10", default-features = false, features = ["json", "native-tls"] }
+rust_decimal = "1.8"
 serde = { version = "1", features = ["derive"] }
 serde-hex = "0.1"
 serde_cbor = "0.11"

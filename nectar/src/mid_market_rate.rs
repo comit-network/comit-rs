@@ -33,7 +33,7 @@ impl From<MidMarketRate> for Rate {
 
 mod kraken {
     use super::*;
-    use crate::float_maths::truncate;
+    use rust_decimal::Decimal;
     use serde::{de::Error, Deserialize};
     use std::convert::TryFrom;
 
@@ -47,35 +47,14 @@ mod kraken {
     ) -> anyhow::Result<MidMarketRate> {
         let endpoint = host.with_trading_pair("XBTDAI")?;
 
-        let ask_and_bid = reqwest::get(endpoint)
+        let mid_market_rate = reqwest::get(endpoint)
             .await?
             .json::<TickerResponse>()
             .await
-            .map(|response| response.result.xbtdai)?;
-        let rate = ask_and_bid.try_into()?;
+            .map(|response| response.result.xbtdai)?
+            .try_into()?;
 
-        Ok(rate)
-    }
-
-    #[derive(Clone, Copy, Debug, Deserialize)]
-    #[serde(try_from = "TickerData")]
-    pub struct AskAndBid {
-        pub ask: f64,
-        pub bid: f64,
-    }
-
-    impl TryFrom<AskAndBid> for MidMarketRate {
-        type Error = anyhow::Error;
-
-        fn try_from(AskAndBid { ask, bid }: AskAndBid) -> anyhow::Result<Self> {
-            let value = (bid + ask) / 2f64;
-
-            // `Rate::try_from`'s maximum precision is 9 decimal places
-            let value = truncate(value, 9);
-            let value = Rate::try_from(value)?;
-
-            Ok(Self { 0: value })
-        }
+        Ok(mid_market_rate)
     }
 
     #[derive(Deserialize)]
@@ -87,6 +66,13 @@ mod kraken {
     struct Ticker {
         #[serde(rename = "XBTDAI")]
         xbtdai: AskAndBid,
+    }
+
+    #[derive(Clone, Copy, Debug, Deserialize)]
+    #[serde(try_from = "TickerData")]
+    pub struct AskAndBid {
+        pub ask: Decimal,
+        pub bid: Decimal,
     }
 
     #[derive(Deserialize)]
@@ -111,15 +97,36 @@ mod kraken {
                 .ok_or_else(|| serde_json::Error::custom("no bid price"))?;
 
             Ok(AskAndBid {
-                ask: ask_price
-                    .parse::<f64>()
-                    .map_err(serde_json::Error::custom)?,
-                bid: bid_price
-                    .parse::<f64>()
-                    .map_err(serde_json::Error::custom)?,
+                ask: ask_price.parse().map_err(serde_json::Error::custom)?,
+                bid: bid_price.parse().map_err(serde_json::Error::custom)?,
             })
         }
     }
+
+    impl TryFrom<AskAndBid> for MidMarketRate {
+        type Error = anyhow::Error;
+
+        fn try_from(AskAndBid { ask, bid }: AskAndBid) -> anyhow::Result<Self> {
+            let value = (bid + ask) / Decimal::from(2);
+
+            let kraken_precision = 100_000u64; // data from kraken has a precision of 5 digits (see example data below)
+            let rate_precision = 100_000u64; // rate has a precision of 10 digits, need another 5
+
+            let value = value * Decimal::from(kraken_precision * rate_precision);
+
+            let rate = Rate::try_from(value)?;
+
+            tracing::trace!(
+                "Computed Kraken BTC/DAI mid-market rate {} from bid {} and ask {}",
+                rate,
+                bid,
+                ask
+            );
+
+            Ok(Self(rate))
+        }
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -170,6 +177,18 @@ mod kraken {
         #[test]
         fn given_ticker_example_data_deserializes_correctly() {
             serde_json::from_str::<TickerResponse>(TICKER_EXAMPLE).unwrap();
+        }
+
+        #[test]
+        fn ask_and_bid_to_midmarket_rate() {
+            let ask_and_bid = AskAndBid {
+                ask: "9489.50000".parse().unwrap(),
+                bid: "9462.70000".parse().unwrap(),
+            };
+
+            let mid_market_rate: MidMarketRate = ask_and_bid.try_into().unwrap();
+
+            assert_eq!(mid_market_rate, MidMarketRate(Rate::new(94761000000000)))
         }
     }
 }
