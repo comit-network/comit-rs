@@ -8,12 +8,16 @@ mod bob;
 mod comit;
 pub mod ethereum;
 
-use crate::{network::ActivePeer, swap::bob::Bob, SwapId};
+use crate::{command::FinishedSwap, network::ActivePeer, swap::bob::Bob, SwapId};
+use ::comit::btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
+use anyhow::{Context, Result};
+use chrono::{DateTime, Utc};
+use futures::{channel::mpsc, SinkExt};
 use std::sync::Arc;
+use tracing_futures::Instrument;
 
 pub use self::comit::{hbit, herc20};
 pub use crate::database::Database;
-use chrono::{DateTime, Utc};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SwapKind {
@@ -30,85 +34,6 @@ impl SwapKind {
 
     pub fn swap_id(&self) -> SwapId {
         self.params().swap_id
-    }
-
-    pub async fn execute(
-        &self,
-        db: Arc<Database>,
-        bitcoin_wallet: Arc<crate::bitcoin::Wallet>,
-        ethereum_wallet: Arc<crate::ethereum::Wallet>,
-        bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
-        ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    ) -> anyhow::Result<()> {
-        let bitcoin_wallet = bitcoin::Wallet {
-            inner: bitcoin_wallet,
-            connector: Arc::clone(&bitcoin_connector),
-        };
-        let ethereum_wallet = ethereum::Wallet {
-            inner: ethereum_wallet,
-            connector: Arc::clone(&ethereum_connector),
-        };
-
-        match self {
-            SwapKind::HbitHerc20(SwapParams {
-                hbit_params,
-                herc20_params,
-                secret_hash,
-                start_of_swap,
-                swap_id,
-                ..
-            }) => {
-                let bob = Bob {
-                    alpha_wallet: bitcoin_wallet,
-                    beta_wallet: ethereum_wallet,
-                    db,
-                    swap_id: *swap_id,
-                    secret_hash: *secret_hash,
-                    utc_start_of_swap: *start_of_swap,
-                    beta_expiry: herc20_params.expiry,
-                };
-
-                comit::hbit_herc20_bob(
-                    bob,
-                    bitcoin_connector.as_ref(),
-                    ethereum_connector.as_ref(),
-                    *hbit_params,
-                    herc20_params.clone(),
-                    *start_of_swap,
-                )
-                .await?
-            }
-            SwapKind::Herc20Hbit(SwapParams {
-                hbit_params,
-                herc20_params,
-                secret_hash,
-                start_of_swap,
-                swap_id,
-                ..
-            }) => {
-                let bob = Bob {
-                    alpha_wallet: ethereum_wallet,
-                    beta_wallet: bitcoin_wallet,
-                    db,
-                    swap_id: *swap_id,
-                    secret_hash: *secret_hash,
-                    utc_start_of_swap: *start_of_swap,
-                    beta_expiry: herc20_params.expiry,
-                };
-
-                comit::herc20_hbit_bob(
-                    bob,
-                    ethereum_connector.as_ref(),
-                    bitcoin_connector.as_ref(),
-                    herc20_params.clone(),
-                    *hbit_params,
-                    *start_of_swap,
-                )
-                .await?
-            }
-        };
-
-        Ok(())
     }
 }
 
@@ -606,4 +531,148 @@ mod tests {
 
         Ok(())
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct SwapExecutor {
+    db: Arc<Database>,
+    bitcoin_wallet: Arc<crate::bitcoin::Wallet>,
+    ethereum_wallet: Arc<crate::ethereum::Wallet>,
+    finished_swap_sender: mpsc::Sender<FinishedSwap>,
+    bitcoin_connector: Arc<BitcoindConnector>,
+    ethereum_connector: Arc<Web3Connector>,
+}
+
+impl SwapExecutor {
+    pub fn new(
+        db: Arc<Database>,
+        bitcoin_wallet: Arc<crate::bitcoin::Wallet>,
+        ethereum_wallet: Arc<crate::ethereum::Wallet>,
+        bitcoin_connector: Arc<BitcoindConnector>,
+        ethereum_connector: Arc<Web3Connector>,
+    ) -> (Self, mpsc::Receiver<FinishedSwap>) {
+        // buffer increases by 1 for every clone of `Sender` and we use every sender
+        // only once, hence making the initial buffer size 0 is good enough
+        let buffer_size = 0;
+        let (finished_swap_sender, finished_swap_receiver) = mpsc::channel(buffer_size);
+
+        let executor = Self {
+            db,
+            bitcoin_wallet,
+            ethereum_wallet,
+            finished_swap_sender,
+            bitcoin_connector,
+            ethereum_connector,
+        };
+
+        (executor, finished_swap_receiver)
+    }
+}
+
+impl SwapExecutor {
+    pub fn execute(&self, swap: SwapKind) {
+        let execution = execute(
+            swap,
+            bitcoin::Wallet {
+                inner: self.bitcoin_wallet.clone(),
+                connector: self.bitcoin_connector.clone(),
+            },
+            self.bitcoin_connector.clone(),
+            ethereum::Wallet {
+                inner: self.ethereum_wallet.clone(),
+                connector: self.ethereum_connector.clone(),
+            },
+            self.ethereum_connector.clone(),
+            self.db.clone(),
+            self.finished_swap_sender.clone(),
+        );
+
+        tokio::spawn(async move {
+            if let Err(e) = execution.await {
+                tracing::warn!("swap execution failed: {:#}", e);
+            }
+        });
+    }
+}
+
+async fn execute(
+    swap: SwapKind,
+    bitcoin_wallet: bitcoin::Wallet,
+    bitcoin_connector: Arc<BitcoindConnector>,
+    ethereum_wallet: ethereum::Wallet,
+    ethereum_connector: Arc<Web3Connector>,
+    db: Arc<Database>,
+    mut sender: mpsc::Sender<FinishedSwap>,
+) -> Result<()> {
+    match swap.clone() {
+        SwapKind::HbitHerc20(SwapParams {
+            hbit_params,
+            herc20_params,
+            secret_hash,
+            start_of_swap,
+            swap_id,
+            ..
+        }) => {
+            let bob = Bob {
+                alpha_wallet: bitcoin_wallet,
+                beta_wallet: ethereum_wallet,
+                db,
+                swap_id,
+                secret_hash,
+                utc_start_of_swap: start_of_swap,
+                beta_expiry: herc20_params.expiry,
+            };
+
+            comit::hbit_herc20_bob(
+                bob,
+                bitcoin_connector.as_ref(),
+                ethereum_connector.as_ref(),
+                hbit_params,
+                herc20_params,
+                start_of_swap,
+            )
+            .instrument(tracing::error_span!("hbit_herc20_bob", %swap_id))
+            .await?
+        }
+        SwapKind::Herc20Hbit(SwapParams {
+            hbit_params,
+            herc20_params,
+            secret_hash,
+            start_of_swap,
+            swap_id,
+            ..
+        }) => {
+            let bob = Bob {
+                alpha_wallet: ethereum_wallet,
+                beta_wallet: bitcoin_wallet,
+                db,
+                swap_id,
+                secret_hash,
+                utc_start_of_swap: start_of_swap,
+                beta_expiry: herc20_params.expiry,
+            };
+
+            comit::herc20_hbit_bob(
+                bob,
+                ethereum_connector.as_ref(),
+                bitcoin_connector.as_ref(),
+                herc20_params,
+                hbit_params,
+                start_of_swap,
+            )
+            .instrument(tracing::error_span!("herc20_hbit_bob", %swap_id))
+            .await?
+        }
+    };
+
+    let active_peer = swap.params().taker;
+    let swap_id = swap.swap_id();
+    sender
+        .send(FinishedSwap::new(swap, active_peer, chrono::Utc::now()))
+        .await
+        .context("failed to notify about finished swap")?;
+
+    tracing::info!("swap {} finished successfully", swap_id);
+
+    Ok(())
 }

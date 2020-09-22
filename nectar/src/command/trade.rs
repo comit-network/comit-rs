@@ -2,13 +2,13 @@ mod event_loop;
 
 use crate::{
     bitcoin,
-    command::{trade::event_loop::EventLoop, FinishedSwap},
+    command::trade::event_loop::EventLoop,
     config::{KrakenApiHost, Settings},
     ethereum::{self, dai},
     history::History,
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, new_swarm},
-    swap::{Database, SwapKind, SwapParams},
+    swap::{Database, SwapExecutor, SwapKind, SwapParams},
     Maker, MidMarketRate, Seed, Spread,
 };
 use anyhow::Context;
@@ -16,14 +16,9 @@ use comit::{
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
     Position, Role,
 };
-use futures::{
-    channel::mpsc::{Receiver, Sender},
-    Future, SinkExt,
-};
+use futures::{channel::mpsc, Future, SinkExt};
 use futures_timer::Delay;
 use std::{sync::Arc, time::Duration};
-
-const ENSURED_CONSUME_ZERO_BUFFER: usize = 0;
 
 pub async fn trade(
     seed: &Seed,
@@ -162,11 +157,9 @@ fn init_rate_updates(
     kraken_api_host: KrakenApiHost,
 ) -> (
     impl Future<Output = comit::Never> + Send,
-    Receiver<anyhow::Result<MidMarketRate>>,
+    mpsc::Receiver<anyhow::Result<MidMarketRate>>,
 ) {
-    let (mut sender, receiver) = futures::channel::mpsc::channel::<anyhow::Result<MidMarketRate>>(
-        ENSURED_CONSUME_ZERO_BUFFER,
-    );
+    let (mut sender, receiver) = make_update_channel();
 
     let future = async move {
         loop {
@@ -186,16 +179,23 @@ fn init_rate_updates(
     (future, receiver)
 }
 
+fn make_update_channel<T>() -> (mpsc::Sender<T>, mpsc::Receiver<T>) {
+    // We start with one sender and never clone it, hence we have an effective
+    // buffer size of 1. This is good because we actually want back-pressure on
+    // the sender to not update the rate more often than the event-loop can process.
+    let buffer_size = 0;
+
+    mpsc::channel(buffer_size)
+}
+
 fn init_bitcoin_balance_updates(
     update_interval: Duration,
     wallet: Arc<bitcoin::Wallet>,
 ) -> (
     impl Future<Output = comit::Never> + Send,
-    Receiver<anyhow::Result<bitcoin::Amount>>,
+    mpsc::Receiver<anyhow::Result<bitcoin::Amount>>,
 ) {
-    let (mut sender, receiver) = futures::channel::mpsc::channel::<anyhow::Result<bitcoin::Amount>>(
-        ENSURED_CONSUME_ZERO_BUFFER,
-    );
+    let (mut sender, receiver) = make_update_channel();
 
     let future = async move {
         loop {
@@ -220,10 +220,9 @@ fn init_dai_balance_updates(
     wallet: Arc<ethereum::Wallet>,
 ) -> (
     impl Future<Output = comit::Never> + Send,
-    Receiver<anyhow::Result<dai::Amount>>,
+    mpsc::Receiver<anyhow::Result<dai::Amount>>,
 ) {
-    let (mut sender, receiver) =
-        futures::channel::mpsc::channel::<anyhow::Result<dai::Amount>>(ENSURED_CONSUME_ZERO_BUFFER);
+    let (mut sender, receiver) = make_update_channel();
 
     let future = async move {
         loop {
@@ -241,70 +240,6 @@ fn init_dai_balance_updates(
     };
 
     (future, receiver)
-}
-
-#[derive(Debug, Clone)]
-struct SwapExecutor {
-    db: Arc<Database>,
-    bitcoin_wallet: Arc<bitcoin::Wallet>,
-    ethereum_wallet: Arc<ethereum::Wallet>,
-    finished_swap_sender: Sender<FinishedSwap>,
-    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
-    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-}
-
-impl SwapExecutor {
-    pub fn new(
-        db: Arc<Database>,
-        bitcoin_wallet: Arc<bitcoin::Wallet>,
-        ethereum_wallet: Arc<ethereum::Wallet>,
-        bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
-        ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    ) -> (Self, Receiver<FinishedSwap>) {
-        let (finished_swap_sender, finished_swap_receiver) =
-            futures::channel::mpsc::channel::<FinishedSwap>(ENSURED_CONSUME_ZERO_BUFFER);
-
-        (
-            Self {
-                db,
-                bitcoin_wallet,
-                ethereum_wallet,
-                finished_swap_sender,
-                bitcoin_connector,
-                ethereum_connector,
-            },
-            finished_swap_receiver,
-        )
-    }
-}
-
-impl SwapExecutor {
-    async fn run(mut self, swap: SwapKind) -> anyhow::Result<()> {
-        self.db.insert_swap(swap.clone()).await?;
-
-        swap.execute(
-            self.db,
-            self.bitcoin_wallet,
-            self.ethereum_wallet,
-            self.bitcoin_connector,
-            self.ethereum_connector,
-        )
-        .await?;
-
-        let _ = self
-            .finished_swap_sender
-            .send(FinishedSwap::new(
-                swap.clone(),
-                swap.params().taker,
-                chrono::Utc::now(),
-            ))
-            .await
-            .map_err(|_| {
-                tracing::trace!("Error when sending execution finished from sender to receiver.")
-            });
-
-        Ok(())
-    }
 }
 
 fn respawn_swaps(
@@ -327,7 +262,7 @@ fn respawn_swaps(
             }
         };
 
-        tokio::spawn(swap_executor.clone().run(swap));
+        swap_executor.execute(swap);
     }
 
     Ok(())

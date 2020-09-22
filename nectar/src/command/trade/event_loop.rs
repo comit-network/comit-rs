@@ -1,12 +1,12 @@
 use crate::{
     bitcoin,
-    command::{into_history_trade, trade::SwapExecutor, FinishedSwap},
+    command::{into_history_trade, FinishedSwap},
     ethereum::{self, dai},
     history::History,
     maker::{PublishOrders, TakeRequestDecision},
     network::{self, ActivePeer, SetupSwapContext, Swarm},
     order::BtcDaiOrderForm,
-    swap::{hbit, Database, SwapKind, SwapParams},
+    swap::{hbit, Database, SwapExecutor, SwapKind, SwapParams},
     Maker, MidMarketRate, SwapId,
 };
 use anyhow::{bail, Context, Result};
@@ -237,9 +237,7 @@ impl EventLoop {
                     .await
                     .with_context(|| format!("Could not insert swap {}", swap_id))?;
 
-                let _ = tokio::spawn(self.swap_executor.clone().run(swap_kind))
-                    .await
-                    .with_context(|| format!("Execution failed for swap {}", swap_id))?;
+                self.swap_executor.execute(swap_kind);
             }
             setup_swap::BehaviourOutEvent::AlreadyHaveRoleParams { peer, .. } => {
                 bail!("already received role params from {}", peer)

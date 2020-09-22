@@ -1,3 +1,5 @@
+use crate::swap::comit::SwapFailedShouldRefund;
+use anyhow::Result;
 use bitcoin::{secp256k1::SecretKey, Block, BlockHash};
 use chrono::{DateTime, Utc};
 use comit::asset;
@@ -28,7 +30,7 @@ impl Params {
 
 #[async_trait::async_trait]
 pub trait ExecuteFund {
-    async fn execute_fund(&self, params: &Params) -> anyhow::Result<Funded>;
+    async fn execute_fund(&self, params: &Params) -> Result<Funded>;
 }
 
 #[async_trait::async_trait]
@@ -38,12 +40,12 @@ pub trait ExecuteRedeem {
         params: Params,
         fund_event: Funded,
         secret: Secret,
-    ) -> anyhow::Result<Redeemed>;
+    ) -> Result<Redeemed>;
 }
 
 #[async_trait::async_trait]
 pub trait ExecuteRefund {
-    async fn execute_refund(&self, params: Params, fund_event: Funded) -> anyhow::Result<Refunded>;
+    async fn execute_refund(&self, params: Params, fund_event: Funded) -> Result<Refunded>;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -56,7 +58,7 @@ pub async fn watch_for_funded<C>(
     connector: &C,
     params: &SharedParams,
     utc_start_of_swap: DateTime<Utc>,
-) -> anyhow::Result<Funded>
+) -> Result<Funded>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
 {
@@ -66,6 +68,22 @@ where
         } => Ok(Funded { asset, location }),
         comit::hbit::Funded::Incorrectly { .. } => anyhow::bail!("Bitcoin HTLC incorrectly funded"),
     }
+}
+
+/// Executes refund if deemed necessary based on the result of the swap.
+pub async fn refund_if_necessary<A>(actor: A, hbit: Params, swap_result: Result<()>) -> Result<()>
+where
+    A: ExecuteRefund,
+{
+    if let Err(e) = swap_result {
+        if let Some(swap_failed) = e.downcast_ref::<SwapFailedShouldRefund<Funded>>() {
+            actor.execute_refund(hbit, swap_failed.0).await?;
+        }
+
+        return Err(e);
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

@@ -4,12 +4,11 @@ use crate::{
     config::Settings,
     ethereum,
     history::History,
-    swap::{Database, SwapKind},
+    swap::{Database, SwapExecutor},
 };
-use chrono::Utc;
 use comit::btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
-use futures::future::{join_all, TryFutureExt};
-use std::sync::{Arc, Mutex};
+use futures::{future::TryFutureExt, StreamExt};
+use std::sync::Arc;
 
 pub async fn resume_only(
     settings: Settings,
@@ -20,110 +19,43 @@ pub async fn resume_only(
     let db = Database::new(&settings.data.dir.join("database"))?;
     #[cfg(test)]
     let db = Database::new_test()?;
-
-    let history = Arc::new(Mutex::new(History::new(
-        settings.data.dir.join("history.csv").as_path(),
-    )?));
-
-    let bitcoin_connector = BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?;
-    let ethereum_connector = Web3Connector::new(settings.ethereum.node_url);
-
-    respawn_swaps(
-        db,
-        bitcoin_wallet,
-        ethereum_wallet,
-        bitcoin_connector,
-        ethereum_connector,
-        history,
-    )
-    .await?;
-
-    Ok(())
-}
-
-async fn respawn_swaps(
-    db: Database,
-    bitcoin_wallet: bitcoin::Wallet,
-    ethereum_wallet: ethereum::Wallet,
-    bitcoin_connector: comit::btsieve::bitcoin::BitcoindConnector,
-    ethereum_connector: comit::btsieve::ethereum::Web3Connector,
-    history: Arc<Mutex<History>>,
-) -> anyhow::Result<()> {
     let db = Arc::new(db);
-    let bitcoin_wallet = Arc::new(bitcoin_wallet);
-    let ethereum_wallet = Arc::new(ethereum_wallet);
-    let bitcoin_connector = Arc::new(bitcoin_connector);
-    let ethereum_connector = Arc::new(ethereum_connector);
+    let mut history = History::new(settings.data.dir.join("history.csv").as_path())?;
 
-    let futures = db.all_swaps()?.into_iter().map(|swap| {
-        execute_swap(
-            Arc::clone(&db),
-            Arc::clone(&bitcoin_wallet),
-            Arc::clone(&ethereum_wallet),
-            Arc::clone(&bitcoin_connector),
-            Arc::clone(&ethereum_connector),
-            swap,
-        )
-        .and_then(|finished_swap| async {
-            handle_finished_swap(finished_swap, Arc::clone(&db), Arc::clone(&history));
-            Ok(())
-        })
-    });
+    let (executor, mut finished_swap_receiver) = SwapExecutor::new(
+        db.clone(),
+        Arc::new(bitcoin_wallet),
+        Arc::new(ethereum_wallet),
+        Arc::new(BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?),
+        Arc::new(Web3Connector::new(settings.ethereum.node_url)),
+    );
 
-    join_all(futures).await;
+    for swap in db.all_swaps()? {
+        executor.execute(swap);
+    }
+
+    while let Some(finished_swap) = finished_swap_receiver.next().await {
+        handle_finished_swap(finished_swap, db.as_ref(), &mut history)
+    }
 
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
-async fn execute_swap(
-    db: Arc<Database>,
-    bitcoin_wallet: Arc<bitcoin::Wallet>,
-    ethereum_wallet: Arc<ethereum::Wallet>,
-    bitcoin_connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
-    ethereum_connector: Arc<comit::btsieve::ethereum::Web3Connector>,
-    swap: SwapKind,
-) -> anyhow::Result<FinishedSwap> {
-    swap.execute(
-        Arc::clone(&db),
-        bitcoin_wallet,
-        Arc::clone(&ethereum_wallet),
-        Arc::clone(&bitcoin_connector),
-        Arc::clone(&ethereum_connector),
-    )
-    .await?;
+fn handle_finished_swap(finished_swap: FinishedSwap, db: &Database, history: &mut History) {
+    let trade = into_history_trade(
+        finished_swap.peer.peer_id(),
+        finished_swap.swap.clone(),
+        #[cfg(not(test))]
+        finished_swap.final_timestamp,
+    );
 
-    Ok(FinishedSwap::new(
-        swap.clone(),
-        swap.params().taker,
-        Utc::now(),
-    ))
-}
-
-fn handle_finished_swap(
-    finished_swap: FinishedSwap,
-    db: Arc<Database>,
-    history: Arc<Mutex<History>>,
-) {
-    {
-        let trade = into_history_trade(
-            finished_swap.peer.peer_id(),
-            finished_swap.swap.clone(),
-            #[cfg(not(test))]
-            finished_swap.final_timestamp,
-        );
-
-        let mut history = history
-            .lock()
-            .expect("No thread panicked while holding the lock");
-        let _ = history.write(trade).map_err(|error| {
-            tracing::error!(
-                "Unable to register history entry: {:#}; {:?}",
-                error,
-                finished_swap
-            )
-        });
-    }
+    let _ = history.write(trade).map_err(|error| {
+        tracing::error!(
+            "Unable to register history entry: {:#}; {:?}",
+            error,
+            finished_swap
+        )
+    });
 
     let swap_id = finished_swap.swap.swap_id();
 

@@ -1,3 +1,5 @@
+use crate::swap::comit::SwapFailedShouldRefund;
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 
 pub use comit::{
@@ -11,7 +13,7 @@ pub use comit::{
 
 #[async_trait::async_trait]
 pub trait ExecuteDeploy {
-    async fn execute_deploy(&self, params: Params) -> anyhow::Result<Deployed>;
+    async fn execute_deploy(&self, params: Params) -> Result<Deployed>;
 }
 
 #[async_trait::async_trait]
@@ -21,7 +23,7 @@ pub trait ExecuteFund {
         params: Params,
         deploy_event: Deployed,
         utc_start_of_swap: DateTime<Utc>,
-    ) -> anyhow::Result<Funded>;
+    ) -> Result<Funded>;
 }
 
 #[async_trait::async_trait]
@@ -32,7 +34,7 @@ pub trait ExecuteRedeem {
         secret: Secret,
         deploy_event: Deployed,
         utc_start_of_swap: DateTime<Utc>,
-    ) -> anyhow::Result<Redeemed>;
+    ) -> Result<Redeemed>;
 }
 
 #[async_trait::async_trait]
@@ -42,7 +44,7 @@ pub trait ExecuteRefund {
         params: Params,
         deploy_event: Deployed,
         utc_start_of_swap: DateTime<Utc>,
-    ) -> anyhow::Result<Refunded>;
+    ) -> Result<Refunded>;
 }
 
 #[derive(Debug, Clone)]
@@ -56,7 +58,7 @@ pub async fn watch_for_funded<C>(
     params: Params,
     utc_start_of_swap: DateTime<Utc>,
     deployed: Deployed,
-) -> anyhow::Result<Funded>
+) -> Result<Funded>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
@@ -68,6 +70,29 @@ where
             anyhow::bail!("Ethereum HTLC incorrectly funded")
         }
     }
+}
+
+/// Executes refund if deemed necessary based on the result of the swap.
+pub async fn refund_if_necessary<A>(
+    actor: A,
+    herc20: Params,
+    utc_start_of_swap: DateTime<Utc>,
+    swap_result: Result<()>,
+) -> Result<()>
+where
+    A: ExecuteRefund,
+{
+    if let Err(e) = swap_result {
+        if let Some(swap_failed) = e.downcast_ref::<SwapFailedShouldRefund<Deployed>>() {
+            actor
+                .execute_refund(herc20, swap_failed.0.clone(), utc_start_of_swap)
+                .await?;
+        }
+
+        return Err(e);
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
