@@ -8,6 +8,7 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
+use clarity::Uint256;
 use comit::{
     actions::ethereum::{CallContract, DeployContract},
     asset::Erc20,
@@ -15,7 +16,6 @@ use comit::{
 };
 use conquer_once::Lazy;
 use num::BigUint;
-use num256::Uint256;
 use std::time::Duration;
 use url::Url;
 
@@ -369,11 +369,11 @@ impl Wallet {
         Ok(())
     }
 
-    async fn gas_price(&self) -> anyhow::Result<num256::Uint256> {
+    async fn gas_price(&self) -> anyhow::Result<clarity::Uint256> {
         self.geth_client.gas_price().await
     }
 
-    async fn gas_limit(&self, request: EstimateGasRequest) -> anyhow::Result<num256::Uint256> {
+    async fn gas_limit(&self, request: EstimateGasRequest) -> anyhow::Result<clarity::Uint256> {
         self.geth_client.gas_limit(request).await
     }
 
@@ -382,13 +382,14 @@ impl Wallet {
             &self.private_key,
             Some(u32::from(self.chain.chain_id()) as u64),
         );
-        let transaction_hex =
-            format!(
-                "0x{}",
-                hex::encode(signed_transaction.to_bytes().map_err(|_| anyhow::anyhow!(
-                    "Failed to serialize signed transaction to bytes"
-                ))?)
-            );
+        let transaction_hex = format!(
+            "0x{}",
+            hex::encode(
+                signed_transaction
+                    .to_bytes()
+                    .context("failed to serialize signed transaction to bytes")?
+            )
+        );
 
         Ok(transaction_hex)
     }
@@ -612,6 +613,5 @@ mod tests {
 
 fn to_clarity_address(to: Address) -> Result<clarity::Address> {
     clarity::Address::from_slice(to.as_bytes())
-        .map_err(|e| anyhow::anyhow!("{}", e))
         .context("failed to create private key from byte slice")
 }

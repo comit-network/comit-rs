@@ -186,6 +186,9 @@ impl<C: Clone + Send + 'static> SetupSwap<C> {
             }
             (Some(_), _) => return Err(anyhow::Error::from(AlreadyHaveRoleParams)),
         }
+
+        tracing::info!("Setting up swap with {}", to);
+
         let _ = match swap_protocol {
             SwapProtocol::Herc20Hbit => self
                 .herc20_hbit
@@ -292,6 +295,10 @@ impl<C: Clone + Send + 'static> SetupSwap<C> {
         _: &mut impl PollParameters,
     ) -> Poll<NetworkBehaviourAction<InEvent, BehaviourOutEvent<C>>> {
         if let Some(event) = self.events.pop_front() {
+            if let BehaviourOutEvent::ExecutableSwap(swap) = &event {
+                tracing::info!("Successfully set up swap with {}", swap.peer_id);
+            }
+
             return Poll::Ready(NetworkBehaviourAction::GenerateEvent(event));
         }
 

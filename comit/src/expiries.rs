@@ -370,9 +370,9 @@ impl<A, B> fmt::Display for Expiries<A, B> {
 }
 
 // Its super easy to mix these up, add types so the compiler saves us.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AlphaOffset(Duration);
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct BetaOffset(Duration);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AlphaExpiry(Timestamp);
