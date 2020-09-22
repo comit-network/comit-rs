@@ -55,7 +55,7 @@ Please be sure to double check your commit history and try to keep it clean, esp
 New code needs to be accompanied by **new tests**. Please use existing tests as example.
 We are using Continuous Integration and having tests will not only ensure that your code is correct but also that no-one else is breaking it unintentionally.
 
-Finally, do not forget to update the [changelog](./CHANGELOG.md).
+Finally, do not forget to update the [changelog](cnd/CHANGELOG.md).
 
 ## Public Key
 Public Key for [security@coblox.tech](mailto:security@coblox.tech)
