@@ -1,0 +1,29 @@
+name: Create release archive
+description: Creates a tar archive for a release binary
+inputs:
+  version:
+    description: 'The version of the binary'
+    required: true
+  binary:
+    description: 'The name of the binary to pack into the archive'
+    required: true
+outputs:
+  archive:
+    description: 'The name of the archive'
+    value: ${{ steps.create-archive-name.outputs.archive }}
+runs:
+  using: "composite"
+  steps:
+    - id: create-archive-name
+      run: |
+        import platform
+        os_info = platform.uname()
+
+        archive_name=f'${{ inputs.binary }}_${{ inputs.version }}_{os_info.system}_{os_info.machine}'
+
+        print(f'::set-output name=archive::{archive_name}')
+      shell: python # Use python to have a prettier name for the archive on Windows.
+
+    - name: Make archive
+      run: tar -C ./target/release --create --file=${{ steps.create-archive-name.outputs.archive }} ${{ inputs.binary }}
+      shell: bash

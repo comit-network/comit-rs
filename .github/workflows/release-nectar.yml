@@ -1,0 +1,59 @@
+name: "Release nectar"
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  release:
+    if: startsWith(github.event.release.tag_name, 'nectar-') # only trigger this if we released nectar
+    name: Release nectar
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout tagged commit
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.release.target_commitish }}
+          token: ${{ secrets.BOTTY_GITHUB_TOKEN }}
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          override: true
+
+      - name: Build ${{ matrix.os }} release binary
+        id: build
+        run: cargo build --release --package nectar
+
+      - name: Extract version from tag name
+        id: extract-version
+        uses: ./.github/actions/trim-front
+        with:
+          string: ${{ github.event.release.tag_name }}
+          prefix: nectar-
+
+      # Remove once python 3 is the default
+      - uses: actions/setup-python@v1
+        with:
+          python-version: '3.x'
+
+      - name: Create release archive
+        id: create-archive
+        uses: ./.github/actions/create-release-archive
+        with:
+          binary: nectar
+          version: ${{ steps.extract-version.outputs.trimmed }}
+
+      - name: Upload ${{ matrix.os }} release binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOTTY_GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./${{ steps.create-archive.outputs.archive }}
+          asset_name: ${{ steps.create-archive.outputs.archive }}
+          asset_content_type: application/gzip

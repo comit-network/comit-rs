@@ -1,0 +1,23 @@
+name: Trim front
+description: Trims a string by a given prefix
+inputs:
+  string:
+    description: 'The string to be trimmed'
+    required: true
+  prefix:
+    description: 'The prefix that should be removed from the string'
+    required: true
+outputs:
+  trimmed:
+    description: 'The remaining part of the string'
+    value: ${{ steps.trim-front.outputs.trimmed }}
+runs:
+  using: "composite"
+  steps:
+    - id: trim-front
+      run: |
+        FULL_STRING="${{ inputs.string }}"
+        TRIMMED=${FULL_STRING#${{ inputs.prefix }}}
+
+        echo "::set-output name=trimmed::$TRIMMED"
+      shell: bash
