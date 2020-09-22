@@ -20,13 +20,10 @@ impl hbit::ExecuteFund for Wallet {
     async fn execute_fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::Funded> {
         let action = params.shared.build_fund_action();
 
-        let txid = self
+        let location = self
             .inner
-            .send_to_address(action.to, action.amount, action.network.into())
+            .fund_htlc(action.to, action.amount, action.network.into())
             .await?;
-
-        // we send money to a single address, vout is always 0
-        let location = OutPoint { txid, vout: 0 };
         let asset = action.amount;
 
         Ok(hbit::Funded { asset, location })

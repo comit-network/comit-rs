@@ -182,13 +182,13 @@ mod kraken {
         #[test]
         fn ask_and_bid_to_midmarket_rate() {
             let ask_and_bid = AskAndBid {
-                ask: "9489.50000".parse().unwrap(),
-                bid: "9462.70000".parse().unwrap(),
+                ask: "9489.54321".parse().unwrap(),
+                bid: "9462.76543".parse().unwrap(),
             };
 
             let mid_market_rate: MidMarketRate = ask_and_bid.try_into().unwrap();
 
-            assert_eq!(mid_market_rate, MidMarketRate(Rate::new(94761000000000)))
+            assert_eq!(mid_market_rate, MidMarketRate(Rate::new(94761543200000)))
         }
     }
 }
