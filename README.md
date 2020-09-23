@@ -27,12 +27,16 @@ The Rust reference implementation of the COMIT protocol (comit-rs) implements at
 This repository is a cargo workspace:
 
 - `cnd`: implementation of the comit-network daemon
+- `nectar`: implementation of a simple automated trader for demo purposes
+- `comit-lib`: shared library used by `cnd` and `nectar` for swap execution
 
 `cnd` is [released](https://github.com/comit-network/comit-rs/releases) as binary.
 
 ## Setup build environment
 
 All you need is ~love~ rust: `curl https://sh.rustup.rs -sSf | sh`
+
+For building nectar you might have to install open ssl dependencies: `sudo apt-get install libssl-dev`
 
 ## Build & Run
 
