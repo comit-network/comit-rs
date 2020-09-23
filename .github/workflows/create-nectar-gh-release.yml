@@ -1,0 +1,36 @@
+name: "Create nectar GitHub release"
+
+on:
+  pull_request:
+    branches:
+      - master
+    types:
+      - closed
+
+jobs:
+  create_gh_release:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/nectar/') # only merged release branches must trigger this
+    name: Create nectar GitHub release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources to access local actions
+        uses: actions/checkout@v2
+
+      - name: Extract version from branch name
+        id: extract-version
+        uses: ./.github/actions/trim-front
+        with:
+          string: ${{ github.event.pull_request.head.ref }}
+          prefix: release/nectar/
+
+      - name: Create Release
+        id: create-release
+        uses: thomaseizinger/create-release@1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOTTY_GITHUB_TOKEN }}
+        with:
+          target_commitish: ${{ github.event.pull_request.merge_commit_sha }}
+          tag_name: nectar-${{ steps.extract-version.outputs.trimmed }}
+          name: nectar-${{ steps.extract-version.outputs.trimmed }}
+          draft: false
+          prerelease: false

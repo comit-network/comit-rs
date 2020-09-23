@@ -1,0 +1,25 @@
+name: "Merge release branch into dev"
+
+on:
+  pull_request:
+    branches:
+      - master
+    types:
+      - closed
+
+jobs:
+  merge_release_into_dev:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/') # only merged release branches must trigger this
+    name: Merge release-branch back into dev
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create pull request for merging release-branch back into dev
+        uses: thomaseizinger/create-pull-request@1.0.0
+        with:
+          GITHUB_TOKEN: ${{ secrets.BOTTY_GITHUB_TOKEN }}
+          head: ${{ github.event.pull_request.head.ref }}
+          base: dev
+          title: Merge `${{ github.event.pull_request.head.ref }}` into `dev`
+          body: |
+            This PR merges the `${{ github.event.pull_request.head.ref }}` branch back into `dev`.
+            This happens to ensure that the updates that happend on the release branch, i.e. CHANGELOG and manifest updates are also present on the dev branch.
