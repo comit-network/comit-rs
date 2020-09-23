@@ -1,5 +1,5 @@
 <a href="https://comit.network">
-<img src="logo.svg" height="120px" alt="COMIT logo" />
+<img src="https://comit.network/img/comit-logo-black.svg" height="120px" alt="COMIT logo" />
 </a>
 
 ---
