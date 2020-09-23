@@ -1,0 +1,30 @@
+' THIS FILE IS REFERENCED WITHIN THE RELEASING.MD FILE.
+' IF YOU MODIFY IT, MAKE SURE YOU DO IT IN A DEDICATED COMMIT AND UPDATE THE COMMIT HASH IN THE RELEASING.MD FILE OTHERWISE AN OUTDATED VERSION WILL BE RENDERED.
+
+@startuml
+
+title "Releasing cnd"
+
+actor You
+participant "'Draft new cnd release'-workflow" as draftWorkflow
+participant "Release branch" as branch
+participant "'Create cnd release'-workflow" as createReleaseWorkflow
+participant "GitHub release" as ghRelease
+participant "'Release cnd'-workflow" as releaseWorkflow
+
+You->draftWorkflow ++: Trigger with version
+
+draftWorkflow->branch **: Create release branch
+deactivate draftWorkflow
+
+You->branch !!: Merge
+
+branch->createReleaseWorkflow ++: Merge triggers
+createReleaseWorkflow->ghRelease **: Creates
+ghRelease->releaseWorkflow ++: Creation triggers
+releaseWorkflow->releaseWorkflow: Build cnd in release mode
+releaseWorkflow->ghRelease: Attach release binary
+releaseWorkflow->releaseWorkflow: Build docker image
+deactivate releaseWorkflow
+
+@enduml
