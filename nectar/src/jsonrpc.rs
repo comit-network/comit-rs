@@ -58,6 +58,8 @@ impl Client {
             }
         };
 
+        tracing::debug!("Response received: {:?}", response);
+
         match response {
             Response::Success { result } => Ok(result),
             Response::Error { error } | Response::RpcError(error) => {
