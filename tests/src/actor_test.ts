@@ -3,7 +3,11 @@ import pTimeout from "p-timeout";
 import { HarnessGlobal, Environment } from "./environment";
 import { CndActor } from "./actors/cnd_actor";
 import { Logger } from "log4js";
-import { BitcoindWallet, BitcoinWallet } from "./wallets/bitcoin";
+import {
+    BitcoindWallet,
+    BitcoinFaucet,
+    BitcoinWallet,
+} from "./wallets/bitcoin";
 import {
     newBitcoinStubWallet,
     newEthereumStubWallet,
@@ -18,6 +22,9 @@ import {
 } from "./wallets/ethereum";
 import { newCndConfig } from "./environment/cnd_config";
 import { CndInstance } from "./environment/cnd_instance";
+import NectarActor from "./actors/nectar_actor";
+import { NectarInstance } from "./environment/nectar_instance";
+import { newNectarConfig } from "./environment/nectar_config";
 import ProvidesCallback = jest.ProvidesCallback;
 
 declare var global: HarnessGlobal;
@@ -71,6 +78,27 @@ export function startConnectedAliceAndBob(
         await alice.connect(bob);
         return testFn([alice, bob]);
     });
+}
+
+/**
+ * Instantiates an instance of Cnd in the role of Alice and an instance of nectar. Nectar is always in the role of Bob.
+ *
+ * This function also establishes a network connection between the two.
+ * @param testFn
+ */
+export function startConnectedCndAndNectar(
+    testFn: (actors: { alice: CndActor; bob: NectarActor }) => Promise<void>
+): ProvidesCallback {
+    return async (done) => {
+        const alice = await newCndActor("Alice", true);
+        const bob = await newNectarActor();
+
+        await alice.connect(bob);
+
+        await runTest([alice, bob], async () => testFn({ alice, bob })).then(
+            done
+        );
+    };
 }
 
 /**
@@ -150,7 +178,7 @@ async function newCndActor(role: Role, startCnd: boolean) {
 
     const logger = global.getLogger([testName, role]);
 
-    logger.info("Creating new actor in role", role);
+    logger.info("Creating new cnd actor in role", role);
 
     const cndConfig = await newCndConfig(
         role,
@@ -202,6 +230,54 @@ async function newCndActor(role: Role, startCnd: boolean) {
         role,
         lndClient || newLndStubClient()
     );
+}
+
+async function newNectarActor() {
+    const testName = jasmine.currentTestName;
+    if (!testName.match(/[A-z0-9\-]+/)) {
+        // We use the test name as a file name for the log and hence need to restrict it.
+        throw new Error(
+            `Testname '${testName}' is invalid. Only A-z, 0-9 and dashes are allowed.`
+        );
+    }
+
+    const logger = global.getLogger([testName, "Bob"]); // nectar is always Bob
+
+    logger.info("Creating new nectar actor");
+
+    const nectarLogFile = global.getLogFile([testName, `nectar.log`]);
+
+    const nectarConfig = await newNectarConfig(global.environment);
+    const nectarInstance = new NectarInstance(
+        global.cargoTargetDir,
+        nectarLogFile,
+        logger,
+        nectarConfig
+    );
+
+    const depositAddresses = await nectarInstance.deposit();
+
+    const bitcoinFaucet = new BitcoinFaucet(global.environment.bitcoin, logger);
+    const ethereumFaucet = new EthereumFaucet(
+        global.environment.ethereum.devAccount,
+        logger,
+        global.environment.ethereum.rpc_url,
+        global.environment.ethereum.chain_id
+    );
+
+    await bitcoinFaucet.mint(100_000_000n, depositAddresses.bitcoin);
+    await ethereumFaucet.mintErc20(
+        depositAddresses.ethereum,
+        1_000_000_000_000_000_000_000_000n,
+        global.tokenContract
+    );
+    await ethereumFaucet.mintEther(
+        depositAddresses.ethereum,
+        10_000_000_000_000_000_000n
+    );
+    const peerId = await nectarInstance.trade();
+
+    return new NectarActor(logger, nectarInstance, peerId);
 }
 
 async function newBitcoinWallet(

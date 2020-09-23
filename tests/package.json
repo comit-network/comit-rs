@@ -5,7 +5,7 @@
     "main": "index.js",
     "scripts": {
         "check": "tsc && prettier --check '**/*.{ts,json,yml}' && tslint --project .",
-        "pretest": "cargo build --bin cnd && tsc",
+        "pretest": "cargo build --bin cnd && cargo build --bin nectar && tsc",
         "test": "jest --forceExit",
         "ci": "tsc && jest --forceExit",
         "fix": "tslint --project . --fix && prettier --write '**/*.{ts,js,json,yml}'"

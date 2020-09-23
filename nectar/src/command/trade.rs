@@ -64,7 +64,7 @@ pub async fn trade(
     let update_interval = Duration::from_secs(15u64);
 
     let (rate_future, rate_update_receiver) =
-        init_rate_updates(update_interval, settings.maker.kraken_api_host);
+        init_rate_updates(Duration::from_secs(5 * 60), settings.maker.kraken_api_host);
     let (btc_balance_future, btc_balance_update_receiver) =
         init_bitcoin_balance_updates(update_interval, Arc::clone(&bitcoin_wallet));
     let (dai_balance_future, dai_balance_update_receiver) =

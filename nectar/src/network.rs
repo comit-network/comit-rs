@@ -24,7 +24,7 @@ pub fn new_swarm(seed: Seed, settings: &crate::config::Settings) -> anyhow::Resu
 
     let transport = transport::build_transport(local_key_pair)?;
 
-    let mut swarm = libp2p::swarm::SwarmBuilder::new(transport, behaviour, local_peer_id)
+    let mut swarm = libp2p::swarm::SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
         .executor(Box::new(TokioExecutor {
             handle: tokio::runtime::Handle::current(),
         }))
@@ -33,6 +33,8 @@ pub fn new_swarm(seed: Seed, settings: &crate::config::Settings) -> anyhow::Resu
         Swarm::listen_on(&mut swarm, addr.clone())
             .with_context(|| format!("Address is not supported: {:#}", addr))?;
     }
+
+    tracing::info!("Initialized swarm with identity {}", local_peer_id);
 
     Ok(swarm)
 }
