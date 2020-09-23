@@ -15,6 +15,7 @@ runs:
   using: "composite"
   steps:
     - id: create-archive-name
+      shell: python # Use python to have a prettier name for the archive on Windows.
       run: |
         import platform
         os_info = platform.uname()
@@ -22,8 +23,7 @@ runs:
         archive_name=f'${{ inputs.binary }}_${{ inputs.version }}_{os_info.system}_{os_info.machine}'
 
         print(f'::set-output name=archive::{archive_name}')
-      shell: python # Use python to have a prettier name for the archive on Windows.
 
     - name: Make archive
-      run: tar -C ./target/release --create --file=${{ steps.create-archive-name.outputs.archive }} ${{ inputs.binary }}
       shell: bash
+      run: tar -C ./target/release --create --file=${{ steps.create-archive-name.outputs.archive }} ${{ inputs.binary }}

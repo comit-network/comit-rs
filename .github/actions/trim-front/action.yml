@@ -15,9 +15,9 @@ runs:
   using: "composite"
   steps:
     - id: trim-front
+      shell: bash
       run: |
         FULL_STRING="${{ inputs.string }}"
         TRIMMED=${FULL_STRING#${{ inputs.prefix }}}
 
         echo "::set-output name=trimmed::$TRIMMED"
-      shell: bash
