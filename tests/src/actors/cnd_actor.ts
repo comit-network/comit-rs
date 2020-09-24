@@ -393,15 +393,24 @@ export class CndActor
         location: string,
         predicate: (body: T) => boolean
     ): Promise<T> {
-        const response = await this.cnd.fetch<T>(location);
+        const poller = async () => {
+            let response = await this.cnd.fetch<T>(location);
 
-        if (predicate(response.data)) {
+            while (!predicate(response.data)) {
+                response = await this.cnd.fetch<T>(location);
+                await sleep(500);
+            }
+
             return response.data;
-        } else {
-            await sleep(500);
+        };
 
-            return this.pollCndUntil(location, predicate);
-        }
+        return pTimeout(
+            poller(),
+            10_000,
+            new Error(
+                `response from ${location} did not satisfy predicate after 10 seconds`
+            )
+        );
     }
 
     public async assertAndExecuteNextAction(expectedActionName: ActionKind) {
