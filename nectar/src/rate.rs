@@ -11,7 +11,7 @@ use std::{convert::TryFrom, fmt};
 /// Represent a rate. Note this is designed to support Bitcoin/Dai buy and sell
 /// rates (Bitcoin being in the range of 10k-100kDai) A rate has a maximum
 /// precision of 9 digits after the decimal rate = self.0 * 10e-9
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd)]
 pub struct Rate(u64);
 
 impl fmt::Display for Rate {
@@ -76,7 +76,7 @@ impl Into<Price<comit::asset::Bitcoin, comit::asset::Erc20Quantity>> for Rate {
 
 /// Spread: percentage to be added on top of a rate or amount with
 /// a maximum precision of 2 decimals
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Spread(u16);
 
 impl Spread {
@@ -120,7 +120,20 @@ pub fn rate(rate: f64) -> Rate {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::StaticStub;
     use proptest::prelude::*;
+
+    impl StaticStub for Spread {
+        fn static_stub() -> Self {
+            Self(0)
+        }
+    }
+
+    impl StaticStub for Rate {
+        fn static_stub() -> Self {
+            Self(0)
+        }
+    }
 
     #[test]
     fn from_f64_and_new_matches_1() {

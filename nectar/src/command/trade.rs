@@ -6,6 +6,7 @@ use crate::{
     config::{KrakenApiHost, Settings},
     ethereum::{self, dai},
     history::History,
+    maker::strategy,
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, new_swarm},
     swap::{Database, SwapExecutor, SwapKind, SwapParams},
@@ -136,14 +137,13 @@ async fn init_maker(
 
     let spread: Spread = settings.maker.spread;
 
+    let strategy = strategy::AllIn::new(btc_fee_reserve, btc_max_sell, dai_max_sell, spread);
+
     Ok(Maker::new(
         initial_btc_balance,
         initial_dai_balance,
-        btc_fee_reserve,
-        btc_max_sell,
-        dai_max_sell,
         initial_rate,
-        spread,
+        strategy,
         settings.bitcoin.network,
         settings.ethereum.chain,
         // todo: get from config
@@ -254,11 +254,11 @@ fn respawn_swaps(
                 ref herc20_params, ..
             }) => {
                 let fund_amount = herc20_params.asset.clone().into();
-                maker.dai_reserved_funds = maker.dai_reserved_funds.clone() + fund_amount;
+                maker.strategy.hbit_herc20_swap_resumed(fund_amount);
             }
             SwapKind::Herc20Hbit(SwapParams { hbit_params, .. }) => {
                 let fund_amount = hbit_params.shared.asset;
-                maker.btc_reserved_funds = maker.btc_reserved_funds + fund_amount + maker.btc_fee;
+                maker.strategy.herc20_hbit_swap_resumed(fund_amount)?;
             }
         };
 
@@ -274,7 +274,7 @@ mod tests {
     use crate::{
         config::{settings, Data, Logging, MaxSell, Network},
         swap::herc20::asset::ethereum::FromWei,
-        test_harness, Seed,
+        test_harness, Seed, StaticStub,
     };
     use comit::{asset, asset::Erc20Quantity, ethereum::ChainId, ledger};
     use ethereum::ether;
@@ -299,7 +299,7 @@ mod tests {
                     bitcoin: None,
                     dai: None,
                 },
-                spread: Default::default(),
+                spread: StaticStub::static_stub(),
                 maximum_possible_fee: Default::default(),
                 kraken_api_host: Default::default(),
             },

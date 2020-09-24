@@ -170,20 +170,12 @@ impl EventLoop {
             .write(trade)
             .with_context(|| format!("Unable to register history entry: {:?}", finished_swap))?;
 
-        let (dai, btc, swap_id) = match finished_swap.swap {
-            SwapKind::HbitHerc20(swap) => {
-                (Some(swap.herc20_params.asset.into()), None, swap.swap_id)
-            }
-            SwapKind::Herc20Hbit(swap) => (None, Some(swap.hbit_params.shared.asset), swap.swap_id),
-        };
-
         self.database
-            .remove_swap(&swap_id)
+            .remove_swap(&finished_swap.swap.swap_id())
             .await
             .context("Unable to delete swap from db")?;
 
-        // Only free funds if the swap was removed from the db
-        self.maker.free_funds(dai, btc);
+        self.maker.strategy.swap_finished(finished_swap.swap);
 
         peer_db_res
     }

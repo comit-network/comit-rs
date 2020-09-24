@@ -47,9 +47,10 @@ use crate::{
     config::{read_config, Settings},
     fs::default_config_path,
 };
-use anyhow::{Context, Result};
+use anyhow::Context;
 use conquer_once::Lazy;
 
+pub use anyhow::Result;
 pub use maker::Maker;
 pub use mid_market_rate::MidMarketRate;
 pub use rate::{Rate, Spread};
