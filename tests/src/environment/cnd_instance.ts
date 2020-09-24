@@ -7,7 +7,7 @@ import waitForLogMessage from "./wait_for_log_message";
 import { Logger } from "log4js";
 import path from "path";
 import { crashListener } from "./crash_listener";
-import { openAsync } from "./async_fs";
+import { execAsync, openAsync } from "./async_fs";
 
 export class CndInstance {
     private process: ChildProcess;
@@ -31,9 +31,7 @@ export class CndInstance {
     }
 
     public async start() {
-        const bin = process.env.CND_BIN
-            ? process.env.CND_BIN
-            : path.join(this.cargoTargetDirectory, "debug", "cnd");
+        const bin = await this.pathToCnd();
 
         this.logger.info("Using binary", bin);
 
@@ -67,6 +65,20 @@ export class CndInstance {
         await sleep(1000);
 
         this.logger.info("cnd started with PID", this.process.pid);
+    }
+
+    private async pathToCnd() {
+        if (process.env.CND_BIN) {
+            return process.env.CND_BIN;
+        }
+
+        this.logger.debug(
+            "Path to `cnd` has not been provided, building from scratch"
+        );
+
+        await execAsync("cargo build -p cnd");
+
+        return path.join(this.cargoTargetDirectory, "debug", "cnd");
     }
 
     public stop() {
