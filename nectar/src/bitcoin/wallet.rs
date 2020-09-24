@@ -64,8 +64,6 @@ impl Wallet {
                     .set_hd_seed(&self.name, Some(true), Some(wif))
                     .await?;
 
-                self.bitcoind_client.rescan(&self.name).await?;
-
                 Ok(())
             }
             Ok(WalletInfoResponse {
@@ -79,8 +77,6 @@ impl Wallet {
                     .set_hd_seed(&self.name, Some(true), Some(wif))
                     .await?;
 
-                // Rescan wallet to ensure funding is picked up
-                self.bitcoind_client.rescan(&self.name).await?;
                 Ok(())
             }
             _ => Ok(()),
