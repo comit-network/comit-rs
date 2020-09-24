@@ -395,8 +395,6 @@ export class CndActor
     ): Promise<T> {
         const response = await this.cnd.fetch<T>(location);
 
-        expect(response.status).toEqual(200);
-
         if (predicate(response.data)) {
             return response.data;
         } else {
