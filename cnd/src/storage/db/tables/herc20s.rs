@@ -3,9 +3,9 @@ use crate::{
     storage::{
         db::{
             schema::herc20s,
+            tables::Swap,
             wrapper_types::{Erc20Amount, U32},
         },
-        tables::Swap,
         Insert, IntoInsertable, Sqlite, Text,
     },
 };

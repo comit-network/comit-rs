@@ -4,9 +4,9 @@ use crate::{
         db::{
             schema,
             schema::*,
+            tables::Swap,
             wrapper_types::{Satoshis, U32},
         },
-        tables::Swap,
         Insert, IntoInsertable, Sqlite, Text,
     },
 };

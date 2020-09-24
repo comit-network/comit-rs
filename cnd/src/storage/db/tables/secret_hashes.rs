@@ -1,4 +1,7 @@
-use crate::storage::{db::schema::secret_hashes, tables::Swap, Text};
+use crate::storage::{
+    db::{schema::secret_hashes, tables::Swap},
+    Text,
+};
 use anyhow::Result;
 use diesel::{prelude::*, sqlite::SqliteConnection};
 

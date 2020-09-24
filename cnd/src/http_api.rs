@@ -27,7 +27,7 @@ use crate::{
     asset,
     asset::Erc20Quantity,
     ethereum,
-    storage::{tables, BtcDaiOrder, CreatedSwap, Order},
+    storage::{BtcDaiOrder, CreatedSwap, Order},
     LocalSwapId, Role, Secret, SecretHash, Timestamp,
 };
 use anyhow::Result;
@@ -83,7 +83,7 @@ struct OrderProperties {
     state: State,
 }
 
-impl From<(tables::Order, tables::BtcDaiOrder)> for OrderProperties {
+impl From<(Order, BtcDaiOrder)> for OrderProperties {
     fn from(tuple: (Order, BtcDaiOrder)) -> Self {
         let (order, btc_dai_order) = tuple;
 

@@ -1,5 +1,5 @@
-use crate::storage::{
-    db::schema::order_swaps,
+use crate::storage::db::{
+    schema::order_swaps,
     tables::{Order, Swap},
 };
 use anyhow::Result;
