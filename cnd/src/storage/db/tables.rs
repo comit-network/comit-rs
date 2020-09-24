@@ -28,7 +28,7 @@ mod secret_hashes;
 mod swap_contexts;
 mod swaps;
 
-pub use btc_dai_orders::{all_open_btc_dai_orders, BtcDaiOrder, InsertableBtcDaiOrder};
+pub use btc_dai_orders::{BtcDaiOrder, InsertableBtcDaiOrder};
 pub use halbits::{Halbit, InsertableHalbit};
 pub use hbits::{Hbit, InsertableHbit};
 pub use herc20s::{Herc20, InsertableHerc20};
