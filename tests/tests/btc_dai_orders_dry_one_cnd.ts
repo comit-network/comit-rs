@@ -93,3 +93,17 @@ test(
         ).resolves.toHaveLength(0);
     })
 );
+
+test(
+    "given_an_order_when_cnd_is_restarted_then_the_order_is_republished_to_the_market",
+    startAlice(async (alice) => {
+        await alice.makeBtcDaiOrder(Position.Buy, "0.2", "9000");
+        const btcDaiMarket1 = await alice.getBtcDaiMarket();
+        expect(btcDaiMarket1.entities).toHaveLength(1);
+
+        await alice.restart();
+
+        const btcDaiMarket2 = await alice.getBtcDaiMarket();
+        expect(btcDaiMarket2.entities).toHaveLength(1);
+    })
+);

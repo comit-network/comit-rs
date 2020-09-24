@@ -7,15 +7,21 @@ use crate::{
     asset,
     storage::{
         db::{
-            schema::{btc_dai_orders, orders, swap_contexts},
+            schema::{
+                btc_dai_orders, order_hbit_params, order_herc20_params, orders, swap_contexts,
+            },
             wrapper_types::Satoshis,
         },
-        BtcDaiOrder, NoSwapExists, Order, SwapContext, Text,
+        BtcDaiOrder, NoSwapExists, Order, OrderHbitParams, OrderHerc20Params, ParamsTuple,
+        SwapContext, Text,
     },
     LocalSwapId,
 };
-use anyhow::Result;
+use anyhow::{Context, Result};
+use comit::order::SwapProtocol;
 use diesel::{prelude::*, SqliteConnection};
+use std::convert::TryFrom;
+use time::OffsetDateTime;
 
 pub fn get_swap_context_by_id(conn: &SqliteConnection, id: LocalSwapId) -> Result<SwapContext> {
     let context = swap_contexts::table
@@ -39,6 +45,42 @@ pub fn all_open_btc_dai_orders(conn: &SqliteConnection) -> Result<Vec<(Order, Bt
         .filter(btc_dai_orders::open.ne(Text::<Satoshis>(asset::Bitcoin::ZERO.into())))
         .or_filter(btc_dai_orders::settling.ne(Text::<Satoshis>(asset::Bitcoin::ZERO.into())))
         .load::<(Order, BtcDaiOrder)>(conn)?;
+
+    Ok(orders)
+}
+
+pub fn get_orders_to_republish(conn: &SqliteConnection) -> Result<Vec<comit::BtcDaiOrder>> {
+    let orders = orders::table
+        .inner_join(btc_dai_orders::table)
+        .inner_join(order_hbit_params::table)
+        .inner_join(order_herc20_params::table)
+        .filter(btc_dai_orders::open.ne(Text::<Satoshis>(asset::Bitcoin::ZERO.into())))
+        .load::<(Order, BtcDaiOrder, OrderHbitParams, OrderHerc20Params)>(conn)?;
+
+    let orders = orders
+        .into_iter()
+        .map::<Result<comit::BtcDaiOrder>, _>(
+            |(order, btc_dai_order, order_hbit_params, order_herc20_params)| {
+                let swap_protocol =
+                    SwapProtocol::try_from(ParamsTuple(order_herc20_params, order_hbit_params))
+                        .with_context(|| {
+                            format!(
+                                "failed to construct swap protocol from params for order {}",
+                                order.order_id
+                            )
+                        })?;
+
+                Ok(comit::BtcDaiOrder {
+                    id: order.order_id,
+                    position: order.position,
+                    swap_protocol,
+                    created_at: OffsetDateTime::from_unix_timestamp(order.created_at),
+                    quantity: btc_dai_order.quantity,
+                    price: btc_dai_order.price,
+                })
+            },
+        )
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(orders)
 }

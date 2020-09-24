@@ -4,6 +4,7 @@ import {
     HbitHerc20Payload,
     Herc20HalbitPayload,
     Herc20HbitPayload,
+    MarketEntity,
     OpenOrdersEntity,
     OrderEntity,
     Position,
@@ -355,6 +356,12 @@ export class CndActor
                 ethereum_address: this.wallets.ethereum.getAccount(),
             },
         });
+    }
+
+    public async getBtcDaiMarket(): Promise<MarketEntity> {
+        return this.cnd
+            .fetch<MarketEntity>("/markets/BTC-DAI")
+            .then((r) => r.data);
     }
 
     public async fetchOrder(href: string): Promise<OrderEntity> {

@@ -4,7 +4,10 @@ use crate::{
     storage::{db::schema, NoSwapExists, Sqlite, Text},
 };
 use anyhow::Context;
-use comit::{Role, Side};
+use comit::{
+    expiries::{AlphaOffset, BetaOffset},
+    Role, Side,
+};
 use diesel::{prelude::*, SqliteConnection};
 
 #[macro_export]
@@ -28,7 +31,9 @@ mod secret_hashes;
 mod swap_contexts;
 mod swaps;
 
+use crate::storage::SameSide;
 pub use btc_dai_orders::{BtcDaiOrder, InsertableBtcDaiOrder};
+use comit::order::SwapProtocol;
 pub use halbits::{Halbit, InsertableHalbit};
 pub use hbits::{Hbit, InsertableHbit};
 pub use herc20s::{Herc20, InsertableHerc20};
@@ -37,8 +42,10 @@ pub use order_herc20_params::{InsertableOrderHerc20Params, OrderHerc20Params};
 pub use order_swaps::{InsertableOrderSwap, OrderSwap};
 pub use orders::{InsertableOrder, Order};
 pub use secret_hashes::{InsertableSecretHash, SecretHash};
+use std::convert::TryFrom;
 pub use swap_contexts::SwapContext;
 pub use swaps::{InsertableSwap, Swap};
+use time::Duration;
 
 pub trait IntoInsertable {
     type Insertable;
@@ -63,6 +70,68 @@ impl EnsureSingleRowAffected for usize {
             ));
         }
         Ok(self)
+    }
+}
+
+/// A newtype for a tuple of params.
+///
+/// We need this to avoid an overlap with the blanket impl between From and
+/// TryFrom. See: https://github.com/rust-lang/rust/issues/50133#issuecomment-646908391
+#[derive(Debug)]
+pub struct ParamsTuple(pub OrderHerc20Params, pub OrderHbitParams);
+
+impl TryFrom<ParamsTuple> for SwapProtocol {
+    type Error = SameSide;
+
+    fn try_from(value: ParamsTuple) -> Result<Self, Self::Error> {
+        match value {
+            ParamsTuple(
+                OrderHerc20Params {
+                    side: Side::Beta,
+                    expiry_offset: herc20_expiry_offset,
+                    ..
+                },
+                OrderHbitParams {
+                    side: Side::Alpha,
+                    expiry_offset: hbit_expiry_offset,
+                    ..
+                },
+            ) => Ok(SwapProtocol::HbitHerc20 {
+                hbit_expiry_offset: AlphaOffset::from(Duration::seconds(hbit_expiry_offset)),
+                herc20_expiry_offset: BetaOffset::from(Duration::seconds(herc20_expiry_offset)),
+            }),
+            ParamsTuple(
+                OrderHerc20Params {
+                    side: Side::Alpha,
+                    expiry_offset: herc20_expiry_offset,
+                    ..
+                },
+                OrderHbitParams {
+                    side: Side::Beta,
+                    expiry_offset: hbit_expiry_offset,
+                    ..
+                },
+            ) => Ok(SwapProtocol::Herc20Hbit {
+                herc20_expiry_offset: AlphaOffset::from(Duration::seconds(herc20_expiry_offset)),
+                hbit_expiry_offset: BetaOffset::from(Duration::seconds(hbit_expiry_offset)),
+            }),
+            ParamsTuple(
+                OrderHerc20Params {
+                    side: Side::Alpha, ..
+                },
+                OrderHbitParams {
+                    side: Side::Alpha, ..
+                },
+            ) => Err(SameSide(Side::Alpha)),
+            ParamsTuple(
+                OrderHerc20Params {
+                    side: Side::Beta, ..
+                },
+                OrderHbitParams {
+                    side: Side::Beta, ..
+                },
+            ) => Err(SameSide(Side::Beta)),
+        }
     }
 }
 
