@@ -90,8 +90,11 @@ export function startConnectedCndAndNectar(
     testFn: (actors: { alice: CndActor; bob: NectarActor }) => Promise<void>
 ): ProvidesCallback {
     return async (done) => {
-        const alice = await newCndActor("Alice", true);
-        const bob = await newNectarActor();
+        const startingAlice = newCndActor("Alice", true);
+        const startingBob = newNectarActor();
+
+        const alice = await startingAlice;
+        const bob = await startingBob;
 
         await alice.connect(bob);
 
