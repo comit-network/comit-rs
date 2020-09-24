@@ -1,8 +1,10 @@
 use crate::{
     halbit,
     storage::{
-        db::wrapper_types::{Satoshis, U32},
-        schema::halbits,
+        db::{
+            schema::halbits,
+            wrapper_types::{Satoshis, U32},
+        },
         tables::Swap,
         Insert, IntoInsertable, Sqlite, Text,
     },

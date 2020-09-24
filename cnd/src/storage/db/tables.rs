@@ -1,7 +1,7 @@
 use crate::{
     identity,
     local_swap_id::LocalSwapId,
-    storage::{schema, NoSwapExists, Sqlite, Text},
+    storage::{db::schema, NoSwapExists, Sqlite, Text},
 };
 use anyhow::Context;
 use comit::{Role, Side};
@@ -10,9 +10,9 @@ use diesel::{prelude::*, SqliteConnection};
 #[macro_export]
 macro_rules! swap_id_fk {
     ($local_swap_id:expr) => {
-        crate::storage::schema::swaps::table
-            .filter(crate::storage::schema::swaps::local_swap_id.eq(Text($local_swap_id)))
-            .select(crate::storage::schema::swaps::id)
+        crate::storage::db::schema::swaps::table
+            .filter(crate::storage::db::schema::swaps::local_swap_id.eq(Text($local_swap_id)))
+            .select(crate::storage::db::schema::swaps::id)
     };
 }
 

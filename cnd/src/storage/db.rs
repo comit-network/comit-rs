@@ -2,7 +2,7 @@ mod errors;
 #[cfg(test)]
 mod integration_tests;
 pub mod queries;
-pub mod schema;
+mod schema;
 pub mod tables;
 mod wrapper_types;
 embed_migrations!("./migrations");

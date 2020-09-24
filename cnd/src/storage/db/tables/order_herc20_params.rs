@@ -1,6 +1,5 @@
 use crate::storage::{
-    db::{tables::orders::Order, wrapper_types::U32},
-    schema::order_herc20_params,
+    db::{schema::order_herc20_params, tables::orders::Order, wrapper_types::U32},
     Text,
 };
 use anyhow::{Context, Result};
