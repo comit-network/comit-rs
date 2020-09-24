@@ -1,7 +1,5 @@
 import { BigNumber, Contract, ethers } from "ethers";
 import { Logger } from "log4js";
-import erc20 from "../../ethereum_abi/erc20.json";
-import { EventFragment, FunctionFragment } from "ethers/lib/utils";
 
 export interface EthereumWallet {
     getAccount(): string;
@@ -156,8 +154,11 @@ export class Web3EthereumWallet implements EthereumWallet {
     }
 
     public async getErc20Balance(contractAddress: string): Promise<bigint> {
-        const abi = erc20 as (FunctionFragment | EventFragment)[];
-        const contract = new Contract(contractAddress, abi, this.provider);
+        const contract = new Contract(
+            contractAddress,
+            ["function balanceOf(address owner) view returns (uint256)"],
+            this.provider
+        );
 
         const strBalance = await contract.balanceOf(this.getAccount());
         const intBalance = BigNumber.from(strBalance);
