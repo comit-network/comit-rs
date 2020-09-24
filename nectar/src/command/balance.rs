@@ -30,7 +30,7 @@ pub async fn balance(
 mod tests {
     use super::*;
     use crate::{ethereum, test_harness, Seed};
-    use comit::ethereum::ChainId;
+    use comit::{ethereum::ChainId, ledger};
 
     // Run cargo test with `--ignored --nocapture` to see the `println output`
     #[ignore]
@@ -42,13 +42,10 @@ mod tests {
         let bitcoin_blockchain = test_harness::bitcoin::Blockchain::new(&client).unwrap();
         bitcoin_blockchain.init().await.unwrap();
 
-        let bitcoin_wallet = bitcoin::Wallet::new(
-            seed,
-            bitcoin_blockchain.node_url,
-            ::bitcoin::Network::Regtest,
-        )
-        .await
-        .unwrap();
+        let bitcoin_wallet =
+            bitcoin::Wallet::new(seed, bitcoin_blockchain.node_url, ledger::Bitcoin::Regtest)
+                .await
+                .unwrap();
 
         let mut ethereum_blockchain = test_harness::ethereum::Blockchain::new(&client).unwrap();
         ethereum_blockchain.init().await.unwrap();

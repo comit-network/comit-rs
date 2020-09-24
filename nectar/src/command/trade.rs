@@ -327,7 +327,7 @@ mod tests {
         let bitcoin_wallet = bitcoin::Wallet::new(
             seed,
             bitcoin_blockchain.node_url.clone(),
-            ::bitcoin::Network::Regtest,
+            ledger::Bitcoin::Regtest,
         )
         .await
         .unwrap();

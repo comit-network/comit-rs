@@ -215,6 +215,7 @@ mod tests {
         test_harness, Seed, StaticStub, SwapId,
     };
     use ::bitcoin::secp256k1;
+    use ::comit::ledger;
     use chrono::Utc;
     use std::{str::FromStr, sync::Arc};
     use testcontainers::clients;
@@ -272,7 +273,7 @@ mod tests {
         let alice_db = Arc::new(Database::new_test().unwrap());
         let bob_db = Arc::new(Database::new_test().unwrap());
 
-        let bitcoin_network = ::bitcoin::Network::Regtest;
+        let bitcoin_network = ledger::Bitcoin::Regtest;
         let (bitcoin_connector, bitcoind_url, bitcoin_blockchain) = {
             let blockchain = test_harness::bitcoin::Blockchain::new(&client)?;
             blockchain.init().await?;
@@ -392,7 +393,7 @@ mod tests {
         let beta_expiry = Timestamp::now().plus(60 * 60);
 
         let (hbit_params, hbit_transient_refund_sk, hbit_transient_redeem_sk) =
-            hbit_params(secret_hash, bitcoin_network.into());
+            hbit_params(secret_hash, bitcoin_network);
 
         let herc20_params = herc20::params(
             secret_hash,

@@ -22,7 +22,7 @@ impl hbit::ExecuteFund for Wallet {
 
         let location = self
             .inner
-            .fund_htlc(action.to, action.amount, action.network.into())
+            .fund_htlc(action.to, action.amount, action.network)
             .await?;
         let asset = action.amount;
 
@@ -99,7 +99,7 @@ impl Wallet {
     ) -> anyhow::Result<bitcoin::Transaction> {
         let _txid = self
             .inner
-            .send_raw_transaction(action.transaction.clone(), action.network.into())
+            .send_raw_transaction(action.transaction.clone(), action.network)
             .await?;
 
         Ok(action.transaction)

@@ -1,10 +1,11 @@
 use crate::{bitcoin, ethereum, Seed};
+use comit::ledger;
 
 pub async fn wallet_info(
     ethereum_wallet: Option<ethereum::Wallet>,
     bitcoin_wallet: Option<bitcoin::Wallet>,
     seed: &Seed,
-    bitcoin_network: bitcoin::Network,
+    bitcoin_network: ledger::Bitcoin,
 ) -> anyhow::Result<String> {
     let bitcoin_info = bitcoin_info(bitcoin_wallet, &seed, bitcoin_network).await;
     let ethereum_info = ethereum_info(ethereum_wallet, &seed);
@@ -18,7 +19,7 @@ pub async fn wallet_info(
 async fn bitcoin_info(
     bitcoin_wallet: Option<bitcoin::Wallet>,
     seed: &Seed,
-    network: bitcoin::Network,
+    ledger: ledger::Bitcoin,
 ) -> String {
     let descriptors = match bitcoin_wallet {
         Some(bitcoin_wallet) => bitcoin_wallet.descriptors_with_checksums().await.ok(),
@@ -28,7 +29,7 @@ async fn bitcoin_info(
     match descriptors {
         Some(descriptors) => descriptors.join("\n"),
         None => {
-            let descriptors = bitcoin::Wallet::descriptors_from_seed(&seed, network);
+            let descriptors = bitcoin::Wallet::descriptors_from_seed(&seed, ledger);
             format!("(could not reach bitcoind)\n{}", descriptors.join("\n"))
         }
     }
@@ -59,12 +60,9 @@ mod tests {
         let bitcoin_blockchain = test_harness::bitcoin::Blockchain::new(&client)?;
         bitcoin_blockchain.init().await?;
 
-        let bitcoin_wallet = bitcoin::Wallet::new(
-            seed,
-            bitcoin_blockchain.node_url,
-            ::bitcoin::Network::Regtest,
-        )
-        .await?;
+        let bitcoin_wallet =
+            bitcoin::Wallet::new(seed, bitcoin_blockchain.node_url, ledger::Bitcoin::Regtest)
+                .await?;
 
         let mut ethereum_blockchain = test_harness::ethereum::Blockchain::new(&client)?;
         ethereum_blockchain.init().await?;
@@ -80,7 +78,7 @@ mod tests {
             Some(ethereum_wallet),
             Some(bitcoin_wallet),
             &seed,
-            bitcoin::Network::Regtest,
+            ledger::Bitcoin::Regtest,
         )
         .await?;
         println!("{}", stdout);
@@ -93,7 +91,7 @@ mod tests {
     async fn wallet_info_command_no_nodes() -> anyhow::Result<()> {
         let seed = Seed::random().unwrap();
 
-        let stdout = wallet_info(None, None, &seed, bitcoin::Network::Regtest).await?;
+        let stdout = wallet_info(None, None, &seed, ledger::Bitcoin::Regtest).await?;
         println!("{}", stdout);
         Ok(())
     }
