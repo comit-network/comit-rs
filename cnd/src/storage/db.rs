@@ -1,6 +1,7 @@
 mod errors;
 #[cfg(test)]
 mod integration_tests;
+pub mod queries;
 pub mod schema;
 pub mod tables;
 mod wrapper_types;

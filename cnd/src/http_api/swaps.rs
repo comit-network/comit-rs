@@ -18,7 +18,7 @@ use crate::{
         AlphaLedger, AlphaProtocol, BetaAbsoluteExpiry, BetaLedger, BetaProtocol, Events, GetRole,
         Ledger, Protocol, SwapEvent,
     },
-    storage::{Load, LoadAll, Storage},
+    storage::{queries::get_all_swap_contexts, Load, Storage},
     DeployAction, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role,
 };
 use comit::Timestamp;
@@ -42,7 +42,7 @@ pub async fn get_swaps(storage: Storage) -> Result<impl Reply, Rejection> {
     let swaps = async {
         let mut swaps = siren::Entity::default().with_class_member("swaps");
 
-        for context in storage.load_all().await? {
+        for context in storage.db.do_in_transaction(get_all_swap_contexts).await? {
             swaps.push_sub_entity(siren::SubEntity::from_link(siren::EntityLink {
                 class: vec![],
                 title: None,

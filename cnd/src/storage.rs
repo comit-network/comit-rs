@@ -12,6 +12,7 @@ use async_trait::async_trait;
 use diesel::{BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 use std::sync::Arc;
 
+use crate::storage::db::queries::get_swap_context_by_id;
 use chrono::{DateTime, Utc};
 pub use db::*;
 pub use seed::*;
@@ -20,12 +21,6 @@ pub use seed::*;
 #[async_trait]
 pub trait Load<T>: Send + Sync + 'static {
     async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<T>;
-}
-
-/// Load all data of type T from the storage layer.
-#[async_trait]
-pub trait LoadAll<T>: Send + Sync + 'static {
-    async fn load_all(&self) -> anyhow::Result<Vec<T>>;
 }
 
 /// Save data to the storage layer.
@@ -309,18 +304,10 @@ impl IntoParams for hbit::Params {
 #[async_trait::async_trait]
 impl Load<SwapContext> for Storage {
     async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<SwapContext> {
-        use self::schema::swap_contexts;
-
         let context = self
             .db
-            .do_in_transaction(|connection| {
-                Ok(swap_contexts::table
-                    .filter(swap_contexts::id.eq(Text(swap_id)))
-                    .get_result::<SwapContext>(connection)
-                    .optional()?)
-            })
-            .await?
-            .ok_or(NoSwapExists(swap_id))?;
+            .do_in_transaction(|connection| get_swap_context_by_id(connection, swap_id))
+            .await?;
 
         Ok(context)
     }
@@ -342,22 +329,6 @@ fn derive_or_unwrap_secret_hash(
         Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
     };
     Ok(secret_hash)
-}
-
-#[async_trait::async_trait]
-impl LoadAll<SwapContext> for Storage {
-    async fn load_all(&self) -> anyhow::Result<Vec<SwapContext>> {
-        use self::schema::swap_contexts;
-
-        let contexts = self
-            .db
-            .do_in_transaction(|connection| {
-                Ok(swap_contexts::table.load::<tables::SwapContext>(connection)?)
-            })
-            .await?;
-
-        Ok(contexts)
-    }
 }
 
 #[async_trait::async_trait]
