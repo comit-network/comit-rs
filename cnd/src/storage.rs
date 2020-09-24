@@ -7,9 +7,7 @@ use crate::{
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
     spawn, LocalSwapId, Role, Side,
 };
-use anyhow::Context;
 use async_trait::async_trait;
-use diesel::{BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 use std::sync::Arc;
 
 use crate::storage::db::queries::get_swap_context_by_id;
@@ -92,14 +90,14 @@ impl Storage {
 #[async_trait::async_trait]
 impl<A, B, TParamsA, TParamsB> Load<spawn::Swap<TParamsA, TParamsB>> for Storage
 where
-    Storage: LoadTables<A, B>,
+    Sqlite: LoadTables<A, B>,
     TParamsA: IntoParams<ProtocolTable = A> + 'static,
     TParamsB: IntoParams<ProtocolTable = B> + 'static,
     A: 'static,
     B: 'static,
 {
     async fn load(&self, id: LocalSwapId) -> anyhow::Result<spawn::Swap<TParamsA, TParamsB>> {
-        let tab = self.load_tables(id).await?;
+        let tab = self.db.load_tables(id).await?;
         let role = tab.swap.role;
         let secret_hash = derive_or_unwrap_secret_hash(id, self.seed, role, tab.secret_hash)?;
 
@@ -115,12 +113,6 @@ where
     }
 }
 
-/// Load data from tables, A and B are protocol tables.
-#[async_trait::async_trait]
-pub trait LoadTables<A, B> {
-    async fn load_tables(&self, id: LocalSwapId) -> anyhow::Result<Tables<A, B>>;
-}
-
 /// Convert a protocol table, with associated data, into a swap params object.
 pub trait IntoParams: Sized {
     type ProtocolTable;
@@ -133,75 +125,6 @@ pub trait IntoParams: Sized {
         _: comit::SecretHash,
     ) -> anyhow::Result<Self>;
 }
-
-/// Data required to load in order to construct spawnable swaps (`spawn::Swap`).
-#[derive(Debug)]
-pub struct Tables<A, B> {
-    pub swap: Swap,
-    pub alpha: A, // E.g, Herc20
-    pub beta: B,  // E.g, Hbit
-    pub secret_hash: Option<SecretHash>,
-}
-
-macro_rules! impl_load_tables {
-    ($alpha:tt, $beta:tt) => {
-        #[async_trait::async_trait]
-        impl LoadTables<$alpha, $beta> for Storage {
-            async fn load_tables(&self, id: LocalSwapId) -> anyhow::Result<Tables<$alpha, $beta>> {
-                use self::db::schema::swaps;
-
-                let (swap, alpha, beta, secret_hash) = self
-                    .db
-                    .do_in_transaction::<_, _>(move |conn| {
-                        let key = Text(id);
-
-                        let swap: Swap = swaps::table
-                            .filter(swaps::local_swap_id.eq(key))
-                            .first(conn)?;
-
-                        let alpha = $alpha::belonging_to(&swap).first::<$alpha>(conn)?;
-                        let beta = $beta::belonging_to(&swap).first::<$beta>(conn)?;
-
-                        let secret_hash = SecretHash::belonging_to(&swap)
-                            .first::<SecretHash>(conn)
-                            .optional()?;
-
-                        Ok((swap, alpha, beta, secret_hash))
-                    })
-                    .await
-                    .context(NoSwapExists(id))?;
-
-                if alpha.side.0 != Side::Alpha {
-                    anyhow::bail!(
-                        "attempted to load {} as side Alpha but it was {}",
-                        stringify!($alpha),
-                        alpha.side.0
-                    );
-                }
-
-                if beta.side.0 != Side::Beta {
-                    anyhow::bail!(
-                        "attempted to load {} as side Beta but it was {}",
-                        stringify!($alpha),
-                        beta.side.0
-                    );
-                }
-
-                Ok(Tables {
-                    swap,
-                    secret_hash,
-                    alpha,
-                    beta,
-                })
-            }
-        }
-    };
-}
-
-impl_load_tables!(Herc20, Halbit);
-impl_load_tables!(Halbit, Herc20);
-impl_load_tables!(Herc20, Hbit);
-impl_load_tables!(Hbit, Herc20);
 
 impl IntoParams for herc20::Params {
     type ProtocolTable = Herc20;

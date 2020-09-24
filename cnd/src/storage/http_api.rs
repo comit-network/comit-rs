@@ -54,7 +54,7 @@ impl Load<AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Fin
         let alpha_state = self.herc20_states.get(&swap_id).await?;
         let beta_state = self.halbit_states.get(&swap_id).await?;
 
-        let tab: Tables<Herc20, Halbit> = self.load_tables(swap_id).await?;
+        let tab: Tables<Herc20, Halbit> = self.db.load_tables(swap_id).await?;
 
         let swap = match (alpha_state, beta_state) {
             (Some(alpha_state), Some(beta_state)) => {
@@ -90,7 +90,7 @@ impl Load<AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Fin
         let alpha_state = self.halbit_states.get(&swap_id).await?;
         let beta_state = self.herc20_states.get(&swap_id).await?;
 
-        let tab: Tables<Halbit, Herc20> = self.load_tables(swap_id).await?;
+        let tab: Tables<Halbit, Herc20> = self.db.load_tables(swap_id).await?;
 
         let swap = match (alpha_state, beta_state) {
             (Some(alpha_state), Some(beta_state)) => {
@@ -127,7 +127,7 @@ impl Load<AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::Final
         let alpha_state = self.herc20_states.get(&swap_id).await?;
         let beta_state = self.hbit_states.get(&swap_id).await?;
 
-        let tab: Tables<Herc20, Hbit> = self.load_tables(swap_id).await?;
+        let tab: Tables<Herc20, Hbit> = self.db.load_tables(swap_id).await?;
 
         let swap = match (alpha_state, beta_state) {
             (Some(alpha_state), Some(beta_state)) => {
@@ -167,7 +167,7 @@ impl Load<AliceSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsFunder, herc2
         let alpha_state = self.hbit_states.get(&swap_id).await?;
         let beta_state = self.herc20_states.get(&swap_id).await?;
 
-        let tab: Tables<Hbit, Herc20> = self.load_tables(swap_id).await?;
+        let tab: Tables<Hbit, Herc20> = self.db.load_tables(swap_id).await?;
 
         let swap = match (alpha_state, beta_state) {
             (Some(alpha_state), Some(beta_state)) => {
@@ -204,7 +204,7 @@ impl Load<BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Final
         let alpha_state = self.herc20_states.get(&swap_id).await?;
         let beta_state = self.halbit_states.get(&swap_id).await?;
 
-        let tab: Tables<Herc20, Halbit> = self.load_tables(swap_id).await?;
+        let tab: Tables<Herc20, Halbit> = self.db.load_tables(swap_id).await?;
 
         let swap = match (alpha_state, beta_state) {
             (Some(alpha_state), Some(beta_state)) => {
@@ -239,7 +239,7 @@ impl Load<BobSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Final
         let alpha_state = self.halbit_states.get(&swap_id).await?;
         let beta_state = self.herc20_states.get(&swap_id).await?;
 
-        let tab: Tables<Halbit, Herc20> = self.load_tables(swap_id).await?;
+        let tab: Tables<Halbit, Herc20> = self.db.load_tables(swap_id).await?;
 
         let swap = match (alpha_state, beta_state) {
             (Some(alpha_state), Some(beta_state)) => {
@@ -277,7 +277,7 @@ impl Load<BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::Finaliz
         let alpha_state = self.herc20_states.get(&swap_id).await?;
         let beta_state = self.hbit_states.get(&swap_id).await?;
 
-        let tab: Tables<Herc20, Hbit> = self.load_tables(swap_id).await?;
+        let tab: Tables<Herc20, Hbit> = self.db.load_tables(swap_id).await?;
 
         let swap = match (alpha_state, beta_state) {
             (Some(alpha_state), Some(beta_state)) => {
@@ -317,7 +317,7 @@ impl Load<BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc2
         let alpha_state = self.hbit_states.get(&swap_id).await?;
         let beta_state = self.herc20_states.get(&swap_id).await?;
 
-        let tab: Tables<Hbit, Herc20> = self.load_tables(swap_id).await?;
+        let tab: Tables<Hbit, Herc20> = self.db.load_tables(swap_id).await?;
 
         let swap = match (alpha_state, beta_state) {
             (Some(alpha_state), Some(beta_state)) => {

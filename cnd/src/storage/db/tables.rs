@@ -1,7 +1,7 @@
 use crate::{
     identity,
     local_swap_id::LocalSwapId,
-    storage::{schema, Sqlite, Text},
+    storage::{schema, NoSwapExists, Sqlite, Text},
 };
 use anyhow::Context;
 use comit::{Role, Side};
@@ -65,6 +65,80 @@ impl EnsureSingleRowAffected for usize {
         Ok(self)
     }
 }
+
+/// Load data from tables, A and B are protocol tables.
+#[async_trait::async_trait]
+pub trait LoadTables<A, B> {
+    async fn load_tables(&self, id: LocalSwapId) -> anyhow::Result<Tables<A, B>>;
+}
+
+/// Data required to load in order to construct spawnable swaps (`spawn::Swap`).
+#[derive(Debug)]
+pub struct Tables<A, B> {
+    pub swap: Swap,
+    pub alpha: A, // E.g, Herc20
+    pub beta: B,  // E.g, Hbit
+    pub secret_hash: Option<SecretHash>,
+}
+
+macro_rules! impl_load_tables {
+    ($alpha:tt, $beta:tt) => {
+        #[async_trait::async_trait]
+        impl LoadTables<$alpha, $beta> for Sqlite {
+            async fn load_tables(&self, id: LocalSwapId) -> anyhow::Result<Tables<$alpha, $beta>> {
+                use crate::storage::db::schema::swaps;
+
+                let (swap, alpha, beta, secret_hash) = self
+                    .do_in_transaction::<_, _>(move |conn| {
+                        let key = Text(id);
+
+                        let swap: Swap = swaps::table
+                            .filter(swaps::local_swap_id.eq(key))
+                            .first(conn)?;
+
+                        let alpha = $alpha::belonging_to(&swap).first::<$alpha>(conn)?;
+                        let beta = $beta::belonging_to(&swap).first::<$beta>(conn)?;
+
+                        let secret_hash = SecretHash::belonging_to(&swap)
+                            .first::<SecretHash>(conn)
+                            .optional()?;
+
+                        Ok((swap, alpha, beta, secret_hash))
+                    })
+                    .await
+                    .context(NoSwapExists(id))?;
+
+                if alpha.side.0 != Side::Alpha {
+                    anyhow::bail!(
+                        "attempted to load {} as side Alpha but it was {}",
+                        stringify!($alpha),
+                        alpha.side.0
+                    );
+                }
+
+                if beta.side.0 != Side::Beta {
+                    anyhow::bail!(
+                        "attempted to load {} as side Beta but it was {}",
+                        stringify!($alpha),
+                        beta.side.0
+                    );
+                }
+
+                Ok(Tables {
+                    swap,
+                    secret_hash,
+                    alpha,
+                    beta,
+                })
+            }
+        }
+    };
+}
+
+impl_load_tables!(Herc20, Halbit);
+impl_load_tables!(Halbit, Herc20);
+impl_load_tables!(Herc20, Hbit);
+impl_load_tables!(Hbit, Herc20);
 
 impl Sqlite {
     pub fn insert_secret_hash(
