@@ -60,23 +60,6 @@ impl Client {
         Ok(response)
     }
 
-    pub async fn rescan(&self, wallet_name: &str) -> anyhow::Result<RescanResponse> {
-        let response = self
-            .rpc_client
-            .send_with_path(
-                format!("/wallet/{}", wallet_name),
-                jsonrpc::Request::new(
-                    "rescanblockchain",
-                    Vec::<serde_json::Value>::new(),
-                    JSONRPC_VERSION.into(),
-                ),
-            )
-            .await
-            .context("failed to rescan")?;
-
-        Ok(response)
-    }
-
     pub async fn get_balance(
         &self,
         wallet_name: &str,
