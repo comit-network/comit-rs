@@ -62,8 +62,7 @@ table! {
 
 table! {
     swap_contexts {
-        id -> Integer,
-        local_swap_id -> Text,
+        id -> Text,
         role -> Text,
         alpha -> Text,
         beta -> Text,

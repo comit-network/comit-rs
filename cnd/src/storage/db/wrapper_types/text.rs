@@ -1,5 +1,5 @@
 use crate::{ethereum, ledger, LocalSwapId};
-use comit::{OrderId, Position, Role, Side};
+use comit::{LockProtocol, OrderId, Position, Role, Side};
 use diesel::{
     backend::Backend,
     deserialize::{self, FromSql},
@@ -72,3 +72,4 @@ impl_from_text!(ethereum::Address);
 impl_from_text!(::bitcoin::Address);
 impl_from_text!(OrderId);
 impl_from_text!(Position);
+impl_from_text!(LockProtocol);

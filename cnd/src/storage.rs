@@ -5,7 +5,7 @@ mod seed;
 use crate::{
     asset, halbit, hbit, herc20, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
-    spawn, LocalSwapId, LockProtocol, Role, Side,
+    spawn, LocalSwapId, Role, Side,
 };
 use anyhow::Context;
 use async_trait::async_trait;
@@ -306,27 +306,6 @@ impl IntoParams for hbit::Params {
     }
 }
 
-/// Loadable type that provides context for a swap i.e., which protocol
-/// is on which side and which role we are playing in the swap.
-#[derive(Clone, Copy, Debug)]
-pub struct SwapContext {
-    pub id: LocalSwapId,
-    pub role: Role,
-    pub alpha: LockProtocol,
-    pub beta: LockProtocol,
-}
-
-impl From<tables::SwapContext> for SwapContext {
-    fn from(row: tables::SwapContext) -> Self {
-        SwapContext {
-            id: row.local_swap_id.0,
-            role: row.role.0,
-            alpha: row.alpha.0,
-            beta: row.beta.0,
-        }
-    }
-}
-
 #[async_trait::async_trait]
 impl Load<SwapContext> for Storage {
     async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<SwapContext> {
@@ -336,14 +315,14 @@ impl Load<SwapContext> for Storage {
             .db
             .do_in_transaction(|connection| {
                 Ok(swap_contexts::table
-                    .filter(swap_contexts::local_swap_id.eq(Text(swap_id)))
-                    .get_result::<tables::SwapContext>(connection)
+                    .filter(swap_contexts::id.eq(Text(swap_id)))
+                    .get_result::<SwapContext>(connection)
                     .optional()?)
             })
             .await?
             .ok_or(NoSwapExists(swap_id))?;
 
-        Ok(context.into())
+        Ok(context)
     }
 }
 
@@ -375,10 +354,7 @@ impl LoadAll<SwapContext> for Storage {
             .do_in_transaction(|connection| {
                 Ok(swap_contexts::table.load::<tables::SwapContext>(connection)?)
             })
-            .await?
-            .into_iter()
-            .map(|context| context.into())
-            .collect();
+            .await?;
 
         Ok(contexts)
     }
