@@ -8,7 +8,7 @@ import { sleep } from "../src/utils";
 import { Position } from "../src/cnd_client/payload";
 
 it(
-    "herc20-hbit-alice-misses-bob-funds",
+    "alice-buys-bob-sells-bitcoin-alice-misses-bobs-fund",
     startConnectedAliceAndBob(async ([alice, bob]) => {
         await alice.makeBtcDaiOrder(Position.Buy, "0.2", "9000");
         await bob.makeBtcDaiOrder(Position.Sell, "0.2", "9000");
@@ -38,7 +38,7 @@ it(
 );
 
 it(
-    "herc20-hbit-bob-misses-alice-redeems",
+    "alice-buys-bob-sells-bob-misses-alices-redeem",
     startConnectedAliceAndBob(async ([alice, bob]) => {
         await alice.makeBtcDaiOrder(Position.Buy, "0.2", "9000");
         await bob.makeBtcDaiOrder(Position.Sell, "0.2", "9000");
@@ -69,7 +69,7 @@ it(
 );
 
 it(
-    "hbit-herc20-alice-misses-bob-deploys-and-funds",
+    "alice-sells-bob-buys-alice-misses-bobs-fund",
     startConnectedAliceAndBob(async ([alice, bob]) => {
         await alice.makeBtcDaiOrder(Position.Sell, "0.2", "9000");
         await bob.makeBtcDaiOrder(Position.Buy, "0.2", "9000");
@@ -99,7 +99,7 @@ it(
 );
 
 it(
-    "hbit-herc20-bob-down-misses-alice-redeems",
+    "alice-sells-bob-buys-bob-misses-alices-redeem",
     startConnectedAliceAndBob(async ([alice, bob]) => {
         await alice.makeBtcDaiOrder(Position.Sell, "0.2", "9000");
         await bob.makeBtcDaiOrder(Position.Buy, "0.2", "9000");
