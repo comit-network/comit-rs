@@ -25,9 +25,7 @@ export class NectarInstance {
     }
 
     public async deposit(): Promise<DepositAddresses> {
-        const bin = process.env.NECTAR_BIN
-            ? process.env.NECTAR_BIN
-            : path.join(this.cargoTargetDirectory, "debug", "nectar");
+        const bin = await this.pathToNectar();
 
         this.logger.info("Using binary", bin);
 
@@ -47,9 +45,7 @@ export class NectarInstance {
     }
 
     public async balance(): Promise<Balances> {
-        const bin = process.env.NECTAR_BIN
-            ? process.env.NECTAR_BIN
-            : path.join(this.cargoTargetDirectory, "debug", "nectar");
+        const bin = await this.pathToNectar();
 
         this.logger.info("Using binary", bin);
 
@@ -74,9 +70,7 @@ export class NectarInstance {
      * Returns the PeerId under which this nectar instance participates in the COMIT network.
      */
     public async trade(): Promise<string> {
-        const bin = process.env.NECTAR_BIN
-            ? process.env.NECTAR_BIN
-            : path.join(this.cargoTargetDirectory, "debug", "nectar");
+        const bin = await this.pathToNectar();
 
         this.logger.info("Using binary", bin);
 
@@ -119,6 +113,20 @@ export class NectarInstance {
         this.logger.info("nectar started with PID", this.process.pid);
 
         return peerId;
+    }
+
+    private async pathToNectar() {
+        if (process.env.NECTAR_BIN) {
+            return process.env.NECTAR_BIN;
+        }
+
+        this.logger.debug(
+            "Path to `nectar` has not been provided, building from scratch"
+        );
+
+        await execAsync("cargo build -p nectar");
+
+        return path.join(this.cargoTargetDirectory, "debug", "nectar");
     }
 
     public stop() {

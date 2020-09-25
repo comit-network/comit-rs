@@ -12,6 +12,6 @@ module.exports = {
     setupFilesAfterEnv: [
         "<rootDir>/src/environment/jasmine_capture_current_testname.ts",
     ],
-    testTimeout: 123000,
+    testTimeout: 180000, // we are compiling cnd & nectar on demand, that can take quite a while sometimes
     bail: true,
 };
