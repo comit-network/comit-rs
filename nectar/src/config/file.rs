@@ -36,7 +36,7 @@ pub struct Maker {
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Fees {
     #[serde(default)]
-    #[serde(with = "crate::config::serde::bitcoin_amount")]
+    #[serde(with = "crate::config::serde::bitcoin_amount::btc_as_optional_float")]
     pub bitcoin: Option<bitcoin::Amount>,
 }
 
