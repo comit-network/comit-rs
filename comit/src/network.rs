@@ -24,7 +24,6 @@ pub use self::{
 pub struct Identities {
     pub ethereum_identity: Option<identity::Ethereum>,
     pub lightning_identity: Option<identity::Lightning>,
-    pub bitcoin_identity: Option<identity::Bitcoin>,
 }
 
 /// Data Alice learned from Bob during the communication phase.
