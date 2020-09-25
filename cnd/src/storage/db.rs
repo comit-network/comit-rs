@@ -1,11 +1,13 @@
 mod errors;
-#[cfg(test)]
-mod integration_tests;
 pub mod queries;
 mod schema;
-pub mod tables;
+mod tables;
 mod wrapper_types;
 embed_migrations!("./migrations");
+#[cfg(test)]
+mod integration_tests;
+#[cfg(test)]
+pub mod proptest;
 
 pub use self::{errors::*, tables::*, wrapper_types::Text};
 pub use crate::storage::{ForSwap, Save};

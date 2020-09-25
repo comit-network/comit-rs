@@ -8,7 +8,7 @@
 
 use crate::{ethereum::ChainId, LocalSwapId, Role, Side};
 use chrono::NaiveDateTime;
-use proptest::prelude::*;
+pub use proptest::prelude::*;
 use uuid::Uuid;
 
 pub fn role() -> impl Strategy<Value = Role> {
@@ -204,68 +204,6 @@ pub mod hbit {
                 final_identity,
                 network,
                 absolute_expiry
-            }
-        }
-    }
-}
-
-pub mod db {
-    use super::*;
-    use crate::storage;
-    use std::fmt::Debug;
-
-    pub fn created_swap<A, B>(
-        alpha: impl Strategy<Value = A>,
-        beta: impl Strategy<Value = B>,
-    ) -> impl Strategy<Value = storage::CreatedSwap<A, B>>
-    where
-        A: Debug,
-        B: Debug,
-    {
-        (
-            local_swap_id(),
-            alpha,
-            beta,
-            libp2p::peer_id(),
-            role(),
-            timestamp(),
-        )
-            .prop_map(|(swap_id, alpha, beta, peer, role, start_of_swap)| {
-                storage::CreatedSwap {
-                    swap_id,
-                    alpha,
-                    beta,
-                    peer,
-                    address_hint: None,
-                    role,
-                    start_of_swap,
-                }
-            })
-    }
-
-    pub mod tables {
-        use super::*;
-        use storage::{tables, tables::IntoInsertable};
-
-        prop_compose! {
-            pub fn insertable_swap()(
-                local_swap_id in local_swap_id(),
-                role in role(),
-                peer in libp2p::peer_id(),
-                start_of_swap in timestamp(),
-            ) -> tables::InsertableSwap {
-                tables::InsertableSwap::new(local_swap_id, peer, role, start_of_swap)
-            }
-        }
-
-        prop_compose! {
-            pub fn insertable_halbit()(
-                created in halbit::created_swap(),
-                swap_id in any::<i32>(),
-                role in role(),
-                side in side(),
-            ) -> tables::InsertableHalbit {
-                created.into_insertable(swap_id, role, side)
             }
         }
     }

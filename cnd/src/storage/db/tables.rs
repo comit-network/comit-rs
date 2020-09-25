@@ -269,7 +269,7 @@ impl Sqlite {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::proptest::*;
+    use crate::storage::db::proptest::tables::insertable_halbit;
     use proptest::prelude::*;
     use tokio::runtime::Runtime;
 
@@ -282,7 +282,7 @@ mod tests {
         /// exists with this swap_id.
         #[test]
         fn fk_relations_are_enforced(
-            insertable_halbit in db::tables::insertable_halbit(),
+            insertable_halbit in insertable_halbit(),
         ) {
             let db = Sqlite::test();
             let mut runtime = Runtime::new().unwrap();
