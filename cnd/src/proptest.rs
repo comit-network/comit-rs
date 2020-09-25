@@ -1,3 +1,5 @@
+#![allow(dead_code)] // These strategies might be useful even if they are currently not used.
+
 //! This module defines custom proptest strategies that make it easy to write
 //! property tests for our domain.
 //!
