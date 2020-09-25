@@ -1,5 +1,5 @@
 use crate::{
-    asset, hbit,
+    asset,
     storage::{
         db::{
             schema,
@@ -7,11 +7,11 @@ use crate::{
             tables::Swap,
             wrapper_types::{Satoshis, U32},
         },
-        Insert, IntoInsertable, Sqlite, Text,
+        Insert, Sqlite, Text,
     },
 };
 use anyhow::Result;
-use comit::{bitcoin, ledger, Role, Side};
+use comit::{bitcoin, ledger, Side};
 use diesel::{prelude::*, sqlite::SqliteConnection};
 
 #[derive(Associations, Clone, Debug, Identifiable, Queryable, PartialEq)]
@@ -75,23 +75,6 @@ impl InsertableHbit {
 impl From<Hbit> for asset::Bitcoin {
     fn from(hbit: Hbit) -> Self {
         hbit.amount.0.into()
-    }
-}
-
-impl IntoInsertable for hbit::CreatedSwap {
-    type Insertable = InsertableHbit;
-
-    fn into_insertable(self, swap_id: i32, _: Role, side: Side) -> Self::Insertable {
-        InsertableHbit {
-            swap_id,
-            amount: Text(self.amount.into()),
-            network: Text(self.network),
-            expiry: U32(self.absolute_expiry),
-            final_identity: Text(self.final_identity.into()),
-            // We always retrieve the transient identity from the other party
-            transient_identity: None,
-            side: Text(side),
-        }
     }
 }
 

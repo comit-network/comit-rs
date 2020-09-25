@@ -187,24 +187,3 @@ pub mod halbit {
         }
     }
 }
-
-pub mod hbit {
-    use super::*;
-    use crate::hbit;
-
-    prop_compose! {
-        pub fn created_swap()(
-            amount in asset::bitcoin(),
-            final_identity in bitcoin::address(),
-            network in ledger::bitcoin(),
-            absolute_expiry in any::<u32>()
-        ) -> hbit::CreatedSwap {
-            hbit::CreatedSwap {
-                amount,
-                final_identity,
-                network,
-                absolute_expiry
-            }
-        }
-    }
-}

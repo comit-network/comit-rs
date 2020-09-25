@@ -1,11 +1,11 @@
 use crate::{
     btsieve::{BlockByHash, LatestBlock},
-    ledger, state,
+    state,
     state::Update,
     tracing_ext::InstrumentProtocol,
     LocalSwapId, Role, Side,
 };
-use bitcoin::{Address, Block, BlockHash};
+use bitcoin::{Block, BlockHash};
 use chrono::{DateTime, Utc};
 use comit::{asset, htlc_location, transaction, LockProtocol, Secret};
 pub use comit::{hbit::*, identity};
@@ -42,15 +42,6 @@ pub async fn new<C>(
     }
 
     tracing::info!("swap finished");
-}
-
-/// Data required to create a swap that involves Bitcoin.
-#[derive(Clone, Debug)]
-pub struct CreatedSwap {
-    pub amount: asset::Bitcoin,
-    pub final_identity: Address,
-    pub network: ledger::Bitcoin,
-    pub absolute_expiry: u32,
 }
 
 #[derive(Default, Debug)]
