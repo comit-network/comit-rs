@@ -7,12 +7,12 @@ use async_trait::async_trait;
 use bitcoin::{consensus::deserialize, BlockHash};
 use futures::TryFutureExt;
 use reqwest::{Client, Url};
-use serde::{de, export::fmt, Deserialize, Deserializer};
+use serde::Deserialize;
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct ChainInfo {
     bestblockhash: BlockHash,
-    #[serde(deserialize_with = "deserialize_bitcoind_values")]
+    #[serde(with = "ledger::bitcoin::bitcoind_jsonrpc_network")]
     pub chain: ledger::Bitcoin,
 }
 
@@ -95,35 +95,6 @@ impl BlockByHash for BitcoindConnector {
     }
 }
 
-pub fn deserialize_bitcoind_values<'de, D>(deserializer: D) -> Result<ledger::Bitcoin, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    struct Visitor;
-
-    impl<'de> de::Visitor<'de> for Visitor {
-        type Value = ledger::Bitcoin;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-            formatter.write_str("a bitcoin network")
-        }
-
-        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            match v {
-                "main" => Ok(ledger::Bitcoin::Mainnet),
-                "test" => Ok(ledger::Bitcoin::Testnet),
-                "regtest" => Ok(ledger::Bitcoin::Regtest),
-                unknown => Err(E::custom(format!("unknown bitcoin network {}", unknown))),
-            }
-        }
-    }
-
-    deserializer.deserialize_str(Visitor)
-}
-
 #[derive(Debug, thiserror::Error)]
 #[error("GET request to {0} failed")]
 pub struct GetRequestFailed(Url);
@@ -139,7 +110,7 @@ fn decode_response(response_text: String) -> anyhow::Result<bitcoin::Block> {
 mod tests {
 
     use super::*;
-    use crate::ledger::Bitcoin;
+    use crate::ledger::bitcoin::Bitcoin;
     use bitcoin::hashes::sha256d;
     use spectral::prelude::*;
 

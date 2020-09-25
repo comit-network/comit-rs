@@ -10,7 +10,7 @@ pub async fn withdraw(
         Withdraw::Btc { amount, to_address } => {
             let bitcoin_wallet = bitcoin_wallet.borrow();
             let tx_id = bitcoin_wallet
-                .send_to_address(to_address.clone(), amount, bitcoin_wallet.network)
+                .send_to_address(to_address.clone(), amount, bitcoin_wallet.ledger)
                 .await?;
             Ok(format!(
                 "{} transferred to {}\nTransaction id: {}",
@@ -51,7 +51,10 @@ mod tests {
         ethereum::{dai, ether, ChainId},
         test_harness, Seed,
     };
-    use comit::asset::{ethereum::FromWei, Erc20, Erc20Quantity};
+    use comit::{
+        asset::{ethereum::FromWei, Erc20, Erc20Quantity},
+        ledger,
+    };
     use std::{str::FromStr, sync::Arc};
 
     // Run cargo test with `--ignored --nocapture` to see the `println output`
@@ -68,7 +71,7 @@ mod tests {
             bitcoin::Wallet::new(
                 seed,
                 bitcoin_blockchain.node_url.clone(),
-                ::bitcoin::Network::Regtest,
+                ledger::Bitcoin::Regtest,
             )
             .await
             .unwrap(),

@@ -1,5 +1,5 @@
 use crate::{
-    bitcoin::{Address, Amount, Client, Network, WalletInfoResponse},
+    bitcoin::{Address, Amount, Client, WalletInfoResponse},
     seed::Seed,
 };
 use ::bitcoin::{
@@ -9,6 +9,7 @@ use ::bitcoin::{
     PrivateKey, Transaction, Txid,
 };
 use bitcoin::{util::bip32::DerivationPath, OutPoint};
+use comit::ledger;
 use std::str::FromStr;
 use url::Url;
 
@@ -24,21 +25,21 @@ pub struct Wallet {
     name: String,
     bitcoind_client: Client,
     root_key: ExtendedPrivKey,
-    pub network: Network,
+    pub ledger: ledger::Bitcoin,
 }
 
 impl Wallet {
-    pub async fn new(seed: Seed, url: Url, network: Network) -> anyhow::Result<Wallet> {
+    pub async fn new(seed: Seed, url: Url, ledger: ledger::Bitcoin) -> anyhow::Result<Wallet> {
         let name = Wallet::gen_name(seed);
         let bitcoind_client = Client::new(url);
 
-        let root_key = Self::root_extended_private_key_from_seed(&seed, network);
+        let root_key = Self::root_extended_private_key_from_seed(&seed, ledger);
 
         let wallet = Wallet {
             name,
             bitcoind_client,
             root_key,
-            network,
+            ledger,
         };
 
         wallet.init(seed).await?;
@@ -94,13 +95,13 @@ impl Wallet {
     }
 
     pub async fn info(&self) -> anyhow::Result<WalletInfoResponse> {
-        self.assert_network(self.network).await?;
+        self.assert_network(self.ledger).await?;
 
         self.bitcoind_client.get_wallet_info(&self.name).await
     }
 
     pub async fn new_address(&self) -> anyhow::Result<Address> {
-        self.assert_network(self.network).await?;
+        self.assert_network(self.ledger).await?;
 
         self.bitcoind_client
             .get_new_address(&self.name, None, Some("bech32".into()))
@@ -108,7 +109,7 @@ impl Wallet {
     }
 
     pub async fn balance(&self) -> anyhow::Result<Amount> {
-        self.assert_network(self.network).await?;
+        self.assert_network(self.ledger).await?;
 
         self.bitcoind_client
             .get_balance(&self.name, None, None, None)
@@ -129,25 +130,28 @@ impl Wallet {
 
         let private_key = PrivateKey {
             compressed: true,
-            network: self.network,
+            network: self.ledger.into(),
             key,
         };
 
         private_key.to_wif()
     }
 
-    pub fn root_extended_private_key_from_seed(seed: &Seed, network: Network) -> ExtendedPrivKey {
+    pub fn root_extended_private_key_from_seed(
+        seed: &Seed,
+        ledger: ledger::Bitcoin,
+    ) -> ExtendedPrivKey {
         let (key, chain_code) = seed.root_secret_key_chain_code();
         let chain_code = ChainCode::from(chain_code.as_slice());
 
         let private_key = PrivateKey {
             compressed: true,
-            network,
+            network: ledger.into(),
             key,
         };
 
         ExtendedPrivKey {
-            network,
+            network: ledger.into(),
             depth: 0,
             parent_fingerprint: Default::default(),
             child_number: 0.into(),
@@ -164,8 +168,8 @@ impl Wallet {
             .collect()
     }
 
-    pub fn descriptors_from_seed(seed: &Seed, network: Network) -> Vec<String> {
-        let ext_priv_key = Self::root_extended_private_key_from_seed(seed, network);
+    pub fn descriptors_from_seed(seed: &Seed, ledger: ledger::Bitcoin) -> Vec<String> {
+        let ext_priv_key = Self::root_extended_private_key_from_seed(seed, ledger);
         Self::hd_paths()
             .iter()
             .map(|path| format!("wpkh({}{})", ext_priv_key, path))
@@ -208,9 +212,9 @@ impl Wallet {
         &self,
         address: Address,
         amount: Amount,
-        network: Network,
+        ledger: ledger::Bitcoin,
     ) -> anyhow::Result<Txid> {
-        self.assert_network(network).await?;
+        self.assert_network(ledger).await?;
 
         let txid = self
             .bitcoind_client
@@ -223,9 +227,9 @@ impl Wallet {
         &self,
         address: Address,
         amount: Amount,
-        network: Network,
+        ledger: ledger::Bitcoin,
     ) -> anyhow::Result<OutPoint> {
-        self.assert_network(network).await?;
+        self.assert_network(ledger).await?;
 
         let outpoint = self
             .bitcoind_client
@@ -237,9 +241,9 @@ impl Wallet {
     pub async fn send_raw_transaction(
         &self,
         transaction: Transaction,
-        network: Network,
+        ledger: ledger::Bitcoin,
     ) -> anyhow::Result<Txid> {
-        self.assert_network(network).await?;
+        self.assert_network(ledger).await?;
 
         let txid = self
             .bitcoind_client
@@ -253,7 +257,7 @@ impl Wallet {
         self.bitcoind_client.dump_wallet(&self.name, filename).await
     }
 
-    async fn assert_network(&self, expected: Network) -> anyhow::Result<()> {
+    async fn assert_network(&self, expected: ledger::Bitcoin) -> anyhow::Result<()> {
         let actual = self.bitcoind_client.network().await?;
 
         if expected != actual {
@@ -299,7 +303,7 @@ mod docker_tests {
         blockchain.init().await.unwrap();
 
         let seed = Seed::random().unwrap();
-        let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+        let wallet = Wallet::new(seed, blockchain.node_url.clone(), ledger::Bitcoin::Regtest)
             .await
             .unwrap();
 
@@ -314,7 +318,7 @@ mod docker_tests {
         blockchain.init().await.unwrap();
 
         let seed = Seed::random().unwrap();
-        let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+        let wallet = Wallet::new(seed, blockchain.node_url.clone(), ledger::Bitcoin::Regtest)
             .await
             .unwrap();
 
@@ -367,7 +371,7 @@ mod docker_tests {
         blockchain.init().await.unwrap();
 
         let seed = Seed::random().unwrap();
-        let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+        let wallet = Wallet::new(seed, blockchain.node_url.clone(), ledger::Bitcoin::Regtest)
             .await
             .unwrap();
 
@@ -383,7 +387,7 @@ mod docker_tests {
 
         let seed = Seed::random().unwrap();
         {
-            let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+            let wallet = Wallet::new(seed, blockchain.node_url.clone(), ledger::Bitcoin::Regtest)
                 .await
                 .unwrap();
 
@@ -391,7 +395,7 @@ mod docker_tests {
         }
 
         {
-            let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+            let wallet = Wallet::new(seed, blockchain.node_url.clone(), ledger::Bitcoin::Regtest)
                 .await
                 .unwrap();
 
@@ -411,7 +415,7 @@ mod docker_tests {
         let wallet_name = {
             let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
             blockchain.init().await.unwrap();
-            let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+            let wallet = Wallet::new(seed, blockchain.node_url.clone(), ledger::Bitcoin::Regtest)
                 .await
                 .unwrap();
             wallet.name
@@ -422,7 +426,8 @@ mod docker_tests {
         // to reproduce this behaviour)
         let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
         {
-            let res = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest).await;
+            let res =
+                Wallet::new(seed, blockchain.node_url.clone(), ledger::Bitcoin::Regtest).await;
             // If this did not fail then the test is moot
             assert!(res.is_err());
 
@@ -435,7 +440,7 @@ mod docker_tests {
         }
         // Generate 100+ blocks, now it should work
         blockchain.init().await.unwrap();
-        let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+        let wallet = Wallet::new(seed, blockchain.node_url.clone(), ledger::Bitcoin::Regtest)
             .await
             .unwrap();
         let _address = wallet.new_address().await.unwrap();
@@ -451,7 +456,7 @@ mod docker_tests {
             let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
             blockchain.init().await.unwrap();
 
-            let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+            let wallet = Wallet::new(seed, blockchain.node_url.clone(), ledger::Bitcoin::Regtest)
                 .await
                 .unwrap();
 
@@ -471,7 +476,7 @@ mod docker_tests {
         let blockchain = bitcoin::Blockchain::new(&tc_client).unwrap();
         blockchain.init().await.unwrap();
         let bitcoind_client = Client::new(blockchain.node_url.clone());
-        let wallet = Wallet::new(seed, blockchain.node_url.clone(), Network::Regtest)
+        let wallet = Wallet::new(seed, blockchain.node_url.clone(), ledger::Bitcoin::Regtest)
             .await
             .unwrap();
 

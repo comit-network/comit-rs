@@ -308,7 +308,7 @@ impl EventLoop {
                 };
 
                 let ethereum_chain_id = self.ethereum_wallet.chain_id();
-                let bitcoin_network = self.bitcoin_wallet.network.into();
+                let bitcoin_network = self.bitcoin_wallet.ledger;
 
                 let (ethereum_absolute_expiry, bitcoin_absolute_expiry, swap_protocol) =
                     match swap_protocol {

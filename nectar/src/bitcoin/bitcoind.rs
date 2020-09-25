@@ -1,10 +1,12 @@
 use crate::{
-    bitcoin::{Address, Amount, Network},
+    bitcoin::{Address, Amount},
     jsonrpc,
 };
 use ::bitcoin::{consensus::encode::serialize_hex, hashes::hex::FromHex, Transaction, Txid};
 use anyhow::Context;
 use bitcoin::OutPoint;
+use comit::ledger;
+use ledger::Bitcoin as Network;
 use serde::Deserialize;
 
 pub const JSONRPC_VERSION: &str = "1.0";
@@ -378,6 +380,7 @@ impl Client {
 
 #[derive(Debug, Deserialize)]
 struct BlockchainInfo {
+    #[serde(with = "ledger::bitcoin::bitcoind_jsonrpc_network")]
     chain: Network,
 }
 
