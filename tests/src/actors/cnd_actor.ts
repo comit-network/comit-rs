@@ -398,7 +398,8 @@ export class CndActor
 
     public async pollCndUntil<T>(
         location: string,
-        predicate: (body: T) => boolean
+        predicate: (body: T) => boolean,
+        timeout: number = 10_000
     ): Promise<T> {
         const poller = async () => {
             let response = await this.cnd.fetch<T>(location);
@@ -413,7 +414,7 @@ export class CndActor
 
         return pTimeout(
             poller(),
-            10_000,
+            timeout,
             new Error(
                 `response from ${location} did not satisfy predicate after 10 seconds`
             )
@@ -584,6 +585,14 @@ export class CndActor
             (peers) =>
                 peers.peers.findIndex((candidate) => candidate.id === peer) !==
                 -1
+        );
+    }
+
+    public async waitForRefund() {
+        await this.pollCndUntil<Entity>(
+            this.swap.self,
+            (body) => body.actions.findIndex((a) => a.name === "refund") !== -1,
+            40_000 // expiries module computes roughly 40 seconds expiry offsets for dev network
         );
     }
 }
