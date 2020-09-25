@@ -21,8 +21,6 @@ interface Payload<A, B> {
 
 export type HalbitHerc20Payload = Payload<HalbitPayload, Herc20Payload>;
 export type Herc20HalbitPayload = Payload<Herc20Payload, HalbitPayload>;
-export type HbitHerc20Payload = Payload<HbitPayload, Herc20Payload>;
-export type Herc20HbitPayload = Payload<Herc20Payload, HbitPayload>;
 
 export type HalbitPayload = {
     amount: bigint;
@@ -37,13 +35,6 @@ export type Herc20Payload = {
     token_contract: string;
     absolute_expiry: number;
     chain_id: number;
-};
-
-export type HbitPayload = {
-    amount: bigint;
-    final_identity: string;
-    network: string;
-    absolute_expiry: number;
 };
 
 /**

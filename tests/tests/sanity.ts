@@ -64,36 +64,6 @@ describe("Sanity", () => {
     );
 
     it(
-        "returns-invalid-body-for-bad-json-herc20-hbit",
-        startAlice(async (alice) => {
-            const promise = alice.cnd.createHerc20Hbit({
-                // @ts-ignore
-                garbage: true,
-            });
-
-            await expect(promise).rejects.toMatchObject({
-                status: 400,
-                title: "Invalid body.",
-            });
-        })
-    );
-
-    it(
-        "returns-invalid-body-for-bad-json-hbit-herc20",
-        startAlice(async (alice) => {
-            const promise = alice.cnd.createHbitHerc20({
-                // @ts-ignore
-                garbage: true,
-            });
-
-            await expect(promise).rejects.toMatchObject({
-                status: 400,
-                title: "Invalid body.",
-            });
-        })
-    );
-
-    it(
         "alice-has-empty-peer-list",
         startAlice(async (alice) => {
             const promise = alice.cnd.fetch("/peers");

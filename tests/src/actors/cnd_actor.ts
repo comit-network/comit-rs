@@ -1,9 +1,7 @@
 import {
     ActionKind,
     HalbitHerc20Payload,
-    HbitHerc20Payload,
     Herc20HalbitPayload,
-    Herc20HbitPayload,
     MarketEntity,
     OpenOrdersEntity,
     OrderEntity,
@@ -186,86 +184,6 @@ export class CndActor
             new Wallets({
                 ethereum: this.wallets.ethereum,
                 lightning: this.wallets.lightning,
-            })
-        );
-    }
-
-    public async createHerc20HbitSwap(create: Herc20HbitPayload) {
-        switch (this.role) {
-            case "Alice": {
-                this.alphaBalance = await Erc20BalanceAsserter.newInstance(
-                    this.wallets.ethereum,
-                    create.alpha.amount,
-                    create.alpha.token_contract
-                );
-                this.betaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
-                    this.wallets.bitcoin,
-                    create.beta.amount
-                );
-                break;
-            }
-            case "Bob": {
-                this.alphaBalance = await Erc20BalanceAsserter.newInstance(
-                    this.wallets.ethereum,
-                    create.alpha.amount,
-                    create.alpha.token_contract
-                );
-                this.betaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
-                    this.wallets.bitcoin,
-                    create.beta.amount
-                );
-                break;
-            }
-        }
-
-        const location = await this.cnd.createHerc20Hbit(create);
-
-        this.swap = new Swap(
-            this.cnd,
-            location,
-            new Wallets({
-                ethereum: this.wallets.ethereum,
-                bitcoin: this.wallets.bitcoin,
-            })
-        );
-    }
-
-    public async createHbitHerc20Swap(create: HbitHerc20Payload) {
-        switch (this.role) {
-            case "Alice": {
-                this.alphaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
-                    this.wallets.bitcoin,
-                    create.alpha.amount
-                );
-                this.betaBalance = await Erc20BalanceAsserter.newInstance(
-                    this.wallets.ethereum,
-                    create.beta.amount,
-                    create.beta.token_contract
-                );
-                break;
-            }
-            case "Bob": {
-                this.alphaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
-                    this.wallets.bitcoin,
-                    create.alpha.amount
-                );
-                this.betaBalance = await Erc20BalanceAsserter.newInstance(
-                    this.wallets.ethereum,
-                    create.beta.amount,
-                    create.beta.token_contract
-                );
-                break;
-            }
-        }
-
-        const location = await this.cnd.createHbitHerc20(create);
-
-        this.swap = new Swap(
-            this.cnd,
-            location,
-            new Wallets({
-                bitcoin: this.wallets.bitcoin,
-                ethereum: this.wallets.ethereum,
             })
         );
     }

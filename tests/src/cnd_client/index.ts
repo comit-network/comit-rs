@@ -8,9 +8,7 @@ import {
     CreateBtcDaiOrderPayload,
     GetInfoResponse,
     HalbitHerc20Payload,
-    HbitHerc20Payload,
     Herc20HalbitPayload,
-    Herc20HbitPayload,
 } from "./payload";
 
 export default class CndClient {
@@ -89,24 +87,6 @@ export default class CndClient {
         const request = await actionToHttpRequest(action, resolver);
 
         return this.client.request(request);
-    }
-
-    public async createHerc20Hbit(body: Herc20HbitPayload): Promise<string> {
-        const response = await this.client.post(
-            "swaps/herc20/hbit",
-            JSON.stringify(body, bigIntSerializer)
-        );
-
-        return response.headers.location;
-    }
-
-    public async createHbitHerc20(body: HbitHerc20Payload): Promise<string> {
-        const response = await this.client.post(
-            "swaps/hbit/herc20",
-            JSON.stringify(body, bigIntSerializer)
-        );
-
-        return response.headers.location;
     }
 
     public async createHalbitHerc20(
