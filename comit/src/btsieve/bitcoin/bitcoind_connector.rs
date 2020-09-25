@@ -12,7 +12,7 @@ use serde::Deserialize;
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct ChainInfo {
     bestblockhash: BlockHash,
-    #[serde(deserialize_with = "ledger::bitcoin::bitcoind_jsonrpc_network")]
+    #[serde(with = "ledger::bitcoin::bitcoind_jsonrpc_network")]
     pub chain: ledger::Bitcoin,
 }
 

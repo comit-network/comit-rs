@@ -48,45 +48,49 @@ impl From<::bitcoin::Network> for Bitcoin {
 /// ```rust
 /// use comit::ledger;
 ///
-/// #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
+/// #[derive(serde::Deserialize, PartialEq, Debug)]
 /// #[serde(transparent)]
 /// struct Container(#[serde(with = "ledger::bitcoin::bitcoind_jsonrpc_network")] ledger::Bitcoin);
 ///
 /// let container = Container(ledger::Bitcoin::Mainnet);
+/// let network = r#""main""#;
 ///
-/// assert_eq!(json_sats, serde_json::to_string(&container).unwrap());
 /// assert_eq!(
 ///     container,
-///     serde_json::from_str::<Container>("main").unwrap()
+///     serde_json::from_str::<Container>(network).unwrap()
 /// )
 /// ```
-pub fn bitcoind_jsonrpc_network<'de, D>(deserializer: D) -> Result<Bitcoin, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    struct Visitor;
+pub mod bitcoind_jsonrpc_network {
+    use super::*;
 
-    impl<'de> de::Visitor<'de> for Visitor {
-        type Value = Bitcoin;
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Bitcoin, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct Visitor;
 
-        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-            formatter.write_str("a bitcoin network")
-        }
+        impl<'de> de::Visitor<'de> for Visitor {
+            type Value = Bitcoin;
 
-        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            match v {
-                "main" => Ok(Bitcoin::Mainnet),
-                "test" => Ok(Bitcoin::Testnet),
-                "regtest" => Ok(Bitcoin::Regtest),
-                unknown => Err(E::custom(format!("unknown bitcoin network {}", unknown))),
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("a bitcoin network")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                match v {
+                    "main" => Ok(Bitcoin::Mainnet),
+                    "test" => Ok(Bitcoin::Testnet),
+                    "regtest" => Ok(Bitcoin::Regtest),
+                    unknown => Err(E::custom(format!("unknown bitcoin network {}", unknown))),
+                }
             }
         }
-    }
 
-    deserializer.deserialize_str(Visitor)
+        deserializer.deserialize_str(Visitor)
+    }
 }
 
 #[cfg(test)]
