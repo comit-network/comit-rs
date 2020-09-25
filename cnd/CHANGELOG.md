@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -   A set of API endpoints that expose the decentralized orderbook functionality.
 
+### Removed
+
+-   Support for directly creating `hbit-herc20` and `herc20-hbit` swaps.
+Use the new endpoint for creating `BTC/DAI` orders instead.
+
 ### Changed
 
 -   **Breaking Change** Remove support for RFC003 swaps
