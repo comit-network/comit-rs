@@ -6,6 +6,7 @@ use ::bitcoin::{consensus::encode::serialize_hex, hashes::hex::FromHex, Transact
 use anyhow::Context;
 use bitcoin::OutPoint;
 use comit::ledger;
+use ledger::Bitcoin as Network;
 use serde::Deserialize;
 
 pub const JSONRPC_VERSION: &str = "1.0";
@@ -22,7 +23,7 @@ impl Client {
         }
     }
 
-    pub async fn network(&self) -> anyhow::Result<ledger::Bitcoin> {
+    pub async fn network(&self) -> anyhow::Result<Network> {
         let blockchain_info = self
             .rpc_client
             .send::<Vec<()>, BlockchainInfo>(jsonrpc::Request::new(
@@ -396,8 +397,8 @@ impl Client {
 
 #[derive(Debug, Deserialize)]
 struct BlockchainInfo {
-    #[serde(deserialize_with = "ledger::bitcoin::bitcoind_jsonrpc_network")]
-    chain: ledger::Bitcoin,
+    #[serde(with = "ledger::bitcoin::bitcoind_jsonrpc_network")]
+    chain: Network,
 }
 
 #[derive(Debug, Deserialize)]
@@ -496,7 +497,7 @@ mod test {
 
         let network = client.network().await.unwrap();
 
-        assert_eq!(network, ledger::Bitcoin::Regtest)
+        assert_eq!(network, Network::Regtest)
     }
 
     #[test]
