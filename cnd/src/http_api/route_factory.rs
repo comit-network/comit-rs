@@ -3,8 +3,7 @@ use crate::{
     connectors::Connectors,
     http_api,
     http_api::{
-        dial_addr, halbit_herc20, hbit_herc20, herc20_halbit, herc20_hbit, info, markets, orders,
-        peers, swaps, tokens,
+        dial_addr, halbit_herc20, herc20_halbit, info, markets, orders, peers, swaps, tokens,
     },
     network::Swarm,
     storage::Storage,
@@ -80,22 +79,6 @@ pub fn create(
         .and(swarm_filter.clone())
         .and_then(halbit_herc20::post_swap);
 
-    let herc20_hbit = warp::post()
-        .and(warp::path!("swaps" / "herc20" / "hbit"))
-        .and(warp::path::end())
-        .and(warp::body::json())
-        .and(storage_filter.clone())
-        .and(swarm_filter.clone())
-        .and_then(herc20_hbit::post_swap);
-
-    let hbit_herc20 = warp::post()
-        .and(warp::path!("swaps" / "hbit" / "herc20"))
-        .and(warp::path::end())
-        .and(warp::body::json())
-        .and(storage_filter.clone())
-        .and(swarm_filter.clone())
-        .and_then(hbit_herc20::post_swap);
-
     let get_swap = swaps
         .and(warp::get())
         .and(warp::path::param())
@@ -170,8 +153,6 @@ pub fn create(
         .or(action_deploy)
         .or(action_redeem)
         .or(action_refund)
-        .or(hbit_herc20)
-        .or(herc20_hbit)
         .or(orders::make_btc_dai(
             storage.clone(),
             swarm.clone(),

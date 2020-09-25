@@ -18,7 +18,7 @@ mod swaps;
 mod tokens;
 
 pub use self::{
-    halbit::Halbit, hbit::Hbit, herc20::Herc20, problem::*, route_factory::create as create_routes,
+    halbit::Halbit, herc20::Herc20, problem::*, route_factory::create as create_routes,
 };
 
 pub const PATH: &str = "swaps";
