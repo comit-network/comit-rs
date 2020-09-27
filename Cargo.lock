@@ -436,12 +436,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
 
 [[package]]
-name = "bytecount"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0017894339f586ccb943b01b9555de56770c11cda818e7e3d8bd93f4ed7f46e"
-
-[[package]]
 name = "byteorder"
 version = "1.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -533,11 +527,10 @@ dependencies = [
 
 [[package]]
 name = "clarity"
-version = "0.2.0"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b3e554420300c5687c3de479583dea31dc57543d9546b52f35835a36c11ec33"
+checksum = "b29bb0b1875cf014ddde6b303f933a469e82abdd9273734b66c4719d2e9e100c"
 dependencies = [
- "bytecount",
  "lazy_static",
  "num-bigint 0.3.0",
  "num-traits",

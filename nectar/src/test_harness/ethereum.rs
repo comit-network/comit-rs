@@ -166,7 +166,7 @@ impl<'c> Blockchain<'c> {
         let transfer = clarity::abi::encode_call("transfer(address,uint256)", &[
             clarity::abi::Token::Address(to),
             clarity::abi::Token::Uint(Uint256::from_bytes_le(value.to_bytes().as_slice())),
-        ]);
+        ])?;
 
         Ok(transfer)
     }
