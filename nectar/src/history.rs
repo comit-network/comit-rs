@@ -40,10 +40,12 @@ impl History {
 #[derive(Debug, Clone, Serialize)]
 pub struct Trade {
     /// When the trade was taken and accepted
-    pub utc_start_timestamp: UtcDateTime,
+    #[serde(serialize_with = "datetime_rfc3339")]
+    pub utc_start_timestamp: DateTime<Utc>,
     /// When the last transaction (redeem or refund) was seen (can be changed to
     /// confirmed in the future)
-    pub utc_final_timestamp: UtcDateTime,
+    #[serde(serialize_with = "datetime_rfc3339")]
+    pub utc_final_timestamp: DateTime<Utc>,
     /// The symbol of the base currency
     pub base_symbol: Symbol,
     /// The symbol of the quote currency
@@ -60,14 +62,6 @@ pub struct Trade {
     /// the Peer id of the counterpart/taker
     pub peer: PeerId,
     // TODO: Add fees?
-}
-
-/// Struct representing a UTC Date Time.
-/// Blockchain times are always UTC so we are keeping consistent with the domain
-/// A local time might be useful can be added if a user requests it.
-#[derive(Debug, Clone, Copy)]
-pub struct UtcDateTime {
-    inner: DateTime<Utc>,
 }
 
 #[derive(Debug, Copy, Clone, Serialize)]
@@ -125,19 +119,14 @@ impl Serialize for PeerId {
     }
 }
 
-impl From<DateTime<Utc>> for UtcDateTime {
-    fn from(date_time: DateTime<Utc>) -> Self {
-        UtcDateTime { inner: date_time }
-    }
-}
-
-impl Serialize for UtcDateTime {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.inner.to_rfc3339())
-    }
+fn datetime_rfc3339<S>(
+    value: &DateTime<Utc>,
+    serializer: S,
+) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(&value.to_rfc3339())
 }
 
 #[cfg(test)]
@@ -155,12 +144,8 @@ impl Trade {
         use std::str::FromStr;
 
         Trade {
-            utc_start_timestamp: DateTime::from_str("2020-07-10T17:48:26.123+10:00")
-                .unwrap()
-                .into(),
-            utc_final_timestamp: DateTime::from_str("2020-07-10T18:48:26.456+10:00")
-                .unwrap()
-                .into(),
+            utc_start_timestamp: "2020-07-10T17:48:26.123+10:00".parse().unwrap(),
+            utc_final_timestamp: "2020-07-10T18:48:26.456+10:00".parse().unwrap(),
             base_symbol: Symbol::Btc,
             quote_symbol: Symbol::Dai,
             position: Position::Buy,
@@ -178,12 +163,8 @@ impl Trade {
         use std::str::FromStr;
 
         Trade {
-            utc_start_timestamp: DateTime::from_str("2020-07-11T12:00:00.789+10:00")
-                .unwrap()
-                .into(),
-            utc_final_timestamp: DateTime::from_str("2020-07-11T13:00:00.000+10:00")
-                .unwrap()
-                .into(),
+            utc_start_timestamp: "2020-07-11T12:00:00.789+10:00".parse().unwrap(),
+            utc_final_timestamp: "2020-07-11T13:00:00.000+10:00".parse().unwrap(),
             base_symbol: Symbol::Btc,
             quote_symbol: Symbol::Dai,
             position: Position::Sell,

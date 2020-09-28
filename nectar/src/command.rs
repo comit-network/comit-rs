@@ -126,16 +126,11 @@ pub fn into_history_trade(
         SwapKind::Herc20Hbit(swap) => (swap, history::Position::Buy),
     };
 
-    #[cfg(not(test))]
-    let final_timestamp = final_timestamp.into();
-
     #[cfg(test)]
-    let final_timestamp = DateTime::from_str("2020-07-10T17:48:26.123+10:00")
-        .unwrap()
-        .into();
+    let final_timestamp = DateTime::<Utc>::from_str("2020-07-10T17:48:26.123+10:00").unwrap();
 
     Trade {
-        utc_start_timestamp: history::UtcDateTime::from(swap.start_of_swap),
+        utc_start_timestamp: swap.start_of_swap,
         utc_final_timestamp: final_timestamp,
         base_symbol: Symbol::Btc,
         quote_symbol: Symbol::Dai,
