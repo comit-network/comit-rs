@@ -2,10 +2,11 @@ use crate::{
     connectors::Connectors,
     halbit, hbit, herc20,
     local_swap_id::LocalSwapId,
-    storage::{Load, SwapContext},
+    storage::{commands, Load, SwapContext},
     Role, Side, Storage,
 };
 use anyhow::{Context, Result};
+use futures::prelude::*;
 use time::OffsetDateTime;
 use tokio::{runtime::Handle, task::JoinHandle};
 
@@ -58,13 +59,47 @@ pub async fn spawn(
 ) -> anyhow::Result<()> {
     within_swap_context!(swap_context, {
         let swap = Load::<Swap<AlphaParams, BetaParams>>::load(&storage, swap_context.id).await?;
+        let swap_id = swap_context.id;
         let (alpha, beta) = swap.into_context_pair(swap_context);
 
-        alpha
+        let alpha_handle = alpha
             .spawn(connectors.clone(), storage.clone(), handle.clone())
             .context("failed to spawn protocol for alpha ledger")?;
-        beta.spawn(connectors.clone(), storage.clone(), handle.clone())
+        let beta_handle = beta
+            .spawn(connectors.clone(), storage.clone(), handle.clone())
             .context("failed to spawn protocol for alpha ledger")?;
+
+        handle.spawn(async move {
+            let result = future::join(alpha_handle, beta_handle).await;
+
+            match result {
+                (Err(e), _) => {
+                    let e = Box::new(e);
+                    tracing::error!(
+                        error = &e as &(dyn std::error::Error + 'static),
+                        "execution of alpha protocol for swap {} was cancelled",
+                        swap_id,
+                    );
+                }
+                (_, Err(e)) => {
+                    let e = Box::new(e);
+                    tracing::error!(
+                        error = &e as &(dyn std::error::Error + 'static),
+                        "execution of beta protocol for swap {} was cancelled",
+                        swap_id,
+                    );
+                }
+                (Ok(()), Ok(())) => {}
+            }
+
+            if let Err(e) = storage
+                .db
+                .do_in_transaction(|conn| commands::update_order_of_swap_to_closed(conn, swap_id))
+                .await
+            {
+                tracing::error!("failed to update order state: {:#}", e);
+            }
+        });
     });
 
     Ok(())

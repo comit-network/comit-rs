@@ -2,7 +2,7 @@ use crate::{
     btsieve::{BlockByHash, LatestBlock},
     ledger, state,
     state::Update,
-    storage::{commands, Storage},
+    storage::Storage,
     tracing_ext::InstrumentProtocol,
     LocalSwapId, Role, Side,
 };
@@ -38,14 +38,6 @@ pub async fn new<C>(
 
     while let Ok(Some(event)) = events.try_next().await {
         storage.hbit_states.update(&id, event).await;
-    }
-
-    if let Err(e) = storage
-        .db
-        .do_in_transaction(|conn| commands::update_order_of_swap_to_closed(conn, id))
-        .await
-    {
-        tracing::error!("failed to update order state: {:#}", e);
     }
 
     tracing::info!("swap finished");
