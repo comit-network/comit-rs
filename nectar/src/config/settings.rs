@@ -163,6 +163,8 @@ pub struct Maker {
     /// Spread to apply to the mid-market rate, format is permyriad. E.g. 5.20
     /// is 5.2% spread
     pub spread: Spread,
+    // TODO: Probably move that under something common to fee_strategies.
+    // I did not realize I would still need it.
     /// Maximum possible network fee to consider when calculating the available
     /// balance. Fees are in the nominal native currency and per
     /// transaction.

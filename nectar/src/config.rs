@@ -54,6 +54,17 @@ impl Default for EstimateMode {
     }
 }
 
+impl From<EstimateMode> for crate::bitcoin::EstimateMode {
+    fn from(config: EstimateMode) -> Self {
+        use crate::bitcoin::EstimateMode::*;
+        match config {
+            EstimateMode::Unset => Unset,
+            EstimateMode::Economical => Economical,
+            EstimateMode::Conservative => Conservative,
+        }
+    }
+}
+
 pub fn read_config<T>(config_file: &Option<PathBuf>, default_config_path: T) -> anyhow::Result<File>
 where
     T: FnOnce() -> anyhow::Result<PathBuf>,

@@ -35,6 +35,8 @@ pub struct Maker {
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct MaxPossibleFee {
+    // TODO: This should be a sat/byte fee as the user would have no idea of the size of the COMIT
+    // transactions.
     #[serde(default)]
     #[serde(with = "crate::config::serde::bitcoin_amount::btc_as_optional_float")]
     pub bitcoin: Option<bitcoin::Amount>,

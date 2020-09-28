@@ -132,7 +132,7 @@ impl Maker {
         }
     }
 
-    pub fn new_order(&self, position: Position) -> anyhow::Result<BtcDaiOrderForm> {
+    pub async fn new_order(&self, position: Position) -> anyhow::Result<BtcDaiOrderForm> {
         match position {
             Position::Buy => self.new_buy_order(),
             Position::Sell => self.new_sell_order(),
@@ -355,7 +355,14 @@ mod tests {
 
     #[test]
     fn published_sell_order_can_be_taken() {
-        let strategy = strategy::AllIn::new(btc(0.0), Some(btc(1.0)), None, Spread::static_stub());
+        let strategy = strategy::AllIn::new(
+            Default::default(),
+            btc(0.0),
+            Some(btc(1.0)),
+            None,
+            Spread::static_stub(),
+            StaticStub::static_stub(),
+        );
 
         let mut maker = Maker {
             btc_balance: some_btc(3.0),
@@ -374,7 +381,14 @@ mod tests {
 
     #[test]
     fn published_buy_order_can_be_taken() {
-        let strategy = strategy::AllIn::new(btc(0.0), None, Some(dai(1.0)), Spread::static_stub());
+        let strategy = strategy::AllIn::new(
+            Default::default(),
+            btc(0.0),
+            None,
+            Some(dai(1.0)),
+            Spread::static_stub(),
+            StaticStub::static_stub(),
+        );
 
         let mut maker = Maker {
             dai_balance: some_dai(3.0),
@@ -393,7 +407,14 @@ mod tests {
 
     #[test]
     fn new_buy_order_is_correct() {
-        let strategy = strategy::AllIn::new(btc(0.0), None, Some(dai(18.0)), Spread::static_stub());
+        let strategy = strategy::AllIn::new(
+            Default::default(),
+            btc(0.0),
+            None,
+            Some(dai(18.0)),
+            Spread::static_stub(),
+            StaticStub::static_stub(),
+        );
 
         let maker = Maker {
             dai_balance: some_dai(20.0),
