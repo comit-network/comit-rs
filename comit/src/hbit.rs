@@ -19,13 +19,13 @@ use bitcoin::{
     Address, Block, BlockHash, Transaction,
 };
 use blockchain_contracts::bitcoin::{hbit::Htlc, witness::UnlockParameters};
-use chrono::{DateTime, Utc};
 use futures::{
     future::{self, Either},
     Stream,
 };
 use genawaiter::sync::{Co, Gen};
 use std::cmp::Ordering;
+use time::OffsetDateTime;
 use tracing_futures::Instrument;
 
 /// Represents the events in the hbit protocol.
@@ -86,7 +86,7 @@ pub struct Refunded {
 pub fn new<'a, C>(
     connector: &'a C,
     params: Params,
-    start_of_swap: DateTime<Utc>,
+    start_of_swap: OffsetDateTime,
 ) -> impl Stream<Item = anyhow::Result<Event>> + 'a
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
@@ -103,7 +103,7 @@ where
 async fn watch_ledger<C, R>(
     connector: &C,
     params: Params,
-    start_of_swap: DateTime<Utc>,
+    start_of_swap: OffsetDateTime,
     co: &Co<anyhow::Result<Event>, R>,
 ) -> anyhow::Result<()>
 where
@@ -144,7 +144,7 @@ where
 pub async fn watch_for_funded<C>(
     connector: &C,
     params: &Params,
-    start_of_swap: DateTime<Utc>,
+    start_of_swap: OffsetDateTime,
 ) -> anyhow::Result<Funded>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
@@ -178,7 +178,7 @@ pub async fn watch_for_redeemed<C>(
     connector: &C,
     params: &Params,
     location: htlc_location::Bitcoin,
-    start_of_swap: DateTime<Utc>,
+    start_of_swap: OffsetDateTime,
 ) -> anyhow::Result<Redeemed>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
@@ -201,7 +201,7 @@ pub async fn watch_for_refunded<C>(
     connector: &C,
     params: &Params,
     location: htlc_location::Bitcoin,
-    start_of_swap: DateTime<Utc>,
+    start_of_swap: OffsetDateTime,
 ) -> anyhow::Result<Refunded>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,

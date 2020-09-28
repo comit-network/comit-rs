@@ -11,13 +11,12 @@ async-trait = "0.1"
 atty = "0.2"
 base64 = "0.12.3"
 bitcoin = { version = "0.25", features = ["use-serde"] }
-chrono = { version = "0.4", features = ["serde"] }
 comit = { path = "../comit" }
 config = { version = "0.10", features = ["toml"], default-features = false }
 conquer-once = "0.2.1"
 data-encoding = "2.3"
 derivative = "2"
-diesel = { version = "1.4", features = ["sqlite", "chrono"] }
+diesel = { version = "1.4", features = ["sqlite"] }
 diesel_migrations = "1.4.0"
 digest = { path = "../digest" }
 directories = "3.0"

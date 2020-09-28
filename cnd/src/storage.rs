@@ -10,7 +10,6 @@ use crate::{
     LocalSwapId, Role, Side,
 };
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use std::sync::Arc;
 
 pub use db::*;
@@ -109,7 +108,7 @@ where
             role,
             alpha,
             beta,
-            start_of_swap: DateTime::<Utc>::from_utc(tab.swap.start_of_swap, Utc),
+            start_of_swap: tab.swap.start_of_swap,
         })
     }
 }

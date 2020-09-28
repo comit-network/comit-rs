@@ -9,8 +9,8 @@ use crate::{
     ethereum::{Address, Block, Hash, Input, Log, Transaction, TransactionReceipt, U256},
 };
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
 use genawaiter::GeneratorState;
+use time::OffsetDateTime;
 
 #[async_trait]
 pub trait ReceiptByHash: Send + Sync + 'static {
@@ -38,7 +38,7 @@ impl PreviousBlockHash for Block {
 #[tracing::instrument(level = "debug", skip(connector, start_of_swap, expected_bytecode))]
 pub async fn watch_for_contract_creation<C>(
     connector: &C,
-    start_of_swap: DateTime<Utc>,
+    start_of_swap: OffsetDateTime,
     expected_bytecode: &[u8],
 ) -> anyhow::Result<(Transaction, Address)>
 where
@@ -88,7 +88,7 @@ where
 #[tracing::instrument(level = "debug", skip(connector, start_of_swap, expected_event))]
 pub async fn watch_for_event<C>(
     connector: &C,
-    start_of_swap: DateTime<Utc>,
+    start_of_swap: OffsetDateTime,
     expected_event: Event,
 ) -> anyhow::Result<(Transaction, Log)>
 where
@@ -137,7 +137,7 @@ fn find_log_for_event_in_receipt(event: &Event, receipt: TransactionReceipt) -> 
 
 pub async fn matching_transaction_and_receipt<C, F>(
     connector: &C,
-    start_of_swap: DateTime<Utc>,
+    start_of_swap: OffsetDateTime,
     matcher: F,
 ) -> anyhow::Result<(Transaction, TransactionReceipt)>
 where
@@ -187,7 +187,7 @@ where
 
 async fn matching_transaction_and_log<C, F>(
     connector: &C,
-    start_of_swap: DateTime<Utc>,
+    start_of_swap: OffsetDateTime,
     topics: Vec<Option<Topic>>,
     matcher: F,
 ) -> anyhow::Result<(Transaction, Log)>
@@ -258,7 +258,7 @@ where
 }
 
 impl Predates for Block {
-    fn predates(&self, timestamp: DateTime<Utc>) -> bool {
+    fn predates(&self, timestamp: OffsetDateTime) -> bool {
         let unix_timestamp = timestamp.timestamp();
 
         self.timestamp < U256::from(unix_timestamp)

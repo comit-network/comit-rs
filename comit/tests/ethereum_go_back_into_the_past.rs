@@ -1,11 +1,11 @@
 pub mod ethereum_helper;
 
-use chrono::{DateTime, NaiveDateTime, Utc};
 use comit::{
     btsieve::ethereum::matching_transaction_and_receipt,
     ethereum::{Block, Transaction, TransactionReceipt},
 };
 use ethereum_helper::EthereumConnectorMock;
+use time::OffsetDateTime;
 
 #[tokio::test]
 async fn find_transaction_go_back_into_the_past() {
@@ -45,10 +45,8 @@ async fn find_transaction_go_back_into_the_past() {
         vec![(want_transaction.hash, want_receipt.clone())],
     );
 
-    let start_of_swap = DateTime::<Utc>::from_utc(
-        NaiveDateTime::from_timestamp(block1_with_transaction.timestamp.low_u32() as i64, 0),
-        Utc,
-    );
+    let start_of_swap =
+        OffsetDateTime::from_unix_timestamp(block1_with_transaction.timestamp.as_u32() as i64);
 
     let (got_transaction, got_receipt) =
         matching_transaction_and_receipt(&connector, start_of_swap, {

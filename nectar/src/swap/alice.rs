@@ -8,9 +8,9 @@ use crate::{
     },
     SwapId,
 };
-use chrono::{DateTime, Utc};
 use comit::{Secret, Timestamp};
 use std::sync::Arc;
+use time::OffsetDateTime;
 
 #[derive(Clone, Debug)]
 pub struct Alice<AW, BW> {
@@ -19,7 +19,7 @@ pub struct Alice<AW, BW> {
     pub db: Arc<Database>,
     pub swap_id: SwapId,
     pub secret: Secret,
-    pub utc_start_of_swap: DateTime<Utc>,
+    pub utc_start_of_swap: OffsetDateTime,
     pub beta_expiry: Timestamp,
 }
 
@@ -52,7 +52,7 @@ where
         params: herc20::Params,
         secret: Secret,
         deploy_event: herc20::Deployed,
-        utc_start_of_swap: DateTime<Utc>,
+        utc_start_of_swap: OffsetDateTime,
     ) -> anyhow::Result<herc20::Redeemed> {
         let action =
             self.beta_wallet

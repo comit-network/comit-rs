@@ -8,7 +8,6 @@ use crate::{
     },
     ProtocolSpawner,
 };
-use chrono::NaiveDateTime;
 use comit::{
     lightning,
     network::{
@@ -257,13 +256,11 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<setup_swap::BehaviourOutEvent<S
                 let SetupSwapContext {
                     swap: swap_id,
                     order: order_id,
-                    match_reference_point,
+                    match_reference_point: start_of_swap,
                 } = exec_swap.context;
                 let protocol = exec_swap.swap_protocol;
                 let role = exec_swap.our_role;
                 let secret_hash = exec_swap.herc20.secret_hash;
-                let start_of_swap =
-                    NaiveDateTime::from_timestamp(match_reference_point.timestamp(), 0);
 
                 let insertable_swap =
                     InsertableSwap::new(swap_id, exec_swap.peer_id, role, start_of_swap);

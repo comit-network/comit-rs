@@ -16,13 +16,13 @@ use crate::{
     network::ActivePeer,
     swap::SwapKind,
 };
-use chrono::{DateTime, Utc};
 use num::BigUint;
 use std::str::FromStr;
 
 pub use balance::balance;
 pub use deposit::deposit;
 pub use resume_only::resume_only;
+use time::OffsetDateTime;
 pub use trade::trade;
 pub use wallet_info::wallet_info;
 pub use withdraw::withdraw;
@@ -117,7 +117,7 @@ fn parse_ether(str: &str) -> anyhow::Result<ether::Amount> {
 pub fn into_history_trade(
     peer_id: libp2p::PeerId,
     swap: SwapKind,
-    #[cfg(not(test))] final_timestamp: DateTime<Utc>,
+    #[cfg(not(test))] final_timestamp: OffsetDateTime,
 ) -> history::Trade {
     use crate::history::*;
 
@@ -127,7 +127,8 @@ pub fn into_history_trade(
     };
 
     #[cfg(test)]
-    let final_timestamp = DateTime::<Utc>::from_str("2020-07-10T17:48:26.123+10:00").unwrap();
+    let final_timestamp =
+        OffsetDateTime::parse("2020-07-10T17:48:26.123+10:00", time::Format::Rfc3339).unwrap();
 
     Trade {
         utc_start_timestamp: swap.start_of_swap,
@@ -146,11 +147,11 @@ pub fn into_history_trade(
 pub struct FinishedSwap {
     pub swap: SwapKind,
     pub peer: ActivePeer,
-    pub final_timestamp: DateTime<Utc>,
+    pub final_timestamp: OffsetDateTime,
 }
 
 impl FinishedSwap {
-    pub fn new(swap: SwapKind, taker: ActivePeer, final_timestamp: DateTime<Utc>) -> Self {
+    pub fn new(swap: SwapKind, taker: ActivePeer, final_timestamp: OffsetDateTime) -> Self {
         Self {
             swap,
             peer: taker,

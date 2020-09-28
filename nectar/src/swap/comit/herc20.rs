@@ -1,6 +1,5 @@
 use crate::swap::comit::SwapFailedShouldRefund;
 use anyhow::Result;
-use chrono::{DateTime, Utc};
 
 pub use comit::{
     actions::ethereum::*,
@@ -10,6 +9,7 @@ pub use comit::{
     herc20::*,
     identity, transaction, Secret, SecretHash, Timestamp,
 };
+use time::OffsetDateTime;
 
 #[async_trait::async_trait]
 pub trait ExecuteDeploy {
@@ -22,7 +22,7 @@ pub trait ExecuteFund {
         &self,
         params: Params,
         deploy_event: Deployed,
-        utc_start_of_swap: DateTime<Utc>,
+        utc_start_of_swap: OffsetDateTime,
     ) -> Result<Funded>;
 }
 
@@ -33,7 +33,7 @@ pub trait ExecuteRedeem {
         params: Params,
         secret: Secret,
         deploy_event: Deployed,
-        utc_start_of_swap: DateTime<Utc>,
+        utc_start_of_swap: OffsetDateTime,
     ) -> Result<Redeemed>;
 }
 
@@ -43,7 +43,7 @@ pub trait ExecuteRefund {
         &self,
         params: Params,
         deploy_event: Deployed,
-        utc_start_of_swap: DateTime<Utc>,
+        utc_start_of_swap: OffsetDateTime,
     ) -> Result<Refunded>;
 }
 
@@ -56,7 +56,7 @@ pub struct Funded {
 pub async fn watch_for_funded<C>(
     connector: &C,
     params: Params,
-    utc_start_of_swap: DateTime<Utc>,
+    utc_start_of_swap: OffsetDateTime,
     deployed: Deployed,
 ) -> Result<Funded>
 where
@@ -76,7 +76,7 @@ where
 pub async fn refund_if_necessary<A>(
     actor: A,
     herc20: Params,
-    utc_start_of_swap: DateTime<Utc>,
+    utc_start_of_swap: OffsetDateTime,
     swap_result: Result<()>,
 ) -> Result<()>
 where

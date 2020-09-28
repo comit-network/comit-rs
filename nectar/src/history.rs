@@ -1,6 +1,5 @@
 use crate::fs::ensure_directory_exists;
 use anyhow::Result;
-use chrono::{DateTime, Utc};
 use csv::*;
 use libp2p::PeerId;
 use num::BigUint;
@@ -9,6 +8,7 @@ use std::{
     fs::{File, OpenOptions},
     path::Path,
 };
+use time::{Format, OffsetDateTime, UtcOffset};
 
 #[derive(Debug)]
 pub struct History {
@@ -42,11 +42,11 @@ impl History {
 pub struct Trade {
     /// When the trade was taken and accepted
     #[serde(serialize_with = "datetime_rfc3339")]
-    pub utc_start_timestamp: DateTime<Utc>,
+    pub utc_start_timestamp: OffsetDateTime,
     /// When the last transaction (redeem or refund) was seen (can be changed to
     /// confirmed in the future)
     #[serde(serialize_with = "datetime_rfc3339")]
-    pub utc_final_timestamp: DateTime<Utc>,
+    pub utc_final_timestamp: OffsetDateTime,
     /// The symbol of the base currency
     pub base_symbol: Symbol,
     /// The symbol of the quote currency
@@ -102,13 +102,14 @@ where
 }
 
 fn datetime_rfc3339<S>(
-    value: &DateTime<Utc>,
+    value: &OffsetDateTime,
     serializer: S,
 ) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
 where
     S: Serializer,
 {
-    serializer.serialize_str(&value.to_rfc3339())
+    let in_utc = value.to_offset(UtcOffset::UTC);
+    serializer.serialize_str(&in_utc.format(Format::Rfc3339))
 }
 
 #[cfg(test)]
@@ -126,8 +127,16 @@ impl Trade {
         use std::str::FromStr;
 
         Trade {
-            utc_start_timestamp: "2020-07-10T17:48:26.123+10:00".parse().unwrap(),
-            utc_final_timestamp: "2020-07-10T18:48:26.456+10:00".parse().unwrap(),
+            utc_start_timestamp: OffsetDateTime::parse(
+                "2020-07-10T17:48:26.123+10:00",
+                Format::Rfc3339,
+            )
+            .unwrap(),
+            utc_final_timestamp: OffsetDateTime::parse(
+                "2020-07-10T18:48:26.456+10:00",
+                Format::Rfc3339,
+            )
+            .unwrap(),
             base_symbol: Symbol::Btc,
             quote_symbol: Symbol::Dai,
             position: Position::Buy,
@@ -141,8 +150,16 @@ impl Trade {
         use std::str::FromStr;
 
         Trade {
-            utc_start_timestamp: "2020-07-11T12:00:00.789+10:00".parse().unwrap(),
-            utc_final_timestamp: "2020-07-11T13:00:00.000+10:00".parse().unwrap(),
+            utc_start_timestamp: OffsetDateTime::parse(
+                "2020-07-11T12:00:00.789+10:00",
+                Format::Rfc3339,
+            )
+            .unwrap(),
+            utc_final_timestamp: OffsetDateTime::parse(
+                "2020-07-11T13:00:00.000+10:00",
+                Format::Rfc3339,
+            )
+            .unwrap(),
             base_symbol: Symbol::Btc,
             quote_symbol: Symbol::Dai,
             position: Position::Sell,
@@ -174,8 +191,8 @@ mod tests {
         file.read_to_string(&mut contents).unwrap();
 
         let expected_contents = "utc_start_timestamp,utc_final_timestamp,base_symbol,quote_symbol,position,base_precise_amount,quote_precise_amount,peer
-2020-07-10T07:48:26.123+00:00,2020-07-10T08:48:26.456+00:00,BTC,DAI,Buy,1000000,99000000000000000000,QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg
-2020-07-11T02:00:00.789+00:00,2020-07-11T03:00:00+00:00,BTC,DAI,Sell,20000000,2012340000000000000000,QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK
+2020-07-10T07:48:26+00:00,2020-07-10T08:48:26+00:00,BTC,DAI,Buy,1000000,99000000000000000000,QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg
+2020-07-11T02:00:00+00:00,2020-07-11T03:00:00+00:00,BTC,DAI,Sell,20000000,2012340000000000000000,QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK
 ";
 
         assert_eq!(contents, expected_contents);
@@ -200,8 +217,8 @@ mod tests {
         file.read_to_string(&mut contents).unwrap();
 
         let expected_contents = "utc_start_timestamp,utc_final_timestamp,base_symbol,quote_symbol,position,base_precise_amount,quote_precise_amount,peer
-2020-07-10T07:48:26.123+00:00,2020-07-10T08:48:26.456+00:00,BTC,DAI,Buy,1000000,99000000000000000000,QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg
-2020-07-11T02:00:00.789+00:00,2020-07-11T03:00:00+00:00,BTC,DAI,Sell,20000000,2012340000000000000000,QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK
+2020-07-10T07:48:26+00:00,2020-07-10T08:48:26+00:00,BTC,DAI,Buy,1000000,99000000000000000000,QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg
+2020-07-11T02:00:00+00:00,2020-07-11T03:00:00+00:00,BTC,DAI,Sell,20000000,2012340000000000000000,QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK
 ";
 
         assert_eq!(contents, expected_contents);

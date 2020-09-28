@@ -7,10 +7,10 @@ use crate::{
     LocalSwapId, Role, Side,
 };
 use bitcoin::{Address, Block, BlockHash};
-use chrono::{DateTime, Utc};
 use comit::{asset, htlc_location, transaction, LockProtocol, Secret};
 use futures::TryStreamExt;
 use std::collections::{hash_map::Entry, HashMap};
+use time::OffsetDateTime;
 use tokio::sync::Mutex;
 
 use crate::storage::{BtcDaiOrder, Order};
@@ -24,7 +24,7 @@ pub use comit::{hbit::*, identity};
 pub async fn new<C>(
     id: LocalSwapId,
     params: Params,
-    start_of_swap: DateTime<Utc>,
+    start_of_swap: OffsetDateTime,
     role: Role,
     side: Side,
     storage: Storage,
