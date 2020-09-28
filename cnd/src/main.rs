@@ -38,7 +38,6 @@ mod hbit;
 mod herc20;
 mod http_api;
 mod local_swap_id;
-mod protocol_spawner;
 mod republish;
 mod respawn;
 mod spawn;
@@ -79,7 +78,6 @@ use self::{
     file_lock::TryLockExclusive,
     local_swap_id::LocalSwapId,
     network::{Swarm, SwarmWorker},
-    protocol_spawner::{ProtocolSpawner, *},
     republish::republish_open_orders,
     respawn::respawn,
     spawn::*,
@@ -199,22 +197,20 @@ fn main() -> anyhow::Result<()> {
     let connectors = Connectors::new(bitcoin_connector, ethereum_connector, lnd_connector_params);
     let storage = Storage::new(database, seed);
 
-    let protocol_spawner = ProtocolSpawner::new(
-        connectors.clone(),
-        runtime.handle().clone(),
-        storage.clone(),
-    );
-
     let swarm = runtime.block_on(Swarm::new(
         &settings,
         seed,
         runtime.handle().clone(),
         storage.clone(),
-        protocol_spawner.clone(),
+        connectors.clone(),
     ))?;
 
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;
-    match runtime.block_on(respawn(storage.clone(), protocol_spawner)) {
+    match runtime.block_on(respawn(
+        storage.clone(),
+        connectors.clone(),
+        runtime.handle().clone(),
+    )) {
         Ok(()) => {}
         Err(e) => tracing::warn!("failed to respawn swaps: {:#}", e),
     };

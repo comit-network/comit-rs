@@ -1,6 +1,7 @@
 use crate::{
     asset,
     config::Settings,
+    connectors::Connectors,
     local_swap_id::LocalSwapId,
     network::{
         comit_node::{ComitNode, SetupSwapContext},
@@ -8,7 +9,6 @@ use crate::{
         setup_swap::{AliceParams, BobParams},
         transport,
     },
-    protocol_spawner::ProtocolSpawner,
     storage::{RootSeed, Storage},
 };
 use anyhow::{Context as _, Result};
@@ -52,7 +52,7 @@ impl Swarm {
         seed: RootSeed,
         task_executor: tokio::runtime::Handle,
         storage: Storage,
-        protocol_spawner: ProtocolSpawner,
+        connectors: Connectors,
     ) -> anyhow::Result<Self> {
         let local_key_pair = derive_key_pair(&seed);
         let local_peer_id = PeerId::from(local_key_pair.public());
@@ -66,7 +66,7 @@ impl Swarm {
             seed,
             task_executor.clone(),
             storage.clone(),
-            protocol_spawner,
+            connectors,
             local_peer_id.clone(),
             local_key_pair,
             sender,

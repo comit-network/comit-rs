@@ -1,4 +1,5 @@
 use crate::{
+    connectors::Connectors,
     local_swap_id::LocalSwapId,
     network::peer_tracker::PeerTracker,
     spawn,
@@ -6,7 +7,6 @@ use crate::{
         BtcDaiOrder, ForSwap, InsertableOrderSwap, InsertableSecretHash, Load, Order,
         OrderHbitParams, RootSeed, Save, Storage, SwapContext,
     },
-    ProtocolSpawner,
 };
 use comit::{
     lightning,
@@ -54,7 +54,7 @@ pub struct ComitNode {
     #[behaviour(ignore)]
     storage: Storage,
     #[behaviour(ignore)]
-    protocol_spawner: ProtocolSpawner,
+    connectors: Connectors,
     #[behaviour(ignore)]
     matches_sender: mpsc::Sender<orderpool::Match>,
 }
@@ -64,7 +64,7 @@ impl ComitNode {
         seed: RootSeed,
         task_executor: Handle,
         storage: Storage,
-        protocol_spawner: ProtocolSpawner,
+        connectors: Connectors,
         peer_id: PeerId,
         key: Keypair,
         matches_sender: mpsc::Sender<orderpool::Match>,
@@ -80,7 +80,7 @@ impl ComitNode {
             local_data: HashMap::default(),
             local_swap_ids: HashMap::default(),
             storage,
-            protocol_spawner,
+            connectors,
             matches_sender,
         }
     }
@@ -128,7 +128,7 @@ impl ComitNode {
         identity: Option<lightning::PublicKey>,
     ) -> anyhow::Result<()> {
         if identity.is_some() {
-            return self.protocol_spawner.supports_halbit();
+            return self.connectors.supports_halbit();
         }
         Ok(())
     }
@@ -160,7 +160,8 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::comit::Behavi
                 remote_data,
             } => {
                 let storage = self.storage.clone();
-                let spawner = self.protocol_spawner.clone();
+                let connectors = self.connectors.clone();
+                let handle = self.task_executor.clone();
 
                 let local_swap_id = match self.local_swap_ids.remove(&shared_swap_id) {
                     Some(local_swap_id) => local_swap_id,
@@ -173,7 +174,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::comit::Behavi
                 let save_and_start_swap = async move {
                     let swap = storage.load(local_swap_id).await?;
                     save_swap_remote_data(&storage, swap, remote_data).await?;
-                    spawn::spawn(&spawner, &storage, swap).await?;
+                    spawn::spawn(connectors, storage, handle, swap).await?;
 
                     Ok::<(), anyhow::Error>(())
                 };
@@ -305,8 +306,10 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<setup_swap::BehaviourOutEvent<S
                     move |swap_fk| InsertableSecretHash::new(swap_fk, secret_hash);
 
                 let save_data_and_start_swap = {
-                    let spawner = self.protocol_spawner.clone();
+                    let connectors = self.connectors.clone();
                     let storage = self.storage.clone();
+                    let handle = self.task_executor.clone();
+
                     async move {
                         storage
                             .db
@@ -330,7 +333,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<setup_swap::BehaviourOutEvent<S
                                 Ok(())
                             })
                             .await?;
-                        spawn::spawn(&spawner, &storage, SwapContext {
+                        spawn::spawn(connectors, storage, handle, SwapContext {
                             id: swap_id,
                             role,
                             alpha: match protocol {
