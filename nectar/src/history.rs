@@ -55,10 +55,12 @@ pub struct Trade {
     pub position: Position,
     /// The base currency traded amount in the most precise unit (e.g. Satoshi)
     /// Note: it does not include fees
-    pub base_precise_amount: Integer,
+    #[serde(serialize_with = "biguint_string")]
+    pub base_precise_amount: BigUint,
     /// The quote currency traded amount in the most precise unit (e.g. attodai)
     /// Note: it does not include fees
-    pub quote_precise_amount: Integer,
+    #[serde(serialize_with = "biguint_string")]
+    pub quote_precise_amount: BigUint,
     /// the Peer id of the counterpart/taker
     pub peer: PeerId,
     // TODO: Add fees?
@@ -78,30 +80,16 @@ pub enum Position {
 }
 
 #[derive(Debug, Clone)]
-pub struct Integer(BigUint);
-
-#[derive(Debug, Clone)]
 pub struct PeerId(libp2p::PeerId);
 
-impl From<BigUint> for Integer {
-    fn from(int: BigUint) -> Self {
-        Integer(int)
-    }
-}
-
-impl From<u64> for Integer {
-    fn from(int: u64) -> Self {
-        Integer(BigUint::from(int))
-    }
-}
-
-impl Serialize for Integer {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.0.to_string())
-    }
+fn biguint_string<S>(
+    value: &BigUint,
+    serializer: S,
+) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(&value.to_string())
 }
 
 impl From<libp2p::PeerId> for PeerId {
@@ -150,9 +138,7 @@ impl Trade {
             quote_symbol: Symbol::Dai,
             position: Position::Buy,
             base_precise_amount: 1_000_000u64.into(),
-            quote_precise_amount: BigUint::from_str("99_000_000_000_000_000_000")
-                .unwrap()
-                .into(),
+            quote_precise_amount: BigUint::from_str("99_000_000_000_000_000_000").unwrap(),
             peer: libp2p::PeerId::from_str("QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg")
                 .unwrap()
                 .into(),
@@ -169,9 +155,7 @@ impl Trade {
             quote_symbol: Symbol::Dai,
             position: Position::Sell,
             base_precise_amount: 20_000_000u64.into(),
-            quote_precise_amount: BigUint::from_str("2_012_340_000_000_000_000_000")
-                .unwrap()
-                .into(),
+            quote_precise_amount: BigUint::from_str("2_012_340_000_000_000_000_000").unwrap(),
             peer: libp2p::PeerId::from_str("QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK")
                 .unwrap()
                 .into(),

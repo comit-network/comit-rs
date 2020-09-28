@@ -137,8 +137,7 @@ pub fn into_history_trade(
         position,
         base_precise_amount: swap.hbit_params.shared.asset.as_sat().into(),
         quote_precise_amount: BigUint::from_str(&swap.herc20_params.asset.quantity.to_wei_dec())
-            .expect("number to number conversion")
-            .into(),
+            .expect("number to number conversion"),
         peer: peer_id.into(),
     }
 }
