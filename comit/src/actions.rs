@@ -56,16 +56,20 @@ pub mod bitcoin {
         }
     }
 
-    pub fn sign_with_fixed_rate<C>(
+    pub fn sign<C>(
         secp: &Secp256k1<C>,
         primed_transaction: PrimedTransaction,
+        byte_rate: bitcoin::Amount,
     ) -> anyhow::Result<Transaction>
     where
         C: secp256k1::Signing,
     {
-        let rate = 10;
+        let rate = byte_rate.as_sat();
+        // TODO: change this interface to accept an amount instead of a usize and remove
+        // this allow
+        #[allow(clippy::cast_possible_truncation)]
         primed_transaction
-            .sign_with_rate(secp, rate)
+            .sign_with_rate(secp, rate as usize)
             .map_err(|_| anyhow::anyhow!("failed to sign with {} rate", rate))
     }
 

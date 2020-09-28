@@ -46,6 +46,8 @@ impl hbit::ExecuteRedeem for Wallet {
     ) -> anyhow::Result<hbit::Redeemed> {
         let redeem_address = self.inner.new_address().await?;
 
+        let fee_rate_per_byte = self.fee.byte_rate().await?;
+
         let action = params.shared.build_redeem_action(
             &crate::SECP,
             fund_event.asset,
@@ -53,6 +55,7 @@ impl hbit::ExecuteRedeem for Wallet {
             params.transient_sk,
             redeem_address,
             secret,
+            fee_rate_per_byte,
         )?;
         let transaction = self.spend(action).await?;
 
@@ -85,12 +88,15 @@ impl hbit::ExecuteRefund for Wallet {
 
         let refund_address = self.inner.new_address().await?;
 
+        let fee_rate_per_byte = self.fee.byte_rate().await?;
+
         let action = params.shared.build_refund_action(
             &crate::SECP,
             fund_event.asset,
             fund_event.location,
             params.transient_sk,
             refund_address,
+            fee_rate_per_byte,
         )?;
         let transaction = self.spend(action).await?;
 

@@ -1,9 +1,7 @@
 //! Htlc Bitcoin atomic swap protocol.
 
 use crate::{
-    actions::bitcoin::{
-        sign_with_fixed_rate, BroadcastSignedTransaction, SendToAddress, SpendOutput,
-    },
+    actions::bitcoin::{sign, BroadcastSignedTransaction, SendToAddress, SpendOutput},
     asset,
     btsieve::{
         bitcoin::{watch_for_created_outpoint, watch_for_spent_outpoint},
@@ -244,15 +242,23 @@ impl Params {
         fund_location: htlc_location::Bitcoin,
         transient_refund_sk: SecretKey,
         refund_address: Address,
+        fee_rate_per_byte: asset::Bitcoin,
     ) -> anyhow::Result<BroadcastSignedTransaction>
     where
         C: Signing,
     {
-        self.build_spend_action(&secp, fund_amount, fund_location, refund_address, |htlc| {
-            htlc.unlock_after_timeout(&secp, transient_refund_sk)
-        })
+        self.build_spend_action(
+            &secp,
+            fund_amount,
+            fund_location,
+            refund_address,
+            fee_rate_per_byte,
+            |htlc| htlc.unlock_after_timeout(&secp, transient_refund_sk),
+        )
     }
 
+    // TODO: Improve the interface
+    #[allow(clippy::too_many_arguments)]
     pub fn build_redeem_action<C>(
         &self,
         secp: &Secp256k1<C>,
@@ -261,13 +267,19 @@ impl Params {
         transient_redeem_sk: SecretKey,
         redeem_address: Address,
         secret: Secret,
+        fee_rate_per_byte: asset::Bitcoin,
     ) -> anyhow::Result<BroadcastSignedTransaction>
     where
         C: Signing,
     {
-        self.build_spend_action(&secp, fund_amount, fund_location, redeem_address, |htlc| {
-            htlc.unlock_with_secret(secp, transient_redeem_sk, secret.into_raw_secret())
-        })
+        self.build_spend_action(
+            &secp,
+            fund_amount,
+            fund_location,
+            redeem_address,
+            fee_rate_per_byte,
+            |htlc| htlc.unlock_with_secret(secp, transient_redeem_sk, secret.into_raw_secret()),
+        )
     }
 
     fn build_spend_action<C>(
@@ -276,6 +288,7 @@ impl Params {
         fund_amount: asset::Bitcoin,
         fund_location: htlc_location::Bitcoin,
         spend_address: Address,
+        fee_rate_per_byte: asset::Bitcoin,
         unlock_fn: impl Fn(Htlc) -> UnlockParameters,
     ) -> anyhow::Result<BroadcastSignedTransaction>
     where
@@ -295,7 +308,7 @@ impl Params {
 
             spend_output.spend_to(spend_address)
         };
-        let transaction = sign_with_fixed_rate(&secp, primed_transaction)?;
+        let transaction = sign(&secp, primed_transaction, fee_rate_per_byte)?;
 
         Ok(BroadcastSignedTransaction {
             transaction,
