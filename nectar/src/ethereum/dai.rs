@@ -9,7 +9,7 @@ use comit::{
     ethereum::Address,
 };
 use conquer_once::Lazy;
-use num::{BigUint, CheckedAdd, Integer, ToPrimitive, Zero};
+use num::{BigUint, Integer, ToPrimitive, Zero};
 use std::str::FromStr;
 
 pub const ATTOS_IN_DAI_EXP: u16 = 18;
@@ -140,10 +140,6 @@ impl Amount {
         Ok(bitcoin::Amount::from_sat(sats))
     }
 
-    pub fn checked_add(self, rhs: Amount) -> Option<Amount> {
-        self.0.checked_add(&rhs.0).map(Amount)
-    }
-
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_bytes_le()
     }
@@ -206,6 +202,18 @@ impl std::ops::Sub for Amount {
 
     fn sub(self, rhs: Self) -> Self::Output {
         Amount(self.0 - rhs.0)
+    }
+}
+
+impl std::ops::AddAssign for Amount {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0.add_assign(rhs.0)
+    }
+}
+
+impl std::ops::SubAssign for Amount {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0.sub_assign(rhs.0)
     }
 }
 
