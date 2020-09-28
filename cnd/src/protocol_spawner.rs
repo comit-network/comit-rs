@@ -1,8 +1,7 @@
 use crate::{
-    connectors::Connectors, halbit, hbit, herc20, http_api::LedgerNotConfigured, storage::Storage,
-    LocalSwapId, Role, Side,
+    connectors::Connectors, halbit, hbit, herc20, storage::Storage, LocalSwapId, Role, Side,
 };
-use comit::lnd::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams};
+use anyhow::Result;
 use time::OffsetDateTime;
 use tokio::runtime::Handle;
 
@@ -11,7 +10,6 @@ use tokio::runtime::Handle;
 #[derive(Debug, Clone)]
 pub struct ProtocolSpawner {
     connectors: Connectors,
-    lnd_connector_params: Option<LndConnectorParams>,
     runtime_handle: Handle,
     storage: Storage,
 }
@@ -26,31 +24,20 @@ pub trait Spawn<P> {
         start_of_swap: OffsetDateTime,
         side: Side,
         role: Role,
-    );
+    ) -> Result<()>;
 }
 
 impl ProtocolSpawner {
-    pub fn new(
-        connectors: Connectors,
-        lnd_connector_params: Option<LndConnectorParams>,
-        runtime_handle: Handle,
-        storage: Storage,
-    ) -> Self {
+    pub fn new(connectors: Connectors, runtime_handle: Handle, storage: Storage) -> Self {
         Self {
             connectors,
-            lnd_connector_params,
             runtime_handle,
             storage,
         }
     }
 
     pub fn supports_halbit(&self) -> anyhow::Result<()> {
-        match self.lnd_connector_params {
-            Some(_) => Ok(()),
-            None => Err(anyhow::Error::from(LedgerNotConfigured {
-                ledger: "lightning",
-            })),
-        }
+        self.connectors.supports_halbit()
     }
 }
 
@@ -62,7 +49,7 @@ impl Spawn<herc20::Params> for ProtocolSpawner {
         start_of_swap: OffsetDateTime,
         side: Side,
         role: Role,
-    ) {
+    ) -> Result<()> {
         let task = herc20::new(
             id,
             params,
@@ -74,6 +61,8 @@ impl Spawn<herc20::Params> for ProtocolSpawner {
         );
 
         self.runtime_handle.spawn(task);
+
+        Ok(())
     }
 }
 
@@ -85,7 +74,7 @@ impl Spawn<hbit::Params> for ProtocolSpawner {
         start_of_swap: OffsetDateTime,
         side: Side,
         role: Role,
-    ) {
+    ) -> Result<()> {
         let task = hbit::new(
             id,
             params,
@@ -97,6 +86,8 @@ impl Spawn<hbit::Params> for ProtocolSpawner {
         );
 
         self.runtime_handle.spawn(task);
+
+        Ok(())
     }
 }
 
@@ -108,39 +99,34 @@ impl Spawn<halbit::Params> for ProtocolSpawner {
         _: OffsetDateTime,
         side: Side,
         role: Role,
-    ) {
-        let lnd_connector_params = match &self.lnd_connector_params {
-            Some(params) => params,
-            None => {
-                tracing::warn!(
-                    "failed to spawn swap {} because lnd connector params are not present",
-                    id
-                );
-                return;
-            }
-        };
-
+    ) -> Result<()> {
         match (role, side) {
             (Role::Alice, Side::Alpha) | (Role::Bob, Side::Beta) => {
-                self.runtime_handle.spawn(halbit::new(
+                let task = halbit::new(
                     id,
                     params,
                     role,
                     side,
                     self.storage.clone(),
-                    LndConnectorAsSender::from(lnd_connector_params.clone()),
-                ));
+                    self.connectors.lnd_as_sender()?,
+                );
+
+                self.runtime_handle.spawn(task);
             }
             (Role::Bob, Side::Alpha) | (Role::Alice, Side::Beta) => {
-                self.runtime_handle.spawn(halbit::new(
+                let task = halbit::new(
                     id,
                     params,
                     role,
                     side,
                     self.storage.clone(),
-                    LndConnectorAsReceiver::from(lnd_connector_params.clone()),
-                ));
+                    self.connectors.lnd_as_receiver()?,
+                );
+
+                self.runtime_handle.spawn(task);
             }
         }
+
+        Ok(())
     }
 }

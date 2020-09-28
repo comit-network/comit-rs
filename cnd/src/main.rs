@@ -196,12 +196,11 @@ fn main() -> anyhow::Result<()> {
     })
     .ok();
 
-    let connectors = Connectors::new(bitcoin_connector, ethereum_connector);
+    let connectors = Connectors::new(bitcoin_connector, ethereum_connector, lnd_connector_params);
     let storage = Storage::new(database, seed);
 
     let protocol_spawner = ProtocolSpawner::new(
         connectors.clone(),
-        lnd_connector_params,
         runtime.handle().clone(),
         storage.clone(),
     );
