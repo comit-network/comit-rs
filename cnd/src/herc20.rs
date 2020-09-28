@@ -1,21 +1,18 @@
 use crate::{
     asset,
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
-    ethereum::{Block, Hash},
+    ethereum::{Block, ChainId, Hash},
     htlc_location, identity, state,
     state::Update,
+    storage::Storage,
     tracing_ext::InstrumentProtocol,
     transaction, LocalSwapId, LockProtocol, Role, Secret, Side,
 };
 use chrono::{DateTime, Utc};
 use futures::TryStreamExt;
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    sync::Arc,
-};
+use std::collections::{hash_map::Entry, HashMap};
 use tokio::sync::Mutex;
 
-use crate::ethereum::ChainId;
 pub use comit::herc20::*;
 
 /// Creates a new instance of the herc20 protocol, annotated with tracing spans
@@ -29,7 +26,7 @@ pub async fn new<C>(
     start_of_swap: DateTime<Utc>,
     role: Role,
     side: Side,
-    states: Arc<States>,
+    storage: Storage,
     connector: impl AsRef<C>,
 ) where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
@@ -40,7 +37,7 @@ pub async fn new<C>(
         .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
 
     while let Ok(Some(event)) = events.try_next().await {
-        states.update(&id, event).await;
+        storage.herc20_states.update(&id, event).await;
     }
 
     tracing::info!("swap finished");
