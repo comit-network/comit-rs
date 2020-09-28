@@ -9,90 +9,29 @@ use std::{
     path::Path,
 };
 
-#[derive(Debug, Copy, Clone, Serialize)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum Symbol {
-    Btc,
-    Dai,
+#[derive(Debug)]
+pub struct History {
+    writer: Writer<File>,
 }
 
-#[derive(Debug, Copy, Clone, Serialize)]
-pub enum Position {
-    Buy,
-    Sell,
-}
+impl History {
+    pub fn new(path: &Path) -> Result<History> {
+        ensure_directory_exists(&path)?;
 
-#[derive(Debug, Clone, Serialize)]
-struct Float(String);
+        let writer = if path.exists() {
+            let file = OpenOptions::new().append(true).open(path)?;
+            WriterBuilder::new().has_headers(false).from_writer(file)
+        } else {
+            Writer::from_path(path)?
+        };
 
-impl From<f64> for Float {
-    fn from(float: f64) -> Self {
-        Float(float.to_string())
+        Ok(History { writer })
     }
-}
 
-#[derive(Debug, Clone)]
-pub struct Integer(BigUint);
-
-impl From<BigUint> for Integer {
-    fn from(int: BigUint) -> Self {
-        Integer(int)
-    }
-}
-
-impl From<u64> for Integer {
-    fn from(int: u64) -> Self {
-        Integer(BigUint::from(int))
-    }
-}
-
-impl Serialize for Integer {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.0.to_string())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct PeerId(libp2p::PeerId);
-
-impl From<libp2p::PeerId> for PeerId {
-    fn from(peer_id: libp2p::PeerId) -> Self {
-        Self(peer_id)
-    }
-}
-
-impl Serialize for PeerId {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.0.to_string())
-    }
-}
-
-/// Struct representing a UTC Date Time.
-/// Blockchain times are always UTC so we are keeping consistent with the domain
-/// A local time might be useful can be added if a user requests it.
-#[derive(Debug, Clone, Copy)]
-pub struct UtcDateTime {
-    inner: DateTime<Utc>,
-}
-
-impl From<DateTime<Utc>> for UtcDateTime {
-    fn from(date_time: DateTime<Utc>) -> Self {
-        UtcDateTime { inner: date_time }
-    }
-}
-
-impl Serialize for UtcDateTime {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.inner.to_rfc3339())
+    pub fn write(&mut self, trade: Trade) -> anyhow::Result<()> {
+        self.writer.serialize(trade)?;
+        self.writer.flush()?;
+        Ok(())
     }
 }
 
@@ -121,6 +60,93 @@ pub struct Trade {
     /// the Peer id of the counterpart/taker
     pub peer: PeerId,
     // TODO: Add fees?
+}
+
+/// Struct representing a UTC Date Time.
+/// Blockchain times are always UTC so we are keeping consistent with the domain
+/// A local time might be useful can be added if a user requests it.
+#[derive(Debug, Clone, Copy)]
+pub struct UtcDateTime {
+    inner: DateTime<Utc>,
+}
+
+#[derive(Debug, Copy, Clone, Serialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum Symbol {
+    Btc,
+    Dai,
+}
+
+#[derive(Debug, Copy, Clone, Serialize)]
+pub enum Position {
+    Buy,
+    Sell,
+}
+
+#[derive(Debug, Clone)]
+pub struct Integer(BigUint);
+
+#[derive(Debug, Clone)]
+pub struct PeerId(libp2p::PeerId);
+
+#[derive(Debug, Clone, Serialize)]
+struct Float(String);
+
+impl From<f64> for Float {
+    fn from(float: f64) -> Self {
+        Float(float.to_string())
+    }
+}
+
+impl From<BigUint> for Integer {
+    fn from(int: BigUint) -> Self {
+        Integer(int)
+    }
+}
+
+impl From<u64> for Integer {
+    fn from(int: u64) -> Self {
+        Integer(BigUint::from(int))
+    }
+}
+
+impl Serialize for Integer {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.0.to_string())
+    }
+}
+
+impl From<libp2p::PeerId> for PeerId {
+    fn from(peer_id: libp2p::PeerId) -> Self {
+        Self(peer_id)
+    }
+}
+
+impl Serialize for PeerId {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.0.to_string())
+    }
+}
+
+impl From<DateTime<Utc>> for UtcDateTime {
+    fn from(date_time: DateTime<Utc>) -> Self {
+        UtcDateTime { inner: date_time }
+    }
+}
+
+impl Serialize for UtcDateTime {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.inner.to_rfc3339())
+    }
 }
 
 #[cfg(test)]
@@ -178,32 +204,6 @@ impl Trade {
                 .unwrap()
                 .into(),
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct History {
-    writer: Writer<File>,
-}
-
-impl History {
-    pub fn new(path: &Path) -> Result<History> {
-        ensure_directory_exists(&path)?;
-
-        let writer = if path.exists() {
-            let file = OpenOptions::new().append(true).open(path)?;
-            WriterBuilder::new().has_headers(false).from_writer(file)
-        } else {
-            Writer::from_path(path)?
-        };
-
-        Ok(History { writer })
-    }
-
-    pub fn write(&mut self, trade: Trade) -> anyhow::Result<()> {
-        self.writer.serialize(trade)?;
-        self.writer.flush()?;
-        Ok(())
     }
 }
 
