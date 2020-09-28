@@ -13,6 +13,7 @@ use std::sync::Arc;
 pub async fn resume_only(
     settings: Settings,
     bitcoin_wallet: bitcoin::Wallet,
+    bitcoin_fee: bitcoin::Fee,
     ethereum_wallet: ethereum::Wallet,
 ) -> anyhow::Result<()> {
     #[cfg(not(test))]
@@ -25,6 +26,7 @@ pub async fn resume_only(
     let (executor, mut finished_swap_receiver) = SwapExecutor::new(
         db.clone(),
         Arc::new(bitcoin_wallet),
+        bitcoin_fee,
         Arc::new(ethereum_wallet),
         Arc::new(BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?),
         Arc::new(Web3Connector::new(settings.ethereum.node_url)),

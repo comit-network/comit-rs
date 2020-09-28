@@ -35,7 +35,7 @@ pub async fn trade(
 
     let mut maker = init_maker(
         Arc::clone(&bitcoin_wallet),
-        bitcoind_client,
+        bitcoind_client.clone(),
         Arc::clone(&ethereum_wallet),
         settings.clone(),
         network,
@@ -81,9 +81,16 @@ pub async fn trade(
     let bitcoin_connector = Arc::new(BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?);
     let ethereum_connector = Arc::new(Web3Connector::new(settings.ethereum.node_url));
 
+    let bitcoin_fee = bitcoin::Fee::new(
+        settings.maker.fee_strategies.bitcoin,
+        settings.maker.maximum_possible_fee.bitcoin,
+        bitcoind_client,
+    );
+
     let (swap_executor, swap_execution_finished_receiver) = SwapExecutor::new(
         Arc::clone(&db),
         Arc::clone(&bitcoin_wallet),
+        bitcoin_fee,
         Arc::clone(&ethereum_wallet),
         bitcoin_connector,
         ethereum_connector,

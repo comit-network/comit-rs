@@ -179,6 +179,7 @@ impl Client {
         wallet_name: &str,
         address: Address,
         amount: Amount,
+        kbyte_fee_rate: Amount,
     ) -> anyhow::Result<OutPoint> {
         let address = address.to_string();
 
@@ -198,7 +199,8 @@ impl Client {
                             ],
                             null,
                             {
-                                "changePosition": 1 // this allows us to assume that the HTLC will always be at output position 0
+                                "changePosition": 1, // this allows us to assume that the HTLC will always be at output position 0,
+                                "feeRate": kbyte_fee_rate.as_btc() // Set a specific fee rate in BTC/kB
                             }
                         ]
                     ),
@@ -496,7 +498,7 @@ struct FinalizePsbtResponse {
 pub struct EstimateSmartFeeResponse {
     #[serde(rename = "feerate")]
     #[serde(with = "btc_as_float")]
-    pub fee_rate: Amount,
+    pub kbyte_rate: Amount,
     pub block: u32,
 }
 

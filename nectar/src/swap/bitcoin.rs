@@ -1,4 +1,7 @@
-use crate::swap::{hbit, LedgerTime};
+use crate::{
+    bitcoin,
+    swap::{hbit, LedgerTime},
+};
 use comit::{
     bitcoin::median_time_past,
     btsieve::{bitcoin::BitcoindConnector, BlockByHash, LatestBlock},
@@ -12,6 +15,7 @@ pub use ::bitcoin::{secp256k1::SecretKey, Address, Block, BlockHash, OutPoint, T
 #[derive(Debug, Clone)]
 pub struct Wallet {
     pub inner: Arc<crate::bitcoin::Wallet>,
+    pub fee: bitcoin::Fee,
     pub connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
 }
 
@@ -20,9 +24,11 @@ impl hbit::ExecuteFund for Wallet {
     async fn execute_fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::Funded> {
         let action = params.shared.build_fund_action();
 
+        let kbyte_fee_rate = self.fee.kbyte_rate().await?;
+
         let location = self
             .inner
-            .fund_htlc(action.to, action.amount, action.network)
+            .fund_htlc(action.to, action.amount, action.network, kbyte_fee_rate)
             .await?;
         let asset = action.amount;
 

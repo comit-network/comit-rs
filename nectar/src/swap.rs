@@ -338,6 +338,7 @@ mod tests {
                 bitcoin::Wallet {
                     inner: Arc::new(bitcoin_wallet),
                     connector: Arc::clone(&bitcoin_connector),
+                    fee: StaticStub::static_stub(),
                 },
                 ethereum::Wallet {
                     inner: Arc::new(ethereum_wallet),
@@ -378,6 +379,7 @@ mod tests {
                 bitcoin::Wallet {
                     inner: Arc::new(bitcoin_wallet),
                     connector: Arc::clone(&bitcoin_connector),
+                    fee: StaticStub::static_stub(),
                 },
                 ethereum::Wallet {
                     inner: Arc::new(ethereum_wallet),
@@ -538,6 +540,7 @@ mod tests {
 pub struct SwapExecutor {
     db: Arc<Database>,
     bitcoin_wallet: Arc<crate::bitcoin::Wallet>,
+    bitcoin_fee: crate::bitcoin::Fee,
     ethereum_wallet: Arc<crate::ethereum::Wallet>,
     finished_swap_sender: mpsc::Sender<FinishedSwap>,
     bitcoin_connector: Arc<BitcoindConnector>,
@@ -548,6 +551,7 @@ impl SwapExecutor {
     pub fn new(
         db: Arc<Database>,
         bitcoin_wallet: Arc<crate::bitcoin::Wallet>,
+        bitcoin_fee: crate::bitcoin::Fee,
         ethereum_wallet: Arc<crate::ethereum::Wallet>,
         bitcoin_connector: Arc<BitcoindConnector>,
         ethereum_connector: Arc<Web3Connector>,
@@ -560,6 +564,7 @@ impl SwapExecutor {
         let executor = Self {
             db,
             bitcoin_wallet,
+            bitcoin_fee,
             ethereum_wallet,
             finished_swap_sender,
             bitcoin_connector,
@@ -577,6 +582,7 @@ impl SwapExecutor {
             bitcoin::Wallet {
                 inner: self.bitcoin_wallet.clone(),
                 connector: self.bitcoin_connector.clone(),
+                fee: self.bitcoin_fee.clone(),
             },
             self.bitcoin_connector.clone(),
             ethereum::Wallet {

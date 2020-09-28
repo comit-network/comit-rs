@@ -146,13 +146,23 @@ async fn main() -> Result<()> {
             println!("Withdraw successful. Transaction Id: {}", tx_id);
         }
         Command::DumpConfig => unreachable!(),
-        Command::ResumeOnly => resume_only(
-            settings,
-            bitcoin_wallet.expect("could not initialise bitcoin wallet"),
-            ethereum_wallet.expect("could not initialise ethereum wallet"),
-        )
-        .await
-        .expect("Wrapping up"),
+        Command::ResumeOnly => {
+            let bitcoind_client = bitcoin::Client::new(settings.bitcoin.bitcoind.node_url.clone());
+            let bitcoin_fee = bitcoin::Fee::new(
+                settings.maker.fee_strategies.bitcoin,
+                settings.maker.maximum_possible_fee.bitcoin,
+                bitcoind_client,
+            );
+
+            resume_only(
+                settings,
+                bitcoin_wallet.expect("could not initialise bitcoin wallet"),
+                bitcoin_fee,
+                ethereum_wallet.expect("could not initialise ethereum wallet"),
+            )
+            .await
+            .expect("Wrapping up")
+        }
     };
 
     Ok(())
