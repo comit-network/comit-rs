@@ -301,6 +301,7 @@ mod tests {
                 },
                 spread: StaticStub::static_stub(),
                 maximum_possible_fee: Default::default(),
+                fee_strategies: Default::default(),
                 kraken_api_host: Default::default(),
             },
             network: Network {
