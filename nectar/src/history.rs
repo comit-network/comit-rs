@@ -89,15 +89,6 @@ pub struct Integer(BigUint);
 #[derive(Debug, Clone)]
 pub struct PeerId(libp2p::PeerId);
 
-#[derive(Debug, Clone, Serialize)]
-struct Float(String);
-
-impl From<f64> for Float {
-    fn from(float: f64) -> Self {
-        Float(float.to_string())
-    }
-}
-
 impl From<BigUint> for Integer {
     fn from(int: BigUint) -> Self {
         Integer(int)
