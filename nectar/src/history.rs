@@ -2,6 +2,7 @@ use crate::fs::ensure_directory_exists;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use csv::*;
+use libp2p::PeerId;
 use num::BigUint;
 use serde::{Serialize, Serializer};
 use std::{
@@ -62,6 +63,7 @@ pub struct Trade {
     #[serde(serialize_with = "biguint_string")]
     pub quote_precise_amount: BigUint,
     /// the Peer id of the counterpart/taker
+    #[serde(serialize_with = "peerid_string")]
     pub peer: PeerId,
     // TODO: Add fees?
 }
@@ -79,9 +81,6 @@ pub enum Position {
     Sell,
 }
 
-#[derive(Debug, Clone)]
-pub struct PeerId(libp2p::PeerId);
-
 fn biguint_string<S>(
     value: &BigUint,
     serializer: S,
@@ -92,19 +91,14 @@ where
     serializer.serialize_str(&value.to_string())
 }
 
-impl From<libp2p::PeerId> for PeerId {
-    fn from(peer_id: libp2p::PeerId) -> Self {
-        Self(peer_id)
-    }
-}
-
-impl Serialize for PeerId {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.0.to_string())
-    }
+fn peerid_string<S>(
+    value: &PeerId,
+    serializer: S,
+) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(&value.to_string())
 }
 
 fn datetime_rfc3339<S>(
@@ -122,7 +116,7 @@ impl crate::StaticStub for PeerId {
     fn static_stub() -> Self {
         use std::str::FromStr;
 
-        Self(libp2p::PeerId::from_str("QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg").unwrap())
+        PeerId::from_str("QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg").unwrap()
     }
 }
 
@@ -139,9 +133,7 @@ impl Trade {
             position: Position::Buy,
             base_precise_amount: 1_000_000u64.into(),
             quote_precise_amount: BigUint::from_str("99_000_000_000_000_000_000").unwrap(),
-            peer: libp2p::PeerId::from_str("QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg")
-                .unwrap()
-                .into(),
+            peer: PeerId::from_str("QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg").unwrap(),
         }
     }
 
@@ -156,9 +148,7 @@ impl Trade {
             position: Position::Sell,
             base_precise_amount: 20_000_000u64.into(),
             quote_precise_amount: BigUint::from_str("2_012_340_000_000_000_000_000").unwrap(),
-            peer: libp2p::PeerId::from_str("QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK")
-                .unwrap()
-                .into(),
+            peer: PeerId::from_str("QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK").unwrap(),
         }
     }
 }
