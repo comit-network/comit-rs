@@ -39,6 +39,7 @@ mod herc20;
 mod http_api;
 mod local_swap_id;
 mod protocol_spawner;
+mod republish;
 mod respawn;
 mod spawn;
 mod state;
@@ -79,6 +80,7 @@ use self::{
     local_swap_id::LocalSwapId,
     network::{Swarm, SwarmWorker},
     protocol_spawner::{ProtocolSpawner, *},
+    republish::republish_open_orders,
     respawn::respawn,
     spawn::*,
     storage::{RootSeed, Sqlite, Storage},
@@ -215,7 +217,11 @@ fn main() -> anyhow::Result<()> {
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;
     match runtime.block_on(respawn(storage.clone(), protocol_spawner)) {
         Ok(()) => {}
-        Err(e) => tracing::warn!("failed to respawn swaps: {:?}", e),
+        Err(e) => tracing::warn!("failed to respawn swaps: {:#}", e),
+    };
+    match runtime.block_on(republish_open_orders(storage.clone(), swarm.clone())) {
+        Ok(()) => {}
+        Err(e) => tracing::warn!("failed to republish orders: {:#}", e),
     };
 
     runtime.spawn(make_http_api_worker(

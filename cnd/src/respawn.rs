@@ -7,12 +7,12 @@
 use crate::{
     protocol_spawner::ProtocolSpawner,
     spawn::spawn,
-    storage::{LoadAll, Storage},
+    storage::{queries::get_all_swap_contexts, Storage},
 };
 
 /// Respawn the protocols for all swaps that are not yet done.
 pub async fn respawn(storage: Storage, spawner: ProtocolSpawner) -> anyhow::Result<()> {
-    let swaps = storage.load_all().await?;
+    let swaps = storage.db.do_in_transaction(get_all_swap_contexts).await?;
 
     for swap in swaps {
         let id = swap.id;

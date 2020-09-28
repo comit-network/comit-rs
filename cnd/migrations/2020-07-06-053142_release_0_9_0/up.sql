@@ -6,10 +6,9 @@ DROP TABLE address_book;
 -- * COALESCE selects the first non-null value from a list of values
 -- * We use 3 sub-selects to select a static value (i.e. 'halbit', etc) if that particular child table has a row with a foreign key to the parent table
 -- * We do this two times, once where we limit the results to rows that have `side` set to `Alpha` and once where `side` is set to `Beta`
--- The result is a view with 5 columns: `id`, `local_swap_id`, `role`, `alpha` and `beta` where the `alpha` and `beta` columns have one of the values `halbit`, `herc20` or `hbit`
+-- The result is a view with 4 columns: `id`, `role`, `alpha` and `beta` where the `alpha` and `beta` columns have one of the values `halbit`, `herc20` or `hbit`
 CREATE VIEW swap_contexts AS
-SELECT id,
-       local_swap_id,
+SELECT local_swap_id as id,
        role,
        COALESCE(
                (SELECT 'halbit' from halbits where halbits.swap_id = swaps.id and halbits.side = 'Alpha'),

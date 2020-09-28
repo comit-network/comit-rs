@@ -1,6 +1,6 @@
 use crate::{
     http_api::{make_order_entity, problem, OrderProperties},
-    storage::{all_open_btc_dai_orders, Storage},
+    storage::{queries::all_open_btc_dai_orders, Storage},
 };
 use anyhow::Result;
 use futures::TryFutureExt;

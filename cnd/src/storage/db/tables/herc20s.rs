@@ -1,9 +1,11 @@
 use crate::{
     herc20,
     storage::{
-        db::wrapper_types::{Erc20Amount, U32},
-        schema::herc20s,
-        tables::Swap,
+        db::{
+            schema::herc20s,
+            tables::Swap,
+            wrapper_types::{Erc20Amount, U32},
+        },
         Insert, IntoInsertable, Sqlite, Text,
     },
 };

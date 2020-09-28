@@ -6,7 +6,7 @@
 //! anyway.
 
 use crate::LocalSwapId;
-use comit::OrderId;
+use comit::{OrderId, Side};
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("no swap exists in the database for id {0}")]
@@ -55,3 +55,7 @@ pub struct NoRefundIdentity;
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("Order {0} is no longer open and can therefore not be cancelled")]
 pub struct NotOpen(pub OrderId);
+
+#[derive(thiserror::Error, Debug, Clone, Copy)]
+#[error("both params are side {0}")]
+pub struct SameSide(pub Side);

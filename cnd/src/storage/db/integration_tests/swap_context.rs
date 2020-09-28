@@ -1,9 +1,8 @@
 use crate::{
     proptest::*,
-    storage::{CreatedSwap, Load, Save, SwapContext},
+    storage::{db, CreatedSwap, Load, Save, SwapContext},
     LockProtocol, Storage,
 };
-use proptest::prelude::*;
 use tokio::runtime::Runtime;
 
 proptest! {
@@ -12,9 +11,9 @@ proptest! {
     /// With only a single swap, we would not be sure that the custom SQL query actually outputs the correct combination.
     #[test]
     fn given_several_swaps_can_correctly_load_swap_context(
-        first_swap in db::created_swap(hbit::created_swap(), herc20::created_swap()),
-        second_swap in db::created_swap(halbit::created_swap(), herc20::created_swap()),
-        third_swap in db::created_swap(herc20::created_swap(), halbit::created_swap()),
+        first_swap in db::proptest::created_swap(hbit::created_swap(), herc20::created_swap()),
+        second_swap in db::proptest::created_swap(halbit::created_swap(), herc20::created_swap()),
+        third_swap in db::proptest::created_swap(herc20::created_swap(), halbit::created_swap()),
     ) {
         // GIVEN a database and three swaps
         let storage = Storage::test();

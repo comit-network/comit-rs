@@ -1,12 +1,9 @@
-use crate::{
-    asset,
-    storage::{
-        db::{
-            schema::*,
-            wrapper_types::{Erc20Amount, Satoshis, WeiPerSat},
-        },
-        NotOpen, Order, Text,
+use crate::storage::{
+    db::{
+        schema::*,
+        wrapper_types::{Erc20Amount, Satoshis, WeiPerSat},
     },
+    NotOpen, Order, Text,
 };
 use anyhow::{Context, Result};
 use comit::{
@@ -124,14 +121,4 @@ impl InsertableBtcDaiOrder {
 
         Ok(())
     }
-}
-
-pub fn all_open_btc_dai_orders(conn: &SqliteConnection) -> Result<Vec<(Order, BtcDaiOrder)>> {
-    let orders = orders::table
-        .inner_join(btc_dai_orders::table)
-        .filter(btc_dai_orders::open.ne(Text::<Satoshis>(asset::Bitcoin::ZERO.into())))
-        .or_filter(btc_dai_orders::settling.ne(Text::<Satoshis>(asset::Bitcoin::ZERO.into())))
-        .load::<(Order, BtcDaiOrder)>(conn)?;
-
-    Ok(orders)
 }

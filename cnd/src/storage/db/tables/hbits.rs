@@ -2,11 +2,11 @@ use crate::{
     asset, hbit,
     storage::{
         db::{
+            schema,
             schema::*,
+            tables::Swap,
             wrapper_types::{Satoshis, U32},
         },
-        schema,
-        tables::Swap,
         Insert, IntoInsertable, Sqlite, Text,
     },
 };

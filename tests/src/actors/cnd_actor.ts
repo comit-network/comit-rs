@@ -4,6 +4,7 @@ import {
     HbitHerc20Payload,
     Herc20HalbitPayload,
     Herc20HbitPayload,
+    MarketEntity,
     OpenOrdersEntity,
     OrderEntity,
     Position,
@@ -357,6 +358,12 @@ export class CndActor
         });
     }
 
+    public async getBtcDaiMarket(): Promise<MarketEntity> {
+        return this.cnd
+            .fetch<MarketEntity>("/markets/BTC-DAI")
+            .then((r) => r.data);
+    }
+
     public async fetchOrder(href: string): Promise<OrderEntity> {
         const response = await this.cnd.fetch<OrderEntity>(href);
 
@@ -393,17 +400,24 @@ export class CndActor
         location: string,
         predicate: (body: T) => boolean
     ): Promise<T> {
-        const response = await this.cnd.fetch<T>(location);
+        const poller = async () => {
+            let response = await this.cnd.fetch<T>(location);
 
-        expect(response.status).toEqual(200);
+            while (!predicate(response.data)) {
+                response = await this.cnd.fetch<T>(location);
+                await sleep(500);
+            }
 
-        if (predicate(response.data)) {
             return response.data;
-        } else {
-            await sleep(500);
+        };
 
-            return this.pollCndUntil(location, predicate);
-        }
+        return pTimeout(
+            poller(),
+            10_000,
+            new Error(
+                `response from ${location} did not satisfy predicate after 10 seconds`
+            )
+        );
     }
 
     public async assertAndExecuteNextAction(expectedActionName: ActionKind) {
