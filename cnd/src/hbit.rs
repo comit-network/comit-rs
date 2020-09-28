@@ -2,7 +2,7 @@ use crate::{
     btsieve::{BlockByHash, LatestBlock},
     ledger, state,
     state::Update,
-    storage::Storage,
+    storage::{commands, Storage},
     tracing_ext::InstrumentProtocol,
     LocalSwapId, Role, Side,
 };
@@ -13,7 +13,6 @@ use std::collections::{hash_map::Entry, HashMap};
 use time::OffsetDateTime;
 use tokio::sync::Mutex;
 
-use crate::storage::{BtcDaiOrder, Order};
 pub use comit::{hbit::*, identity};
 
 /// Creates a new instance of the hbit protocol, annotated with tracing spans
@@ -43,14 +42,7 @@ pub async fn new<C>(
 
     if let Err(e) = storage
         .db
-        .do_in_transaction(|conn| {
-            let order = Order::by_swap_id(conn, id)?;
-            let btc_dai_order = BtcDaiOrder::by_order(conn, &order)?;
-
-            btc_dai_order.set_to_closed(conn)?;
-
-            Ok(())
-        })
+        .do_in_transaction(|conn| commands::update_order_of_swap_to_closed(conn, id))
         .await
     {
         tracing::error!("failed to update order state: {:#}", e);
