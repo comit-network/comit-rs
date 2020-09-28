@@ -23,7 +23,13 @@ dai = 1000
 [maker.maximum_possible_fee]
 # An estimation of the maximum fee that we would expect to pay, used to ensure we always have enough
 # balance to execute an order we publish.
-bitcoin = 0.00009275 
+bitcoin = 0.00009275
+
+# Strategies used for Bitcoin fee handling.
+[maker.fee_strategies.bitcoin]
+# A static sat/byte value can be specified or you can relay on bitcoind's estimatesmartfee feature.
+strategy = "static"
+sats_per_byte = 12
 
 [network]
 # The libp2p socket on which nectar listens for COMIT messages.

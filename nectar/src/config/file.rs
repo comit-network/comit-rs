@@ -1,6 +1,5 @@
 use crate::{
-    bitcoin,
-    config::{Bitcoind, Data, MaxSell, Network},
+    config::{Bitcoind, Data, EstimateMode, MaxSell, Network},
     Spread,
 };
 use comit::{ethereum::ChainId, ledger};
@@ -30,14 +29,41 @@ pub struct Maker {
     pub spread: Option<Spread>,
     pub kraken_api_host: Option<Url>,
     pub max_sell: Option<MaxSell>,
-    pub maximum_possible_fee: Option<Fees>,
+    pub maximum_possible_fee: Option<MaxPossibleFee>,
+    pub fee_strategies: Option<FeeStrategies>,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Fees {
+pub struct MaxPossibleFee {
     #[serde(default)]
     #[serde(with = "crate::config::serde::bitcoin_amount::btc_as_optional_float")]
     pub bitcoin: Option<bitcoin::Amount>,
+}
+
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct FeeStrategies {
+    #[serde(default)]
+    pub bitcoin: Option<BitcoinFee>,
+}
+
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct BitcoinFee {
+    /// Select the strategy to use to set Bitcoin fees
+    pub strategy: Option<BitcoinFeeStrategy>,
+    /// The static value to use if the selected strategy is "static"
+    #[serde(default)]
+    #[serde(with = "crate::config::serde::bitcoin_amount::sat_as_optional_unsigned_int")]
+    pub sats_per_byte: Option<bitcoin::Amount>,
+    /// The estimate mode to use if the selected strategy is "bitcoind estimate
+    /// smart fee"
+    pub estimate_mode: Option<EstimateMode>,
+}
+
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum BitcoinFeeStrategy {
+    Static,
+    Bitcoind,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -164,6 +190,9 @@ spread = 1000
 maximum_possible_fee = { bitcoin = 0.01 }
 kraken_api_host = "https://api.kraken.com"
 
+[maker.fee_strategies.bitcoin]
+strategy = "bitcoind"
+
 [maker.max_sell]
 bitcoin = 1.23456
 dai = 9876.54321
@@ -195,10 +224,17 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                     dai: Some(dai::Amount::from_dai_trunc(9876.54321).unwrap()),
                 }),
                 spread: Some(Spread::new(1000).unwrap()),
-                maximum_possible_fee: Some(Fees {
+                maximum_possible_fee: Some(MaxPossibleFee {
                     bitcoin: Some(bitcoin::Amount::from_btc(0.01).unwrap()),
                 }),
                 kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
+                fee_strategies: Some(FeeStrategies {
+                    bitcoin: Some(BitcoinFee {
+                        strategy: Some(BitcoinFeeStrategy::Bitcoind),
+                        sats_per_byte: None,
+                        estimate_mode: None,
+                    }),
+                }),
             }),
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
@@ -246,10 +282,17 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                     dai: Some(dai::Amount::from_dai_trunc(9876.54321).unwrap()),
                 }),
                 spread: Some(Spread::new(1000).unwrap()),
-                maximum_possible_fee: Some(Fees {
+                maximum_possible_fee: Some(MaxPossibleFee {
                     bitcoin: Some(bitcoin::Amount::from_btc(0.01).unwrap()),
                 }),
                 kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
+                fee_strategies: Some(FeeStrategies {
+                    bitcoin: Some(BitcoinFee {
+                        strategy: Some(BitcoinFeeStrategy::Bitcoind),
+                        sats_per_byte: None,
+                        estimate_mode: Some(EstimateMode::Conservative),
+                    }),
+                }),
             }),
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
@@ -287,6 +330,9 @@ dai = 9876.54
 
 [maker.maximum_possible_fee]
 bitcoin = 0.01
+[maker.fee_strategies.bitcoin]
+strategy = "bitcoind"
+estimate_mode = "conservative"
 
 [network]
 listen = ["/ip4/0.0.0.0/tcp/9939"]
@@ -310,7 +356,7 @@ local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
 "#;
 
         let serialized = toml::to_string(&file);
-
+        dbg!(&serialized);
         assert_that(&serialized)
             .is_ok()
             .is_equal_to(expected.to_string());
@@ -489,6 +535,59 @@ local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
             .into_iter()
             .map(toml::from_str)
             .collect::<Result<Vec<MaxSell>, toml::de::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn bitcoin_fee_strategies_deserializes_correctly() {
+        let file_contents = vec![
+            r#"
+            strategy = "static"
+            sats_per_byte = 10
+            "#,
+            r#"
+            strategy = "bitcoind"
+            estimate_mode = "unset"
+            "#,
+            r#"
+            strategy = "static"
+            estimate_mode = "economical"
+            "#,
+            r#"
+            sats_per_byte = 10
+            estimate_mode = "conservative"
+            "#,
+        ];
+
+        let expected = vec![
+            BitcoinFee {
+                strategy: Some(BitcoinFeeStrategy::Static),
+                sats_per_byte: Some(bitcoin::Amount::from_sat(10)),
+                estimate_mode: None,
+            },
+            BitcoinFee {
+                strategy: Some(BitcoinFeeStrategy::Bitcoind),
+                sats_per_byte: None,
+                estimate_mode: Some(EstimateMode::Unset),
+            },
+            BitcoinFee {
+                strategy: Some(BitcoinFeeStrategy::Static),
+                sats_per_byte: None,
+                estimate_mode: Some(EstimateMode::Economical),
+            },
+            BitcoinFee {
+                strategy: None,
+                sats_per_byte: Some(bitcoin::Amount::from_sat(10)),
+                estimate_mode: Some(EstimateMode::Conservative),
+            },
+        ];
+
+        let actual = file_contents
+            .into_iter()
+            .map(toml::from_str)
+            .collect::<Result<Vec<BitcoinFee>, toml::de::Error>>()
             .unwrap();
 
         assert_eq!(actual, expected);

@@ -39,6 +39,21 @@ pub struct MaxSell {
     pub dai: Option<dai::Amount>,
 }
 
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum EstimateMode {
+    Unset,
+    Economical,
+    Conservative,
+}
+
+/// "Unset" lets bitcoind choose the strategy
+impl Default for EstimateMode {
+    fn default() -> Self {
+        Self::Unset
+    }
+}
+
 pub fn read_config<T>(config_file: &Option<PathBuf>, default_config_path: T) -> anyhow::Result<File>
 where
     T: FnOnce() -> anyhow::Result<PathBuf>,
@@ -123,8 +138,15 @@ mod tests {
                     dai: Some(dai::Amount::from_dai_trunc(1000.0).unwrap()),
                 }),
                 spread: Some(Spread::new(500).unwrap()),
-                maximum_possible_fee: Some(file::Fees {
+                maximum_possible_fee: Some(file::MaxPossibleFee {
                     bitcoin: Some(bitcoin::Amount::from_btc(0.00009275).unwrap()),
+                }),
+                fee_strategies: Some(file::FeeStrategies {
+                    bitcoin: Some(file::BitcoinFee {
+                        strategy: Some(file::BitcoinFeeStrategy::Static),
+                        sats_per_byte: Some(bitcoin::Amount::from_sat(12)),
+                        estimate_mode: None,
+                    }),
                 }),
                 kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
             }),

@@ -227,7 +227,7 @@ pub struct Fees {
 }
 
 impl Fees {
-    fn from_file(file: file::Fees) -> Self {
+    fn from_file(file: file::MaxPossibleFee) -> Self {
         Self {
             bitcoin: file.bitcoin.unwrap_or_else(Self::default_bitcoin_fee),
         }
@@ -290,10 +290,12 @@ impl From<Maker> for file::Maker {
                 max_sell => Some(max_sell),
             },
             spread: Some(maker.spread),
-            maximum_possible_fee: Some(file::Fees {
+            maximum_possible_fee: Some(file::MaxPossibleFee {
                 bitcoin: Some(maker.maximum_possible_fee.bitcoin),
             }),
             kraken_api_host: Some(maker.kraken_api_host.0),
+            // TODO
+            fee_strategies: None,
         }
     }
 }
