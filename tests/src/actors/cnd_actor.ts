@@ -270,9 +270,6 @@ export class CndActor
         );
     }
 
-    /**
-     * Makes a BtcDai sell order (herc20-hbit Swap)
-     */
     public async makeBtcDaiOrder(
         position: Position,
         quantity: string,
