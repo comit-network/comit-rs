@@ -10,7 +10,7 @@ async-trait = "0.1"
 atty = "0.2"
 bitcoin = { version = "0.25", features = ["rand", "use-serde"] }
 chrono = "0.4"
-clarity = "0.2"
+clarity = "0.3"
 comit = { path = "../comit/", package = "comit" }
 config = { version = "0.10", default-features = false, features = ["toml"] }
 conquer-once = "0.2"

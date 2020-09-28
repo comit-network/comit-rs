@@ -197,7 +197,7 @@ fn balance_of_fn(account: Address) -> anyhow::Result<Vec<u8>> {
     let balance_of =
         clarity::abi::encode_call("balanceOf(address)", &[clarity::abi::Token::Address(
             account,
-        )]);
+        )])?;
 
     Ok(balance_of)
 }
