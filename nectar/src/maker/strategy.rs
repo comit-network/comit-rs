@@ -88,10 +88,8 @@ impl AllIn {
         }
 
         let base_amount = match self.btc_max_sell_amount {
-            Some(max_amount) => {
-                min(base_balance - self.btc_reserved_funds, max_amount) - self.btc_fee
-            }
-            None => base_balance - self.btc_reserved_funds - self.btc_fee,
+            Some(max_amount) => min(base_balance - self.btc_reserved_funds, max_amount),
+            None => base_balance - self.btc_reserved_funds,
         };
 
         let rate = self.spread.apply(mid_market_rate, Position::Sell)?;
@@ -311,32 +309,52 @@ mod test {
     }
 
     #[test]
-    fn given_an_available_balance_and_fees_sell_balance_minus_fees() {
+    fn given_an_available_balance_and_fees_sell_balance() {
         let rate = Rate::try_from(1.0).unwrap();
         let strategy = AllIn::new(btc(0.001), None, None, Spread::static_stub());
 
         let order = strategy.new_sell(btc(10.0), rate).unwrap();
 
-        assert_eq!(order.quantity.to_inner(), btc(9.999));
+        assert_eq!(order.quantity.to_inner(), btc(10.0));
+    }
+
+    #[test]
+    fn given_balance_is_fees_sell_order_fails() {
+        let rate = Rate::try_from(1.0).unwrap();
+        let strategy = AllIn::new(btc(0.1), None, None, Spread::static_stub());
+
+        let result = strategy.new_sell(btc(0.1), rate);
+
+        assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
+    }
+
+    #[test]
+    fn given_balance_is_less_than_fees_sell_order_fails() {
+        let rate = Rate::try_from(1.0).unwrap();
+        let strategy = AllIn::new(btc(0.1), None, None, Spread::static_stub());
+
+        let result = strategy.new_sell(btc(0.09), rate);
+
+        assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
     }
 
     #[test]
     fn given_a_rate_return_order_with_both_amounts() {
         let spread = Spread::new(0).unwrap();
-        let mut strategy = AllIn::new(btc(0.5), None, None, spread);
+        let mut strategy = AllIn::new(bitcoin::Amount::ZERO, None, None, spread);
 
         // Resuming a swap should take some reserve for the swap amount and fee.
         strategy.herc20_hbit_swap_resumed(btc(50.0)).unwrap();
         strategy.hbit_herc20_swap_resumed(dai(50.0));
 
         let rate = Rate::try_from(0.1).unwrap();
-        let order = strategy.new_sell(btc(1051.0), rate).unwrap();
+        let order = strategy.new_sell(btc(1050.0), rate).unwrap();
 
         assert_eq!(order.quantity.to_inner(), btc(1000.0));
         assert_eq!(dai::Amount::from(order.quote()), dai(100.0));
 
         let rate = Rate::try_from(10.0).unwrap();
-        let order = strategy.new_sell(btc(1051.0), rate).unwrap();
+        let order = strategy.new_sell(btc(1050.0), rate).unwrap();
 
         assert_eq!(order.quantity.to_inner(), btc(1000.0));
         assert_eq!(dai::Amount::from(order.quote()), dai(10_000.0));
@@ -358,7 +376,7 @@ mod test {
     fn given_a_rate_and_spread_return_order_with_both_amounts_correct_1() {
         let rate = Rate::try_from(10_000.0).unwrap();
         let spread = Spread::new(300).unwrap();
-        let mut strategy = AllIn::new(btc(0.005), None, None, spread);
+        let mut strategy = AllIn::new(bitcoin::Amount::ZERO, None, None, spread);
 
         assert_eq!(
             spread.apply(rate, Position::Sell).unwrap().integer(),
@@ -369,7 +387,7 @@ mod test {
         strategy.herc20_hbit_swap_resumed(btc(0.5)).unwrap();
         strategy.hbit_herc20_swap_resumed(dai(51.0));
 
-        let order = strategy.new_sell(btc(1.51), rate).unwrap();
+        let order = strategy.new_sell(btc(1.5), rate).unwrap();
 
         assert_eq!(order.quantity.to_inner(), btc(1.0));
         assert_eq!(dai::Amount::from(order.quote()), dai(10_300.0));
