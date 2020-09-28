@@ -17,6 +17,10 @@ pub struct NoSwapExists(pub LocalSwapId);
 pub struct NoOrderExists(pub OrderId);
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
+#[error("no order found in the database for swap id {0}")]
+pub struct NoOrderForSwap(pub LocalSwapId);
+
+#[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("no secret hash found in database for swap {0}")]
 pub struct NoSecretHash(pub LocalSwapId);
 
@@ -55,6 +59,10 @@ pub struct NoRefundIdentity;
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("Order {0} is no longer open and can therefore not be cancelled")]
 pub struct NotOpen(pub OrderId);
+
+#[derive(thiserror::Error, Debug, Clone, Copy)]
+#[error("Order {0} is not settling and can therefore not be closed")]
+pub struct NotSettling(pub OrderId);
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("both params are side {0}")]

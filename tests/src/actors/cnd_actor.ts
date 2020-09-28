@@ -51,6 +51,7 @@ export class CndActor
 
     private alphaBalance: BalanceAsserter;
     private betaBalance: BalanceAsserter;
+    private mostRecentOrderHref: string;
 
     public constructor(
         public readonly logger: Logger,
@@ -343,7 +344,7 @@ export class CndActor
             }
         }
 
-        return this.cnd.createBtcDaiOrder({
+        this.mostRecentOrderHref = await this.cnd.createBtcDaiOrder({
             position,
             quantity: sats,
             price: weiPerSat,
@@ -353,6 +354,8 @@ export class CndActor
                 ethereum_address: this.wallets.ethereum.getAccount(),
             },
         });
+
+        return this.mostRecentOrderHref;
     }
 
     public async getBtcDaiMarket(): Promise<MarketEntity> {
@@ -519,6 +522,20 @@ export class CndActor
                 break;
             }
         }
+    }
+
+    public async assertOrderClosed() {
+        const order = await this.cnd.fetch<OrderEntity>(
+            this.mostRecentOrderHref
+        );
+
+        expect(order.data.properties.state).toMatchObject({
+            closed: order.data.properties.quantity.value,
+            open: "0",
+            settling: "0",
+            failed: "0",
+            cancelled: "0",
+        });
     }
 
     /**

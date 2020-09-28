@@ -13,6 +13,7 @@ use futures::TryStreamExt;
 use std::collections::{hash_map::Entry, HashMap};
 use tokio::sync::Mutex;
 
+use crate::storage::{BtcDaiOrder, Order};
 pub use comit::{hbit::*, identity};
 
 /// Creates a new instance of the hbit protocol, annotated with tracing spans
@@ -38,6 +39,21 @@ pub async fn new<C>(
 
     while let Ok(Some(event)) = events.try_next().await {
         storage.hbit_states.update(&id, event).await;
+    }
+
+    if let Err(e) = storage
+        .db
+        .do_in_transaction(|conn| {
+            let order = Order::by_swap_id(conn, id)?;
+            let btc_dai_order = BtcDaiOrder::by_order(conn, &order)?;
+
+            btc_dai_order.set_to_closed(conn)?;
+
+            Ok(())
+        })
+        .await
+    {
+        tracing::error!("failed to update order state: {:#}", e);
     }
 
     tracing::info!("swap finished");
