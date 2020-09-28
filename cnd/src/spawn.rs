@@ -7,7 +7,7 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use time::OffsetDateTime;
-use tokio::runtime::Handle;
+use tokio::{runtime::Handle, task::JoinHandle};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Swap<A, B> {
@@ -71,7 +71,12 @@ pub async fn spawn(
 }
 
 impl ProtocolContext<herc20::Params> {
-    fn spawn(self, connectors: Connectors, storage: Storage, handle: Handle) -> Result<()> {
+    fn spawn(
+        self,
+        connectors: Connectors,
+        storage: Storage,
+        handle: Handle,
+    ) -> Result<JoinHandle<()>> {
         let task = herc20::new(
             self.id,
             self.params,
@@ -82,14 +87,17 @@ impl ProtocolContext<herc20::Params> {
             connectors.ethereum(),
         );
 
-        handle.spawn(task);
-
-        Ok(())
+        Ok(handle.spawn(task))
     }
 }
 
 impl ProtocolContext<hbit::Params> {
-    fn spawn(self, connectors: Connectors, storage: Storage, handle: Handle) -> Result<()> {
+    fn spawn(
+        self,
+        connectors: Connectors,
+        storage: Storage,
+        handle: Handle,
+    ) -> Result<JoinHandle<()>> {
         let task = hbit::new(
             self.id,
             self.params,
@@ -100,14 +108,17 @@ impl ProtocolContext<hbit::Params> {
             connectors.bitcoin(),
         );
 
-        handle.spawn(task);
-
-        Ok(())
+        Ok(handle.spawn(task))
     }
 }
 
 impl ProtocolContext<halbit::Params> {
-    fn spawn(self, connectors: Connectors, storage: Storage, handle: Handle) -> Result<()> {
+    fn spawn(
+        self,
+        connectors: Connectors,
+        storage: Storage,
+        handle: Handle,
+    ) -> Result<JoinHandle<()>> {
         match (self.role, self.side) {
             (Role::Alice, Side::Alpha) | (Role::Bob, Side::Beta) => {
                 let task = halbit::new(
@@ -119,7 +130,7 @@ impl ProtocolContext<halbit::Params> {
                     connectors.lnd_as_sender()?,
                 );
 
-                handle.spawn(task);
+                Ok(handle.spawn(task))
             }
             (Role::Bob, Side::Alpha) | (Role::Alice, Side::Beta) => {
                 let task = halbit::new(
@@ -131,10 +142,8 @@ impl ProtocolContext<halbit::Params> {
                     connectors.lnd_as_receiver()?,
                 );
 
-                handle.spawn(task);
+                Ok(handle.spawn(task))
             }
         }
-
-        Ok(())
     }
 }
