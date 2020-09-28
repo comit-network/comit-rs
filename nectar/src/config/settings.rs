@@ -1,6 +1,6 @@
 use crate::{
     bitcoin,
-    config::{file, Bitcoind, Data, EstimateMode, File, MaxSell, Network},
+    config::{file, Bitcoind, Data, EstimateMode, File, Max, Network},
     ethereum, Spread,
 };
 use anyhow::{Context, Result};
@@ -158,8 +158,10 @@ impl Default for Ethereum {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Maker {
-    /// Maximum amount to sell per order
-    pub max_sell: MaxSell,
+    /// Maximum quantity to sell per order
+    pub max_sell: Max,
+    /// Maximum quantity to buy per order
+    pub max_buy: Max,
     /// Spread to apply to the mid-market rate, format is permyriad. E.g. 5.20
     /// is 5.2% spread
     pub spread: Spread,
@@ -256,6 +258,7 @@ impl Maker {
     fn from_file(file: file::Maker) -> Self {
         Self {
             max_sell: file.max_sell.unwrap_or_default(),
+            max_buy: file.max_buy.unwrap_or_default(),
             spread: file
                 .spread
                 .unwrap_or_else(|| Spread::new(500).expect("500 is a valid spread value")),
@@ -275,7 +278,8 @@ impl Maker {
 impl Default for Maker {
     fn default() -> Self {
         Self {
-            max_sell: MaxSell::default(),
+            max_sell: Max::default(),
+            max_buy: Max::default(),
             spread: Spread::new(500).expect("500 is a valid spread value"),
             maximum_possible_fee: Fees::default(),
             fee_strategies: FeeStrategies::default(),
@@ -346,11 +350,12 @@ impl From<Maker> for file::Maker {
     fn from(maker: Maker) -> file::Maker {
         file::Maker {
             max_sell: match maker.max_sell {
-                MaxSell {
-                    bitcoin: None,
-                    dai: None,
-                } => None,
+                Max { bitcoin: None } => None,
                 max_sell => Some(max_sell),
+            },
+            max_buy: match maker.max_buy {
+                Max { bitcoin: None } => None,
+                max_buy => Some(max_buy),
             },
             spread: Some(maker.spread),
             maximum_possible_fee: Some(file::MaxPossibleFee {

@@ -4,7 +4,7 @@ mod serde;
 pub mod settings;
 pub mod validation;
 
-use crate::{bitcoin, ethereum::dai};
+use crate::bitcoin;
 use ::serde::{Deserialize, Serialize};
 use anyhow::anyhow;
 use libp2p::Multiaddr;
@@ -30,13 +30,10 @@ pub struct Bitcoind {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-pub struct MaxSell {
+pub struct Max {
     #[serde(default)]
     #[serde(with = "crate::config::serde::bitcoin_amount::btc_as_optional_float")]
     pub bitcoin: Option<bitcoin::Amount>,
-    #[serde(default)]
-    #[serde(with = "crate::config::serde::dai_amount")]
-    pub dai: Option<dai::Amount>,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -144,9 +141,11 @@ mod tests {
     fn sample_config_deserializes_correctly() {
         let expected = File {
             maker: Some(file::Maker {
-                max_sell: Some(MaxSell {
+                max_sell: Some(Max {
                     bitcoin: Some(bitcoin::Amount::from_btc(0.1).unwrap()),
-                    dai: Some(dai::Amount::from_dai_trunc(1000.0).unwrap()),
+                }),
+                max_buy: Some(Max {
+                    bitcoin: Some(bitcoin::Amount::from_btc(0.1).unwrap()),
                 }),
                 spread: Some(Spread::new(500).unwrap()),
                 maximum_possible_fee: Some(file::MaxPossibleFee {

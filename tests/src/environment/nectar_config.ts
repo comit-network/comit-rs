@@ -42,13 +42,17 @@ function makeLedgerConfig(
 function makeMakerConfig(env: Environment): Pick<NectarConfig, "maker"> {
     const maxSell = {
         bitcoin: 0.1,
-        dai: 2000,
+    };
+
+    const maxBuy = {
+        bitcoin: 0.1,
     };
 
     if (env.treasury) {
         return {
             maker: {
                 max_sell: maxSell,
+                max_buy: maxBuy,
                 kraken_api_host: env.treasury.host,
             },
         };
@@ -93,7 +97,9 @@ interface Maker {
     spread?: number;
     max_sell?: {
         bitcoin?: number;
-        dai?: number;
+    };
+    max_buy?: {
+        bitcoin?: number;
     };
     kraken_api_host?: string;
 }

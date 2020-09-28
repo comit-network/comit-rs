@@ -16,9 +16,11 @@ kraken_api_host = "https://api.kraken.com"
 # The maximum amount of bitcoin to sell in one order, optional field.
 # If absent, orders are capped by the available balance.
 bitcoin = 0.1
-# The maximum amount of dai to sell in one order, optional field.
-# If absent, orders are capped by the available balance.
-dai = 1000
+
+[maker.max_buy]
+# The maximum amount of bitcoin to buy in one order, optional field.
+# If absent, orders are capped by the available quote balance.
+bitcoin = 0.1
 
 [maker.maximum_possible_fee]
 # An estimation of the maximum fee that we would expect to pay, used to ensure we always have enough

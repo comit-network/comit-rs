@@ -138,8 +138,8 @@ async fn init_maker(
         .await
         .context("Could not get Dai balance")?;
 
-    let btc_max_sell = settings.maker.max_sell.bitcoin;
-    let dai_max_sell = settings.maker.max_sell.dai.clone();
+    let max_sell = settings.maker.max_sell.bitcoin;
+    let max_buy = settings.maker.max_buy.bitcoin;
     let max_btc_fee = settings.maker.maximum_possible_fee.bitcoin;
     let btc_fee_strategy = settings.maker.fee_strategies.bitcoin;
 
@@ -152,8 +152,8 @@ async fn init_maker(
     let strategy = strategy::AllIn::new(
         btc_fee_strategy,
         max_btc_fee,
-        btc_max_sell,
-        dai_max_sell,
+        max_sell,
+        max_buy,
         spread,
         bitcoind_client,
     );
@@ -291,7 +291,7 @@ fn respawn_swaps(
 mod tests {
     use super::*;
     use crate::{
-        config::{settings, Data, Logging, MaxSell, Network},
+        config::{settings, Data, Logging, Max, Network},
         swap::herc20::asset::ethereum::FromWei,
         test_harness, Seed, StaticStub,
     };
@@ -314,10 +314,8 @@ mod tests {
 
         let settings = Settings {
             maker: settings::Maker {
-                max_sell: MaxSell {
-                    bitcoin: None,
-                    dai: None,
-                },
+                max_sell: Max { bitcoin: None },
+                max_buy: Max { bitcoin: None },
                 spread: StaticStub::static_stub(),
                 maximum_possible_fee: Default::default(),
                 fee_strategies: Default::default(),
