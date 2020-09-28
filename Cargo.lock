@@ -602,7 +602,6 @@ dependencies = [
  "thiserror",
  "time 0.2.22",
  "tokio",
- "tokio-socks 0.3.0",
  "toml",
  "tracing",
  "tracing-core",
@@ -621,7 +620,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "atty",
  "base64 0.12.3",
  "bitcoin 0.25.0",
  "bitcoincore-rpc",
@@ -636,7 +634,6 @@ dependencies = [
  "hex 0.4.2",
  "levenshtein",
  "libp2p",
- "log 0.4.11",
  "lru",
  "num 0.3.0",
  "primitive-types",
@@ -656,10 +653,7 @@ dependencies = [
  "time 0.2.22",
  "tokio",
  "tracing",
- "tracing-core",
  "tracing-futures",
- "tracing-log",
- "tracing-subscriber",
  "uuid",
 ]
 
@@ -2008,7 +2002,7 @@ dependencies = [
  "log 0.4.11",
  "socket2",
  "tokio",
- "tokio-socks 0.2.2",
+ "tokio-socks",
 ]
 
 [[package]]
@@ -4163,19 +4157,6 @@ name = "tokio-socks"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1997788a0e25e09300e44680ba1ef9d44d6f634a883641f80109e8b59c928daf"
-dependencies = [
- "bytes 0.4.12",
- "either",
- "futures",
- "thiserror",
- "tokio",
-]
-
-[[package]]
-name = "tokio-socks"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d611fd5d241872372d52a0a3d309c52d0b95a6a67671a6c8f7ab2c4a37fb2539"
 dependencies = [
  "bytes 0.4.12",
  "either",

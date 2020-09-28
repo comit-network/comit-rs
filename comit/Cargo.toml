@@ -37,23 +37,16 @@ thiserror = "1"
 time = { version = "0.2", features = ["serde"] }
 tokio = { version = "0.2", features = ["sync"] }
 tracing = "0.1.19"
-tracing-futures = { version = "0.2", features = ["std-future", "futures-03"] }
+tracing-futures = { version = "0.2" }
 uuid = { version = "0.8", features = ["serde", "v4"] }
 
 [dev-dependencies]
-atty = "0.2"
 bitcoincore-rpc = "0.11"
 libp2p = { version = "0.28", default-features = false, features = ["yamux", "noise"] }
-log = { version = "0.4", features = ["serde"] }
 proptest = "0.10"
 spectral = { version = "0.6", default-features = false }
 testcontainers = "0.10"
 tokio = { version = "0.2", features = ["macros"] }
-tracing = { version = "0.1", features = ["attributes"] }
-tracing-core = "0.1"
-tracing-futures = { version = "0.2", features = ["std-future", "futures-03"] }
-tracing-log = "0.1"
-tracing-subscriber = { version = "0.2", default-features = false }
 
 [features]
 default = []
