@@ -8,12 +8,13 @@ use crate::{
     local_swap_id::LocalSwapId,
     storage::{
         db::{schema::*, wrapper_types::Satoshis},
-        BtcDaiOrder, NoOrderForSwap, NotOpen, NotSettling, Order, Text,
+        BtcDaiOrder, InsertableCompletedSwap, NoOrderForSwap, NotOpen, NotSettling, Order, Text,
     },
 };
 use anyhow::{Context, Result};
 use comit::{OrderId, Quantity};
 use diesel::prelude::*;
+use time::OffsetDateTime;
 
 /// Move the amount that is settling from open to settling.
 ///
@@ -112,6 +113,17 @@ pub fn update_order_of_swap_to_failed(conn: &SqliteConnection, swap_id: LocalSwa
     if affected_rows == 0 {
         anyhow::bail!("failed to mark order {} as failed", order.order_id)
     }
+
+    Ok(())
+}
+
+pub fn mark_swap_as_completed(
+    conn: &SqliteConnection,
+    swap_id: LocalSwapId,
+    completed_at: OffsetDateTime,
+) -> Result<()> {
+    let swap_fk = swap_id_fk!(swap_id).first(conn)?;
+    InsertableCompletedSwap::new(swap_fk, completed_at).insert(conn)?;
 
     Ok(())
 }

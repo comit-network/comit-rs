@@ -1,5 +1,6 @@
 import {
     ActionKind,
+    ActiveSwapsEntity,
     HalbitHerc20Payload,
     HbitHerc20Payload,
     Herc20HalbitPayload,
@@ -537,6 +538,12 @@ export class CndActor
             failed: "0",
             cancelled: "0",
         });
+    }
+
+    public async assertSwapInactive() {
+        const activeSwaps = await this.cnd.fetch<ActiveSwapsEntity>("/swaps");
+
+        expect(activeSwaps.data.entities).toHaveLength(0);
     }
 
     /**

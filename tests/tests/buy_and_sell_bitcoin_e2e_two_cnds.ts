@@ -26,8 +26,10 @@ it(
 
         await alice.assertBalancesAfterSwap();
         await alice.assertOrderClosed();
+        await alice.assertSwapInactive();
         await bob.assertBalancesAfterSwap();
         await bob.assertOrderClosed();
+        await bob.assertSwapInactive();
     })
 );
 
@@ -51,7 +53,9 @@ it(
 
         await alice.assertBalancesAfterSwap();
         await alice.assertOrderClosed();
+        await alice.assertSwapInactive();
         await bob.assertBalancesAfterSwap();
         await bob.assertOrderClosed();
+        await bob.assertSwapInactive();
     })
 );

@@ -6,6 +6,7 @@ use crate::{
     Role, Side, Storage,
 };
 use anyhow::{Context, Result};
+use diesel::SqliteConnection;
 use futures::prelude::*;
 use time::OffsetDateTime;
 use tokio::{runtime::Handle, task::JoinHandle};
@@ -69,56 +70,58 @@ pub async fn spawn(
             .spawn(connectors.clone(), storage.clone(), handle.clone())
             .context("failed to spawn protocol for alpha ledger")?;
 
-        handle.spawn(async move {
-            let join_result = future::join(alpha_handle, beta_handle).await;
-
-            match join_result {
-                (Ok(Err(e)), Ok(_)) | (Ok(_), Ok(Err(e))) => {
-                    tracing::error!(
-                        swap = %swap_id,
-                        "failed to complete swap: {:#}",
-                        e
-                    );
-
-                    if let Err(e) = storage
-                        .db
-                        .do_in_transaction(|conn| {
-                            commands::update_order_of_swap_to_failed(conn, swap_id)
-                        })
-                        .await
-                    {
-                        tracing::error!("failed to update order state: {:#}", e);
-                    }
-                }
-                (Ok(Ok(())), Ok(Ok(()))) => {
-                    tracing::info!(
-                        swap = %swap_id,
-                        "swap completed"
-                    );
-
-                    if let Err(e) = storage
-                        .db
-                        .do_in_transaction(|conn| {
-                            commands::update_order_of_swap_to_closed(conn, swap_id)
-                        })
-                        .await
-                    {
-                        tracing::error!("failed to update order state: {:#}", e);
-                    }
-                }
-                (Err(e), _) | (_, Err(e)) => {
-                    let e = Box::new(e);
-                    tracing::error!(
-                        error = &e as &(dyn std::error::Error + 'static),
-                        swap = %swap_id,
-                        "runtime error while executing protocol futures",
-                    );
-                }
-            };
-        });
+        handle.spawn(swap_result_handler(
+            alpha_handle,
+            beta_handle,
+            storage,
+            swap_id,
+        ));
     });
 
     Ok(())
+}
+
+async fn swap_result_handler(
+    alpha: JoinHandle<Result<()>>,
+    beta: JoinHandle<Result<()>>,
+    storage: Storage,
+    swap_id: LocalSwapId,
+) {
+    let db_update: Box<dyn Fn(&SqliteConnection) -> Result<()> + Send> =
+        match future::try_join(alpha, beta).await {
+            // Join successful and both protocols finish successfully
+            Ok((Ok(()), Ok(()))) => {
+                tracing::info!(swap = %swap_id, "swap completed");
+
+                Box::new(move |conn| {
+                    commands::update_order_of_swap_to_closed(conn, swap_id)?;
+                    commands::mark_swap_as_completed(conn, swap_id, OffsetDateTime::now_utc())?;
+
+                    Ok(())
+                })
+            }
+            // Join successful but one of the protocols failed
+            Ok((Err(e), _)) | Ok((_, Err(e))) => {
+                tracing::error!(swap = %swap_id, "failed to complete swap: {:#}", e);
+
+                Box::new(move |conn| {
+                    commands::update_order_of_swap_to_failed(conn, swap_id)?;
+                    // we don't mark a swap as completed in case of failure so that a
+                    // restart of the node will respawn the swap
+
+                    Ok(())
+                })
+            }
+            // Join unsuccessful
+            Err(e) => {
+                tracing::error!(swap = %swap_id, "failed to join protocol futures: {:?}", e);
+                return;
+            }
+        };
+
+    if let Err(e) = storage.db.do_in_transaction(db_update).await {
+        tracing::warn!("failed to update db state: {:#}", e)
+    }
 }
 
 impl ProtocolContext<herc20::Params> {

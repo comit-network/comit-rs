@@ -26,6 +26,7 @@ test(
 
         await alice.assertBalancesAfterSwap();
         await alice.assertOrderClosed();
+        await alice.assertSwapInactive();
         await bob.assertBalancesChangedBy({
             bitcoin: -(10_000_000n + 3060n), // nectar pays order quantity + the funding fee
             dai: 945_000_000_000_000_000_000n, // = 0.1 * 9450 * 10^18
@@ -52,6 +53,7 @@ test(
 
         await alice.assertBalancesAfterSwap();
         await alice.assertOrderClosed();
+        await alice.assertSwapInactive();
         await bob.assertBalancesChangedBy({
             bitcoin: 23391812n - 5700n, // nectar receives order quantity but pays the redeem fee
             dai: -1_999_999_926_000_000_000_000n, // = 0.23391812 * 8550 * 10^18

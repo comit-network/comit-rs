@@ -7,7 +7,7 @@
 use crate::{
     connectors::Connectors,
     spawn::spawn,
-    storage::{queries::get_all_swap_contexts, Storage},
+    storage::{queries::get_active_swap_contexts, Storage},
 };
 use tokio::runtime::Handle;
 
@@ -17,7 +17,10 @@ pub async fn respawn(
     connectors: Connectors,
     handle: Handle,
 ) -> anyhow::Result<()> {
-    let swaps = storage.db.do_in_transaction(get_all_swap_contexts).await?;
+    let swaps = storage
+        .db
+        .do_in_transaction(get_active_swap_contexts)
+        .await?;
 
     for swap in swaps {
         let id = swap.id;

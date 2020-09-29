@@ -123,6 +123,14 @@ table! {
     }
 }
 
+table! {
+    completed_swaps {
+        id -> Integer,
+        swap_id -> Integer,
+        completed_on -> BigInt,
+    }
+}
+
 allow_tables_to_appear_in_same_query!(swaps, halbits);
 allow_tables_to_appear_in_same_query!(swaps, herc20s);
 allow_tables_to_appear_in_same_query!(swaps, hbits);
@@ -139,8 +147,12 @@ allow_tables_to_appear_in_same_query!(swaps, order_swaps);
 allow_tables_to_appear_in_same_query!(orders, swaps);
 allow_tables_to_appear_in_same_query!(btc_dai_orders, swaps);
 allow_tables_to_appear_in_same_query!(btc_dai_orders, order_swaps);
+allow_tables_to_appear_in_same_query!(swap_contexts, swaps);
+allow_tables_to_appear_in_same_query!(completed_swaps, swaps);
+allow_tables_to_appear_in_same_query!(completed_swaps, swap_contexts);
 joinable!(btc_dai_orders -> orders (order_id));
 joinable!(order_hbit_params -> orders (order_id));
 joinable!(order_herc20_params -> orders (order_id));
 joinable!(order_swaps -> orders (order_id));
 joinable!(order_swaps -> swaps (swap_id));
+joinable!(completed_swaps -> swaps (swap_id));
