@@ -15,6 +15,7 @@ pub async fn resume_only(
     bitcoin_wallet: bitcoin::Wallet,
     bitcoin_fee: bitcoin::Fee,
     ethereum_wallet: ethereum::Wallet,
+    ethereum_gas_price: ethereum::GasPrice,
 ) -> anyhow::Result<()> {
     #[cfg(not(test))]
     let db = Database::new(&settings.data.dir.join("database"))?;
@@ -28,6 +29,7 @@ pub async fn resume_only(
         Arc::new(bitcoin_wallet),
         bitcoin_fee,
         Arc::new(ethereum_wallet),
+        ethereum_gas_price,
         Arc::new(BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?),
         Arc::new(Web3Connector::new(settings.ethereum.node_url)),
     );

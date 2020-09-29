@@ -331,6 +331,9 @@ mod tests {
                 )
                 .await?;
 
+            let ethereum_gas_price =
+                crate::ethereum::GasPrice::geth_url(ethereum_blockchain.node_url.clone());
+
             (
                 bitcoin::Wallet {
                     inner: Arc::new(bitcoin_wallet),
@@ -340,6 +343,7 @@ mod tests {
                 ethereum::Wallet {
                     inner: Arc::new(ethereum_wallet),
                     connector: Arc::clone(&ethereum_connector),
+                    gas_price: ethereum_gas_price,
                 },
             )
         };
@@ -372,6 +376,9 @@ mod tests {
                 )
                 .await?;
 
+            let ethereum_gas_price =
+                crate::ethereum::GasPrice::geth_url(ethereum_blockchain.node_url.clone());
+
             (
                 bitcoin::Wallet {
                     inner: Arc::new(bitcoin_wallet),
@@ -381,6 +388,7 @@ mod tests {
                 ethereum::Wallet {
                     inner: Arc::new(ethereum_wallet),
                     connector: Arc::clone(&ethereum_connector),
+                    gas_price: ethereum_gas_price,
                 },
             )
         };
@@ -539,6 +547,7 @@ pub struct SwapExecutor {
     bitcoin_wallet: Arc<crate::bitcoin::Wallet>,
     bitcoin_fee: crate::bitcoin::Fee,
     ethereum_wallet: Arc<crate::ethereum::Wallet>,
+    ethereum_gas_price: crate::ethereum::GasPrice,
     finished_swap_sender: mpsc::Sender<FinishedSwap>,
     bitcoin_connector: Arc<BitcoindConnector>,
     ethereum_connector: Arc<Web3Connector>,
@@ -550,6 +559,7 @@ impl SwapExecutor {
         bitcoin_wallet: Arc<crate::bitcoin::Wallet>,
         bitcoin_fee: crate::bitcoin::Fee,
         ethereum_wallet: Arc<crate::ethereum::Wallet>,
+        ethereum_gas_price: crate::ethereum::GasPrice,
         bitcoin_connector: Arc<BitcoindConnector>,
         ethereum_connector: Arc<Web3Connector>,
     ) -> (Self, mpsc::Receiver<FinishedSwap>) {
@@ -563,6 +573,7 @@ impl SwapExecutor {
             bitcoin_wallet,
             bitcoin_fee,
             ethereum_wallet,
+            ethereum_gas_price,
             finished_swap_sender,
             bitcoin_connector,
             ethereum_connector,
@@ -585,6 +596,7 @@ impl SwapExecutor {
             ethereum::Wallet {
                 inner: self.ethereum_wallet.clone(),
                 connector: self.ethereum_connector.clone(),
+                gas_price: self.ethereum_gas_price.clone(),
             },
             self.ethereum_connector.clone(),
             self.db.clone(),

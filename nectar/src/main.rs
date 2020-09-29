@@ -136,8 +136,10 @@ async fn main() -> Result<()> {
             println!("{}", deposit);
         }
         Command::Withdraw(arguments) => {
+            let ethereum_gas_price = ethereum::GasPrice::geth_url(settings.ethereum.node_url);
             let tx_id = withdraw(
                 ethereum_wallet.expect("could not initialise ethereum wallet"),
+                ethereum_gas_price,
                 bitcoin_wallet.expect("could not initialise bitcoin wallet"),
                 arguments,
             )
@@ -154,11 +156,15 @@ async fn main() -> Result<()> {
                 bitcoind_client,
             );
 
+            let ethereum_gas_price =
+                ethereum::GasPrice::geth_url(settings.ethereum.node_url.clone());
+
             resume_only(
                 settings,
                 bitcoin_wallet.expect("could not initialise bitcoin wallet"),
                 bitcoin_fee,
                 ethereum_wallet.expect("could not initialise ethereum wallet"),
+                ethereum_gas_price,
             )
             .await
             .expect("Wrapping up")

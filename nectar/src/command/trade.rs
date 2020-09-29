@@ -79,7 +79,7 @@ pub async fn trade(
     tokio::spawn(dai_balance_future);
 
     let bitcoin_connector = Arc::new(BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?);
-    let ethereum_connector = Arc::new(Web3Connector::new(settings.ethereum.node_url));
+    let ethereum_connector = Arc::new(Web3Connector::new(settings.ethereum.node_url.clone()));
 
     let bitcoin_fee = bitcoin::Fee::new(
         settings.maker.fee_strategies.bitcoin,
@@ -87,11 +87,14 @@ pub async fn trade(
         bitcoind_client,
     );
 
+    let ethereum_gas_price = ethereum::GasPrice::geth_url(settings.ethereum.node_url);
+
     let (swap_executor, swap_execution_finished_receiver) = SwapExecutor::new(
         Arc::clone(&db),
         Arc::clone(&bitcoin_wallet),
         bitcoin_fee,
         Arc::clone(&ethereum_wallet),
+        ethereum_gas_price,
         bitcoin_connector,
         ethereum_connector,
     );

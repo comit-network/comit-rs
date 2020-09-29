@@ -1,4 +1,4 @@
-use crate::ethereum::{self, ether, Address, ChainId};
+use crate::ethereum::{self, ether, Address, ChainId, GasPrice};
 use anyhow::Context;
 use clarity::{PrivateKey, Uint256};
 use comit::{
@@ -53,6 +53,7 @@ pub struct Blockchain<'c> {
     _container: Container<'c, clients::Cli, GenericImage>,
     _volume: TempDir,
     dev_account_wallet: ethereum::Wallet,
+    gas_price: GasPrice,
     pub node_url: Url,
 }
 
@@ -102,10 +103,13 @@ impl<'c> Blockchain<'c> {
             ChainId::GETH_DEV,
         );
 
+        let gas_price = GasPrice::geth_url(url.clone());
+
         Ok(Self {
             _container: container,
             _volume: temp_dir,
             node_url: url,
+            gas_price,
             dev_account_wallet,
         })
     }
@@ -129,9 +133,11 @@ impl<'c> Blockchain<'c> {
         ether: ether::Amount,
         chain_id: ChainId,
     ) -> anyhow::Result<()> {
+        let gas_price = self.gas_price.gas_price().await?;
+
         let _ = self
             .dev_account_wallet
-            .send_transaction(to, ether, Some(100_000), None, chain_id)
+            .send_transaction(to, ether, Some(100_000), None, chain_id, gas_price)
             .await?;
 
         Ok(())
@@ -144,6 +150,7 @@ impl<'c> Blockchain<'c> {
         chain_id: ChainId,
     ) -> anyhow::Result<()> {
         let transfer = self.transfer_fn(to, asset.quantity)?;
+        let gas_price = self.gas_price.gas_price().await?;
 
         let _ = self
             .dev_account_wallet
@@ -153,6 +160,7 @@ impl<'c> Blockchain<'c> {
                 Some(100_000),
                 Some(transfer),
                 chain_id,
+                gas_price,
             )
             .await?;
 
@@ -174,14 +182,18 @@ impl<'c> Blockchain<'c> {
     async fn deploy_token_contract(&mut self) -> anyhow::Result<()> {
         let contract = TOKEN_CONTRACT[2..].trim(); // remove the 0x in the front and any whitespace
         let contract = hex::decode(contract).context("token contract should be valid hex")?;
+        let gas_price = self.gas_price.gas_price().await?;
 
         self.dev_account_wallet
-            .deploy_dai_token_contract(DeployContract {
-                data: contract,
-                amount: Ether::zero(),
-                gas_limit: 1_000_000,
-                chain_id: ChainId::GETH_DEV,
-            })
+            .deploy_dai_token_contract(
+                DeployContract {
+                    data: contract,
+                    amount: Ether::zero(),
+                    gas_limit: 1_000_000,
+                    chain_id: ChainId::GETH_DEV,
+                },
+                gas_price,
+            )
             .await?;
 
         Ok(())

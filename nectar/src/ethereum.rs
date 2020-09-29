@@ -1,8 +1,10 @@
 pub mod dai;
+mod gas_price;
 mod geth;
 mod wallet;
 
 pub use comit::ethereum::{Address, ChainId, Hash};
+pub use gas_price::*;
 pub use geth::Client;
 pub use wallet::Wallet;
 
