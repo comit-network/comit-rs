@@ -72,12 +72,10 @@ where
 
     async fn block_by_hash(&self, block_hash: Self::BlockHash) -> Result<Self::Block> {
         if let Some(block) = self.block_cache.lock().await.get(&block_hash) {
-            tracing::trace!("Found block in cache: {}", block_hash);
             return Ok(block.clone());
         }
 
         let block = self.connector.block_by_hash(block_hash).await?;
-        tracing::trace!("Fetched block from connector: {}", block_hash);
 
         // We dropped the lock so at this stage the block may have been inserted by
         // another thread, no worries, inserting the same block twice does not hurt.
@@ -95,13 +93,10 @@ where
 {
     async fn receipt_by_hash(&self, transaction_hash: Hash) -> Result<TransactionReceipt> {
         if let Some(receipt) = self.receipt_cache.lock().await.get(&transaction_hash) {
-            tracing::trace!("Found receipt in cache: {}", transaction_hash);
             return Ok(receipt.clone());
         }
 
         let receipt = self.connector.receipt_by_hash(transaction_hash).await?;
-
-        tracing::trace!("Fetched receipt from connector: {}", transaction_hash);
 
         // We dropped the lock so at this stage the receipt may have been inserted by
         // another thread, no worries, inserting the same receipt twice does not hurt.

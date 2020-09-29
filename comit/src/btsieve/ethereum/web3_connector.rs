@@ -23,8 +23,6 @@ impl Web3Connector {
             .send::<Vec<()>, String>(jsonrpc::Request::new("net_version", vec![]))
             .await?;
 
-        tracing::trace!("Fetched net_version from web3: {:?}", version);
-
         Ok(ChainId::from(version.parse::<u32>()?))
     }
 }
@@ -41,8 +39,6 @@ impl LatestBlock for Web3Connector {
                 jsonrpc::serialize(true)?,
             ]))
             .await?;
-
-        tracing::trace!("Fetched block from web3: {}", block.hash);
 
         Ok(block)
     }
@@ -62,8 +58,6 @@ impl BlockByHash for Web3Connector {
             ]))
             .await?;
 
-        tracing::trace!("Fetched block from web3: {}", block_hash);
-
         Ok(block)
     }
 }
@@ -77,8 +71,6 @@ impl ReceiptByHash for Web3Connector {
                 jsonrpc::serialize(transaction_hash)?,
             ]))
             .await?;
-
-        tracing::trace!("Fetched receipt from web3: {}", transaction_hash);
 
         Ok(receipt)
     }

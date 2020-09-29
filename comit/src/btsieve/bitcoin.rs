@@ -102,12 +102,20 @@ where
     loop {
         match block_generator.async_resume().await {
             GeneratorState::Yielded(block) => {
+                let block_span = tracing::error_span!("block", hash = %block.block_hash(), tx_count = %block.txdata.len());
+                let _enter_block_span = block_span.enter();
+
                 for transaction in block.txdata.into_iter() {
+                    let tx_span = tracing::error_span!("tx", hash = %transaction.txid());
+                    let _enter_tx_span = tx_span.enter();
+
                     if let Some(result) = sieve(&transaction) {
-                        tracing::trace!("transaction matched {:x}", transaction.txid());
+                        tracing::info!("transaction matched");
                         return Ok((transaction, result));
                     }
                 }
+
+                tracing::info!("no transaction matched")
             }
             GeneratorState::Complete(Err(e)) => return Err(e),
             // By matching against the never type explicitly, we assert that the `Ok` value of the

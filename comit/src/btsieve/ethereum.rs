@@ -147,19 +147,13 @@ where
     loop {
         match block_generator.async_resume().await {
             GeneratorState::Yielded(block) => {
-                let span =
-                    tracing::trace_span!("new_block", blockhash = format_args!("{}", block.hash));
-                let _enter = span.enter();
-
-                tracing::trace!("checking {} transactions", block.transactions.len());
+                let block_span = tracing::error_span!("block", hash = %block.hash, tx_count = %block.transactions.len());
+                let _enter_block_span = block_span.enter();
 
                 for transaction in block.transactions.into_iter() {
                     let tx_hash = transaction.hash;
-                    let span = tracing::trace_span!(
-                        "matching_transaction",
-                        txhash = format_args!("{}", tx_hash)
-                    );
-                    let _enter = span.enter();
+                    let tx_span = tracing::error_span!("tx", hash = %tx_hash);
+                    let _enter_tx_span = tx_span.enter();
 
                     if matcher(&transaction) {
                         let receipt = fetch_receipt(connector, tx_hash).await?;
@@ -173,6 +167,8 @@ where
                         return Ok((transaction, receipt));
                     }
                 }
+
+                tracing::info!("no transaction matched")
             }
             GeneratorState::Complete(Err(e)) => return Err(e),
             // By matching against the never type explicitly, we assert that the `Ok` value of the
@@ -198,9 +194,8 @@ where
     loop {
         match block_generator.async_resume().await {
             GeneratorState::Yielded(block) => {
-                let span =
-                    tracing::trace_span!("new_block", blockhash = format_args!("{}", block.hash));
-                let _enter = span.enter();
+                let block_span = tracing::error_span!("block", hash = %block.hash, tx_count = %block.transactions.len());
+                let _enter_block_span = block_span.enter();
 
                 let maybe_contains_transaction = topics.iter().all(|topic| {
                     topic.as_ref().map_or(true, |topic| {
@@ -210,27 +205,14 @@ where
                     })
                 });
                 if !maybe_contains_transaction {
-                    tracing::trace!(
-                    "bloom filter indicates that this block will not contain an instance of the event"
-
-                    );
+                    tracing::trace!("skipping block due to bloom filter");
                     continue;
-                } else {
-                    tracing::trace!(
-                        "bloom filter indicates that this block might contain an instance of the event"
-                    );
                 }
-
-                tracing::trace!("checking {} transactions", block.transactions.len());
 
                 for transaction in block.transactions.into_iter() {
                     let tx_hash = transaction.hash;
-
-                    let span = tracing::trace_span!(
-                        "matching_transaction",
-                        txhash = format_args!("{}", tx_hash)
-                    );
-                    let _enter = span.enter();
+                    let tx_span = tracing::error_span!("tx", hash = %tx_hash);
+                    let _enter_tx_span = tx_span.enter();
 
                     let receipt = fetch_receipt(connector, tx_hash).await?;
                     let is_successful = receipt.successful;
@@ -245,6 +227,8 @@ where
                         return Ok((transaction, log));
                     }
                 }
+
+                tracing::info!("no transaction matched")
             }
             GeneratorState::Complete(Err(e)) => return Err(e),
             // By matching against the never type explicitly, we assert that the `Ok` value of the
