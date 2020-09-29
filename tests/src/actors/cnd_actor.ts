@@ -8,6 +8,7 @@ import {
     OpenOrdersEntity,
     OrderEntity,
     Position,
+    RedeemEvent,
     SwapEntity,
     SwapEventKind,
 } from "../cnd_client/payload";
@@ -580,6 +581,22 @@ export class CndActor
                 bitcoin: this.wallets.bitcoin,
             })
         );
+    }
+
+    public async waitUntilSwapped() {
+        type RedeemEventKind = RedeemEvent["name"];
+
+        await this.pollCndUntil<SwapEntity>(this.swap.self, (body) => {
+            const eventNames = body.properties.events.map((e) => e.name);
+
+            const alphaRedeemed = `${body.properties.alpha.protocol}_redeemed` as RedeemEventKind;
+            const betaRedeemed = `${body.properties.beta.protocol}_redeemed` as RedeemEventKind;
+
+            return (
+                eventNames.includes(alphaRedeemed) &&
+                eventNames.includes(betaRedeemed)
+            );
+        });
     }
 
     public async pollUntilConnectedTo(peer: string) {

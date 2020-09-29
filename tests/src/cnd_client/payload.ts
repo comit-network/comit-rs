@@ -92,17 +92,21 @@ export interface HalbitProtocol {
     asset: Amount;
 }
 
-export type SwapEvent =
-    | HbitFundedEvent
-    | HbitRedeemedEvent
+export type FundEvent = HbitFundedEvent | Herc20FundedEvent | HalbitFundedEvent;
+export type RefundEvent =
     | HbitRefundedEvent
-    | Herc20DeployedEvent
-    | Herc20FundedEvent
-    | Herc20RedeemedEvent
     | Herc20RefundedEvent
-    | HalbitFundedEvent
-    | HalbitRedeemedEvent
     | HalbitRefundedEvent;
+export type RedeemEvent =
+    | HbitRedeemedEvent
+    | Herc20RedeemedEvent
+    | HalbitRedeemedEvent;
+
+export type SwapEvent =
+    | FundEvent
+    | RefundEvent
+    | RedeemEvent
+    | Herc20DeployedEvent;
 
 export type SwapEventKind = SwapEvent["name"]; // Oh yeah, type system magic baby!
 
