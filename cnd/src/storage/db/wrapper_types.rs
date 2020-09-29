@@ -2,9 +2,10 @@ use crate::asset;
 use std::{fmt, str::FromStr};
 
 mod text;
+mod timestamp;
 mod u32;
 
-pub use self::{text::Text, u32::U32};
+pub use self::{text::Text, timestamp::Timestamp, u32::U32};
 use comit::{asset::Erc20Quantity, Price, Quantity};
 
 /// A wrapper type for representing satoshis

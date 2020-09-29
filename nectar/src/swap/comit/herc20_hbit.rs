@@ -3,12 +3,12 @@ use crate::swap::{
     hbit, herc20,
 };
 use anyhow::Context;
-use chrono::{DateTime, Utc};
 use comit::{
     btsieve,
     btsieve::{BlockByHash, LatestBlock},
     ethereum, Secret,
 };
+use time::OffsetDateTime;
 
 /// Execute a Herc20<->Hbit swap for Alice.
 #[allow(dead_code)] // This is library code
@@ -18,7 +18,7 @@ pub async fn herc20_hbit_alice<A, BC>(
     herc20_params: herc20::Params,
     hbit_params: hbit::Params,
     secret: Secret,
-    utc_start_of_swap: DateTime<Utc>,
+    utc_start_of_swap: OffsetDateTime,
 ) -> anyhow::Result<()>
 where
     A: herc20::ExecuteDeploy + herc20::ExecuteFund + herc20::ExecuteRefund + hbit::ExecuteRedeem,
@@ -64,7 +64,7 @@ pub async fn herc20_hbit_bob<B, EC, BC>(
     bitcoin_connector: &BC,
     herc20_params: herc20::Params,
     hbit_params: hbit::Params,
-    utc_start_of_swap: DateTime<Utc>,
+    utc_start_of_swap: OffsetDateTime,
 ) -> anyhow::Result<()>
 where
     B: hbit::ExecuteFund + hbit::ExecuteRefund + herc20::ExecuteRedeem,

@@ -4,12 +4,12 @@ use self::{
 };
 use crate::{network, network::ActivePeer, swap, swap::SwapKind, SwapId};
 use anyhow::{anyhow, Context};
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
 use crate::StaticStub;
 use std::{collections::HashSet, iter::FromIterator};
+use time::OffsetDateTime;
 
 mod hbit;
 mod herc20;
@@ -258,7 +258,7 @@ struct Swap {
     pub hbit_params: hbit::Params,
     pub herc20_params: herc20::Params,
     pub secret_hash: comit::SecretHash,
-    pub utc_start_of_swap: DateTime<Utc>,
+    pub utc_start_of_swap: OffsetDateTime,
     pub active_peer: network::ActivePeer,
     pub hbit_funded: Option<HbitFunded>,
     pub hbit_redeemed: Option<HbitRedeemed>,
@@ -291,7 +291,7 @@ impl StaticStub for Swap {
                 .unwrap(),
             ),
             active_peer: network::ActivePeer::static_stub(),
-            utc_start_of_swap: chrono::Utc::now(),
+            utc_start_of_swap: OffsetDateTime::now_utc(),
             hbit_funded: None,
             hbit_redeemed: None,
             hbit_refunded: None,

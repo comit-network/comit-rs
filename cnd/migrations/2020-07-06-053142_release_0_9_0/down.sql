@@ -13,3 +13,5 @@ DROP TABLE orders;
 DROP TABLE btc_dai_orders;
 DROP TABLE order_hbit_params;
 DROP TABLE order_herc20_params;
+
+UPDATE swaps SET start_of_swap = datetime(swaps.start_of_swap, 'unixepoch', 'utc');

@@ -10,7 +10,6 @@ use crate::{
     Maker, MidMarketRate, SwapId,
 };
 use anyhow::{bail, Context, Result};
-use chrono::{NaiveDateTime, Utc};
 use comit::{
     identity,
     network::{
@@ -199,10 +198,7 @@ impl EventLoop {
         match event {
             setup_swap::BehaviourOutEvent::ExecutableSwap(exec_swap) => {
                 let swap_id = exec_swap.context.swap_id;
-                let start_of_swap = chrono::DateTime::from_utc(
-                    NaiveDateTime::from_timestamp(exec_swap.context.match_ref_point.timestamp(), 0),
-                    Utc,
-                );
+                let start_of_swap = exec_swap.context.match_ref_point;
                 let bitcoin_transient_sk = self
                     .bitcoin_wallet
                     .derive_transient_sk(exec_swap.context.bitcoin_transient_key_index)

@@ -9,7 +9,6 @@ anyhow = "1"
 async-trait = "0.1"
 atty = "0.2"
 bitcoin = { version = "0.25", features = ["rand", "use-serde"] }
-chrono = "0.4"
 clarity = "0.3"
 comit = { path = "../comit/", package = "comit" }
 config = { version = "0.10", default-features = false, features = ["toml"] }
@@ -44,7 +43,7 @@ toml = "0.5"
 tracing = "0.1"
 tracing-futures = "0.2"
 tracing-log = "0.1"
-tracing-subscriber = "0.2"
+tracing-subscriber = { version = "0.2", default-features = false, features = ["fmt", "ansi", "env-filter"] }
 url = { version = "2", features = ["serde"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
 

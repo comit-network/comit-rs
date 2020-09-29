@@ -1,185 +1,14 @@
 use crate::fs::ensure_directory_exists;
 use anyhow::Result;
-use chrono::{DateTime, Utc};
 use csv::*;
+use libp2p::PeerId;
 use num::BigUint;
 use serde::{Serialize, Serializer};
 use std::{
     fs::{File, OpenOptions},
     path::Path,
 };
-
-#[derive(Debug, Copy, Clone, Serialize)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum Symbol {
-    Btc,
-    Dai,
-}
-
-#[derive(Debug, Copy, Clone, Serialize)]
-pub enum Position {
-    Buy,
-    Sell,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct Float(String);
-
-impl From<f64> for Float {
-    fn from(float: f64) -> Self {
-        Float(float.to_string())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Integer(BigUint);
-
-impl From<BigUint> for Integer {
-    fn from(int: BigUint) -> Self {
-        Integer(int)
-    }
-}
-
-impl From<u64> for Integer {
-    fn from(int: u64) -> Self {
-        Integer(BigUint::from(int))
-    }
-}
-
-impl Serialize for Integer {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.0.to_string())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct PeerId(libp2p::PeerId);
-
-impl From<libp2p::PeerId> for PeerId {
-    fn from(peer_id: libp2p::PeerId) -> Self {
-        Self(peer_id)
-    }
-}
-
-impl Serialize for PeerId {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.0.to_string())
-    }
-}
-
-/// Struct representing a UTC Date Time.
-/// Blockchain times are always UTC so we are keeping consistent with the domain
-/// A local time might be useful can be added if a user requests it.
-#[derive(Debug, Clone, Copy)]
-pub struct UtcDateTime {
-    inner: DateTime<Utc>,
-}
-
-impl From<DateTime<Utc>> for UtcDateTime {
-    fn from(date_time: DateTime<Utc>) -> Self {
-        UtcDateTime { inner: date_time }
-    }
-}
-
-impl Serialize for UtcDateTime {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.inner.to_rfc3339())
-    }
-}
-
-/// All the information to write in the CVS file per trade
-// If you change this then you need to think about versioning
-#[derive(Debug, Clone, Serialize)]
-pub struct Trade {
-    /// When the trade was taken and accepted
-    pub utc_start_timestamp: UtcDateTime,
-    /// When the last transaction (redeem or refund) was seen (can be changed to
-    /// confirmed in the future)
-    pub utc_final_timestamp: UtcDateTime,
-    /// The symbol of the base currency
-    pub base_symbol: Symbol,
-    /// The symbol of the quote currency
-    pub quote_symbol: Symbol,
-    /// The position of the trade from the user's point of view (note: Sell =
-    /// sell the base)
-    pub position: Position,
-    /// The base currency traded amount in the most precise unit (e.g. Satoshi)
-    /// Note: it does not include fees
-    pub base_precise_amount: Integer,
-    /// The quote currency traded amount in the most precise unit (e.g. attodai)
-    /// Note: it does not include fees
-    pub quote_precise_amount: Integer,
-    /// the Peer id of the counterpart/taker
-    pub peer: PeerId,
-    // TODO: Add fees?
-}
-
-#[cfg(test)]
-impl crate::StaticStub for PeerId {
-    fn static_stub() -> Self {
-        use std::str::FromStr;
-
-        Self(libp2p::PeerId::from_str("QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg").unwrap())
-    }
-}
-
-#[cfg(test)]
-impl Trade {
-    fn new_1() -> Self {
-        use std::str::FromStr;
-
-        Trade {
-            utc_start_timestamp: DateTime::from_str("2020-07-10T17:48:26.123+10:00")
-                .unwrap()
-                .into(),
-            utc_final_timestamp: DateTime::from_str("2020-07-10T18:48:26.456+10:00")
-                .unwrap()
-                .into(),
-            base_symbol: Symbol::Btc,
-            quote_symbol: Symbol::Dai,
-            position: Position::Buy,
-            base_precise_amount: 1_000_000u64.into(),
-            quote_precise_amount: BigUint::from_str("99_000_000_000_000_000_000")
-                .unwrap()
-                .into(),
-            peer: libp2p::PeerId::from_str("QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg")
-                .unwrap()
-                .into(),
-        }
-    }
-
-    fn new_2() -> Self {
-        use std::str::FromStr;
-
-        Trade {
-            utc_start_timestamp: DateTime::from_str("2020-07-11T12:00:00.789+10:00")
-                .unwrap()
-                .into(),
-            utc_final_timestamp: DateTime::from_str("2020-07-11T13:00:00.000+10:00")
-                .unwrap()
-                .into(),
-            base_symbol: Symbol::Btc,
-            quote_symbol: Symbol::Dai,
-            position: Position::Sell,
-            base_precise_amount: 20_000_000u64.into(),
-            quote_precise_amount: BigUint::from_str("2_012_340_000_000_000_000_000")
-                .unwrap()
-                .into(),
-            peer: libp2p::PeerId::from_str("QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK")
-                .unwrap()
-                .into(),
-        }
-    }
-}
+use time::{Format, OffsetDateTime, UtcOffset};
 
 #[derive(Debug)]
 pub struct History {
@@ -207,6 +36,140 @@ impl History {
     }
 }
 
+/// All the information to write in the CVS file per trade
+// If you change this then you need to think about versioning
+#[derive(Debug, Clone, Serialize)]
+pub struct Trade {
+    /// When the trade was taken and accepted
+    #[serde(serialize_with = "datetime_rfc3339")]
+    pub utc_start_timestamp: OffsetDateTime,
+    /// When the last transaction (redeem or refund) was seen (can be changed to
+    /// confirmed in the future)
+    #[serde(serialize_with = "datetime_rfc3339")]
+    pub utc_final_timestamp: OffsetDateTime,
+    /// The symbol of the base currency
+    pub base_symbol: Symbol,
+    /// The symbol of the quote currency
+    pub quote_symbol: Symbol,
+    /// The position of the trade from the user's point of view (note: Sell =
+    /// sell the base)
+    pub position: Position,
+    /// The base currency traded amount in the most precise unit (e.g. Satoshi)
+    /// Note: it does not include fees
+    #[serde(serialize_with = "biguint_string")]
+    pub base_precise_amount: BigUint,
+    /// The quote currency traded amount in the most precise unit (e.g. attodai)
+    /// Note: it does not include fees
+    #[serde(serialize_with = "biguint_string")]
+    pub quote_precise_amount: BigUint,
+    /// the Peer id of the counterpart/taker
+    #[serde(serialize_with = "peerid_string")]
+    pub peer: PeerId,
+    // TODO: Add fees?
+}
+
+#[derive(Debug, Copy, Clone, Serialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum Symbol {
+    Btc,
+    Dai,
+}
+
+#[derive(Debug, Copy, Clone, Serialize)]
+pub enum Position {
+    Buy,
+    Sell,
+}
+
+fn biguint_string<S>(
+    value: &BigUint,
+    serializer: S,
+) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(&value.to_string())
+}
+
+fn peerid_string<S>(
+    value: &PeerId,
+    serializer: S,
+) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(&value.to_string())
+}
+
+fn datetime_rfc3339<S>(
+    value: &OffsetDateTime,
+    serializer: S,
+) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+where
+    S: Serializer,
+{
+    let in_utc = value.to_offset(UtcOffset::UTC);
+    serializer.serialize_str(&in_utc.format(Format::Rfc3339))
+}
+
+#[cfg(test)]
+impl crate::StaticStub for PeerId {
+    fn static_stub() -> Self {
+        use std::str::FromStr;
+
+        PeerId::from_str("QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg").unwrap()
+    }
+}
+
+#[cfg(test)]
+impl Trade {
+    fn new_1() -> Self {
+        use std::str::FromStr;
+
+        Trade {
+            utc_start_timestamp: OffsetDateTime::parse(
+                "2020-07-10T17:48:26.123+10:00",
+                Format::Rfc3339,
+            )
+            .unwrap(),
+            utc_final_timestamp: OffsetDateTime::parse(
+                "2020-07-10T18:48:26.456+10:00",
+                Format::Rfc3339,
+            )
+            .unwrap(),
+            base_symbol: Symbol::Btc,
+            quote_symbol: Symbol::Dai,
+            position: Position::Buy,
+            base_precise_amount: 1_000_000u64.into(),
+            quote_precise_amount: BigUint::from_str("99_000_000_000_000_000_000").unwrap(),
+            peer: PeerId::from_str("QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg").unwrap(),
+        }
+    }
+
+    fn new_2() -> Self {
+        use std::str::FromStr;
+
+        Trade {
+            utc_start_timestamp: OffsetDateTime::parse(
+                "2020-07-11T12:00:00.789+10:00",
+                Format::Rfc3339,
+            )
+            .unwrap(),
+            utc_final_timestamp: OffsetDateTime::parse(
+                "2020-07-11T13:00:00.000+10:00",
+                Format::Rfc3339,
+            )
+            .unwrap(),
+            base_symbol: Symbol::Btc,
+            quote_symbol: Symbol::Dai,
+            position: Position::Sell,
+            base_precise_amount: 20_000_000u64.into(),
+            quote_precise_amount: BigUint::from_str("2_012_340_000_000_000_000_000").unwrap(),
+            peer: PeerId::from_str("QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK").unwrap(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -228,8 +191,8 @@ mod tests {
         file.read_to_string(&mut contents).unwrap();
 
         let expected_contents = "utc_start_timestamp,utc_final_timestamp,base_symbol,quote_symbol,position,base_precise_amount,quote_precise_amount,peer
-2020-07-10T07:48:26.123+00:00,2020-07-10T08:48:26.456+00:00,BTC,DAI,Buy,1000000,99000000000000000000,QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg
-2020-07-11T02:00:00.789+00:00,2020-07-11T03:00:00+00:00,BTC,DAI,Sell,20000000,2012340000000000000000,QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK
+2020-07-10T07:48:26+00:00,2020-07-10T08:48:26+00:00,BTC,DAI,Buy,1000000,99000000000000000000,QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg
+2020-07-11T02:00:00+00:00,2020-07-11T03:00:00+00:00,BTC,DAI,Sell,20000000,2012340000000000000000,QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK
 ";
 
         assert_eq!(contents, expected_contents);
@@ -254,8 +217,8 @@ mod tests {
         file.read_to_string(&mut contents).unwrap();
 
         let expected_contents = "utc_start_timestamp,utc_final_timestamp,base_symbol,quote_symbol,position,base_precise_amount,quote_precise_amount,peer
-2020-07-10T07:48:26.123+00:00,2020-07-10T08:48:26.456+00:00,BTC,DAI,Buy,1000000,99000000000000000000,QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg
-2020-07-11T02:00:00.789+00:00,2020-07-11T03:00:00+00:00,BTC,DAI,Sell,20000000,2012340000000000000000,QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK
+2020-07-10T07:48:26+00:00,2020-07-10T08:48:26+00:00,BTC,DAI,Buy,1000000,99000000000000000000,QmUJF1AzhjUfDU1ifzkyuHy26SCnNHbPaVHpX1WYxYYgZg
+2020-07-11T02:00:00+00:00,2020-07-11T03:00:00+00:00,BTC,DAI,Sell,20000000,2012340000000000000000,QmccqkBDb51kDJzvC26EdXprvFhcsLPNmYQRPMwDMmEUhK
 ";
 
         assert_eq!(contents, expected_contents);

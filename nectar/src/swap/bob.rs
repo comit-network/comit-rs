@@ -9,9 +9,9 @@ use crate::{
     },
     SwapId,
 };
-use chrono::{DateTime, Utc};
 use comit::{Secret, SecretHash, Timestamp};
 use std::sync::Arc;
+use time::OffsetDateTime;
 
 #[derive(Clone, Debug)]
 pub struct Bob<AW, BW> {
@@ -20,7 +20,7 @@ pub struct Bob<AW, BW> {
     pub db: Arc<Database>,
     pub swap_id: SwapId,
     pub secret_hash: SecretHash,
-    pub utc_start_of_swap: DateTime<Utc>,
+    pub utc_start_of_swap: OffsetDateTime,
     pub beta_expiry: Timestamp,
 }
 
@@ -52,7 +52,7 @@ where
         &self,
         params: herc20::Params,
         deploy_event: herc20::Deployed,
-        utc_start_of_swap: DateTime<Utc>,
+        utc_start_of_swap: OffsetDateTime,
     ) -> anyhow::Result<herc20::Funded> {
         let action = self
             .beta_wallet
@@ -79,7 +79,7 @@ where
         params: comit::herc20::Params,
         secret: Secret,
         deploy_event: comit::herc20::Deployed,
-        utc_start_of_swap: DateTime<Utc>,
+        utc_start_of_swap: OffsetDateTime,
     ) -> anyhow::Result<comit::herc20::Redeemed> {
         let action =
             self.alpha_wallet
@@ -104,7 +104,7 @@ where
         &self,
         params: herc20::Params,
         deploy_event: herc20::Deployed,
-        utc_start_of_swap: DateTime<Utc>,
+        utc_start_of_swap: OffsetDateTime,
     ) -> anyhow::Result<herc20::Refunded> {
         let action = self
             .beta_wallet

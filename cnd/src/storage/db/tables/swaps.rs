@@ -1,12 +1,12 @@
 use crate::{
     local_swap_id::LocalSwapId,
-    storage::{db::schema::swaps, Text},
+    storage::{db::schema::swaps, Text, Timestamp},
 };
 use anyhow::Result;
-use chrono::NaiveDateTime;
 use comit::Role;
 use diesel::{prelude::*, SqliteConnection};
 use libp2p::PeerId;
+use time::OffsetDateTime;
 
 #[derive(Identifiable, Queryable, PartialEq, Debug)]
 #[table_name = "swaps"]
@@ -18,7 +18,8 @@ pub struct Swap {
     pub role: Role,
     #[diesel(deserialize_as = "Text<PeerId>")]
     pub counterparty_peer_id: PeerId,
-    pub start_of_swap: NaiveDateTime,
+    #[diesel(deserialize_as = "Timestamp")]
+    pub start_of_swap: OffsetDateTime,
 }
 
 #[derive(Insertable, Debug, Clone)]
@@ -27,7 +28,7 @@ pub struct InsertableSwap {
     local_swap_id: Text<LocalSwapId>,
     role: Text<Role>,
     counterparty_peer_id: Text<PeerId>,
-    start_of_swap: NaiveDateTime,
+    start_of_swap: i64,
 }
 
 impl InsertableSwap {
@@ -49,13 +50,13 @@ impl InsertableSwap {
         swap_id: LocalSwapId,
         counterparty: PeerId,
         role: Role,
-        start_of_swap: NaiveDateTime,
+        start_of_swap: OffsetDateTime,
     ) -> Self {
         InsertableSwap {
             local_swap_id: Text(swap_id),
             role: Text(role),
             counterparty_peer_id: Text(counterparty),
-            start_of_swap,
+            start_of_swap: start_of_swap.timestamp(),
         }
     }
 }

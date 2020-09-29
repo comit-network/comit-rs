@@ -16,13 +16,13 @@ use crate::{
     network::ActivePeer,
     swap::SwapKind,
 };
-use chrono::{DateTime, Utc};
 use num::BigUint;
 use std::str::FromStr;
 
 pub use balance::balance;
 pub use deposit::deposit;
 pub use resume_only::resume_only;
+use time::OffsetDateTime;
 pub use trade::trade;
 pub use wallet_info::wallet_info;
 pub use withdraw::withdraw;
@@ -117,7 +117,7 @@ fn parse_ether(str: &str) -> anyhow::Result<ether::Amount> {
 pub fn into_history_trade(
     peer_id: libp2p::PeerId,
     swap: SwapKind,
-    #[cfg(not(test))] final_timestamp: DateTime<Utc>,
+    #[cfg(not(test))] final_timestamp: OffsetDateTime,
 ) -> history::Trade {
     use crate::history::*;
 
@@ -126,25 +126,20 @@ pub fn into_history_trade(
         SwapKind::Herc20Hbit(swap) => (swap, history::Position::Buy),
     };
 
-    #[cfg(not(test))]
-    let final_timestamp = final_timestamp.into();
-
     #[cfg(test)]
-    let final_timestamp = DateTime::from_str("2020-07-10T17:48:26.123+10:00")
-        .unwrap()
-        .into();
+    let final_timestamp =
+        OffsetDateTime::parse("2020-07-10T17:48:26.123+10:00", time::Format::Rfc3339).unwrap();
 
     Trade {
-        utc_start_timestamp: history::UtcDateTime::from(swap.start_of_swap),
+        utc_start_timestamp: swap.start_of_swap,
         utc_final_timestamp: final_timestamp,
         base_symbol: Symbol::Btc,
         quote_symbol: Symbol::Dai,
         position,
         base_precise_amount: swap.hbit_params.shared.asset.as_sat().into(),
         quote_precise_amount: BigUint::from_str(&swap.herc20_params.asset.quantity.to_wei_dec())
-            .expect("number to number conversion")
-            .into(),
-        peer: peer_id.into(),
+            .expect("number to number conversion"),
+        peer: peer_id,
     }
 }
 
@@ -152,11 +147,11 @@ pub fn into_history_trade(
 pub struct FinishedSwap {
     pub swap: SwapKind,
     pub peer: ActivePeer,
-    pub final_timestamp: DateTime<Utc>,
+    pub final_timestamp: OffsetDateTime,
 }
 
 impl FinishedSwap {
-    pub fn new(swap: SwapKind, taker: ActivePeer, final_timestamp: DateTime<Utc>) -> Self {
+    pub fn new(swap: SwapKind, taker: ActivePeer, final_timestamp: OffsetDateTime) -> Self {
         Self {
             swap,
             peer: taker,

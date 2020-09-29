@@ -11,13 +11,13 @@ pub mod ethereum;
 use crate::{command::FinishedSwap, network::ActivePeer, swap::bob::Bob, SwapId};
 use ::comit::btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
 use futures::{channel::mpsc, SinkExt};
 use std::sync::Arc;
 use tracing_futures::Instrument;
 
 pub use self::comit::{hbit, herc20};
 pub use crate::database::Database;
+use time::OffsetDateTime;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SwapKind {
@@ -42,7 +42,7 @@ pub struct SwapParams {
     pub hbit_params: hbit::Params,
     pub herc20_params: herc20::Params,
     pub secret_hash: comit::SecretHash,
-    pub start_of_swap: DateTime<Utc>,
+    pub start_of_swap: OffsetDateTime,
     pub swap_id: SwapId,
     pub taker: ActivePeer,
 }
@@ -120,7 +120,7 @@ impl crate::StaticStub for SwapParams {
                 chain_id: 42.into(),
             },
             secret_hash: SecretHash::new(comit::Secret::from(*b"hello world, you are beautiful!!")),
-            start_of_swap: chrono::Utc::now(),
+            start_of_swap: OffsetDateTime::now_utc(),
             swap_id: Default::default(),
             taker: ActivePeer::static_stub(),
         }
@@ -160,13 +160,11 @@ mod arbitrary {
                 chain_id: ChainId::from(u32::arbitrary(g)),
             };
 
-            let naive = chrono::NaiveDateTime::from_timestamp(u32::arbitrary(g) as i64, 0);
-
             SwapParams {
                 hbit_params: hbit::Params::arbitrary(g),
                 herc20_params,
                 secret_hash: secret_hash(g),
-                start_of_swap: chrono::DateTime::from_utc(naive, chrono::offset::Utc),
+                start_of_swap: OffsetDateTime::from_unix_timestamp(u32::arbitrary(g) as i64),
                 swap_id: SwapId::arbitrary(g),
                 taker: ActivePeer::arbitrary(g),
             }
@@ -216,7 +214,6 @@ mod tests {
     };
     use ::bitcoin::secp256k1;
     use ::comit::ledger;
-    use chrono::Utc;
     use std::{str::FromStr, sync::Arc};
     use testcontainers::clients;
 
@@ -391,7 +388,7 @@ mod tests {
         let secret = secret();
         let secret_hash = SecretHash::new(secret);
 
-        let start_of_swap = Utc::now();
+        let start_of_swap = OffsetDateTime::now_utc();
         let beta_expiry = Timestamp::now().plus(60 * 60);
 
         let (hbit_params, hbit_transient_refund_sk, hbit_transient_redeem_sk) =
@@ -675,7 +672,11 @@ async fn execute(
     let active_peer = swap.params().taker;
     let swap_id = swap.swap_id();
     sender
-        .send(FinishedSwap::new(swap, active_peer, chrono::Utc::now()))
+        .send(FinishedSwap::new(
+            swap,
+            active_peer,
+            OffsetDateTime::now_utc(),
+        ))
         .await
         .context("failed to notify about finished swap")?;
 

@@ -7,7 +7,6 @@
 //! `crate::proptest::identity::bitcoin()`.
 
 use crate::{ethereum::ChainId, LocalSwapId, Role, Side};
-use chrono::NaiveDateTime;
 pub use proptest::prelude::*;
 use uuid::Uuid;
 
@@ -22,8 +21,8 @@ pub fn side() -> impl Strategy<Value = Side> {
 prop_compose! {
     pub fn timestamp()(
         secs in any::<u32>(),
-    ) -> NaiveDateTime {
-        NaiveDateTime::from_timestamp(secs as i64, 0)
+    ) -> time::OffsetDateTime {
+        time::OffsetDateTime::from_unix_timestamp(secs as i64)
     }
 }
 

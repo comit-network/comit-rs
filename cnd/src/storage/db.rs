@@ -9,11 +9,14 @@ mod integration_tests;
 #[cfg(test)]
 pub mod proptest;
 
-pub use self::{errors::*, tables::*, wrapper_types::Text};
+pub use self::{
+    errors::*,
+    tables::*,
+    wrapper_types::{Text, Timestamp},
+};
 pub use crate::storage::{ForSwap, Save};
 
 use crate::{LocalSwapId, Role};
-use chrono::NaiveDateTime;
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use libp2p::PeerId;
 use std::{
@@ -21,6 +24,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use time::OffsetDateTime;
 use tokio::sync::Mutex;
 
 /// This module provides persistent storage by way of Sqlite.
@@ -125,7 +129,7 @@ pub struct CreatedSwap<A, B> {
     /// Role of the node in this swap, Alice or Bob.
     pub role: Role,
     /// Timestamp when cnd has first learned about the swap.
-    pub start_of_swap: NaiveDateTime,
+    pub start_of_swap: OffsetDateTime,
 }
 
 #[cfg(test)]

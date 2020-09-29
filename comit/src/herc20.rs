@@ -13,7 +13,6 @@ use crate::{
     transaction, Secret, SecretHash,
 };
 use blockchain_contracts::ethereum::herc20::Htlc;
-use chrono::{DateTime, Utc};
 use conquer_once::Lazy;
 use futures::{
     future::{self, Either},
@@ -21,6 +20,7 @@ use futures::{
 };
 use genawaiter::sync::{Co, Gen};
 use std::cmp::Ordering;
+use time::OffsetDateTime;
 use tracing_futures::Instrument;
 
 static REDEEM_LOG_MSG: Lazy<Hash> = Lazy::new(|| {
@@ -96,7 +96,7 @@ pub struct Refunded {
 pub fn new<'a, C>(
     connector: &'a C,
     params: Params,
-    start_of_swap: DateTime<Utc>,
+    start_of_swap: OffsetDateTime,
 ) -> impl Stream<Item = anyhow::Result<Event>> + 'a
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
@@ -113,7 +113,7 @@ where
 async fn watch_ledger<C, R>(
     connector: &C,
     params: Params,
-    start_of_swap: DateTime<Utc>,
+    start_of_swap: OffsetDateTime,
     co: &Co<anyhow::Result<Event>, R>,
 ) -> anyhow::Result<()>
 where
@@ -153,7 +153,7 @@ where
 pub async fn watch_for_deployed<C>(
     connector: &C,
     params: Params,
-    start_of_swap: DateTime<Utc>,
+    start_of_swap: OffsetDateTime,
 ) -> anyhow::Result<Deployed>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
@@ -174,7 +174,7 @@ where
 pub async fn watch_for_funded<C>(
     connector: &C,
     params: Params,
-    start_of_swap: DateTime<Utc>,
+    start_of_swap: OffsetDateTime,
     deployed: Deployed,
 ) -> anyhow::Result<Funded>
 where
@@ -210,7 +210,7 @@ where
 
 pub async fn watch_for_redeemed<C>(
     connector: &C,
-    start_of_swap: DateTime<Utc>,
+    start_of_swap: OffsetDateTime,
     deployed: Deployed,
 ) -> anyhow::Result<Redeemed>
 where
@@ -238,7 +238,7 @@ where
 
 pub async fn watch_for_refunded<C>(
     connector: &C,
-    start_of_swap: DateTime<Utc>,
+    start_of_swap: OffsetDateTime,
     deployed: Deployed,
 ) -> anyhow::Result<Refunded>
 where

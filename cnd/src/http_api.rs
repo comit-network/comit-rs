@@ -31,10 +31,10 @@ use crate::{
     LocalSwapId, Role, Secret, SecretHash, Timestamp,
 };
 use anyhow::Result;
-use chrono::Utc;
 use comit::{OrderId, Position, Price, Quantity};
 use libp2p::{Multiaddr, PeerId};
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 use warp::http::Method;
 
 /// Object representing the data of a POST request for creating a swap.
@@ -58,7 +58,7 @@ impl<A, B> PostBody<A, B> {
         let alpha = CA::from(body.alpha);
         let beta = CB::from(body.beta);
 
-        let start_of_swap = Utc::now().naive_local();
+        let start_of_swap = OffsetDateTime::now_utc();
 
         CreatedSwap {
             swap_id,

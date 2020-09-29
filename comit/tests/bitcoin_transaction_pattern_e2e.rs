@@ -1,10 +1,10 @@
 use bitcoincore_rpc::RpcApi;
-use chrono::offset::Utc;
 use comit::btsieve::bitcoin::{watch_for_created_outpoint, BitcoindConnector};
 use images::coblox_bitcoincore::BitcoinCore;
 use reqwest::Url;
 use std::time::Duration;
 use testcontainers::*;
+use time::OffsetDateTime;
 
 /// A very basic e2e test that verifies that we glued all our code together
 /// correctly for bitcoin transaction pattern matching.
@@ -33,7 +33,7 @@ async fn bitcoin_transaction_pattern_e2e_test() {
         .parse()
         .unwrap();
 
-    let start_of_swap = Utc::now();
+    let start_of_swap = OffsetDateTime::now_utc();
 
     let send_money_to_address = async {
         tokio::time::delay_for(Duration::from_secs(2)).await;

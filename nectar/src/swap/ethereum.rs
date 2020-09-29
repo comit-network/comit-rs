@@ -1,5 +1,4 @@
 use crate::swap::{herc20, LedgerTime};
-use chrono::{DateTime, Utc};
 use comit::{
     btsieve::{ethereum::Web3Connector, LatestBlock},
     Timestamp,
@@ -10,6 +9,7 @@ pub use comit::{
     ethereum::{Address, Block, ChainId, Hash, Transaction},
     Secret,
 };
+use time::OffsetDateTime;
 
 #[derive(Debug, Clone)]
 pub struct Wallet {
@@ -33,7 +33,7 @@ impl herc20::ExecuteFund for Wallet {
         &self,
         params: herc20::Params,
         deploy_event: herc20::Deployed,
-        utc_start_of_swap: DateTime<Utc>,
+        utc_start_of_swap: OffsetDateTime,
     ) -> anyhow::Result<herc20::Funded> {
         let action = params.build_fund_action(deploy_event.location);
         let _data = self.inner.call_contract(action).await?;
@@ -57,7 +57,7 @@ impl herc20::ExecuteRedeem for Wallet {
         params: herc20::Params,
         secret: Secret,
         deploy_event: herc20::Deployed,
-        utc_start_of_swap: DateTime<Utc>,
+        utc_start_of_swap: OffsetDateTime,
     ) -> anyhow::Result<herc20::Redeemed> {
         let action = params.build_redeem_action(deploy_event.location, secret);
         let _data = self.inner.call_contract(action).await?;
@@ -79,7 +79,7 @@ impl herc20::ExecuteRefund for Wallet {
         &self,
         params: herc20::Params,
         deploy_event: herc20::Deployed,
-        utc_start_of_swap: DateTime<Utc>,
+        utc_start_of_swap: OffsetDateTime,
     ) -> anyhow::Result<herc20::Refunded> {
         loop {
             if self.ledger_time().await? >= params.expiry {

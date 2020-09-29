@@ -1,7 +1,6 @@
 use crate::swap::comit::SwapFailedShouldRefund;
 use anyhow::Result;
 use bitcoin::{secp256k1::SecretKey, Block, BlockHash};
-use chrono::{DateTime, Utc};
 use comit::asset;
 
 pub use comit::{
@@ -10,6 +9,7 @@ pub use comit::{
     hbit::*,
     htlc_location, transaction, Secret, SecretHash, Timestamp,
 };
+use time::OffsetDateTime;
 
 pub type SharedParams = comit::hbit::Params;
 
@@ -57,7 +57,7 @@ pub struct Funded {
 pub async fn watch_for_funded<C>(
     connector: &C,
     params: &SharedParams,
-    utc_start_of_swap: DateTime<Utc>,
+    utc_start_of_swap: OffsetDateTime,
 ) -> Result<Funded>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,

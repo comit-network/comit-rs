@@ -499,20 +499,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "chrono"
-version = "0.4.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d021fddb7bd3e734370acfa4a83f34095571d8570c039f1420d77540f68d5772"
-dependencies = [
- "libc",
- "num-integer",
- "num-traits",
- "serde",
- "time 0.1.44",
- "winapi 0.3.9",
-]
-
-[[package]]
 name = "clap"
 version = "2.33.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -573,7 +559,6 @@ dependencies = [
  "base64 0.12.3",
  "bitcoin 0.25.0",
  "bitcoincore-rpc",
- "chrono",
  "comit",
  "config",
  "conquer-once",
@@ -617,14 +602,12 @@ dependencies = [
  "thiserror",
  "time 0.2.22",
  "tokio",
- "tokio-socks 0.3.0",
  "toml",
  "tracing",
  "tracing-core",
  "tracing-futures",
  "tracing-log",
  "tracing-subscriber",
- "tracing-tree",
  "url 2.1.1",
  "uuid",
  "void",
@@ -637,13 +620,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "atty",
  "base64 0.12.3",
  "bitcoin 0.25.0",
  "bitcoincore-rpc",
  "blockchain_contracts",
  "byteorder",
- "chrono",
  "conquer-once",
  "derivative",
  "digest 0.1.0",
@@ -653,7 +634,6 @@ dependencies = [
  "hex 0.4.2",
  "levenshtein",
  "libp2p",
- "log 0.4.11",
  "lru",
  "num 0.3.0",
  "primitive-types",
@@ -673,10 +653,7 @@ dependencies = [
  "time 0.2.22",
  "tokio",
  "tracing",
- "tracing-core",
  "tracing-futures",
- "tracing-log",
- "tracing-subscriber",
  "uuid",
 ]
 
@@ -874,7 +851,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e2de9deab977a153492a1468d1b1c0662c1cf39e5ea87d0c060ecd59ef18d8c"
 dependencies = [
  "byteorder",
- "chrono",
  "diesel_derives",
  "libsqlite3-sys",
 ]
@@ -2015,7 +1991,7 @@ dependencies = [
  "log 0.4.11",
  "socket2",
  "tokio",
- "tokio-socks 0.2.2",
+ "tokio-socks",
 ]
 
 [[package]]
@@ -2305,7 +2281,6 @@ dependencies = [
  "atty",
  "base64 0.12.3",
  "bitcoin 0.25.0",
- "chrono",
  "clarity",
  "comit",
  "config",
@@ -3982,15 +3957,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "termcolor"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb6bfa289a4d7c5766392812c0a1f4c1ba45afa1ad47803c11e1f407d846d75f"
-dependencies = [
- "winapi-util",
-]
-
-[[package]]
 name = "testcontainers"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4162,19 +4128,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokio-socks"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d611fd5d241872372d52a0a3d309c52d0b95a6a67671a6c8f7ab2c4a37fb2539"
-dependencies = [
- "bytes 0.4.12",
- "either",
- "futures",
- "thiserror",
- "tokio",
-]
-
-[[package]]
 name = "tokio-tls"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4269,48 +4222,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "tracing-serde"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb65ea441fbb84f9f6748fd496cf7f63ec9af5bca94dd86456978d055e8eb28b"
-dependencies = [
- "serde",
- "tracing-core",
-]
-
-[[package]]
 name = "tracing-subscriber"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82bb5079aa76438620837198db8a5c529fb9878c730bc2b28179b0241cf04c10"
 dependencies = [
  "ansi_term 0.12.1",
- "chrono",
  "lazy_static",
  "matchers",
  "regex",
- "serde",
- "serde_json",
  "sharded-slab",
- "smallvec 1.4.2",
  "thread_local",
  "tracing-core",
- "tracing-log",
- "tracing-serde",
-]
-
-[[package]]
-name = "tracing-tree"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1a3dc4774db3a6b2d66a4f8d8de670e874ec3ed55615860c994927419b32c5f"
-dependencies = [
- "ansi_term 0.12.1",
- "atty",
- "chrono",
- "termcolor",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -4700,15 +4623,6 @@ name = "winapi-i686-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
-
-[[package]]
-name = "winapi-util"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70ec6ce85bb158151cae5e5c87f95a8e97d2c0c4b001223f33a334e3ce5de178"
-dependencies = [
- "winapi 0.3.9",
-]
 
 [[package]]
 name = "winapi-x86_64-pc-windows-gnu"

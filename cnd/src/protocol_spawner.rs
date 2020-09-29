@@ -2,8 +2,8 @@ use crate::{
     connectors::Connectors, halbit, hbit, herc20, http_api::LedgerNotConfigured, storage::Storage,
     LocalSwapId, Role, Side,
 };
-use chrono::{DateTime, Utc};
 use comit::lnd::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams};
+use time::OffsetDateTime;
 use tokio::runtime::Handle;
 
 /// ProtocolSpawner acts as a bundle for all dependencies needed to spawn
@@ -23,7 +23,7 @@ pub trait Spawn<P> {
         &self,
         id: LocalSwapId,
         params: P,
-        start_of_swap: DateTime<Utc>,
+        start_of_swap: OffsetDateTime,
         side: Side,
         role: Role,
     );
@@ -59,7 +59,7 @@ impl Spawn<herc20::Params> for ProtocolSpawner {
         &self,
         id: LocalSwapId,
         params: herc20::Params,
-        start_of_swap: DateTime<Utc>,
+        start_of_swap: OffsetDateTime,
         side: Side,
         role: Role,
     ) {
@@ -82,7 +82,7 @@ impl Spawn<hbit::Params> for ProtocolSpawner {
         &self,
         id: LocalSwapId,
         params: hbit::Params,
-        start_of_swap: DateTime<Utc>,
+        start_of_swap: OffsetDateTime,
         side: Side,
         role: Role,
     ) {
@@ -105,7 +105,7 @@ impl Spawn<halbit::Params> for ProtocolSpawner {
         &self,
         id: LocalSwapId,
         params: halbit::Params,
-        _: DateTime<Utc>,
+        _: OffsetDateTime,
         side: Side,
         role: Role,
     ) {

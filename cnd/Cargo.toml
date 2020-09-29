@@ -11,13 +11,12 @@ async-trait = "0.1"
 atty = "0.2"
 base64 = "0.12.3"
 bitcoin = { version = "0.25", features = ["use-serde"] }
-chrono = { version = "0.4", features = ["serde"] }
 comit = { path = "../comit" }
 config = { version = "0.10", features = ["toml"], default-features = false }
 conquer-once = "0.2.1"
 data-encoding = "2.3"
 derivative = "2"
-diesel = { version = "1.4", features = ["sqlite", "chrono"] }
+diesel = { version = "1.4", features = ["sqlite"] }
 diesel_migrations = "1.4.0"
 digest = { path = "../digest" }
 directories = "3.0"
@@ -49,14 +48,12 @@ strum_macros = "0.19"
 thiserror = "1"
 time = "0.2.22"
 tokio = { version = "0.2", features = ["rt-threaded", "time", "macros", "sync"] }
-tokio-socks = "0.3"
 toml = "0.5"
 tracing = { version = "0.1", features = ["attributes"] }
 tracing-core = "0.1"
 tracing-futures = { version = "0.2", features = ["std-future", "futures-03"] }
 tracing-log = "0.1"
-tracing-subscriber = "0.2"
-tracing-tree = "0.1.5"
+tracing-subscriber = { version = "0.2", default-features = false, features = ["fmt", "ansi", "env-filter"] }
 url = { version = "2", features = ["serde"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
 void = "1"
