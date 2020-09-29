@@ -12,7 +12,7 @@
     clippy::dbg_macro
 )]
 #![forbid(unsafe_code)]
-#![type_length_limit = "1049479"] // Regressed with Rust 1.46.0 :(
+#![type_length_limit = "3033619"] // Regressed with Rust 1.46.0 :(
 
 #[macro_use]
 extern crate diesel;
@@ -44,7 +44,6 @@ mod spawn;
 mod state;
 mod storage;
 mod trace;
-mod tracing_ext;
 mod htlc_location {
     pub use comit::htlc_location::*;
 }

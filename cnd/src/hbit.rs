@@ -3,11 +3,10 @@ use crate::{
     ledger, state,
     state::Update,
     storage::Storage,
-    tracing_ext::InstrumentProtocol,
     LocalSwapId, Role, Side,
 };
 use bitcoin::{Address, Block, BlockHash};
-use comit::{asset, htlc_location, transaction, LockProtocol, Secret};
+use comit::{asset, htlc_location, transaction, Secret};
 use futures::TryStreamExt;
 use std::collections::{hash_map::Entry, HashMap};
 use time::OffsetDateTime;
@@ -20,6 +19,7 @@ pub use comit::{hbit::*, identity};
 ///
 /// This wrapper functions allows us to reuse code within `cnd` without having
 /// to give knowledge about tracing or the state hashmaps to the `comit` crate.
+#[tracing::instrument(name = "hbit", level = "error", skip(params, start_of_swap, storage, connector), fields(%id, %role, %side))]
 pub async fn new<C>(
     id: LocalSwapId,
     params: Params,
@@ -31,16 +31,14 @@ pub async fn new<C>(
 ) where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
 {
-    let mut events = comit::hbit::new(connector.as_ref(), params, start_of_swap)
-        .instrument_protocol(id, role, side, LockProtocol::Hbit)
-        .inspect_ok(|event| tracing::info!("yielded event {}", event))
-        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
+    let mut events = comit::hbit::new(connector.as_ref(), params, start_of_swap);
 
     while let Ok(Some(event)) = events.try_next().await {
+        tracing::info!("yielded event {}", event);
         storage.hbit_states.update(&id, event).await;
     }
 
-    tracing::info!("swap finished");
+    tracing::info!("finished");
 }
 
 /// Data required to create a swap that involves Bitcoin.
