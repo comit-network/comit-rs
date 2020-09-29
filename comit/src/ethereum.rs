@@ -1,4 +1,5 @@
 use crate::{btsieve::LatestBlock, Timestamp};
+use anyhow::Result;
 pub use ethbloom::{Bloom as H2048, Input};
 use hex::FromHexError;
 pub use primitive_types::U256;
@@ -9,7 +10,7 @@ use std::{
     str::FromStr,
 };
 
-pub async fn latest_time<C>(connector: &C) -> anyhow::Result<Timestamp>
+pub async fn latest_time<C>(connector: &C) -> Result<Timestamp>
 where
     C: LatestBlock<Block = Block>,
 {

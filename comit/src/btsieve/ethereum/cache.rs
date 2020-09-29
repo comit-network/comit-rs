@@ -5,6 +5,7 @@ use crate::{
     },
     ethereum::TransactionReceipt,
 };
+use anyhow::Result;
 use async_trait::async_trait;
 use derivative::Derivative;
 use lru::LruCache;
@@ -49,7 +50,7 @@ where
 {
     type Block = Block;
 
-    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
+    async fn latest_block(&self) -> Result<Self::Block> {
         let block = self.connector.latest_block().await?;
 
         let mut guard = self.block_cache.lock().await;
@@ -69,7 +70,7 @@ where
     type Block = Block;
     type BlockHash = Hash;
 
-    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> Result<Self::Block> {
         if let Some(block) = self.block_cache.lock().await.get(&block_hash) {
             tracing::trace!("Found block in cache: {}", block_hash);
             return Ok(block.clone());
@@ -92,7 +93,7 @@ impl<C> ReceiptByHash for Cache<C>
 where
     C: ReceiptByHash,
 {
-    async fn receipt_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<TransactionReceipt> {
+    async fn receipt_by_hash(&self, transaction_hash: Hash) -> Result<TransactionReceipt> {
         if let Some(receipt) = self.receipt_cache.lock().await.get(&transaction_hash) {
             tracing::trace!("Found receipt in cache: {}", transaction_hash);
             return Ok(receipt.clone());

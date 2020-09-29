@@ -11,6 +11,7 @@ use crate::{
     },
     identity,
 };
+use anyhow::Result;
 use bitcoin::{self, OutPoint};
 use genawaiter::GeneratorState;
 use time::OffsetDateTime;
@@ -40,7 +41,7 @@ pub async fn watch_for_spent_outpoint<C>(
     start_of_swap: OffsetDateTime,
     outpoint: OutPoint,
     identity: identity::Bitcoin,
-) -> anyhow::Result<(bitcoin::Transaction, bitcoin::TxIn)>
+) -> Result<(bitcoin::Transaction, bitcoin::TxIn)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
 {
@@ -62,7 +63,7 @@ pub async fn watch_for_created_outpoint<C>(
     blockchain_connector: &C,
     start_of_swap: OffsetDateTime,
     address: bitcoin::Address,
-) -> anyhow::Result<(bitcoin::Transaction, bitcoin::OutPoint)>
+) -> Result<(bitcoin::Transaction, bitcoin::OutPoint)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
 {
@@ -91,7 +92,7 @@ async fn watch<C, S, M>(
     connector: &C,
     start_of_swap: OffsetDateTime,
     sieve: S,
-) -> anyhow::Result<(bitcoin::Transaction, M)>
+) -> Result<(bitcoin::Transaction, M)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
     S: Fn(&bitcoin::Transaction) -> Option<M>,

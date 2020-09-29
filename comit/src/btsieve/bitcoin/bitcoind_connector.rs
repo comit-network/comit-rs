@@ -2,7 +2,7 @@ use crate::{
     btsieve::{BlockByHash, LatestBlock},
     ledger,
 };
-use anyhow::Context;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use bitcoin::{consensus::deserialize, BlockHash};
 use futures::TryFutureExt;
@@ -24,7 +24,7 @@ pub struct BitcoindConnector {
 }
 
 impl BitcoindConnector {
-    pub fn new(base_url: Url) -> anyhow::Result<Self> {
+    pub fn new(base_url: Url) -> Result<Self> {
         Ok(Self {
             chaininfo_url: base_url.join("rest/chaininfo.json")?,
             raw_block_by_hash_url: base_url.join("rest/block/")?,
@@ -38,7 +38,7 @@ impl BitcoindConnector {
             .expect("building url should work")
     }
 
-    pub async fn chain_info(&self) -> anyhow::Result<ChainInfo> {
+    pub async fn chain_info(&self) -> Result<ChainInfo> {
         let url = &self.chaininfo_url;
         let chain_info = self
             .client
@@ -60,7 +60,7 @@ impl BitcoindConnector {
 impl LatestBlock for BitcoindConnector {
     type Block = bitcoin::Block;
 
-    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
+    async fn latest_block(&self) -> Result<Self::Block> {
         let chain_info = self.chain_info().await?;
         let block = self.block_by_hash(chain_info.bestblockhash).await?;
 
@@ -73,7 +73,7 @@ impl BlockByHash for BitcoindConnector {
     type Block = bitcoin::Block;
     type BlockHash = bitcoin::BlockHash;
 
-    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> Result<Self::Block> {
         let url = self.raw_block_by_hash_url(&block_hash);
         let block = self
             .client
@@ -99,7 +99,7 @@ impl BlockByHash for BitcoindConnector {
 #[error("GET request to {0} failed")]
 pub struct GetRequestFailed(Url);
 
-fn decode_response(response_text: String) -> anyhow::Result<bitcoin::Block> {
+fn decode_response(response_text: String) -> Result<bitcoin::Block> {
     let bytes = hex::decode(response_text.trim()).context("failed to decode hex")?;
     let block = deserialize(bytes.as_slice()).context("failed to deserialize bytes as block")?;
 

@@ -6,7 +6,7 @@ use crate::{
     },
     RelativeTime, Secret, SecretHash,
 };
-use anyhow::{bail, Context, Error};
+use anyhow::{bail, Context, Error, Result};
 use reqwest::{
     header::{HeaderMap, HeaderValue},
     StatusCode, Url,
@@ -84,7 +84,7 @@ pub struct Invoice {
 }
 
 impl Invoice {
-    fn validate(self, params: &Params) -> anyhow::Result<()> {
+    fn validate(self, params: &Params) -> Result<()> {
         if params.cltv_expiry != self.cltv_expiry {
             anyhow::bail!(ExpiryMismatch {
                 expected: params.cltv_expiry,
@@ -118,7 +118,7 @@ pub struct Payment {
 }
 
 impl Payment {
-    fn validate(self, params: &Params) -> anyhow::Result<()> {
+    fn validate(self, params: &Params) -> Result<()> {
         if params.asset != self.value_sat {
             anyhow::bail!(AmountMismatch {
                 expected: params.asset,
@@ -144,7 +144,7 @@ impl LndConnectorParams {
         retry_interval_ms: u64,
         certificate_path: PathBuf,
         macaroon_path: PathBuf,
-    ) -> anyhow::Result<LndConnectorParams> {
+    ) -> Result<LndConnectorParams> {
         let certificate = read_file(certificate_path)?;
         let macaroon = read_file(macaroon_path)?;
         Ok(LndConnectorParams {
@@ -156,7 +156,7 @@ impl LndConnectorParams {
     }
 }
 
-fn read_file<T>(path: PathBuf) -> anyhow::Result<T>
+fn read_file<T>(path: PathBuf) -> Result<T>
 where
     T: TryFrom<Vec<u8>, Error = Error>,
 {
@@ -218,7 +218,7 @@ impl LndConnectorAsSender {
             .expect("append valid string to url")
     }
 
-    async fn find_payment(&self, params: &Params) -> anyhow::Result<Option<Payment>> {
+    async fn find_payment(&self, params: &Params) -> Result<Option<Payment>> {
         let url = self.payment_url();
         let response = client(&self.certificate, &self.macaroon)?
             .get(url.clone())
@@ -246,7 +246,7 @@ impl LndConnectorAsSender {
 
 #[async_trait::async_trait]
 impl WaitForOpened for LndConnectorAsSender {
-    async fn wait_for_opened(&self, _: &Params) -> anyhow::Result<Opened> {
+    async fn wait_for_opened(&self, _: &Params) -> Result<Opened> {
         // At this stage there is no way for the sender to know when the invoice is
         // added on receiver's side.
         Ok(Opened)
@@ -255,7 +255,7 @@ impl WaitForOpened for LndConnectorAsSender {
 
 #[async_trait::async_trait]
 impl WaitForAccepted for LndConnectorAsSender {
-    async fn wait_for_accepted(&self, params: &Params) -> anyhow::Result<Accepted> {
+    async fn wait_for_accepted(&self, params: &Params) -> Result<Accepted> {
         // No validation of the parameters because once the payment has been
         // sent the sender cannot cancel it.
         loop {
@@ -280,7 +280,7 @@ impl WaitForAccepted for LndConnectorAsSender {
 
 #[async_trait::async_trait]
 impl WaitForSettled for LndConnectorAsSender {
-    async fn wait_for_settled(&self, params: &Params) -> anyhow::Result<Settled> {
+    async fn wait_for_settled(&self, params: &Params) -> Result<Settled> {
         let payment = loop {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
 
@@ -311,7 +311,7 @@ impl WaitForSettled for LndConnectorAsSender {
 
 #[async_trait::async_trait]
 impl WaitForCancelled for LndConnectorAsSender {
-    async fn wait_for_cancelled(&self, params: &Params) -> anyhow::Result<Cancelled> {
+    async fn wait_for_cancelled(&self, params: &Params) -> Result<Cancelled> {
         loop {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
 
@@ -354,7 +354,7 @@ impl From<LndConnectorParams> for LndConnectorAsReceiver {
 }
 
 impl LndConnectorAsReceiver {
-    fn invoice_url(&self, secret_hash: SecretHash) -> anyhow::Result<Url> {
+    fn invoice_url(&self, secret_hash: SecretHash) -> Result<Url> {
         Ok(self
             .lnd_url
             .join("/v1/invoice/")
@@ -363,7 +363,7 @@ impl LndConnectorAsReceiver {
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
-    async fn find_invoice(&self, params: &Params) -> anyhow::Result<Option<Invoice>> {
+    async fn find_invoice(&self, params: &Params) -> Result<Option<Invoice>> {
         let url = self.invoice_url(params.secret_hash)?;
         let response = client(&self.certificate, &self.macaroon)?
             .get(url.clone())
@@ -416,7 +416,7 @@ struct LndError {
 
 #[async_trait::async_trait]
 impl WaitForOpened for LndConnectorAsReceiver {
-    async fn wait_for_opened(&self, params: &Params) -> anyhow::Result<Opened> {
+    async fn wait_for_opened(&self, params: &Params) -> Result<Opened> {
         // Do we want to validate that the user used the correct swap parameters
         // when adding the invoice?
         loop {
@@ -442,7 +442,7 @@ impl WaitForOpened for LndConnectorAsReceiver {
 
 #[async_trait::async_trait]
 impl WaitForAccepted for LndConnectorAsReceiver {
-    async fn wait_for_accepted(&self, params: &Params) -> anyhow::Result<Accepted> {
+    async fn wait_for_accepted(&self, params: &Params) -> Result<Accepted> {
         // Validation that sender payed the correct invoice is provided by LND.
         // Since the sender uses the params to make the payment (as apposed to
         // the invoice) LND guarantees that the params match the invoice when
@@ -469,7 +469,7 @@ impl WaitForAccepted for LndConnectorAsReceiver {
 
 #[async_trait::async_trait]
 impl WaitForSettled for LndConnectorAsReceiver {
-    async fn wait_for_settled(&self, params: &Params) -> anyhow::Result<Settled> {
+    async fn wait_for_settled(&self, params: &Params) -> Result<Settled> {
         let invoice = loop {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
 
@@ -500,7 +500,7 @@ impl WaitForSettled for LndConnectorAsReceiver {
 
 #[async_trait::async_trait]
 impl WaitForCancelled for LndConnectorAsReceiver {
-    async fn wait_for_cancelled(&self, params: &Params) -> anyhow::Result<Cancelled> {
+    async fn wait_for_cancelled(&self, params: &Params) -> Result<Cancelled> {
         loop {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
 
@@ -517,7 +517,7 @@ impl WaitForCancelled for LndConnectorAsReceiver {
     }
 }
 
-fn client(certificate: &Certificate, macaroon: &Macaroon) -> anyhow::Result<reqwest::Client> {
+fn client(certificate: &Certificate, macaroon: &Macaroon) -> Result<reqwest::Client> {
     let cert = certificate.0.clone();
     let mut default_headers = HeaderMap::with_capacity(1);
     default_headers.insert(

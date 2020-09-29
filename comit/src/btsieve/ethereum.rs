@@ -8,13 +8,14 @@ use crate::{
     },
     ethereum::{Address, Block, Hash, Input, Log, Transaction, TransactionReceipt, U256},
 };
+use anyhow::Result;
 use async_trait::async_trait;
 use genawaiter::GeneratorState;
 use time::OffsetDateTime;
 
 #[async_trait]
 pub trait ReceiptByHash: Send + Sync + 'static {
-    async fn receipt_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<TransactionReceipt>;
+    async fn receipt_by_hash(&self, transaction_hash: Hash) -> Result<TransactionReceipt>;
 }
 
 impl BlockHash for Block {
@@ -40,7 +41,7 @@ pub async fn watch_for_contract_creation<C>(
     connector: &C,
     start_of_swap: OffsetDateTime,
     expected_bytecode: &[u8],
-) -> anyhow::Result<(Transaction, Address)>
+) -> Result<(Transaction, Address)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
@@ -90,7 +91,7 @@ pub async fn watch_for_event<C>(
     connector: &C,
     start_of_swap: OffsetDateTime,
     expected_event: Event,
-) -> anyhow::Result<(Transaction, Log)>
+) -> Result<(Transaction, Log)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
@@ -104,10 +105,7 @@ where
 }
 
 /// Fetch receipt from connector using transaction hash.
-async fn fetch_receipt<C>(
-    blockchain_connector: &C,
-    hash: Hash,
-) -> anyhow::Result<TransactionReceipt>
+async fn fetch_receipt<C>(blockchain_connector: &C, hash: Hash) -> Result<TransactionReceipt>
 where
     C: ReceiptByHash,
 {
@@ -139,7 +137,7 @@ pub async fn matching_transaction_and_receipt<C, F>(
     connector: &C,
     start_of_swap: OffsetDateTime,
     matcher: F,
-) -> anyhow::Result<(Transaction, TransactionReceipt)>
+) -> Result<(Transaction, TransactionReceipt)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
     F: Fn(&Transaction) -> bool,
@@ -190,7 +188,7 @@ async fn matching_transaction_and_log<C, F>(
     start_of_swap: OffsetDateTime,
     topics: Vec<Option<Topic>>,
     matcher: F,
-) -> anyhow::Result<(Transaction, Log)>
+) -> Result<(Transaction, Log)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
     F: Fn(TransactionReceipt) -> Option<Log>,
