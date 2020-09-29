@@ -52,7 +52,8 @@ impl Client {
                 let response = String::from_utf8_lossy(&response[..]);
                 tracing::debug!("Response received: {}", response);
                 anyhow::bail!(
-                    "failed to deserialize JSON response as JSON-RPC response: {:#}",
+                    "failed to deserialize JSON response {} as JSON-RPC response: {:#}",
+                    response,
                     error
                 );
             }
