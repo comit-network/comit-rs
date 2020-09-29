@@ -1,5 +1,5 @@
 use crate::{
-    config::{Bitcoind, Data, EstimateMode, Max, Network},
+    config::{Bitcoind, BtcDai, Data, EstimateMode, Network},
     Spread,
 };
 use comit::{ethereum::ChainId, ledger};
@@ -28,8 +28,7 @@ pub struct File {
 pub struct Maker {
     pub spread: Option<Spread>,
     pub kraken_api_host: Option<Url>,
-    pub max_sell: Option<Max>,
-    pub max_buy: Option<Max>,
+    pub btc_dai: Option<BtcDai>,
     pub maximum_possible_fee: Option<MaxPossibleFee>,
     pub fee_strategies: Option<FeeStrategies>,
 }
@@ -195,11 +194,9 @@ kraken_api_host = "https://api.kraken.com"
 [maker.fee_strategies.bitcoin]
 strategy = "bitcoind"
 
-[maker.max_sell]
-bitcoin = 1.23456
-
-[maker.max_buy]
-bitcoin = 1.23456
+[maker.btc_dai]
+max_buy_quantity = 1.23456
+max_sell_quantity = 1.23456
 
 [network]
 listen = ["/ip4/0.0.0.0/tcp/9939"]
@@ -223,11 +220,9 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
 "#;
         let expected = File {
             maker: Some(Maker {
-                max_sell: Some(Max {
-                    bitcoin: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
-                }),
-                max_buy: Some(Max {
-                    bitcoin: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
+                btc_dai: Some(BtcDai {
+                    max_buy_quantity: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
+                    max_sell_quantity: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
                 }),
                 spread: Some(Spread::new(1000).unwrap()),
                 maximum_possible_fee: Some(MaxPossibleFee {
@@ -283,11 +278,9 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
     fn full_config_serializes_correctly() {
         let file = File {
             maker: Some(Maker {
-                max_sell: Some(Max {
-                    bitcoin: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
-                }),
-                max_buy: Some(Max {
-                    bitcoin: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
+                btc_dai: Some(BtcDai {
+                    max_buy_quantity: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
+                    max_sell_quantity: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
                 }),
                 spread: Some(Spread::new(1000).unwrap()),
                 maximum_possible_fee: Some(MaxPossibleFee {
@@ -332,11 +325,9 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
 spread = 1000
 kraken_api_host = "https://api.kraken.com/"
 
-[maker.max_sell]
-bitcoin = 1.23456
-
-[maker.max_buy]
-bitcoin = 1.23456
+[maker.btc_dai]
+max_buy_quantity = 1.23456
+max_sell_quantity = 1.23456
 
 [maker.maximum_possible_fee]
 bitcoin = 0.01
@@ -493,35 +484,58 @@ local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
     fn max_deserializes_correctly() {
         let file_contents = vec![
             r#"
-            bitcoin = 1.2345
+            max_buy_quantity = 1.2345
+            max_sell_quantity = 1.2345
             "#,
             r#"
-            bitcoin = 0
+            max_buy_quantity = 0
+            max_sell_quantity = 1.2345
             "#,
             r#"
-            bitcoin = 123
+            max_buy_quantity = 123
+            max_sell_quantity = 0
+            "#,
+            r#"
+            max_buy_quantity = 123
+            "#,
+            r#"
+            max_sell_quantity = 123
             "#,
             r#"
             "#,
         ];
 
         let expected = vec![
-            Max {
-                bitcoin: Some(bitcoin::Amount::from_btc(1.2345).unwrap()),
+            BtcDai {
+                max_buy_quantity: Some(bitcoin::Amount::from_btc(1.2345).unwrap()),
+                max_sell_quantity: Some(bitcoin::Amount::from_btc(1.2345).unwrap()),
             },
-            Max {
-                bitcoin: Some(bitcoin::Amount::from_btc(0.0).unwrap()),
+            BtcDai {
+                max_buy_quantity: Some(bitcoin::Amount::from_btc(0.0).unwrap()),
+                max_sell_quantity: Some(bitcoin::Amount::from_btc(1.2345).unwrap()),
             },
-            Max {
-                bitcoin: Some(bitcoin::Amount::from_btc(123.0).unwrap()),
+            BtcDai {
+                max_buy_quantity: Some(bitcoin::Amount::from_btc(123.0).unwrap()),
+                max_sell_quantity: Some(bitcoin::Amount::from_btc(0.0).unwrap()),
             },
-            Max { bitcoin: None },
+            BtcDai {
+                max_buy_quantity: Some(bitcoin::Amount::from_btc(123.0).unwrap()),
+                max_sell_quantity: None,
+            },
+            BtcDai {
+                max_buy_quantity: None,
+                max_sell_quantity: Some(bitcoin::Amount::from_btc(123.0).unwrap()),
+            },
+            BtcDai {
+                max_buy_quantity: None,
+                max_sell_quantity: None,
+            },
         ];
 
         let actual = file_contents
             .into_iter()
             .map(toml::from_str)
-            .collect::<Result<Vec<Max>, toml::de::Error>>()
+            .collect::<Result<Vec<BtcDai>, toml::de::Error>>()
             .unwrap();
 
         assert_eq!(actual, expected);

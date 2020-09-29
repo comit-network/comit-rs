@@ -358,8 +358,8 @@ mod tests {
         let strategy = strategy::AllIn::new(
             Default::default(),
             btc(0.0),
-            Some(btc(1.0)),
             None,
+            Some(btc(1.0)),
             Spread::static_stub(),
             StaticStub::static_stub(),
         );
@@ -384,8 +384,8 @@ mod tests {
         let strategy = strategy::AllIn::new(
             Default::default(),
             btc(0.0),
-            None,
             Some(btc(1.0)),
+            None,
             Spread::static_stub(),
             StaticStub::static_stub(),
         );
@@ -410,8 +410,8 @@ mod tests {
         let strategy = strategy::AllIn::new(
             Default::default(),
             btc(0.0),
-            None,
             Some(btc(0.002)),
+            None,
             Spread::static_stub(),
             StaticStub::static_stub(),
         );

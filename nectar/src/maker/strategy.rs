@@ -19,8 +19,8 @@ pub struct AllIn {
     bitcoin_fee: Fee,
     btc_reserved_funds: bitcoin::Amount,
     dai_reserved_funds: dai::Amount,
-    max_sell: Option<bitcoin::Amount>,
-    max_buy: Option<bitcoin::Amount>,
+    max_buy_quantity: Option<bitcoin::Amount>,
+    max_sell_quantity: Option<bitcoin::Amount>,
     spread: Spread,
 }
 
@@ -28,8 +28,8 @@ impl AllIn {
     pub fn new(
         btc_fee_strategy: config::BitcoinFeeStrategy,
         max_btc_fee: bitcoin::Amount,
-        max_sell: Option<bitcoin::Amount>,
-        max_buy: Option<bitcoin::Amount>,
+        max_buy_quantity: Option<bitcoin::Amount>,
+        max_sell_quantity: Option<bitcoin::Amount>,
         spread: Spread,
         bitcoind_client: bitcoin::Client,
     ) -> Self {
@@ -38,8 +38,8 @@ impl AllIn {
             bitcoin_fee,
             btc_reserved_funds: Default::default(),
             dai_reserved_funds: Default::default(),
-            max_sell,
-            max_buy,
+            max_buy_quantity,
+            max_sell_quantity,
             spread,
         }
     }
@@ -79,8 +79,8 @@ impl AllIn {
         mid_market_rate: Rate,
     ) -> Result<BtcDaiOrderForm> {
         // TODO: This should be checked when constructing Self.
-        if let Some(max_amount) = self.max_sell {
-            if max_amount < self.bitcoin_fee.max_fee() {
+        if let Some(max_quantity) = self.max_sell_quantity {
+            if max_quantity < self.bitcoin_fee.max_fee() {
                 anyhow::bail!(MaxAmountSmallerThanMaxFee)
             }
         }
@@ -97,8 +97,8 @@ impl AllIn {
             None => anyhow::bail!(Overflow),
         }
 
-        let base_amount = match self.max_sell {
-            Some(max_amount) => min(base_balance - self.btc_reserved_funds, max_amount),
+        let base_amount = match self.max_sell_quantity {
+            Some(max_quantity) => min(base_balance - self.btc_reserved_funds, max_quantity),
             None => base_balance - self.btc_reserved_funds,
         };
 
@@ -115,7 +115,7 @@ impl AllIn {
     /// Bitcoin is always the base asset, buy order buys bitcoin.
     ///
     /// The quantity is the full available dai balance in btc given the current
-    /// rater or the maximum buy quantity parameter, whichever is the
+    /// rate or the maximum buy quantity parameter, whichever is the
     /// lowest. The spread parameter is applied on the mid market rate to
     /// decide the price.
     pub fn new_buy(
@@ -131,8 +131,8 @@ impl AllIn {
         let max_quote = quote_balance - self.dai_reserved_funds.clone();
         let max_quote_worth_in_base = max_quote.worth_in(rate)?;
 
-        let base_amount = match self.max_buy {
-            Some(max_buy) => min(max_quote_worth_in_base, max_buy),
+        let base_amount = match self.max_buy_quantity {
+            Some(max_quantity) => min(max_quote_worth_in_base, max_quantity),
             None => max_quote_worth_in_base,
         };
 
@@ -309,7 +309,7 @@ mod test {
     }
 
     #[test]
-    fn given_an_available_balance_and_a_max_amount_sell_min_of_either() {
+    fn given_an_available_balance_and_a_max_quantity_sell_min_of_either() {
         let rate = Rate::try_from(1.0).unwrap();
         let strategy = AllIn::new(
             Default::default(),
@@ -482,9 +482,9 @@ mod test {
 
     proptest! {
         #[test]
-        fn new_buy_does_not_panic(btc_fees in any::<u64>(), dai_balance in "[0-9]+", dai_reserved_funds in "[0-9]+", buy_max_amount in any::<u64>(), rate in any::<f64>(), spread in any::<u16>()) {
+        fn new_buy_does_not_panic(btc_fees in any::<u64>(), dai_balance in "[0-9]+", dai_reserved_funds in "[0-9]+", max_buy_quantity in any::<u64>(), rate in any::<f64>(), spread in any::<u16>()) {
 
-            let buy_max_amount = bitcoin::Amount::from_sat(buy_max_amount);
+            let max_buy_quantity = bitcoin::Amount::from_sat(max_buy_quantity);
 
             let btc_fees = bitcoin::Amount::from_sat(btc_fees);
             let dai_balance = BigUint::from_str(&dai_balance);
@@ -496,7 +496,7 @@ mod test {
                 let dai_balance = dai::Amount::from_atto(dai_balance);
                 let _dai_reserved_funds = dai::Amount::from_atto(dai_reserved_funds);
 
-                let strategy = AllIn::new(Default::default(), btc_fees, None, Some(buy_max_amount), spread, StaticStub::static_stub(),);
+                let strategy = AllIn::new(Default::default(), btc_fees, None, Some(max_buy_quantity), spread, StaticStub::static_stub(),);
                 let _: anyhow::Result<BtcDaiOrderForm> = strategy.new_buy(dai_balance, rate);
             }
         }
@@ -504,7 +504,7 @@ mod test {
 
     proptest! {
         #[test]
-        fn new_buy_no_max_amount_does_not_panic(btc_fees in any::<u64>(), dai_balance in "[0-9]+", rate in any::<f64>(), spread in any::<u16>()) {
+        fn new_buy_no_max_quantity_does_not_panic(btc_fees in any::<u64>(), dai_balance in "[0-9]+", rate in any::<f64>(), spread in any::<u16>()) {
 
             let btc_fees = bitcoin::Amount::from_sat(btc_fees);
             let dai_balance = BigUint::from_str(&dai_balance);
@@ -523,16 +523,16 @@ mod test {
 
     proptest! {
         #[test]
-        fn new_sell_does_not_panic(btc_balance in any::<u64>(), btc_fees in any::<u64>(), btc_max_amount in any::<u64>(), rate in any::<f64>(), spread in any::<u16>()) {
+        fn new_sell_does_not_panic(btc_balance in any::<u64>(), btc_fees in any::<u64>(), max_sell_quantity in any::<u64>(), rate in any::<f64>(), spread in any::<u16>()) {
 
             let btc_balance = bitcoin::Amount::from_sat(btc_balance);
             let btc_fees = bitcoin::Amount::from_sat(btc_fees);
-            let btc_max_amount = bitcoin::Amount::from_sat(btc_max_amount);
+            let max_sell_quantity = bitcoin::Amount::from_sat(max_sell_quantity);
             let rate = Rate::try_from(rate);
             let spread = Spread::new(spread);
 
             if let (Ok(rate), Ok(spread)) = (rate, spread) {
-                let strategy = AllIn::new(Default::default(), btc_fees, Some(btc_max_amount), None, spread, StaticStub::static_stub());
+                let strategy = AllIn::new(Default::default(), btc_fees, Some(max_sell_quantity), None, spread, StaticStub::static_stub());
 
                 let _: anyhow::Result<BtcDaiOrderForm> = strategy.new_sell(btc_balance, rate);
             }
@@ -541,7 +541,7 @@ mod test {
 
     proptest! {
         #[test]
-        fn new_sell_no_max_amount_does_not_panic(btc_balance in any::<u64>(), btc_fees in any::<u64>(), btc_reserved_funds in any::<u64>(), rate in any::<f64>(), spread in any::<u16>()) {
+        fn new_sell_no_max_quantity_does_not_panic(btc_balance in any::<u64>(), btc_fees in any::<u64>(), btc_reserved_funds in any::<u64>(), rate in any::<f64>(), spread in any::<u16>()) {
 
             let btc_balance = bitcoin::Amount::from_sat(btc_balance);
             let btc_fees = bitcoin::Amount::from_sat(btc_fees);

@@ -30,10 +30,13 @@ pub struct Bitcoind {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
-pub struct Max {
+pub struct BtcDai {
     #[serde(default)]
     #[serde(with = "crate::config::serde::bitcoin_amount::btc_as_optional_float")]
-    pub bitcoin: Option<bitcoin::Amount>,
+    pub max_buy_quantity: Option<bitcoin::Amount>,
+    #[serde(default)]
+    #[serde(with = "crate::config::serde::bitcoin_amount::btc_as_optional_float")]
+    pub max_sell_quantity: Option<bitcoin::Amount>,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -141,11 +144,9 @@ mod tests {
     fn sample_config_deserializes_correctly() {
         let expected = File {
             maker: Some(file::Maker {
-                max_sell: Some(Max {
-                    bitcoin: Some(bitcoin::Amount::from_btc(0.1).unwrap()),
-                }),
-                max_buy: Some(Max {
-                    bitcoin: Some(bitcoin::Amount::from_btc(0.1).unwrap()),
+                btc_dai: Some(BtcDai {
+                    max_buy_quantity: Some(bitcoin::Amount::from_btc(0.1).unwrap()),
+                    max_sell_quantity: Some(bitcoin::Amount::from_btc(0.1).unwrap()),
                 }),
                 spread: Some(Spread::new(500).unwrap()),
                 maximum_possible_fee: Some(file::MaxPossibleFee {

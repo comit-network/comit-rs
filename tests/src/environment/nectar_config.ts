@@ -40,26 +40,25 @@ function makeLedgerConfig(
 }
 
 function makeMakerConfig(env: Environment): Pick<NectarConfig, "maker"> {
-    const maxSell = {
-        bitcoin: 0.1,
-    };
-
-    const maxBuy = {
-        bitcoin: 0.1,
-    };
+    const maxBuyQuantity = 0.1;
+    const maxSellQuantity = 0.1;
 
     if (env.treasury) {
         return {
             maker: {
-                max_sell: maxSell,
-                max_buy: maxBuy,
+                btc_dai: {
+                    max_buy_quantity: maxBuyQuantity,
+                    max_sell_quantity: maxSellQuantity,
+                },
                 kraken_api_host: env.treasury.host,
             },
         };
     } else {
         return {
             maker: {
-                max_sell: maxSell,
+                btc_dai: {
+                    max_sell_quantity: maxSellQuantity,
+                },
             },
         };
     }
@@ -95,11 +94,9 @@ export interface NectarConfig {
 
 interface Maker {
     spread?: number;
-    max_sell?: {
-        bitcoin?: number;
-    };
-    max_buy?: {
-        bitcoin?: number;
+    btc_dai?: {
+        max_buy_quantity?: number;
+        max_sell_quantity?: number;
     };
     kraken_api_host?: string;
 }

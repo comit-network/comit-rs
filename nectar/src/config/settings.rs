@@ -1,6 +1,6 @@
 use crate::{
     bitcoin,
-    config::{file, Bitcoind, Data, EstimateMode, File, Max, Network},
+    config::{file, Bitcoind, BtcDai, Data, EstimateMode, File, Network},
     ethereum, Spread,
 };
 use anyhow::{Context, Result};
@@ -158,10 +158,8 @@ impl Default for Ethereum {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Maker {
-    /// Maximum quantity to sell per order
-    pub max_sell: Max,
-    /// Maximum quantity to buy per order
-    pub max_buy: Max,
+    /// Maximum quantities per order
+    pub btc_dai: BtcDai,
     /// Spread to apply to the mid-market rate, format is permyriad. E.g. 5.20
     /// is 5.2% spread
     pub spread: Spread,
@@ -257,8 +255,7 @@ impl Default for BitcoinFeeStrategy {
 impl Maker {
     fn from_file(file: file::Maker) -> Self {
         Self {
-            max_sell: file.max_sell.unwrap_or_default(),
-            max_buy: file.max_buy.unwrap_or_default(),
+            btc_dai: file.btc_dai.unwrap_or_default(),
             spread: file
                 .spread
                 .unwrap_or_else(|| Spread::new(500).expect("500 is a valid spread value")),
@@ -278,8 +275,7 @@ impl Maker {
 impl Default for Maker {
     fn default() -> Self {
         Self {
-            max_sell: Max::default(),
-            max_buy: Max::default(),
+            btc_dai: BtcDai::default(),
             spread: Spread::new(500).expect("500 is a valid spread value"),
             maximum_possible_fee: Fees::default(),
             fee_strategies: FeeStrategies::default(),
@@ -349,13 +345,12 @@ impl From<Settings> for File {
 impl From<Maker> for file::Maker {
     fn from(maker: Maker) -> file::Maker {
         file::Maker {
-            max_sell: match maker.max_sell {
-                Max { bitcoin: None } => None,
+            btc_dai: match maker.btc_dai {
+                BtcDai {
+                    max_buy_quantity: None,
+                    max_sell_quantity: None,
+                } => None,
                 max_sell => Some(max_sell),
-            },
-            max_buy: match maker.max_buy {
-                Max { bitcoin: None } => None,
-                max_buy => Some(max_buy),
             },
             spread: Some(maker.spread),
             maximum_possible_fee: Some(file::MaxPossibleFee {
