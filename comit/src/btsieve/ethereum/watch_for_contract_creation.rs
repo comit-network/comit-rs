@@ -5,6 +5,7 @@ use crate::{
 use anyhow::Result;
 use genawaiter::GeneratorState;
 use time::OffsetDateTime;
+use tracing_futures::Instrument;
 
 // This tracing context is useful because it conveys information through its
 // name although we skip all fields because they would add too much noise.
@@ -63,35 +64,16 @@ pub async fn matching_transaction_and_receipt<C, F>(
 ) -> Result<(Transaction, TransactionReceipt)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
-    F: Fn(&Transaction) -> bool,
+    F: Fn(&Transaction) -> bool + Clone,
 {
     let mut block_generator = fetch_blocks_since(connector, start_of_swap);
 
     loop {
         match block_generator.async_resume().await {
             GeneratorState::Yielded(block) => {
-                let block_span = tracing::error_span!("block", hash = %block.hash, tx_count = %block.transactions.len());
-                let _enter_block_span = block_span.enter();
-
-                for transaction in block.transactions.into_iter() {
-                    let tx_hash = transaction.hash;
-                    let tx_span = tracing::error_span!("tx", hash = %tx_hash);
-                    let _enter_tx_span = tx_span.enter();
-
-                    if matcher(&transaction) {
-                        let receipt = connector.receipt_by_hash(tx_hash).await?;
-                        if !receipt.successful {
-                            // This can be caused by a failed attempt to complete an action,
-                            // for example, sending a transaction with low gas.
-                            tracing::warn!("transaction matched but status was NOT OK");
-                            continue;
-                        }
-                        tracing::info!("transaction matched");
-                        return Ok((transaction, receipt));
-                    }
+                if let Some(result) = process_block(block, connector, matcher.clone()).await? {
+                    return Ok(result);
                 }
-
-                tracing::debug!("no transaction matched")
             }
             GeneratorState::Complete(Err(e)) => return Err(e),
             // By matching against the never type explicitly, we assert that the `Ok` value of the
@@ -100,4 +82,55 @@ where
             GeneratorState::Complete(Ok(never)) => match never {},
         }
     }
+}
+
+#[tracing::instrument(name = "block", skip(block, connector, matcher), fields(hash = %block.hash, tx_count = %block.transactions.len()))]
+async fn process_block<C, F>(
+    block: Block,
+    connector: &C,
+    matcher: F,
+) -> Result<Option<(Transaction, TransactionReceipt)>>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+    F: Fn(&Transaction) -> bool + Clone,
+{
+    for transaction in block.transactions.into_iter() {
+        if let Some(result) = process_transaction(transaction, connector, matcher.clone())
+            .in_current_span()
+            .await?
+        {
+            return Ok(Some(result));
+        }
+    }
+
+    tracing::debug!("no transaction matched");
+
+    Ok(None)
+}
+
+#[tracing::instrument(name = "tx", skip(tx, connector, matcher), fields(hash = %tx.hash))]
+async fn process_transaction<C, F>(
+    tx: Transaction,
+    connector: &C,
+    matcher: F,
+) -> Result<Option<(Transaction, TransactionReceipt)>>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+    F: Fn(&Transaction) -> bool,
+{
+    if matcher(&tx) {
+        let receipt = connector.receipt_by_hash(tx.hash).await?;
+
+        if !receipt.successful {
+            // This can be caused by a failed attempt to complete an action,
+            // for example, sending a transaction with low gas.
+            tracing::warn!("transaction matched but status was NOT OK");
+            return Ok(None);
+        }
+
+        tracing::info!("transaction matched");
+        return Ok(Some((tx, receipt)));
+    }
+
+    Ok(None)
 }
