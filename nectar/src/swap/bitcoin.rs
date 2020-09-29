@@ -1,4 +1,7 @@
-use crate::swap::{hbit, LedgerTime};
+use crate::{
+    bitcoin,
+    swap::{hbit, LedgerTime},
+};
 use comit::{
     bitcoin::median_time_past,
     btsieve::{bitcoin::BitcoindConnector, BlockByHash, LatestBlock},
@@ -12,6 +15,7 @@ pub use ::bitcoin::{secp256k1::SecretKey, Address, Block, BlockHash, OutPoint, T
 #[derive(Debug, Clone)]
 pub struct Wallet {
     pub inner: Arc<crate::bitcoin::Wallet>,
+    pub fee: bitcoin::Fee,
     pub connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
 }
 
@@ -20,9 +24,11 @@ impl hbit::ExecuteFund for Wallet {
     async fn execute_fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::Funded> {
         let action = params.shared.build_fund_action();
 
+        let kbyte_fee_rate = self.fee.kbyte_rate().await?;
+
         let location = self
             .inner
-            .fund_htlc(action.to, action.amount, action.network)
+            .fund_htlc(action.to, action.amount, action.network, kbyte_fee_rate)
             .await?;
         let asset = action.amount;
 
@@ -40,6 +46,8 @@ impl hbit::ExecuteRedeem for Wallet {
     ) -> anyhow::Result<hbit::Redeemed> {
         let redeem_address = self.inner.new_address().await?;
 
+        let fee_rate_per_byte = self.fee.byte_rate().await?;
+
         let action = params.shared.build_redeem_action(
             &crate::SECP,
             fund_event.asset,
@@ -47,6 +55,7 @@ impl hbit::ExecuteRedeem for Wallet {
             params.transient_sk,
             redeem_address,
             secret,
+            fee_rate_per_byte,
         )?;
         let transaction = self.spend(action).await?;
 
@@ -79,12 +88,15 @@ impl hbit::ExecuteRefund for Wallet {
 
         let refund_address = self.inner.new_address().await?;
 
+        let fee_rate_per_byte = self.fee.byte_rate().await?;
+
         let action = params.shared.build_refund_action(
             &crate::SECP,
             fund_event.asset,
             fund_event.location,
             params.transient_sk,
             refund_address,
+            fee_rate_per_byte,
         )?;
         let transaction = self.spend(action).await?;
 

@@ -228,12 +228,13 @@ impl Wallet {
         address: Address,
         amount: Amount,
         ledger: ledger::Bitcoin,
+        kbyte_fee_rate: Amount,
     ) -> anyhow::Result<OutPoint> {
         self.assert_network(ledger).await?;
 
         let outpoint = self
             .bitcoind_client
-            .fund_htlc(&self.name, address, amount)
+            .fund_htlc(&self.name, address, amount, kbyte_fee_rate)
             .await?;
         Ok(outpoint)
     }

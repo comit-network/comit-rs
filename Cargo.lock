@@ -578,7 +578,7 @@ dependencies = [
  "config",
  "conquer-once",
  "data-encoding",
- "derivative 2.1.1",
+ "derivative",
  "diesel",
  "diesel_migrations",
  "digest 0.1.0",
@@ -613,7 +613,7 @@ dependencies = [
  "strum 0.19.2",
  "strum_macros 0.19.2",
  "tempfile",
- "testcontainers 0.10.0",
+ "testcontainers",
  "thiserror",
  "time 0.2.22",
  "tokio",
@@ -645,7 +645,7 @@ dependencies = [
  "byteorder",
  "chrono",
  "conquer-once",
- "derivative 2.1.1",
+ "derivative",
  "digest 0.1.0",
  "ethbloom",
  "futures",
@@ -668,7 +668,7 @@ dependencies = [
  "spectral",
  "strum 0.19.2",
  "strum_macros 0.19.2",
- "testcontainers 0.10.0",
+ "testcontainers",
  "thiserror",
  "time 0.2.22",
  "tokio",
@@ -855,17 +855,6 @@ name = "data-encoding"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4d0e2d24e5ee3b23a01de38eefdcd978907890701f08ffffd4cb457ca4ee8d6"
-
-[[package]]
-name = "derivative"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c6d883546668a3e2011b6a716a7330b82eabb0151b138217f632c8243e17135"
-dependencies = [
- "proc-macro2 0.4.30",
- "quote 0.6.13",
- "syn 0.15.44",
-]
 
 [[package]]
 name = "derivative"
@@ -2322,7 +2311,7 @@ dependencies = [
  "config",
  "conquer-once",
  "csv",
- "derivative 2.1.1",
+ "derivative",
  "directories 2.0.2",
  "ethabi",
  "ethereum-types",
@@ -2349,7 +2338,7 @@ dependencies = [
  "strum 0.18.0",
  "strum_macros 0.18.0",
  "tempfile",
- "testcontainers 0.9.1",
+ "testcontainers",
  "thiserror",
  "time 0.2.22",
  "tokio",
@@ -3957,17 +3946,6 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "0.15.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ca4b3b69a77cbe1ffc9e198781b7acb0c7365a883670e8f1c1bc66fba79a5c5"
-dependencies = [
- "proc-macro2 0.4.30",
- "quote 0.6.13",
- "unicode-xid 0.1.0",
-]
-
-[[package]]
-name = "syn"
 version = "1.0.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c51d92969d209b54a98397e1b91c8ae82d8c87a7bb87df0b29aa2ad81454228"
@@ -4014,27 +3992,11 @@ dependencies = [
 
 [[package]]
 name = "testcontainers"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af06783709f5254b087f0a1ea4557e372a5c2c597ca4a1157fbe536b1de2fb19"
-dependencies = [
- "derivative 1.0.4",
- "hex 0.4.2",
- "hmac 0.7.1",
- "log 0.4.11",
- "rand 0.7.3",
- "serde",
- "serde_json",
- "sha2 0.8.2",
-]
-
-[[package]]
-name = "testcontainers"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5134c13096bec3ad5d4e468f2ab32788654110de751099b729997fb37e924b4a"
 dependencies = [
- "derivative 2.1.1",
+ "derivative",
  "hex 0.4.2",
  "hmac 0.8.1",
  "log 0.4.11",

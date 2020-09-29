@@ -12,7 +12,7 @@ pub struct Blockchain<'c> {
 
 impl<'c> Blockchain<'c> {
     pub fn new(client: &'c clients::Cli) -> anyhow::Result<Self> {
-        let container = client.run(BitcoinCore::default().with_tag("0.19.1"));
+        let container = client.run(BitcoinCore::default());
         let port = container.get_host_port(18443);
 
         let auth = container.image().auth();

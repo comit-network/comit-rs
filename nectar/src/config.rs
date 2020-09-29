@@ -32,11 +32,37 @@ pub struct Bitcoind {
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct MaxSell {
     #[serde(default)]
-    #[serde(with = "crate::config::serde::bitcoin_amount")]
+    #[serde(with = "crate::config::serde::bitcoin_amount::btc_as_optional_float")]
     pub bitcoin: Option<bitcoin::Amount>,
     #[serde(default)]
     #[serde(with = "crate::config::serde::dai_amount")]
     pub dai: Option<dai::Amount>,
+}
+
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum EstimateMode {
+    Unset,
+    Economical,
+    Conservative,
+}
+
+/// "Unset" lets bitcoind choose the strategy
+impl Default for EstimateMode {
+    fn default() -> Self {
+        Self::Unset
+    }
+}
+
+impl From<EstimateMode> for crate::bitcoin::EstimateMode {
+    fn from(config: EstimateMode) -> Self {
+        use crate::bitcoin::EstimateMode::*;
+        match config {
+            EstimateMode::Unset => Unset,
+            EstimateMode::Economical => Economical,
+            EstimateMode::Conservative => Conservative,
+        }
+    }
 }
 
 pub fn read_config<T>(config_file: &Option<PathBuf>, default_config_path: T) -> anyhow::Result<File>
@@ -123,8 +149,15 @@ mod tests {
                     dai: Some(dai::Amount::from_dai_trunc(1000.0).unwrap()),
                 }),
                 spread: Some(Spread::new(500).unwrap()),
-                maximum_possible_fee: Some(file::Fees {
+                maximum_possible_fee: Some(file::MaxPossibleFee {
                     bitcoin: Some(bitcoin::Amount::from_btc(0.00009275).unwrap()),
+                }),
+                fee_strategies: Some(file::FeeStrategies {
+                    bitcoin: Some(file::BitcoinFee {
+                        strategy: Some(file::BitcoinFeeStrategy::Static),
+                        sats_per_byte: Some(bitcoin::Amount::from_sat(12)),
+                        estimate_mode: None,
+                    }),
                 }),
                 kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
             }),

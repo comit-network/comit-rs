@@ -1,6 +1,6 @@
 use crate::{
     bitcoin,
-    config::{file, Bitcoind, Data, File, MaxSell, Network},
+    config::{file, Bitcoind, Data, EstimateMode, File, MaxSell, Network},
     ethereum, Spread,
 };
 use anyhow::{Context, Result};
@@ -163,10 +163,14 @@ pub struct Maker {
     /// Spread to apply to the mid-market rate, format is permyriad. E.g. 5.20
     /// is 5.2% spread
     pub spread: Spread,
+    // TODO: Probably move that under something common to fee_strategies.
+    // I did not realize I would still need it.
     /// Maximum possible network fee to consider when calculating the available
     /// balance. Fees are in the nominal native currency and per
     /// transaction.
     pub maximum_possible_fee: Fees,
+    /// Fee strategies
+    pub fee_strategies: FeeStrategies,
     pub kraken_api_host: KrakenApiHost,
 }
 
@@ -193,6 +197,61 @@ impl Default for KrakenApiHost {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct FeeStrategies {
+    pub bitcoin: BitcoinFeeStrategy,
+}
+
+impl From<file::FeeStrategies> for FeeStrategies {
+    fn from(file: file::FeeStrategies) -> Self {
+        Self {
+            bitcoin: file
+                .bitcoin
+                .map_or_else(BitcoinFeeStrategy::default, BitcoinFeeStrategy::from),
+        }
+    }
+}
+
+impl Default for FeeStrategies {
+    fn default() -> Self {
+        Self {
+            bitcoin: BitcoinFeeStrategy::default(),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum BitcoinFeeStrategy {
+    SatsPerByte(bitcoin::Amount),
+    BitcoindEstimateSmartfee(EstimateMode),
+}
+
+const DEFAULT_BITCOIN_STATIC_FEE_SAT: u64 = 10;
+
+/// Defaults to static fee mode
+/// Default value for static mode is 10 sat per byte
+impl From<file::BitcoinFee> for BitcoinFeeStrategy {
+    fn from(file: file::BitcoinFee) -> Self {
+        file.strategy
+            .map_or_else(Default::default, |strategy| match strategy {
+                file::BitcoinFeeStrategy::Static => {
+                    Self::SatsPerByte(file.sats_per_byte.unwrap_or_else(|| {
+                        bitcoin::Amount::from_sat(DEFAULT_BITCOIN_STATIC_FEE_SAT)
+                    }))
+                }
+                file::BitcoinFeeStrategy::Bitcoind => Self::BitcoindEstimateSmartfee(
+                    file.estimate_mode.unwrap_or_else(EstimateMode::default),
+                ),
+            })
+    }
+}
+
+impl Default for BitcoinFeeStrategy {
+    fn default() -> Self {
+        Self::SatsPerByte(bitcoin::Amount::from_sat(DEFAULT_BITCOIN_STATIC_FEE_SAT))
+    }
+}
+
 impl Maker {
     fn from_file(file: file::Maker) -> Self {
         Self {
@@ -203,6 +262,9 @@ impl Maker {
             maximum_possible_fee: file
                 .maximum_possible_fee
                 .map_or_else(Fees::default, Fees::from_file),
+            fee_strategies: file
+                .fee_strategies
+                .map_or_else(FeeStrategies::default, FeeStrategies::from),
             kraken_api_host: file
                 .kraken_api_host
                 .map_or_else(KrakenApiHost::default, KrakenApiHost),
@@ -216,6 +278,7 @@ impl Default for Maker {
             max_sell: MaxSell::default(),
             spread: Spread::new(500).expect("500 is a valid spread value"),
             maximum_possible_fee: Fees::default(),
+            fee_strategies: FeeStrategies::default(),
             kraken_api_host: KrakenApiHost::default(),
         }
     }
@@ -227,7 +290,7 @@ pub struct Fees {
 }
 
 impl Fees {
-    fn from_file(file: file::Fees) -> Self {
+    fn from_file(file: file::MaxPossibleFee) -> Self {
         Self {
             bitcoin: file.bitcoin.unwrap_or_else(Self::default_bitcoin_fee),
         }
@@ -290,10 +353,12 @@ impl From<Maker> for file::Maker {
                 max_sell => Some(max_sell),
             },
             spread: Some(maker.spread),
-            maximum_possible_fee: Some(file::Fees {
+            maximum_possible_fee: Some(file::MaxPossibleFee {
                 bitcoin: Some(maker.maximum_possible_fee.bitcoin),
             }),
             kraken_api_host: Some(maker.kraken_api_host.0),
+            // TODO
+            fee_strategies: None,
         }
     }
 }

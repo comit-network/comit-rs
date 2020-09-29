@@ -1,9 +1,11 @@
 mod bitcoind;
+mod fee;
 mod wallet;
 
-pub use ::bitcoin::{Address, Network, Txid};
+pub use ::bitcoin::{Address, Block, BlockHash, Network, Transaction, Txid};
 pub use bitcoind::*;
 pub use comit::asset::Bitcoin as Amount;
+pub use fee::*;
 pub use wallet::Wallet;
 
 pub const SATS_IN_BITCOIN_EXP: u16 = 8;

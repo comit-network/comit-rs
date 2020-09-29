@@ -7,7 +7,7 @@ use anyhow::Context;
 use bitcoin::OutPoint;
 use comit::ledger;
 use ledger::Bitcoin as Network;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 pub const JSONRPC_VERSION: &str = "1.0";
 
@@ -179,6 +179,7 @@ impl Client {
         wallet_name: &str,
         address: Address,
         amount: Amount,
+        kbyte_fee_rate: Amount,
     ) -> anyhow::Result<OutPoint> {
         let address = address.to_string();
 
@@ -198,7 +199,8 @@ impl Client {
                             ],
                             null,
                             {
-                                "changePosition": 1 // this allows us to assume that the HTLC will always be at output position 0
+                                "changePosition": 1, // this allows us to assume that the HTLC will always be at output position 0,
+                                "feeRate": kbyte_fee_rate.as_btc() // Set a specific fee rate in BTC/kB
                             }
                         ]
                     ),
@@ -376,6 +378,35 @@ impl Client {
             .context("failed to generate to address")?;
         Ok(response)
     }
+
+    pub async fn estimate_smart_fee(
+        &self,
+        confirmation_target: u32,
+        estimate_mode: Option<EstimateMode>,
+    ) -> anyhow::Result<EstimateSmartFeeResponse> {
+        let response = self
+            .rpc_client
+            .send(jsonrpc::Request::new(
+                "estimatesmartfee",
+                vec![
+                    jsonrpc::serialize(confirmation_target)?,
+                    jsonrpc::serialize(estimate_mode)?,
+                ],
+                JSONRPC_VERSION.into(),
+            ))
+            .await
+            .context("failed to get smart fee estimation")?;
+        Ok(response)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "UPPERCASE")]
+#[allow(dead_code)] // Fine if the options are not used
+pub enum EstimateMode {
+    Unset,
+    Economical,
+    Conservative,
 }
 
 #[derive(Debug, Deserialize)]
@@ -461,6 +492,36 @@ struct FinalizePsbtResponse {
     psbt: Option<String>,
     hex: Option<String>,
     complete: bool,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
+pub struct EstimateSmartFeeResponse {
+    #[serde(rename = "feerate")]
+    #[serde(with = "btc_as_float")]
+    pub kbyte_rate: Amount,
+    pub block: u32,
+}
+
+mod btc_as_float {
+    use super::*;
+    use serde::{de::Error, Deserialize, Deserializer};
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Amount, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = f64::deserialize(deserializer)?;
+        let amount = Amount::from_btc(value).map_err(<D as Deserializer<'de>>::Error::custom)?;
+
+        Ok(amount)
+    }
+}
+
+#[cfg(test)]
+impl crate::StaticStub for Client {
+    fn static_stub() -> Self {
+        Self::new("http://example.com".parse().unwrap())
+    }
 }
 
 #[cfg(all(test, feature = "test-docker"))]

@@ -29,7 +29,7 @@ test(
         await alice.assertBalancesAfterSwap();
         await alice.assertOrderClosed();
         await bob.assertBalancesChangedBy({
-            bitcoin: -(10_000_000n + 3060n), // nectar pays order quantity + the funding fee
+            bitcoin: -(10_000_000n + 1530n), // nectar pays order quantity + the funding fee
             dai: 945_000_000_000_000_000_000n, // = 0.1 * 9450 * 10^18
         });
     })

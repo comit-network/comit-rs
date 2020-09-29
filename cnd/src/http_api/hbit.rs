@@ -8,6 +8,9 @@ use bitcoin::secp256k1::SecretKey;
 
 pub use crate::hbit::*;
 
+// TODO: Make it configurable
+const BITCOIN_FEE_RATE_SAT_PER_BYTE: u64 = 10;
+
 /// Data for the hbit protocol.
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct Hbit {
@@ -99,6 +102,7 @@ impl FinalizedAsFunder {
             *fund_location,
             transient_refund_sk,
             refund_address,
+            asset::Bitcoin::from_sat(BITCOIN_FEE_RATE_SAT_PER_BYTE),
         )
     }
 
@@ -144,6 +148,7 @@ impl FinalizedAsRedeemer {
             transient_redeem_sk,
             redeem_address,
             secret,
+            asset::Bitcoin::from_sat(BITCOIN_FEE_RATE_SAT_PER_BYTE),
         )
     }
 

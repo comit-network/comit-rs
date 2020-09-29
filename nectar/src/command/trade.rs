@@ -31,8 +31,11 @@ pub async fn trade(
     let bitcoin_wallet = Arc::new(bitcoin_wallet);
     let ethereum_wallet = Arc::new(ethereum_wallet);
 
+    let bitcoind_client = bitcoin::Client::new(settings.bitcoin.bitcoind.node_url.clone());
+
     let mut maker = init_maker(
         Arc::clone(&bitcoin_wallet),
+        bitcoind_client.clone(),
         Arc::clone(&ethereum_wallet),
         settings.clone(),
         network,
@@ -78,9 +81,16 @@ pub async fn trade(
     let bitcoin_connector = Arc::new(BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?);
     let ethereum_connector = Arc::new(Web3Connector::new(settings.ethereum.node_url));
 
+    let bitcoin_fee = bitcoin::Fee::new(
+        settings.maker.fee_strategies.bitcoin,
+        settings.maker.maximum_possible_fee.bitcoin,
+        bitcoind_client,
+    );
+
     let (swap_executor, swap_execution_finished_receiver) = SwapExecutor::new(
         Arc::clone(&db),
         Arc::clone(&bitcoin_wallet),
+        bitcoin_fee,
         Arc::clone(&ethereum_wallet),
         bitcoin_connector,
         ethereum_connector,
@@ -113,6 +123,7 @@ pub async fn trade(
 
 async fn init_maker(
     bitcoin_wallet: Arc<bitcoin::Wallet>,
+    bitcoind_client: bitcoin::Client,
     ethereum_wallet: Arc<ethereum::Wallet>,
     settings: Settings,
     network: comit::Network,
@@ -129,7 +140,8 @@ async fn init_maker(
 
     let btc_max_sell = settings.maker.max_sell.bitcoin;
     let dai_max_sell = settings.maker.max_sell.dai.clone();
-    let btc_fee_reserve = settings.maker.maximum_possible_fee.bitcoin;
+    let max_btc_fee = settings.maker.maximum_possible_fee.bitcoin;
+    let btc_fee_strategy = settings.maker.fee_strategies.bitcoin;
 
     let initial_rate = get_btc_dai_mid_market_rate(&settings.maker.kraken_api_host)
         .await
@@ -137,7 +149,14 @@ async fn init_maker(
 
     let spread: Spread = settings.maker.spread;
 
-    let strategy = strategy::AllIn::new(btc_fee_reserve, btc_max_sell, dai_max_sell, spread);
+    let strategy = strategy::AllIn::new(
+        btc_fee_strategy,
+        max_btc_fee,
+        btc_max_sell,
+        dai_max_sell,
+        spread,
+        bitcoind_client,
+    );
 
     Ok(Maker::new(
         initial_btc_balance,
@@ -301,6 +320,7 @@ mod tests {
                 },
                 spread: StaticStub::static_stub(),
                 maximum_possible_fee: Default::default(),
+                fee_strategies: Default::default(),
                 kraken_api_host: Default::default(),
             },
             network: Network {
