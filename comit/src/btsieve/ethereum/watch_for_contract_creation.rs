@@ -91,7 +91,7 @@ where
                     }
                 }
 
-                tracing::info!("no transaction matched")
+                tracing::debug!("no transaction matched")
             }
             GeneratorState::Complete(Err(e)) => return Err(e),
             // By matching against the never type explicitly, we assert that the `Ok` value of the
