@@ -69,7 +69,7 @@ impl Spawn<herc20::Params> for ProtocolSpawner {
             start_of_swap,
             role,
             side,
-            self.storage.herc20_states.clone(),
+            self.storage.clone(),
             self.connectors.ethereum(),
         );
 
@@ -92,7 +92,7 @@ impl Spawn<hbit::Params> for ProtocolSpawner {
             start_of_swap,
             role,
             side,
-            self.storage.hbit_states.clone(),
+            self.storage.clone(),
             self.connectors.bitcoin(),
         );
 
@@ -127,7 +127,7 @@ impl Spawn<halbit::Params> for ProtocolSpawner {
                     params,
                     role,
                     side,
-                    self.storage.halbit_states.clone(),
+                    self.storage.clone(),
                     LndConnectorAsSender::from(lnd_connector_params.clone()),
                 ));
             }
@@ -137,7 +137,7 @@ impl Spawn<halbit::Params> for ProtocolSpawner {
                     params,
                     role,
                     side,
-                    self.storage.halbit_states.clone(),
+                    self.storage.clone(),
                     LndConnectorAsReceiver::from(lnd_connector_params.clone()),
                 ));
             }

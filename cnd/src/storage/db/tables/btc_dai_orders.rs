@@ -3,7 +3,7 @@ use crate::storage::{
         schema::*,
         wrapper_types::{Erc20Amount, Satoshis, WeiPerSat},
     },
-    NotOpen, Order, Text,
+    NotOpen, NotSettling, Order, Text,
 };
 use anyhow::{Context, Result};
 use comit::{
@@ -81,6 +81,26 @@ impl BtcDaiOrder {
 
         if affected_rows == 0 {
             anyhow::bail!("failed to mark order {} as cancelled", self.order_id)
+        }
+
+        Ok(())
+    }
+
+    pub fn set_to_closed(&self, conn: &SqliteConnection) -> Result<()> {
+        if self.settling == Quantity::new(bitcoin::Bitcoin::ZERO) {
+            let order = Order::by_id(conn, self.order_id)?;
+            anyhow::bail!(NotSettling(order.order_id))
+        }
+
+        let affected_rows = diesel::update(self)
+            .set((
+                btc_dai_orders::closed.eq(Text::<Satoshis>(self.settling.to_inner().into())),
+                btc_dai_orders::settling.eq(Text::<Satoshis>(bitcoin::Bitcoin::ZERO.into())),
+            ))
+            .execute(conn)?;
+
+        if affected_rows == 0 {
+            anyhow::bail!("failed to mark order {} as closed", self.order_id)
         }
 
         Ok(())

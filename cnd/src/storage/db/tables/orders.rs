@@ -1,4 +1,10 @@
-use crate::storage::{db::schema::orders, NoOrderExists, Text};
+use crate::{
+    local_swap_id::LocalSwapId,
+    storage::{
+        db::schema::{order_swaps, orders, swaps},
+        NoOrderExists, NoOrderForSwap, Text,
+    },
+};
 use anyhow::{Context, Result};
 use comit::{OrderId, Position};
 use diesel::{prelude::*, SqliteConnection};
@@ -29,6 +35,17 @@ impl Order {
             .filter(orders::order_id.eq(Text(order_id)))
             .first::<Order>(conn)
             .with_context(|| NoOrderExists(order_id))?;
+
+        Ok(order)
+    }
+
+    pub fn by_swap_id(conn: &SqliteConnection, swap_id: LocalSwapId) -> Result<Self> {
+        let order = orders::table
+            .inner_join(order_swaps::table.inner_join(swaps::table))
+            .filter(swaps::local_swap_id.eq(Text(swap_id)))
+            .select(orders::all_columns)
+            .first(conn)
+            .with_context(|| NoOrderForSwap(swap_id))?;
 
         Ok(order)
     }

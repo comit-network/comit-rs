@@ -2,19 +2,19 @@ use crate::{
     btsieve::{BlockByHash, LatestBlock},
     ledger, state,
     state::Update,
+    storage::Storage,
     tracing_ext::InstrumentProtocol,
     LocalSwapId, Role, Side,
 };
 use bitcoin::{Address, Block, BlockHash};
 use chrono::{DateTime, Utc};
 use comit::{asset, htlc_location, transaction, LockProtocol, Secret};
-pub use comit::{hbit::*, identity};
 use futures::TryStreamExt;
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    sync::Arc,
-};
+use std::collections::{hash_map::Entry, HashMap};
 use tokio::sync::Mutex;
+
+use crate::storage::{BtcDaiOrder, Order};
+pub use comit::{hbit::*, identity};
 
 /// Creates a new instance of the hbit protocol, annotated with tracing spans
 /// and saves all events in the `States` hashmap.
@@ -27,7 +27,7 @@ pub async fn new<C>(
     start_of_swap: DateTime<Utc>,
     role: Role,
     side: Side,
-    states: Arc<States>,
+    storage: Storage,
     connector: impl AsRef<C>,
 ) where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
@@ -38,7 +38,22 @@ pub async fn new<C>(
         .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
 
     while let Ok(Some(event)) = events.try_next().await {
-        states.update(&id, event).await;
+        storage.hbit_states.update(&id, event).await;
+    }
+
+    if let Err(e) = storage
+        .db
+        .do_in_transaction(|conn| {
+            let order = Order::by_swap_id(conn, id)?;
+            let btc_dai_order = BtcDaiOrder::by_order(conn, &order)?;
+
+            btc_dai_order.set_to_closed(conn)?;
+
+            Ok(())
+        })
+        .await
+    {
+        tracing::error!("failed to update order state: {:#}", e);
     }
 
     tracing::info!("swap finished");

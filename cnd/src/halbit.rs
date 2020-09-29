@@ -1,12 +1,9 @@
 use crate::{
-    asset, identity, ledger, state, state::Update, tracing_ext::InstrumentProtocol, LocalSwapId,
-    LockProtocol, RelativeTime, Role, Side,
+    asset, identity, ledger, state, state::Update, storage::Storage,
+    tracing_ext::InstrumentProtocol, LocalSwapId, LockProtocol, RelativeTime, Role, Side,
 };
 use futures::TryStreamExt;
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    sync::Arc,
-};
+use std::collections::{hash_map::Entry, HashMap};
 use tokio::sync::Mutex;
 
 pub use comit::halbit::*;
@@ -107,7 +104,7 @@ pub async fn new<C>(
     params: Params,
     role: Role,
     side: Side,
-    states: Arc<States>,
+    storage: Storage,
     connector: C,
 ) where
     C: WaitForOpened + WaitForAccepted + WaitForSettled + WaitForCancelled,
@@ -118,7 +115,7 @@ pub async fn new<C>(
         .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
 
     while let Ok(Some(event)) = events.try_next().await {
-        states.update(&id, event).await;
+        storage.halbit_states.update(&id, event).await;
     }
 
     tracing::info!("swap finished");
