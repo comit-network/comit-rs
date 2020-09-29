@@ -44,7 +44,7 @@ test(
             (market) => market.entities.length > 0
         );
 
-        await alice.makeBtcDaiOrder(Position.Sell, "0.23391812", "8550"); // This matches what nectar publishes.
+        await alice.makeBtcDaiOrder(Position.Sell, "0.1", "8550"); // This matches what nectar publishes.
         await alice.waitForSwap();
 
         await alice.assertAndExecuteNextAction("fund");
@@ -56,8 +56,8 @@ test(
         await alice.assertBalancesAfterSwap();
         await alice.assertOrderClosed();
         await bob.assertBalancesChangedBy({
-            bitcoin: 23391812n - 5700n, // nectar receives order quantity but pays the redeem fee
-            dai: -1_999_999_926_000_000_000_000n, // = 0.23391812 * 8550 * 10^18
+            bitcoin: 10000000n - 5700n, // nectar receives order quantity but pays the redeem fee
+            dai: -855_000_000_000_000_000_000n, // = 0.1 * 8550 * 10^18
         });
     })
 );

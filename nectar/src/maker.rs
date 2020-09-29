@@ -358,8 +358,8 @@ mod tests {
         let strategy = strategy::AllIn::new(
             Default::default(),
             btc(0.0),
-            Some(btc(1.0)),
             None,
+            Some(btc(1.0)),
             Spread::static_stub(),
             StaticStub::static_stub(),
         );
@@ -384,8 +384,8 @@ mod tests {
         let strategy = strategy::AllIn::new(
             Default::default(),
             btc(0.0),
+            Some(btc(1.0)),
             None,
-            Some(dai(1.0)),
             Spread::static_stub(),
             StaticStub::static_stub(),
         );
@@ -406,12 +406,12 @@ mod tests {
     }
 
     #[test]
-    fn new_buy_order_is_correct() {
+    fn new_buy_order_with_max_buy() {
         let strategy = strategy::AllIn::new(
             Default::default(),
             btc(0.0),
+            Some(btc(0.002)),
             None,
-            Some(dai(18.0)),
             Spread::static_stub(),
             StaticStub::static_stub(),
         );
@@ -427,5 +427,29 @@ mod tests {
         let new_buy_order = maker.new_buy_order().unwrap();
         assert_eq!(new_buy_order.quantity.to_inner(), btc(0.002));
         assert_eq!(dai::Amount::from(new_buy_order.quote()), dai(18.0));
+    }
+
+    #[test]
+    fn new_buy_order() {
+        let strategy = strategy::AllIn::new(
+            Default::default(),
+            btc(0.0),
+            None,
+            None,
+            Spread::static_stub(),
+            StaticStub::static_stub(),
+        );
+
+        let maker = Maker {
+            dai_balance: some_dai(20.0),
+            mid_market_rate: some_rate(10000.0),
+            btc_balance: some_btc(1.0),
+            strategy,
+            ..StaticStub::static_stub()
+        };
+
+        let new_buy_order = maker.new_buy_order().unwrap();
+        assert_eq!(new_buy_order.quantity.to_inner(), btc(0.002));
+        assert_eq!(dai::Amount::from(new_buy_order.quote()), dai(20.0));
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     bitcoin,
-    config::{file, Bitcoind, Data, EstimateMode, File, MaxSell, Network},
+    config::{file, Bitcoind, BtcDai, Data, EstimateMode, File, Network},
     ethereum, Spread,
 };
 use anyhow::{Context, Result};
@@ -158,8 +158,8 @@ impl Default for Ethereum {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Maker {
-    /// Maximum amount to sell per order
-    pub max_sell: MaxSell,
+    /// Maximum quantities per order
+    pub btc_dai: BtcDai,
     /// Spread to apply to the mid-market rate, format is permyriad. E.g. 5.20
     /// is 5.2% spread
     pub spread: Spread,
@@ -255,7 +255,7 @@ impl Default for BitcoinFeeStrategy {
 impl Maker {
     fn from_file(file: file::Maker) -> Self {
         Self {
-            max_sell: file.max_sell.unwrap_or_default(),
+            btc_dai: file.btc_dai.unwrap_or_default(),
             spread: file
                 .spread
                 .unwrap_or_else(|| Spread::new(500).expect("500 is a valid spread value")),
@@ -275,7 +275,7 @@ impl Maker {
 impl Default for Maker {
     fn default() -> Self {
         Self {
-            max_sell: MaxSell::default(),
+            btc_dai: BtcDai::default(),
             spread: Spread::new(500).expect("500 is a valid spread value"),
             maximum_possible_fee: Fees::default(),
             fee_strategies: FeeStrategies::default(),
@@ -345,10 +345,10 @@ impl From<Settings> for File {
 impl From<Maker> for file::Maker {
     fn from(maker: Maker) -> file::Maker {
         file::Maker {
-            max_sell: match maker.max_sell {
-                MaxSell {
-                    bitcoin: None,
-                    dai: None,
+            btc_dai: match maker.btc_dai {
+                BtcDai {
+                    max_buy_quantity: None,
+                    max_sell_quantity: None,
                 } => None,
                 max_sell => Some(max_sell),
             },

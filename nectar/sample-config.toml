@@ -12,13 +12,13 @@ spread = 500
 # hence you will likely have to write a proxy if you want to use something else here.
 kraken_api_host = "https://api.kraken.com"
 
-[maker.max_sell]
-# The maximum amount of bitcoin to sell in one order, optional field.
-# If absent, orders are capped by the available balance.
-bitcoin = 0.1
-# The maximum amount of dai to sell in one order, optional field.
-# If absent, orders are capped by the available balance.
-dai = 1000
+[maker.btc_dai]
+# The maximum quantity of bitcoin to buy in one order, optional field.
+# If absent, orders are capped by the available quote balance.
+max_buy_quantity = 0.1
+# The maximum quantity of bitcoin to sell in one order, optional field.
+# If absent, orders are capped by the available base balance.
+max_sell_quantity = 0.1
 
 [maker.maximum_possible_fee]
 # An estimation of the maximum fee that we would expect to pay, used to ensure we always have enough
