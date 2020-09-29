@@ -7,9 +7,6 @@ use genawaiter::GeneratorState;
 use time::OffsetDateTime;
 use tracing_futures::Instrument;
 
-// This tracing context is useful because it conveys information through its
-// name although we skip all fields because they would add too much noise.
-#[tracing::instrument(level = "debug", skip(connector, start_of_swap, expected_bytecode))]
 pub async fn watch_for_contract_creation<C>(
     connector: &C,
     start_of_swap: OffsetDateTime,
