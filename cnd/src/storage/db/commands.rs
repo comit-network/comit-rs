@@ -88,3 +88,30 @@ pub fn update_order_of_swap_to_closed(conn: &SqliteConnection, swap_id: LocalSwa
 
     Ok(())
 }
+
+pub fn update_order_of_swap_to_failed(conn: &SqliteConnection, swap_id: LocalSwapId) -> Result<()> {
+    let (order, btc_dai_order) = orders::table
+        .inner_join(order_swaps::table.inner_join(swaps::table))
+        .inner_join(btc_dai_orders::table)
+        .filter(swaps::local_swap_id.eq(Text(swap_id)))
+        .select((orders::all_columns, btc_dai_orders::all_columns))
+        .first::<(Order, BtcDaiOrder)>(conn)
+        .with_context(|| NoOrderForSwap(swap_id))?;
+
+    if btc_dai_order.settling == Quantity::new(asset::Bitcoin::ZERO) {
+        anyhow::bail!(NotSettling(order.order_id))
+    }
+
+    let affected_rows = diesel::update(&btc_dai_order)
+        .set((
+            btc_dai_orders::failed.eq(Text::<Satoshis>(btc_dai_order.settling.to_inner().into())),
+            btc_dai_orders::settling.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
+        ))
+        .execute(conn)?;
+
+    if affected_rows == 0 {
+        anyhow::bail!("failed to mark order {} as failed", order.order_id)
+    }
+
+    Ok(())
+}

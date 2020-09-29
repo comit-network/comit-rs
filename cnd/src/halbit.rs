@@ -2,6 +2,7 @@ use crate::{
     asset, identity, ledger, state, state::Update, storage::Storage, LocalSwapId, RelativeTime,
     Role, Side,
 };
+use anyhow::Result;
 use futures::TryStreamExt;
 use std::collections::{hash_map::Entry, HashMap};
 use tokio::sync::Mutex;
@@ -107,17 +108,20 @@ pub async fn new<C>(
     side: Side,
     storage: Storage,
     connector: C,
-) where
+) -> Result<()>
+where
     C: WaitForOpened + WaitForAccepted + WaitForSettled + WaitForCancelled,
 {
     let mut events = comit::halbit::new(&connector, params);
 
-    while let Ok(Some(event)) = events.try_next().await {
+    while let Some(event) = events.try_next().await? {
         tracing::info!("yielded event {}", event);
         storage.halbit_states.update(&id, event).await;
     }
 
     tracing::info!("finished");
+
+    Ok(())
 }
 
 /// Data required to create a swap that involves bitcoin on the lightning

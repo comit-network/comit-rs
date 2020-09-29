@@ -7,6 +7,7 @@ use crate::{
     storage::Storage,
     transaction, LocalSwapId, Role, Secret, Side,
 };
+use anyhow::Result;
 use futures::TryStreamExt;
 use std::collections::{hash_map::Entry, HashMap};
 use time::OffsetDateTime;
@@ -28,17 +29,20 @@ pub async fn new<C>(
     side: Side,
     storage: Storage,
     connector: impl AsRef<C>,
-) where
+) -> Result<()>
+where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
     let mut events = comit::herc20::new(connector.as_ref(), params, start_of_swap);
 
-    while let Ok(Some(event)) = events.try_next().await {
+    while let Some(event) = events.try_next().await? {
         tracing::info!("yielded event {}", event);
         storage.herc20_states.update(&id, event).await;
     }
 
     tracing::info!("finished");
+
+    Ok(())
 }
 
 /// Data required to create a swap that involves an ERC20 token.

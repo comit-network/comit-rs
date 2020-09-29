@@ -5,6 +5,7 @@ use crate::{
     storage::Storage,
     LocalSwapId, Role, Side,
 };
+use anyhow::Result;
 use bitcoin::{Address, Block, BlockHash};
 use comit::{asset, htlc_location, transaction, Secret};
 use futures::TryStreamExt;
@@ -28,17 +29,20 @@ pub async fn new<C>(
     side: Side,
     storage: Storage,
     connector: impl AsRef<C>,
-) where
+) -> Result<()>
+where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
 {
     let mut events = comit::hbit::new(connector.as_ref(), params, start_of_swap);
 
-    while let Ok(Some(event)) = events.try_next().await {
+    while let Some(event) = events.try_next().await? {
         tracing::info!("yielded event {}", event);
         storage.hbit_states.update(&id, event).await;
     }
 
     tracing::info!("finished");
+
+    Ok(())
 }
 
 /// Data required to create a swap that involves Bitcoin.

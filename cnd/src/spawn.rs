@@ -70,9 +70,42 @@ pub async fn spawn(
             .context("failed to spawn protocol for alpha ledger")?;
 
         handle.spawn(async move {
-            let result = future::join(alpha_handle, beta_handle).await;
+            let join_result = future::join(alpha_handle, beta_handle).await;
 
-            match result {
+            match join_result {
+                (Ok(Err(e)), Ok(_)) | (Ok(_), Ok(Err(e))) => {
+                    tracing::error!(
+                        swap = %swap_id,
+                        "failed to complete swap: {:#}",
+                        e
+                    );
+
+                    if let Err(e) = storage
+                        .db
+                        .do_in_transaction(|conn| {
+                            commands::update_order_of_swap_to_failed(conn, swap_id)
+                        })
+                        .await
+                    {
+                        tracing::error!("failed to update order state: {:#}", e);
+                    }
+                }
+                (Ok(Ok(())), Ok(Ok(()))) => {
+                    tracing::info!(
+                        swap = %swap_id,
+                        "swap completed"
+                    );
+
+                    if let Err(e) = storage
+                        .db
+                        .do_in_transaction(|conn| {
+                            commands::update_order_of_swap_to_closed(conn, swap_id)
+                        })
+                        .await
+                    {
+                        tracing::error!("failed to update order state: {:#}", e);
+                    }
+                }
                 (Err(e), _) | (_, Err(e)) => {
                     let e = Box::new(e);
                     tracing::error!(
@@ -81,16 +114,7 @@ pub async fn spawn(
                         "runtime error while executing protocol futures",
                     );
                 }
-                _ => {}
-            }
-
-            if let Err(e) = storage
-                .db
-                .do_in_transaction(|conn| commands::update_order_of_swap_to_closed(conn, swap_id))
-                .await
-            {
-                tracing::error!("failed to update order state: {:#}", e);
-            }
+            };
         });
     });
 
@@ -103,7 +127,7 @@ impl ProtocolContext<herc20::Params> {
         connectors: Connectors,
         storage: Storage,
         handle: Handle,
-    ) -> Result<JoinHandle<()>> {
+    ) -> Result<JoinHandle<Result<()>>> {
         let task = herc20::new(
             self.id,
             self.params,
@@ -124,7 +148,7 @@ impl ProtocolContext<hbit::Params> {
         connectors: Connectors,
         storage: Storage,
         handle: Handle,
-    ) -> Result<JoinHandle<()>> {
+    ) -> Result<JoinHandle<Result<()>>> {
         let task = hbit::new(
             self.id,
             self.params,
@@ -145,7 +169,7 @@ impl ProtocolContext<halbit::Params> {
         connectors: Connectors,
         storage: Storage,
         handle: Handle,
-    ) -> Result<JoinHandle<()>> {
+    ) -> Result<JoinHandle<Result<()>>> {
         match (self.role, self.side) {
             (Role::Alice, Side::Alpha) | (Role::Bob, Side::Beta) => {
                 let task = halbit::new(
