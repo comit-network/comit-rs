@@ -73,23 +73,15 @@ pub async fn spawn(
             let result = future::join(alpha_handle, beta_handle).await;
 
             match result {
-                (Err(e), _) => {
+                (Err(e), _) | (_, Err(e)) => {
                     let e = Box::new(e);
                     tracing::error!(
                         error = &e as &(dyn std::error::Error + 'static),
-                        "execution of alpha protocol for swap {} was cancelled",
-                        swap_id,
+                        swap = %swap_id,
+                        "runtime error while executing protocol futures",
                     );
                 }
-                (_, Err(e)) => {
-                    let e = Box::new(e);
-                    tracing::error!(
-                        error = &e as &(dyn std::error::Error + 'static),
-                        "execution of beta protocol for swap {} was cancelled",
-                        swap_id,
-                    );
-                }
-                (Ok(()), Ok(())) => {}
+                _ => {}
             }
 
             if let Err(e) = storage
