@@ -193,7 +193,13 @@ pub fn create(
         .or(markets::get_btc_dai(swarm, network))
         .or(post_dial_addr)
         .recover(http_api::unpack_problem)
-        .with(warp::log("http"))
+        .with(warp::trace(|info| {
+            tracing::error_span!(
+                "request",
+                method = %info.method(),
+                path = %info.path(),
+            )
+        }))
         .with(cors)
         .boxed()
 }
