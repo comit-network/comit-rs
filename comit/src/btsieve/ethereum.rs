@@ -104,15 +104,6 @@ where
     .await
 }
 
-/// Fetch receipt from connector using transaction hash.
-async fn fetch_receipt<C>(blockchain_connector: &C, hash: Hash) -> Result<TransactionReceipt>
-where
-    C: ReceiptByHash,
-{
-    let receipt = blockchain_connector.receipt_by_hash(hash).await?;
-    Ok(receipt)
-}
-
 fn find_log_for_event_in_receipt(event: &Event, receipt: TransactionReceipt) -> Option<Log> {
     match event {
         Event { topics, .. } if topics.is_empty() => None,
@@ -156,7 +147,7 @@ where
                     let _enter_tx_span = tx_span.enter();
 
                     if matcher(&transaction) {
-                        let receipt = fetch_receipt(connector, tx_hash).await?;
+                        let receipt = connector.receipt_by_hash(tx_hash).await?;
                         if !receipt.successful {
                             // This can be caused by a failed attempt to complete an action,
                             // for example, sending a transaction with low gas.
@@ -214,7 +205,7 @@ where
                     let tx_span = tracing::error_span!("tx", hash = %tx_hash);
                     let _enter_tx_span = tx_span.enter();
 
-                    let receipt = fetch_receipt(connector, tx_hash).await?;
+                    let receipt = connector.receipt_by_hash(tx_hash).await?;
                     let is_successful = receipt.successful;
                     if let Some(log) = matcher(receipt) {
                         if !is_successful {
