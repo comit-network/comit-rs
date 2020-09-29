@@ -11,6 +11,8 @@ pub struct Fee {
 }
 
 impl Fee {
+    // TODO: Improve this API, the client is not needed
+    // if we use the static fee
     pub fn new(
         config: config::BitcoinFeeStrategy,
         max_btc_fee: bitcoin::Amount,
