@@ -19,7 +19,7 @@ use time::OffsetDateTime;
 /// Move the amount that is settling from open to settling.
 ///
 /// Whilst we don't have partial order matching, this simply means updating
-/// `settling` to the amount of `open` and updating `open` to `0`.
+/// `settling` to the quantity of the order and all other state fields to `0`.
 ///
 /// Once we implement partial order matching, this will need to get more
 /// sophisticated.
@@ -29,8 +29,11 @@ pub fn update_btc_dai_order_to_settling(conn: &SqliteConnection, order_id: Order
 
     let affected_rows = diesel::update(&btc_dai_order)
         .set((
-            btc_dai_orders::settling.eq(Text::<Satoshis>(btc_dai_order.open.to_inner().into())),
+            btc_dai_orders::settling.eq(Text::<Satoshis>(btc_dai_order.quantity.to_inner().into())),
             btc_dai_orders::open.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
+            btc_dai_orders::closed.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
+            btc_dai_orders::failed.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
+            btc_dai_orders::cancelled.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
         ))
         .execute(conn)?;
 
@@ -51,8 +54,12 @@ pub fn update_btc_dai_order_to_cancelled(conn: &SqliteConnection, order_id: Orde
 
     let affected_rows = diesel::update(&btc_dai_order)
         .set((
-            btc_dai_orders::cancelled.eq(Text::<Satoshis>(btc_dai_order.open.to_inner().into())),
+            btc_dai_orders::cancelled
+                .eq(Text::<Satoshis>(btc_dai_order.quantity.to_inner().into())),
+            btc_dai_orders::settling.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
             btc_dai_orders::open.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
+            btc_dai_orders::closed.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
+            btc_dai_orders::failed.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
         ))
         .execute(conn)?;
 
@@ -78,8 +85,11 @@ pub fn update_order_of_swap_to_closed(conn: &SqliteConnection, swap_id: LocalSwa
 
     let affected_rows = diesel::update(&btc_dai_order)
         .set((
-            btc_dai_orders::closed.eq(Text::<Satoshis>(btc_dai_order.settling.to_inner().into())),
+            btc_dai_orders::closed.eq(Text::<Satoshis>(btc_dai_order.quantity.to_inner().into())),
             btc_dai_orders::settling.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
+            btc_dai_orders::open.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
+            btc_dai_orders::cancelled.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
+            btc_dai_orders::failed.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
         ))
         .execute(conn)?;
 
@@ -105,8 +115,11 @@ pub fn update_order_of_swap_to_failed(conn: &SqliteConnection, swap_id: LocalSwa
 
     let affected_rows = diesel::update(&btc_dai_order)
         .set((
-            btc_dai_orders::failed.eq(Text::<Satoshis>(btc_dai_order.settling.to_inner().into())),
+            btc_dai_orders::failed.eq(Text::<Satoshis>(btc_dai_order.quantity.to_inner().into())),
             btc_dai_orders::settling.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
+            btc_dai_orders::open.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
+            btc_dai_orders::cancelled.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
+            btc_dai_orders::closed.eq(Text::<Satoshis>(asset::Bitcoin::ZERO.into())),
         ))
         .execute(conn)?;
 
