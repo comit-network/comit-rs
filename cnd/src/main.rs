@@ -139,7 +139,6 @@ fn main() -> anyhow::Result<()> {
         let config::Bitcoin {
             bitcoind,
             network,
-            // TODO
             fees: _,
         } = &settings.bitcoin;
         let connector = BitcoindConnector::new(bitcoind.node_url.clone())?;

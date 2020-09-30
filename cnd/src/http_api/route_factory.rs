@@ -45,6 +45,11 @@ pub fn create(
         }
     };
 
+    let settings_for_warp = warp::any().map({
+        let settings = settings.clone();
+        move || settings.clone()
+    });
+
     let preflight_cors_route = warp::options().map(warp::reply);
 
     let get_info = warp::get()
@@ -102,6 +107,7 @@ pub fn create(
         .and(warp::path::end())
         .and(storage_filter.clone())
         .and(connectors)
+        .and(settings_for_warp.clone())
         .and_then(swaps::get_swap);
 
     let get_swaps = warp::get()
@@ -140,6 +146,7 @@ pub fn create(
         .and(warp::path("redeem"))
         .and(warp::path::end())
         .and(storage_filter.clone())
+        .and(settings_for_warp.clone())
         .and_then(swaps::action_redeem);
 
     let action_refund = swaps
@@ -148,6 +155,7 @@ pub fn create(
         .and(warp::path("refund"))
         .and(warp::path::end())
         .and(storage_filter)
+        .and(settings_for_warp)
         .and_then(swaps::action_refund);
 
     let post_dial_addr = warp::post()
