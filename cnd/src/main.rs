@@ -12,7 +12,7 @@
     clippy::dbg_macro
 )]
 #![forbid(unsafe_code)]
-#![type_length_limit = "3033619"] // Regressed with Rust 1.46.0 :(
+#![type_length_limit = "11386524"] // Regressed with Rust 1.46.0 :(
 
 #[macro_use]
 extern crate diesel;
