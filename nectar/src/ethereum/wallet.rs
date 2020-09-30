@@ -125,15 +125,15 @@ impl Wallet {
             chain_id,
             ..
         }: DeployContract,
+        gas_price: ether::Amount,
     ) -> anyhow::Result<DeployedContract> {
         self.assert_chain(chain_id).await?;
 
         let nonce = self.get_transaction_count().await?;
-        let gas_price = self.gas_price().await?;
 
         let transaction = clarity::Transaction {
             nonce: nonce.into(),
-            gas_price,
+            gas_price: gas_price.into(),
             gas_limit: gas_limit.into(),
             to: clarity::Address::default(),
             value: 0u64.into(),
@@ -177,11 +177,11 @@ impl Wallet {
         gas_limit: Option<u64>,
         data: Option<Vec<u8>>,
         chain_id: ChainId,
+        gas_price: ether::Amount,
     ) -> anyhow::Result<Hash> {
         self.assert_chain(chain_id).await?;
 
         let nonce = self.get_transaction_count().await?;
-        let gas_price = self.gas_price().await?;
 
         let gas_limit = match gas_limit {
             Some(gas_limit) => gas_limit.into(),
@@ -189,7 +189,7 @@ impl Wallet {
                 self.gas_limit(EstimateGasRequest {
                     from: None,
                     to: Some(to),
-                    gas_price: Some(gas_price.clone()),
+                    gas_price: Some(gas_price.clone().into()),
                     value: Some(value.clone().into()),
                     data: data.clone(),
                 })
@@ -199,7 +199,7 @@ impl Wallet {
 
         let transaction = clarity::Transaction {
             nonce: nonce.into(),
-            gas_price,
+            gas_price: gas_price.into(),
             gas_limit,
             to: to_clarity_address(to)?,
             value: value.into(),
@@ -223,11 +223,11 @@ impl Wallet {
         to: Address,
         value: dai::Amount,
         chain_id: ChainId,
+        gas_price: ether::Amount,
     ) -> anyhow::Result<Hash> {
         self.assert_chain(chain_id).await?;
 
         let nonce = self.get_transaction_count().await?;
-        let gas_price = self.gas_price().await?;
 
         let to = to_clarity_address(to)?;
         let dai_contract_addr = to_clarity_address(self.chain.dai_contract_address())?;
@@ -239,7 +239,7 @@ impl Wallet {
 
         let transaction = clarity::Transaction {
             nonce: nonce.into(),
-            gas_price,
+            gas_price: gas_price.into(),
             gas_limit: DAI_TRANSFER_GAS_LIMIT.into(),
             to: dai_contract_addr,
             value: 0u16.into(),
@@ -267,15 +267,15 @@ impl Wallet {
             chain_id,
             ..
         }: CallContract,
+        gas_price: ether::Amount,
     ) -> anyhow::Result<Hash> {
         self.assert_chain(chain_id).await?;
 
         let nonce = self.get_transaction_count().await?;
-        let gas_price = self.gas_price().await?;
 
         let transaction = clarity::Transaction {
             nonce: nonce.into(),
-            gas_price,
+            gas_price: gas_price.into(),
             gas_limit: gas_limit.into(),
             to: to_clarity_address(to)?,
             value: 0u32.into(),
@@ -369,10 +369,6 @@ impl Wallet {
         Ok(())
     }
 
-    async fn gas_price(&self) -> anyhow::Result<clarity::Uint256> {
-        self.geth_client.gas_price().await
-    }
-
     async fn gas_limit(&self, request: EstimateGasRequest) -> anyhow::Result<clarity::Uint256> {
         self.geth_client.gas_limit(request).await
     }
@@ -398,8 +394,9 @@ impl Wallet {
     pub async fn deploy_dai_token_contract(
         &mut self,
         deployment_data: DeployContract,
+        gas_price: ether::Amount,
     ) -> anyhow::Result<()> {
-        let deployed_contract = self.deploy_contract(deployment_data).await?;
+        let deployed_contract = self.deploy_contract(deployment_data, gas_price).await?;
 
         // Set correct value for DAI token contract address after deployment
         self.chain =
@@ -427,7 +424,10 @@ impl From<DeployedContract> for comit::herc20::Deployed {
 #[cfg(all(test, feature = "test-docker"))]
 mod tests {
     use super::*;
-    use crate::{ethereum::ether, test_harness::ethereum::Blockchain};
+    use crate::{
+        ethereum::{ether, GasPrice},
+        test_harness::ethereum::Blockchain,
+    };
     use comit::asset::{self, ethereum::FromWei, Erc20Quantity};
 
     async fn random_wallet(node_url: Url, dai_contract_address: Address) -> anyhow::Result<Wallet> {
@@ -456,22 +456,6 @@ mod tests {
         let balance = wallet.ether_balance().await.unwrap();
 
         assert_eq!(balance, ether::Amount::zero())
-    }
-
-    #[tokio::test]
-    async fn gas_price() {
-        let client = testcontainers::clients::Cli::default();
-
-        let mut blockchain = Blockchain::new(&client).unwrap();
-        blockchain.init().await.unwrap();
-
-        let wallet = random_wallet(blockchain.node_url.clone(), blockchain.token_contract())
-            .await
-            .unwrap();
-
-        let gas_price = wallet.gas_price().await.unwrap();
-
-        println!("Gas price: {}", gas_price)
     }
 
     #[tokio::test]
@@ -537,11 +521,17 @@ mod tests {
         let balance = wallet.dai_balance().await.unwrap();
         assert_eq!(balance, dai::Amount::from_atto(initial_deposit.into()));
 
+        let gas_price = GasPrice::geth_url(blockchain.node_url.clone())
+            .gas_price()
+            .await
+            .unwrap();
+
         wallet
             .transfer_dai(
                 Address::random(),
                 dai::Amount::from_dai_trunc(1.0).unwrap(),
                 chain_id,
+                gas_price,
             )
             .await
             .unwrap();
@@ -599,13 +589,21 @@ mod tests {
             chain_id,
         };
 
+        let gas_price = GasPrice::geth_url(blockchain.node_url.clone())
+            .gas_price()
+            .await
+            .unwrap();
+
         wallet
-            .deploy_contract(DeployContract {
-                data: htlc_params.bytecode(),
-                amount: asset::Ether::zero(),
-                gas_limit: 160_000,
-                chain_id,
-            })
+            .deploy_contract(
+                DeployContract {
+                    data: htlc_params.bytecode(),
+                    amount: asset::Ether::zero(),
+                    gas_limit: 160_000,
+                    chain_id,
+                },
+                gas_price,
+            )
             .await
             .unwrap();
     }

@@ -42,10 +42,12 @@ pub struct MaxPossibleFee {
     pub bitcoin: Option<bitcoin::Amount>,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct FeeStrategies {
     #[serde(default)]
     pub bitcoin: Option<BitcoinFee>,
+    #[serde(default)]
+    pub ethereum: Option<EthereumGasPrice>,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -66,6 +68,20 @@ pub struct BitcoinFee {
 pub enum BitcoinFeeStrategy {
     Static,
     Bitcoind,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct EthereumGasPrice {
+    pub service: EthereumGasPriceService,
+    pub url: url::Url,
+}
+
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EthereumGasPriceService {
+    Geth,
+    EthGasStation,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -194,6 +210,10 @@ kraken_api_host = "https://api.kraken.com"
 [maker.fee_strategies.bitcoin]
 strategy = "bitcoind"
 
+[maker.fee_strategies.ethereum]
+service = "eth_gas_station"
+url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
+
 [maker.btc_dai]
 max_buy_quantity = 1.23456
 max_sell_quantity = 1.23456
@@ -234,6 +254,12 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                         strategy: Some(BitcoinFeeStrategy::Bitcoind),
                         sats_per_byte: None,
                         estimate_mode: None,
+                    }),
+                    ethereum: Some(EthereumGasPrice{ service: EthereumGasPriceService::EthGasStation,
+                    url:
+                        "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
+                        .parse()
+                        .unwrap()
                     }),
                 }),
             }),
@@ -293,6 +319,12 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                         sats_per_byte: None,
                         estimate_mode: Some(EstimateMode::Conservative),
                     }),
+                    ethereum: Some(EthereumGasPrice{ service: EthereumGasPriceService::EthGasStation,
+                        url:
+                        "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
+                            .parse()
+                            .unwrap()
+                    }),
                 }),
             }),
             network: Some(Network {
@@ -334,6 +366,10 @@ bitcoin = 0.01
 [maker.fee_strategies.bitcoin]
 strategy = "bitcoind"
 estimate_mode = "conservative"
+
+[maker.fee_strategies.ethereum]
+service = "eth_gas_station"
+url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
 
 [network]
 listen = ["/ip4/0.0.0.0/tcp/9939"]

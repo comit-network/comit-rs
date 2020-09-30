@@ -1,10 +1,13 @@
 use crate::{
     bitcoin,
-    config::{file, Bitcoind, BtcDai, Data, EstimateMode, File, Network},
+    config::{
+        file, file::EthereumGasPriceService, Bitcoind, BtcDai, Data, EstimateMode, File, Network,
+    },
     ethereum, Spread,
 };
 use anyhow::{Context, Result};
 use comit::ledger;
+use conquer_once::Lazy;
 use log::LevelFilter;
 use url::Url;
 
@@ -163,12 +166,14 @@ pub struct Maker {
     /// Spread to apply to the mid-market rate, format is permyriad. E.g. 5.20
     /// is 5.2% spread
     pub spread: Spread,
-    // TODO: Probably move that under something common to fee_strategies.
-    // I did not realize I would still need it.
+    // TODO: Leave it here. Make it as a sat/vbyte fee
     /// Maximum possible network fee to consider when calculating the available
     /// balance. Fees are in the nominal native currency and per
     /// transaction.
     pub maximum_possible_fee: Fees,
+    // TODO: Fees strategy can actually be moved out of maker as they are also used for withdrawal
+    // for example. They are more to do with the execution than they are with the market making
+    // strategy
     /// Fee strategies
     pub fee_strategies: FeeStrategies,
     pub kraken_api_host: KrakenApiHost,
@@ -197,9 +202,10 @@ impl Default for KrakenApiHost {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FeeStrategies {
     pub bitcoin: BitcoinFeeStrategy,
+    pub ethereum: EthereumGasPriceStrategy,
 }
 
 impl From<file::FeeStrategies> for FeeStrategies {
@@ -208,6 +214,10 @@ impl From<file::FeeStrategies> for FeeStrategies {
             bitcoin: file
                 .bitcoin
                 .map_or_else(BitcoinFeeStrategy::default, BitcoinFeeStrategy::from),
+            ethereum: file.ethereum.map_or_else(
+                EthereumGasPriceStrategy::default,
+                EthereumGasPriceStrategy::from,
+            ),
         }
     }
 }
@@ -216,6 +226,7 @@ impl Default for FeeStrategies {
     fn default() -> Self {
         Self {
             bitcoin: BitcoinFeeStrategy::default(),
+            ethereum: EthereumGasPriceStrategy::default(),
         }
     }
 }
@@ -249,6 +260,33 @@ impl From<file::BitcoinFee> for BitcoinFeeStrategy {
 impl Default for BitcoinFeeStrategy {
     fn default() -> Self {
         Self::SatsPerByte(bitcoin::Amount::from_sat(DEFAULT_BITCOIN_STATIC_FEE_SAT))
+    }
+}
+
+static DEFAULT_ETH_GAS_STATION_URL: Lazy<url::Url> = Lazy::new(|| {
+    "https://ethgasstation.info/api/ethgasAPI.json"
+        .parse()
+        .expect("Valid url")
+});
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum EthereumGasPriceStrategy {
+    Geth(url::Url),
+    EthGasStation(url::Url),
+}
+
+impl From<file::EthereumGasPrice> for EthereumGasPriceStrategy {
+    fn from(file: file::EthereumGasPrice) -> Self {
+        match file.service {
+            EthereumGasPriceService::Geth => Self::Geth(file.url),
+            EthereumGasPriceService::EthGasStation => Self::EthGasStation(file.url),
+        }
+    }
+}
+
+impl Default for EthereumGasPriceStrategy {
+    fn default() -> Self {
+        Self::EthGasStation(DEFAULT_ETH_GAS_STATION_URL.clone())
     }
 }
 

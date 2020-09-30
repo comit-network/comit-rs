@@ -159,7 +159,7 @@ impl Client {
         Ok(amount)
     }
 
-    pub async fn gas_price(&self) -> anyhow::Result<clarity::Uint256> {
+    pub async fn gas_price(&self) -> anyhow::Result<ether::Amount> {
         let amount = self
             .rpc_client
             .send::<Vec<()>, String>(jsonrpc::Request::new(
@@ -169,7 +169,7 @@ impl Client {
             ))
             .await
             .context("failed to get gas price")?;
-        let amount = clarity::Uint256::from_str_radix(&amount[2..], 16)?;
+        let amount = ether::Amount::try_from_hex(String::from(&amount[2..]))?;
 
         Ok(amount)
     }

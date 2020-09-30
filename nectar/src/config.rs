@@ -158,6 +158,10 @@ mod tests {
                         sats_per_byte: Some(bitcoin::Amount::from_sat(12)),
                         estimate_mode: None,
                     }),
+                    ethereum: Some(file::EthereumGasPrice {
+                        service: file::EthereumGasPriceService::Geth,
+                        url: "http://some.geth.url:8545/".parse().unwrap(),
+                    }),
                 }),
                 kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
             }),

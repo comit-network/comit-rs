@@ -3,6 +3,7 @@ use std::borrow::Borrow;
 
 pub async fn withdraw(
     ethereum_wallet: ethereum::Wallet,
+    ethereum_gas_price: ethereum::GasPrice,
     bitcoin_wallet: impl Borrow<bitcoin::Wallet>,
     arguments: Withdraw,
 ) -> anyhow::Result<String> {
@@ -18,8 +19,14 @@ pub async fn withdraw(
             ))
         }
         Withdraw::Dai { amount, to_address } => {
+            let gas_price = ethereum_gas_price.gas_price().await?;
             let tx_id = ethereum_wallet
-                .transfer_dai(to_address, amount.clone(), ethereum_wallet.chain_id())
+                .transfer_dai(
+                    to_address,
+                    amount.clone(),
+                    ethereum_wallet.chain_id(),
+                    gas_price,
+                )
                 .await?;
             Ok(format!(
                 "{} transferred to {}\nTransaction id: {}",
@@ -27,6 +34,7 @@ pub async fn withdraw(
             ))
         }
         Withdraw::Eth { amount, to_address } => {
+            let gas_price = ethereum_gas_price.gas_price().await?;
             let tx_id = ethereum_wallet
                 .send_transaction(
                     to_address,
@@ -34,6 +42,7 @@ pub async fn withdraw(
                     Some(STANDARD_ETH_TRANSFER_GAS_LIMIT),
                     None,
                     ethereum_wallet.chain_id(),
+                    gas_price,
                 )
                 .await?;
             Ok(format!(
@@ -120,8 +129,12 @@ mod tests {
             to_address: bitcoin::Address::from_str("bcrt1qk60fmayw8xrtqd4ru2ut8kgv08wyqpdzqkj55h")
                 .unwrap(),
         };
+
+        let ethereum_gas_price = ethereum::GasPrice::geth_url(ethereum_blockchain.node_url.clone());
+
         let stdout = withdraw(
             ethereum_wallet.clone(),
+            ethereum_gas_price.clone(),
             bitcoin_wallet.clone(),
             bitcoin_withdraw,
         )
@@ -135,6 +148,7 @@ mod tests {
         };
         let stdout = withdraw(
             ethereum_wallet.clone(),
+            ethereum_gas_price.clone(),
             bitcoin_wallet.clone(),
             ether_withdraw,
         )
@@ -146,9 +160,14 @@ mod tests {
             amount: dai::Amount::from_dai_trunc(3.2).unwrap(),
             to_address: ethereum::Address::random(),
         };
-        let stdout = withdraw(ethereum_wallet, bitcoin_wallet, dai_withdraw)
-            .await
-            .unwrap();
+        let stdout = withdraw(
+            ethereum_wallet,
+            ethereum_gas_price,
+            bitcoin_wallet,
+            dai_withdraw,
+        )
+        .await
+        .unwrap();
         println!("{}", stdout);
     }
 }

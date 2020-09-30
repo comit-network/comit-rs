@@ -31,6 +31,11 @@ bitcoin = 0.00009275
 strategy = "static"
 sats_per_byte = 12
 
+# Strategies used for Ethereum gas price handling.
+[maker.fee_strategies.ethereum]
+service = "geth"
+url = "http://some.geth.url:8545/"
+
 [network]
 # The libp2p socket on which nectar listens for COMIT messages.
 listen = ["/ip4/0.0.0.0/tcp/9939"]

@@ -15,13 +15,15 @@ use time::OffsetDateTime;
 pub struct Wallet {
     pub inner: Arc<crate::ethereum::Wallet>,
     pub connector: Arc<comit::btsieve::ethereum::Web3Connector>,
+    pub gas_price: crate::ethereum::GasPrice,
 }
 
 #[async_trait::async_trait]
 impl herc20::ExecuteDeploy for Wallet {
     async fn execute_deploy(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {
         let action = params.build_deploy_action();
-        let deployed_contract = self.inner.deploy_contract(action).await?;
+        let gas_price = self.gas_price.gas_price().await?;
+        let deployed_contract = self.inner.deploy_contract(action, gas_price).await?;
 
         Ok(deployed_contract.into())
     }
@@ -36,7 +38,8 @@ impl herc20::ExecuteFund for Wallet {
         utc_start_of_swap: OffsetDateTime,
     ) -> anyhow::Result<herc20::Funded> {
         let action = params.build_fund_action(deploy_event.location);
-        let _data = self.inner.call_contract(action).await?;
+        let gas_price = self.gas_price.gas_price().await?;
+        let _data = self.inner.call_contract(action, gas_price).await?;
 
         let event = herc20::watch_for_funded(
             self.connector.as_ref(),
@@ -60,7 +63,8 @@ impl herc20::ExecuteRedeem for Wallet {
         utc_start_of_swap: OffsetDateTime,
     ) -> anyhow::Result<herc20::Redeemed> {
         let action = params.build_redeem_action(deploy_event.location, secret);
-        let _data = self.inner.call_contract(action).await?;
+        let gas_price = self.gas_price.gas_price().await?;
+        let _data = self.inner.call_contract(action, gas_price).await?;
 
         let event =
             herc20::watch_for_redeemed(self.connector.as_ref(), utc_start_of_swap, deploy_event)
@@ -90,7 +94,8 @@ impl herc20::ExecuteRefund for Wallet {
         }
 
         let action = params.build_refund_action(deploy_event.location);
-        let _data = self.inner.call_contract(action).await?;
+        let gas_price = self.gas_price.gas_price().await?;
+        let _data = self.inner.call_contract(action, gas_price).await?;
 
         let event =
             herc20::watch_for_refunded(self.connector.as_ref(), utc_start_of_swap, deploy_event)
