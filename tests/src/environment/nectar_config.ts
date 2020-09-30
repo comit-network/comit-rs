@@ -19,7 +19,7 @@ export async function newNectarConfig(env: Environment): Promise<NectarConfig> {
             level: "Trace",
         },
         ...makeLedgerConfig(env),
-        ...makeMakerConfig(env),
+        ...makeMakerConfig(env, env.ethereum),
     };
 }
 
@@ -39,9 +39,18 @@ function makeLedgerConfig(
     return ledgerConfig;
 }
 
-function makeMakerConfig(env: Environment): Pick<NectarConfig, "maker"> {
+function makeMakerConfig(
+    env: Environment,
+    ethereum: EthereumNode
+): Pick<NectarConfig, "maker"> {
     const maxBuyQuantity = 0.1;
     const maxSellQuantity = 0.1;
+    const feeStrategies = {
+        ethereum: {
+            service: EthereumGasPriceService.Geth,
+            url: ethereum.rpc_url,
+        },
+    };
 
     if (env.treasury) {
         return {
@@ -51,6 +60,7 @@ function makeMakerConfig(env: Environment): Pick<NectarConfig, "maker"> {
                     max_sell_quantity: maxSellQuantity,
                 },
                 kraken_api_host: env.treasury.host,
+                fee_strategies: feeStrategies,
             },
         };
     } else {
@@ -59,6 +69,7 @@ function makeMakerConfig(env: Environment): Pick<NectarConfig, "maker"> {
                 btc_dai: {
                     max_sell_quantity: maxSellQuantity,
                 },
+                fee_strategies: feeStrategies,
             },
         };
     }
@@ -99,6 +110,17 @@ interface Maker {
         max_sell_quantity?: number;
     };
     kraken_api_host?: string;
+    fee_strategies?: {
+        ethereum?: {
+            service: EthereumGasPriceService;
+            url: string;
+        };
+    };
+}
+
+enum EthereumGasPriceService {
+    Geth = "geth",
+    EthGasStation = "eth_gas_station",
 }
 
 interface Network {
