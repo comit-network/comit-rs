@@ -1,5 +1,5 @@
 use crate::{
-    config::{Bitcoind, Data, Geth},
+    config::{BitcoinFees, Bitcoind, Data, Geth},
     ethereum,
     ethereum::ChainId,
 };
@@ -39,6 +39,7 @@ pub struct Network {
 pub struct Bitcoin {
     pub network: ledger::Bitcoin,
     pub bitcoind: Option<Bitcoind>,
+    pub fees: Option<BitcoinFees>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -280,6 +281,9 @@ network = "regtest"
 [bitcoin.bitcoind]
 node_url = "http://localhost:18443/"
 
+[bitcoin.fees]
+sat_per_vbyte = 13
+
 [ethereum]
 chain_id = 1337
 
@@ -317,6 +321,9 @@ dir = "/foo/bar"
                 network: ledger::Bitcoin::Regtest,
                 bitcoind: Some(Bitcoind {
                     node_url: "http://localhost:18443".parse().unwrap(),
+                }),
+                fees: Some(BitcoinFees {
+                    sat_per_vbyte: bitcoin::Amount::from_sat(13),
                 }),
             }),
             ethereum: Some(Ethereum {
@@ -370,6 +377,8 @@ dir = "/foo/bar"
             network = "mainnet"
             [bitcoind]
             node_url = "http://example.com:8332"
+            [fees]
+            sat_per_vbyte = 9
             "#,
             r#"
             network = "testnet"
@@ -389,18 +398,23 @@ dir = "/foo/bar"
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:8332").unwrap(),
                 }),
+                fees: Some(BitcoinFees {
+                    sat_per_vbyte: bitcoin::Amount::from_sat(9),
+                }),
             },
             Bitcoin {
                 network: ledger::Bitcoin::Testnet,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:18332").unwrap(),
                 }),
+                fees: None,
             },
             Bitcoin {
                 network: ledger::Bitcoin::Regtest,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:18443").unwrap(),
                 }),
+                fees: None,
             },
         ];
 
