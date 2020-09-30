@@ -136,7 +136,8 @@ async fn main() -> Result<()> {
             println!("{}", deposit);
         }
         Command::Withdraw(arguments) => {
-            let ethereum_gas_price = ethereum::GasPrice::geth_url(settings.ethereum.node_url);
+            let ethereum_gas_price =
+                ethereum::GasPrice::new(settings.maker.fee_strategies.ethereum);
             let tx_id = withdraw(
                 ethereum_wallet.expect("could not initialise ethereum wallet"),
                 ethereum_gas_price,
@@ -157,7 +158,7 @@ async fn main() -> Result<()> {
             );
 
             let ethereum_gas_price =
-                ethereum::GasPrice::geth_url(settings.ethereum.node_url.clone());
+                ethereum::GasPrice::new(settings.maker.fee_strategies.ethereum.clone());
 
             resume_only(
                 settings,

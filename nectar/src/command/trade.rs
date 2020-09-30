@@ -87,7 +87,7 @@ pub async fn trade(
         bitcoind_client,
     );
 
-    let ethereum_gas_price = ethereum::GasPrice::geth_url(settings.ethereum.node_url);
+    let ethereum_gas_price = ethereum::GasPrice::new(settings.maker.fee_strategies.ethereum);
 
     let (swap_executor, swap_execution_finished_receiver) = SwapExecutor::new(
         Arc::clone(&db),

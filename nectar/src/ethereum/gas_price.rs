@@ -1,7 +1,10 @@
 use crate::{
+    config::EthereumGasPriceStrategy,
     ethereum::{ether, geth},
     Result,
 };
+
+mod eth_gas_station;
 
 #[derive(Debug, Clone)]
 pub struct GasPrice {
@@ -11,9 +14,28 @@ pub struct GasPrice {
 #[derive(Debug, Clone)]
 enum Service {
     Geth(geth::Client),
+    EthGasStation(eth_gas_station::Client),
 }
 
 impl GasPrice {
+    pub fn new(strategy: crate::config::EthereumGasPriceStrategy) -> Self {
+        match strategy {
+            EthereumGasPriceStrategy::Geth(url) => {
+                let client = geth::Client::new(url);
+                Self {
+                    service: Service::Geth(client),
+                }
+            }
+            EthereumGasPriceStrategy::EthGasStation(url) => {
+                let client = eth_gas_station::Client::new(url);
+                Self {
+                    service: Service::EthGasStation(client),
+                }
+            }
+        }
+    }
+
+    #[cfg(test)]
     pub fn geth_url(geth_url: url::Url) -> Self {
         let client = geth::Client::new(geth_url);
         Self {
@@ -24,6 +46,7 @@ impl GasPrice {
     pub async fn gas_price(&self) -> Result<ether::Amount> {
         match &self.service {
             Service::Geth(client) => client.gas_price().await,
+            Service::EthGasStation(client) => client.gas_price().await,
         }
     }
 }

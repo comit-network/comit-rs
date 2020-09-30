@@ -166,12 +166,14 @@ pub struct Maker {
     /// Spread to apply to the mid-market rate, format is permyriad. E.g. 5.20
     /// is 5.2% spread
     pub spread: Spread,
-    // TODO: Probably move that under something common to fee_strategies.
-    // I did not realize I would still need it.
+    // TODO: Leave it here. Make it as a sat/vbyte fee
     /// Maximum possible network fee to consider when calculating the available
     /// balance. Fees are in the nominal native currency and per
     /// transaction.
     pub maximum_possible_fee: Fees,
+    // TODO: Fees strategy can actually be moved out of maker as they are also used for withdrawal
+    // for example. They are more to do with the execution than they are with the market making
+    // strategy
     /// Fee strategies
     pub fee_strategies: FeeStrategies,
     pub kraken_api_host: KrakenApiHost,
