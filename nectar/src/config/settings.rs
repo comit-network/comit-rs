@@ -1,10 +1,13 @@
 use crate::{
     bitcoin,
-    config::{file, Bitcoind, BtcDai, Data, EstimateMode, File, Network},
+    config::{
+        file, file::EthereumGasPriceService, Bitcoind, BtcDai, Data, EstimateMode, File, Network,
+    },
     ethereum, Spread,
 };
 use anyhow::{Context, Result};
 use comit::ledger;
+use conquer_once::Lazy;
 use log::LevelFilter;
 use url::Url;
 
@@ -197,9 +200,10 @@ impl Default for KrakenApiHost {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FeeStrategies {
     pub bitcoin: BitcoinFeeStrategy,
+    pub ethereum: EthereumGasPriceStrategy,
 }
 
 impl From<file::FeeStrategies> for FeeStrategies {
@@ -208,6 +212,10 @@ impl From<file::FeeStrategies> for FeeStrategies {
             bitcoin: file
                 .bitcoin
                 .map_or_else(BitcoinFeeStrategy::default, BitcoinFeeStrategy::from),
+            ethereum: file.ethereum.map_or_else(
+                EthereumGasPriceStrategy::default,
+                EthereumGasPriceStrategy::from,
+            ),
         }
     }
 }
@@ -216,6 +224,7 @@ impl Default for FeeStrategies {
     fn default() -> Self {
         Self {
             bitcoin: BitcoinFeeStrategy::default(),
+            ethereum: EthereumGasPriceStrategy::default(),
         }
     }
 }
@@ -249,6 +258,33 @@ impl From<file::BitcoinFee> for BitcoinFeeStrategy {
 impl Default for BitcoinFeeStrategy {
     fn default() -> Self {
         Self::SatsPerByte(bitcoin::Amount::from_sat(DEFAULT_BITCOIN_STATIC_FEE_SAT))
+    }
+}
+
+static DEFAULT_ETH_GAS_STATION_URL: Lazy<url::Url> = Lazy::new(|| {
+    "https://ethgasstation.info/api/ethgasAPI.json"
+        .parse()
+        .expect("Valid url")
+});
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum EthereumGasPriceStrategy {
+    Geth(url::Url),
+    EthGasStation(url::Url),
+}
+
+impl From<file::EthereumGasPrice> for EthereumGasPriceStrategy {
+    fn from(file: file::EthereumGasPrice) -> Self {
+        match file.service {
+            EthereumGasPriceService::Geth => Self::Geth(file.url),
+            EthereumGasPriceService::EthGasStation => Self::EthGasStation(file.url),
+        }
+    }
+}
+
+impl Default for EthereumGasPriceStrategy {
+    fn default() -> Self {
+        Self::EthGasStation(DEFAULT_ETH_GAS_STATION_URL.clone())
     }
 }
 
