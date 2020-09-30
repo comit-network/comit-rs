@@ -3,17 +3,16 @@ use crate::{
     ledger, state,
     state::Update,
     storage::Storage,
-    tracing_ext::InstrumentProtocol,
     LocalSwapId, Role, Side,
 };
+use anyhow::Result;
 use bitcoin::{Address, Block, BlockHash};
-use comit::{asset, htlc_location, transaction, LockProtocol, Secret};
+use comit::{asset, htlc_location, transaction, Secret};
 use futures::TryStreamExt;
 use std::collections::{hash_map::Entry, HashMap};
 use time::OffsetDateTime;
 use tokio::sync::Mutex;
 
-use crate::storage::{BtcDaiOrder, Order};
 pub use comit::{hbit::*, identity};
 
 /// Creates a new instance of the hbit protocol, annotated with tracing spans
@@ -21,6 +20,7 @@ pub use comit::{hbit::*, identity};
 ///
 /// This wrapper functions allows us to reuse code within `cnd` without having
 /// to give knowledge about tracing or the state hashmaps to the `comit` crate.
+#[tracing::instrument(name = "hbit", level = "error", skip(params, start_of_swap, storage, connector), fields(%id, %role, %side))]
 pub async fn new<C>(
     id: LocalSwapId,
     params: Params,
@@ -29,34 +29,20 @@ pub async fn new<C>(
     side: Side,
     storage: Storage,
     connector: impl AsRef<C>,
-) where
+) -> Result<()>
+where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
 {
-    let mut events = comit::hbit::new(connector.as_ref(), params, start_of_swap)
-        .instrument_protocol(id, role, side, LockProtocol::Hbit)
-        .inspect_ok(|event| tracing::info!("yielded event {}", event))
-        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
+    let mut events = comit::hbit::new(connector.as_ref(), params, start_of_swap);
 
-    while let Ok(Some(event)) = events.try_next().await {
+    while let Some(event) = events.try_next().await? {
+        tracing::info!("yielded event {}", event);
         storage.hbit_states.update(&id, event).await;
     }
 
-    if let Err(e) = storage
-        .db
-        .do_in_transaction(|conn| {
-            let order = Order::by_swap_id(conn, id)?;
-            let btc_dai_order = BtcDaiOrder::by_order(conn, &order)?;
+    tracing::info!("finished");
 
-            btc_dai_order.set_to_closed(conn)?;
-
-            Ok(())
-        })
-        .await
-    {
-        tracing::error!("failed to update order state: {:#}", e);
-    }
-
-    tracing::info!("swap finished");
+    Ok(())
 }
 
 /// Data required to create a swap that involves Bitcoin.

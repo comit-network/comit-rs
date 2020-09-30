@@ -6,12 +6,7 @@
 use crate::{
     asset,
     storage::{
-        db::{
-            schema::{
-                btc_dai_orders, order_hbit_params, order_herc20_params, orders, swap_contexts,
-            },
-            wrapper_types::Satoshis,
-        },
+        db::{schema::*, wrapper_types::Satoshis},
         BtcDaiOrder, NoSwapExists, Order, OrderHbitParams, OrderHerc20Params, ParamsTuple,
         SwapContext, Text,
     },
@@ -33,8 +28,14 @@ pub fn get_swap_context_by_id(conn: &SqliteConnection, id: LocalSwapId) -> Resul
     Ok(context)
 }
 
-pub fn get_all_swap_contexts(conn: &SqliteConnection) -> Result<Vec<SwapContext>> {
-    let contexts = swap_contexts::table.load::<SwapContext>(conn)?;
+pub fn get_active_swap_contexts(conn: &SqliteConnection) -> Result<Vec<SwapContext>> {
+    let query = swaps::table
+        .inner_join(swap_contexts::table.on(swap_contexts::id.eq(swaps::local_swap_id)))
+        .left_join(completed_swaps::table)
+        .filter(completed_swaps::completed_on.is_null())
+        .select(swap_contexts::all_columns);
+
+    let contexts = query.load::<SwapContext>(conn)?;
 
     Ok(contexts)
 }
@@ -83,4 +84,53 @@ pub fn get_orders_to_republish(conn: &SqliteConnection) -> Result<Vec<comit::Btc
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(orders)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        proptest::*,
+        storage::{db, InsertableCompletedSwap, Save, Storage},
+    };
+    use tokio::runtime::Runtime;
+
+    proptest! {
+        #[test]
+        fn get_active_swap_contexts_does_not_return_completed_swap(
+            swap in db::proptest::created_swap(hbit::created_swap(), herc20::created_swap())
+        ) {
+            let storage = Storage::test();
+            let mut runtime = Runtime::new().unwrap();
+
+            let active_swap_contexts = runtime.block_on(async {
+                storage.save(swap.clone()).await.unwrap();
+                storage.db.do_in_transaction(|conn| {
+                    // We only insert one swap, fk is always 1.
+                    // The insert would fail if this assumption would not be true thanks to FK-enforcement.
+                    InsertableCompletedSwap::new(1, OffsetDateTime::now_utc()).insert(conn)?;
+                    get_active_swap_contexts(conn)
+                }).await.unwrap()
+            });
+
+            assert_eq!(active_swap_contexts, vec![])
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn get_active_swap_contexts_returns_not_completed_swap(
+            swap in db::proptest::created_swap(hbit::created_swap(), herc20::created_swap())
+        ) {
+            let storage = Storage::test();
+            let mut runtime = Runtime::new().unwrap();
+
+            let active_swap_contexts = runtime.block_on(async {
+                storage.save(swap.clone()).await.unwrap();
+                storage.db.do_in_transaction(get_active_swap_contexts).await.unwrap()
+            });
+
+            assert_eq!(active_swap_contexts.len(), 1)
+        }
+    }
 }

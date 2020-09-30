@@ -4,7 +4,6 @@
  */
 
 import { startConnectedAliceAndBob } from "../src/actor_test";
-import { sleep } from "../src/utils";
 import { Position } from "../src/cnd_client/payload";
 
 it(
@@ -23,13 +22,14 @@ it(
         await alice.assertAndExecuteNextAction("redeem");
         await bob.assertAndExecuteNextAction("redeem");
 
-        // Wait until the wallet sees the new balance.
-        await sleep(2000);
+        await Promise.all([alice.waitUntilSwapped(), bob.waitUntilSwapped()]);
 
         await alice.assertBalancesAfterSwap();
         await alice.assertOrderClosed();
+        await alice.assertSwapInactive();
         await bob.assertBalancesAfterSwap();
         await bob.assertOrderClosed();
+        await bob.assertSwapInactive();
     })
 );
 
@@ -49,12 +49,13 @@ it(
         await alice.assertAndExecuteNextAction("redeem");
         await bob.assertAndExecuteNextAction("redeem");
 
-        // Wait until the wallet sees the new balance.
-        await sleep(2000);
+        await Promise.all([alice.waitUntilSwapped(), bob.waitUntilSwapped()]);
 
         await alice.assertBalancesAfterSwap();
         await alice.assertOrderClosed();
+        await alice.assertSwapInactive();
         await bob.assertBalancesAfterSwap();
         await bob.assertOrderClosed();
+        await bob.assertSwapInactive();
     })
 );

@@ -1,7 +1,8 @@
 use crate::{
-    asset, identity, ledger, state, state::Update, storage::Storage,
-    tracing_ext::InstrumentProtocol, LocalSwapId, LockProtocol, RelativeTime, Role, Side,
+    asset, identity, ledger, state, state::Update, storage::Storage, LocalSwapId, RelativeTime,
+    Role, Side,
 };
+use anyhow::Result;
 use futures::TryStreamExt;
 use std::collections::{hash_map::Entry, HashMap};
 use tokio::sync::Mutex;
@@ -99,6 +100,7 @@ pub const INVOICE_EXPIRY_SECS: RelativeTime = RelativeTime::new(3600);
 ///
 /// This wrapper functions allows us to reuse code within `cnd` without having
 /// to give knowledge about tracing or the state hashmaps to the `comit` crate.
+#[tracing::instrument(name = "halbit", level = "error", skip(params, storage, connector), fields(%id, %role, %side))]
 pub async fn new<C>(
     id: LocalSwapId,
     params: Params,
@@ -106,19 +108,20 @@ pub async fn new<C>(
     side: Side,
     storage: Storage,
     connector: C,
-) where
+) -> Result<()>
+where
     C: WaitForOpened + WaitForAccepted + WaitForSettled + WaitForCancelled,
 {
-    let mut events = comit::halbit::new(&connector, params)
-        .instrument_protocol(id, role, side, LockProtocol::Halbit)
-        .inspect_ok(|event| tracing::info!("yielded event {}", event))
-        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
+    let mut events = comit::halbit::new(&connector, params);
 
-    while let Ok(Some(event)) = events.try_next().await {
+    while let Some(event) = events.try_next().await? {
+        tracing::info!("yielded event {}", event);
         storage.halbit_states.update(&id, event).await;
     }
 
-    tracing::info!("swap finished");
+    tracing::info!("finished");
+
+    Ok(())
 }
 
 /// Data required to create a swap that involves bitcoin on the lightning

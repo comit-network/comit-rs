@@ -5,7 +5,6 @@
  */
 import { startConnectedCndAndNectar } from "../src/actor_test";
 import { MarketEntity, Position } from "../src/cnd_client/payload";
-import { sleep } from "../src/utils";
 
 test(
     "given_cnd_and_nectar_when_cnd_publishes_a_matching_buy_order_then_successful_swap",
@@ -23,11 +22,11 @@ test(
         await alice.assertAndExecuteNextAction("fund");
         await alice.assertAndExecuteNextAction("redeem");
 
-        // Wait until the wallets sees the new balance.
-        await sleep(2000);
+        await alice.waitUntilSwapped();
 
         await alice.assertBalancesAfterSwap();
         await alice.assertOrderClosed();
+        await alice.assertSwapInactive();
         await bob.assertBalancesChangedBy({
             bitcoin: -(10_000_000n + 1530n), // nectar pays order quantity + the funding fee
             dai: 945_000_000_000_000_000_000n, // = 0.1 * 9450 * 10^18
@@ -50,11 +49,11 @@ test(
         await alice.assertAndExecuteNextAction("fund");
         await alice.assertAndExecuteNextAction("redeem");
 
-        // Wait until the wallets sees the new balance.
-        await sleep(2000);
+        await alice.waitUntilSwapped();
 
         await alice.assertBalancesAfterSwap();
         await alice.assertOrderClosed();
+        await alice.assertSwapInactive();
         await bob.assertBalancesChangedBy({
             bitcoin: 10000000n - 5700n, // nectar receives order quantity but pays the redeem fee
             dai: -855_000_000_000_000_000_000n, // = 0.1 * 8550 * 10^18

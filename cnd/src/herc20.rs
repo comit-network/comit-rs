@@ -5,9 +5,9 @@ use crate::{
     htlc_location, identity, state,
     state::Update,
     storage::Storage,
-    tracing_ext::InstrumentProtocol,
-    transaction, LocalSwapId, LockProtocol, Role, Secret, Side,
+    transaction, LocalSwapId, Role, Secret, Side,
 };
+use anyhow::Result;
 use futures::TryStreamExt;
 use std::collections::{hash_map::Entry, HashMap};
 use time::OffsetDateTime;
@@ -20,6 +20,7 @@ pub use comit::herc20::*;
 ///
 /// This wrapper functions allows us to reuse code within `cnd` without having
 /// to give knowledge about tracing or the state hashmaps to the `comit` crate.
+#[tracing::instrument(name = "herc20", level = "error", skip(params, start_of_swap, storage, connector), fields(%id, %role, %side))]
 pub async fn new<C>(
     id: LocalSwapId,
     params: Params,
@@ -28,19 +29,20 @@ pub async fn new<C>(
     side: Side,
     storage: Storage,
     connector: impl AsRef<C>,
-) where
+) -> Result<()>
+where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
-    let mut events = comit::herc20::new(connector.as_ref(), params, start_of_swap)
-        .instrument_protocol(id, role, side, LockProtocol::Herc20)
-        .inspect_ok(|event| tracing::info!("yielded event {}", event))
-        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
+    let mut events = comit::herc20::new(connector.as_ref(), params, start_of_swap);
 
-    while let Ok(Some(event)) = events.try_next().await {
+    while let Some(event) = events.try_next().await? {
+        tracing::info!("yielded event {}", event);
         storage.herc20_states.update(&id, event).await;
     }
 
-    tracing::info!("swap finished");
+    tracing::info!("finished");
+
+    Ok(())
 }
 
 /// Data required to create a swap that involves an ERC20 token.

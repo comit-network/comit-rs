@@ -5,7 +5,13 @@
 /*
  * The payload for POST requests to create a swap on the cnd REST API.
  */
-import { Action, EmbeddedRepresentationSubEntity, Entity, Link } from "./siren";
+import {
+    Action,
+    EmbeddedLinkSubEntity,
+    EmbeddedRepresentationSubEntity,
+    Entity,
+    Link,
+} from "./siren";
 
 export interface Peer {
     peer_id: string;
@@ -49,7 +55,6 @@ export type HbitPayload = {
 /**
  * The payload returned when fetching one swap on the `/swaps/:id` endpoint
  */
-
 export interface SwapEntity extends Entity {
     properties: SwapProperties;
     actions: SwapAction[];
@@ -57,6 +62,10 @@ export interface SwapEntity extends Entity {
      * links for this swap, contains a self reference
      */
     links: Link[];
+}
+
+export interface ActiveSwapsEntity extends Entity {
+    entities: EmbeddedLinkSubEntity[];
 }
 
 /**
@@ -92,17 +101,21 @@ export interface HalbitProtocol {
     asset: Amount;
 }
 
-export type SwapEvent =
-    | HbitFundedEvent
-    | HbitRedeemedEvent
+export type FundEvent = HbitFundedEvent | Herc20FundedEvent | HalbitFundedEvent;
+export type RefundEvent =
     | HbitRefundedEvent
-    | Herc20DeployedEvent
-    | Herc20FundedEvent
-    | Herc20RedeemedEvent
     | Herc20RefundedEvent
-    | HalbitFundedEvent
-    | HalbitRedeemedEvent
     | HalbitRefundedEvent;
+export type RedeemEvent =
+    | HbitRedeemedEvent
+    | Herc20RedeemedEvent
+    | HalbitRedeemedEvent;
+
+export type SwapEvent =
+    | FundEvent
+    | RefundEvent
+    | RedeemEvent
+    | Herc20DeployedEvent;
 
 export type SwapEventKind = SwapEvent["name"]; // Oh yeah, type system magic baby!
 

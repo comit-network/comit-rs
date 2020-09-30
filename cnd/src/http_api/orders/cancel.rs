@@ -1,7 +1,7 @@
 use crate::{
     http_api::problem,
     network::Swarm,
-    storage::{BtcDaiOrder, Storage},
+    storage::{commands, Storage},
 };
 use anyhow::Result;
 use comit::OrderId;
@@ -25,15 +25,8 @@ pub fn route(
 async fn handler(order_id: OrderId, storage: Storage, swarm: Swarm) -> Result<impl Reply> {
     let db = &storage.db;
 
-    db.do_in_transaction(|conn| {
-        use crate::storage::Order;
-
-        let order = Order::by_order_id(conn, order_id)?;
-        BtcDaiOrder::by_order(conn, &order)?.set_to_cancelled(conn)?;
-
-        Ok(())
-    })
-    .await?;
+    db.do_in_transaction(|conn| commands::update_btc_dai_order_to_cancelled(conn, order_id))
+        .await?;
     swarm.cancel_order(order_id).await;
 
     Ok(warp::reply())

@@ -20,6 +20,7 @@ macro_rules! swap_id_fk {
 }
 
 mod btc_dai_orders;
+mod completed_swaps;
 mod halbits;
 mod hbits;
 mod herc20s;
@@ -34,6 +35,7 @@ mod swaps;
 use crate::storage::SameSide;
 pub use btc_dai_orders::{BtcDaiOrder, InsertableBtcDaiOrder};
 use comit::order::SwapProtocol;
+pub use completed_swaps::{CompletedSwap, InsertableCompletedSwap};
 pub use halbits::{Halbit, InsertableHalbit};
 pub use hbits::{Hbit, InsertableHbit};
 pub use herc20s::{Herc20, InsertableHerc20};

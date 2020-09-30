@@ -1,7 +1,10 @@
+#[macro_use]
+mod tables;
+
+pub mod commands;
 mod errors;
 pub mod queries;
 mod schema;
-mod tables;
 mod wrapper_types;
 embed_migrations!("./migrations");
 #[cfg(test)]

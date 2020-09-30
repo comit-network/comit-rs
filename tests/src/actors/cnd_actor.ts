@@ -1,5 +1,6 @@
 import {
     ActionKind,
+    ActiveSwapsEntity,
     HalbitHerc20Payload,
     HbitHerc20Payload,
     Herc20HalbitPayload,
@@ -8,6 +9,7 @@ import {
     OpenOrdersEntity,
     OrderEntity,
     Position,
+    RedeemEvent,
     SwapEntity,
     SwapEventKind,
 } from "../cnd_client/payload";
@@ -538,6 +540,12 @@ export class CndActor
         });
     }
 
+    public async assertSwapInactive() {
+        const activeSwaps = await this.cnd.fetch<ActiveSwapsEntity>("/swaps");
+
+        expect(activeSwaps.data.entities).toHaveLength(0);
+    }
+
     /**
      * Manage cnd instance
      */
@@ -567,15 +575,9 @@ export class CndActor
     }
 
     public async waitForSwap(): Promise<void> {
-        const poller = this.pollCndUntil<Entity>(
+        const response = await this.pollCndUntil<Entity>(
             "/swaps",
             (body) => body.entities.length > 0
-        );
-
-        const response = await pTimeout(
-            poller,
-            10_000,
-            "no swap appeared after 10 seconds"
         );
 
         this.swap = new Swap(
@@ -586,6 +588,22 @@ export class CndActor
                 bitcoin: this.wallets.bitcoin,
             })
         );
+    }
+
+    public async waitUntilSwapped() {
+        type RedeemEventKind = RedeemEvent["name"];
+
+        await this.pollCndUntil<SwapEntity>(this.swap.self, (body) => {
+            const eventNames = body.properties.events.map((e) => e.name);
+
+            const alphaRedeemed = `${body.properties.alpha.protocol}_redeemed` as RedeemEventKind;
+            const betaRedeemed = `${body.properties.beta.protocol}_redeemed` as RedeemEventKind;
+
+            return (
+                eventNames.includes(alphaRedeemed) &&
+                eventNames.includes(betaRedeemed)
+            );
+        });
     }
 
     public async pollUntilConnectedTo(peer: string) {

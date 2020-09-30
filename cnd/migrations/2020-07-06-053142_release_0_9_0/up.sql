@@ -88,3 +88,11 @@ CREATE TABLE order_swaps
 
 -- Change start-of-swap to be a unix timestamp
 UPDATE swaps SET start_of_swap = strftime('%s',swaps.start_of_swap);
+
+CREATE TABLE completed_swaps
+(
+    id INTEGER     NOT NULL PRIMARY KEY,
+    swap_id UNIQUE NOT NULL,
+    completed_on   NOT NULL,
+    FOREIGN KEY (swap_id) REFERENCES swaps (id)
+)
