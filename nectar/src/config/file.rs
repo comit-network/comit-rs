@@ -57,7 +57,7 @@ pub struct BitcoinFee {
     /// The static value to use if the selected strategy is "static"
     #[serde(default)]
     #[serde(with = "crate::config::serde::bitcoin_amount::sat_as_optional_unsigned_int")]
-    pub sats_per_byte: Option<bitcoin::Amount>,
+    pub sat_per_vbyte: Option<bitcoin::Amount>,
     /// The estimate mode to use if the selected strategy is "bitcoind estimate
     /// smart fee"
     pub estimate_mode: Option<EstimateMode>,
@@ -252,7 +252,7 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                 fee_strategies: Some(FeeStrategies {
                     bitcoin: Some(BitcoinFee {
                         strategy: Some(BitcoinFeeStrategy::Bitcoind),
-                        sats_per_byte: None,
+                        sat_per_vbyte: None,
                         estimate_mode: None,
                     }),
                     ethereum: Some(EthereumGasPrice{ service: EthereumGasPriceService::EthGasStation,
@@ -316,7 +316,7 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                 fee_strategies: Some(FeeStrategies {
                     bitcoin: Some(BitcoinFee {
                         strategy: Some(BitcoinFeeStrategy::Bitcoind),
-                        sats_per_byte: None,
+                        sat_per_vbyte: None,
                         estimate_mode: Some(EstimateMode::Conservative),
                     }),
                     ethereum: Some(EthereumGasPrice{ service: EthereumGasPriceService::EthGasStation,
@@ -582,7 +582,7 @@ local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
         let file_contents = vec![
             r#"
             strategy = "static"
-            sats_per_byte = 10
+            sat_per_vbyte = 10
             "#,
             r#"
             strategy = "bitcoind"
@@ -593,7 +593,7 @@ local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
             estimate_mode = "economical"
             "#,
             r#"
-            sats_per_byte = 10
+            sat_per_vbyte = 10
             estimate_mode = "conservative"
             "#,
         ];
@@ -601,22 +601,22 @@ local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
         let expected = vec![
             BitcoinFee {
                 strategy: Some(BitcoinFeeStrategy::Static),
-                sats_per_byte: Some(bitcoin::Amount::from_sat(10)),
+                sat_per_vbyte: Some(bitcoin::Amount::from_sat(10)),
                 estimate_mode: None,
             },
             BitcoinFee {
                 strategy: Some(BitcoinFeeStrategy::Bitcoind),
-                sats_per_byte: None,
+                sat_per_vbyte: None,
                 estimate_mode: Some(EstimateMode::Unset),
             },
             BitcoinFee {
                 strategy: Some(BitcoinFeeStrategy::Static),
-                sats_per_byte: None,
+                sat_per_vbyte: None,
                 estimate_mode: Some(EstimateMode::Economical),
             },
             BitcoinFee {
                 strategy: None,
-                sats_per_byte: Some(bitcoin::Amount::from_sat(10)),
+                sat_per_vbyte: Some(bitcoin::Amount::from_sat(10)),
                 estimate_mode: Some(EstimateMode::Conservative),
             },
         ];

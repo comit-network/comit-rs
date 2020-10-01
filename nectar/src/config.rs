@@ -155,7 +155,7 @@ mod tests {
                 fee_strategies: Some(file::FeeStrategies {
                     bitcoin: Some(file::BitcoinFee {
                         strategy: Some(file::BitcoinFeeStrategy::Static),
-                        sats_per_byte: Some(bitcoin::Amount::from_sat(12)),
+                        sat_per_vbyte: Some(bitcoin::Amount::from_sat(12)),
                         estimate_mode: None,
                     }),
                     ethereum: Some(file::EthereumGasPrice {

@@ -246,7 +246,7 @@ impl From<file::BitcoinFee> for BitcoinFeeStrategy {
         file.strategy
             .map_or_else(Default::default, |strategy| match strategy {
                 file::BitcoinFeeStrategy::Static => {
-                    Self::SatsPerByte(file.sats_per_byte.unwrap_or_else(|| {
+                    Self::SatsPerByte(file.sat_per_vbyte.unwrap_or_else(|| {
                         bitcoin::Amount::from_sat(DEFAULT_BITCOIN_STATIC_FEE_SAT)
                     }))
                 }
@@ -397,15 +397,15 @@ impl From<Maker> for file::Maker {
             kraken_api_host: Some(maker.kraken_api_host.0),
             fee_strategies: Some(file::FeeStrategies {
                 bitcoin: Some(match maker.fee_strategies.bitcoin {
-                    BitcoinFeeStrategy::SatsPerByte(sat_per_byte) => file::BitcoinFee {
+                    BitcoinFeeStrategy::SatsPerByte(sat_per_vbyte) => file::BitcoinFee {
                         strategy: Some(file::BitcoinFeeStrategy::Static),
-                        sats_per_byte: Some(sat_per_byte),
+                        sat_per_vbyte: Some(sat_per_vbyte),
                         estimate_mode: None,
                     },
                     BitcoinFeeStrategy::BitcoindEstimateSmartfee(estimate_mode) => {
                         file::BitcoinFee {
                             strategy: Some(file::BitcoinFeeStrategy::Bitcoind),
-                            sats_per_byte: None,
+                            sat_per_vbyte: None,
                             estimate_mode: Some(estimate_mode),
                         }
                     }

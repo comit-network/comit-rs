@@ -29,7 +29,7 @@ bitcoin = 0.00009275
 [maker.fee_strategies.bitcoin]
 # A static sat/byte value can be specified or you can relay on bitcoind's estimatesmartfee feature.
 strategy = "static"
-sats_per_byte = 12
+sat_per_vbyte = 12
 
 # Strategies used for Ethereum gas price handling.
 [maker.fee_strategies.ethereum]

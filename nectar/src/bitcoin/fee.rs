@@ -25,26 +25,24 @@ impl Fee {
         }
     }
 
-    pub async fn kbyte_rate(&self) -> Result<Amount> {
-        let byte_rate = self.byte_rate().await?;
-        byte_rate
-            .checked_mul(1000)
-            .context("Could not mul byte rate")
+    pub async fn kvbyte_rate(&self) -> Result<Amount> {
+        let rate = self.vbyte_rate().await?;
+        rate.checked_mul(1000).context("Could not mul byte rate")
     }
 
-    pub async fn byte_rate(&self) -> Result<Amount> {
+    pub async fn vbyte_rate(&self) -> Result<Amount> {
         use crate::config::BitcoinFeeStrategy::*;
         match self.config {
             SatsPerByte(amount) => Ok(amount),
             BitcoindEstimateSmartfee(mode) => {
-                let kbyte_rate = self
+                let kvbyte_rate = self
                     .client
                     .estimate_smart_fee(ESTIMATE_FEE_TARGET, Some(mode.into()))
                     .await
                     .map(|res| res.kbyte_rate)?;
 
                 // Return rate per byte
-                kbyte_rate
+                kvbyte_rate
                     .checked_div(1000)
                     .context("Could not div kbyte rate")
             }
