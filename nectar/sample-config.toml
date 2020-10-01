@@ -20,24 +20,6 @@ max_buy_quantity = 0.1
 # If absent, orders are capped by the available base balance.
 max_sell_quantity = 0.1
 
-# Strategies used for Bitcoin fee handling.
-[maker.fee_strategies.bitcoin]
-# A static sat/byte value can be specified or you can relay on bitcoind's estimatesmartfee feature.
-strategy = "static"
-sat_per_vbyte = 12
-
-[maker.fee_strategies.bitcoin.fees_to_reserve]
-# An estimation of the maximum network fee that we would expect to pay, used to ensure
-# we always have enough balance to execute an order we publish.
-sat_per_vbyte = 34
-# An estimation of the largest Bitcoin transaction we are likely to pay for.
-vbyte_transaction_weight = 850
-
-# Strategies used for Ethereum gas price handling.
-[maker.fee_strategies.ethereum]
-service = "geth"
-url = "http://some.geth.url:8545/"
-
 [network]
 # The libp2p socket on which nectar listens for COMIT messages.
 listen = ["/ip4/0.0.0.0/tcp/9939"]
@@ -63,3 +45,21 @@ node_url = "http://localhost:18443/"
 chain_id = 1
 # The url to the web3 node, can include an infura key: `https://mainnet.infura.io/v3/YOUR-PROJECT-ID`
 node_url = "http://localhost:8545/"
+
+# Strategies used for Bitcoin fee handling.
+[fee_strategies.bitcoin]
+# A static sat/byte value can be specified or you can relay on bitcoind's estimatesmartfee feature.
+strategy = "static"
+sat_per_vbyte = 12
+
+[fee_strategies.bitcoin.fees_to_reserve]
+# An estimation of the maximum network fee that we would expect to pay, used to ensure
+# we always have enough balance to execute an order we publish.
+sat_per_vbyte = 34
+# An estimation of the largest Bitcoin transaction we are likely to pay for.
+vbyte_transaction_weight = 850
+
+# Strategies used for Ethereum gas price handling.
+[fee_strategies.ethereum]
+service = "geth"
+url = "http://some.geth.url:8545/"

@@ -136,8 +136,7 @@ async fn main() -> Result<()> {
             println!("{}", deposit);
         }
         Command::Withdraw(arguments) => {
-            let ethereum_gas_price =
-                ethereum::GasPrice::new(settings.maker.fee_strategies.ethereum);
+            let ethereum_gas_price = ethereum::GasPrice::new(settings.fee_strategies.ethereum);
             let tx_id = withdraw(
                 ethereum_wallet.expect("could not initialise ethereum wallet"),
                 ethereum_gas_price,
@@ -151,11 +150,10 @@ async fn main() -> Result<()> {
         Command::DumpConfig => unreachable!(),
         Command::ResumeOnly => {
             let bitcoind_client = bitcoin::Client::new(settings.bitcoin.bitcoind.node_url.clone());
-            let bitcoin_fee =
-                bitcoin::Fee::new(settings.maker.fee_strategies.bitcoin, bitcoind_client);
+            let bitcoin_fee = bitcoin::Fee::new(settings.fee_strategies.bitcoin, bitcoind_client);
 
             let ethereum_gas_price =
-                ethereum::GasPrice::new(settings.maker.fee_strategies.ethereum.clone());
+                ethereum::GasPrice::new(settings.fee_strategies.ethereum.clone());
 
             resume_only(
                 settings,

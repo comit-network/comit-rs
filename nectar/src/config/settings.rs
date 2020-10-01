@@ -19,6 +19,7 @@ pub struct Settings {
     pub logging: Logging,
     pub bitcoin: Bitcoin,
     pub ethereum: Ethereum,
+    pub fee_strategies: FeeStrategies,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -166,7 +167,6 @@ pub struct Maker {
     /// Spread to apply to the mid-market rate, format is permyriad. E.g. 5.20
     /// is 5.2% spread
     pub spread: Spread,
-    pub fee_strategies: FeeStrategies,
     pub kraken_api_host: KrakenApiHost,
 }
 
@@ -209,6 +209,36 @@ impl From<file::FeeStrategies> for FeeStrategies {
                 EthereumGasPriceStrategy::default,
                 EthereumGasPriceStrategy::from,
             ),
+        }
+    }
+}
+
+impl From<FeeStrategies> for file::FeeStrategies {
+    fn from(fee_strategies: FeeStrategies) -> Self {
+        file::FeeStrategies {
+            bitcoin: Some(match fee_strategies.bitcoin {
+                BitcoinFeeStrategy::SatsPerByte { fee, reserve_fee } => file::BitcoinFee {
+                    strategy: Some(file::BitcoinFeeStrategy::Static),
+                    sat_per_vbyte: Some(fee),
+                    estimate_mode: None,
+                    fees_to_reserve: Some(file::BtcFeesToReserve {
+                        sat_per_vbyte: Some(reserve_fee.sat_per_vbyte),
+                        vbyte_transaction_weight: Some(reserve_fee.vbyte_transaction_weight),
+                    }),
+                },
+                BitcoinFeeStrategy::BitcoindEstimateSmartfee { mode, reserve_fee } => {
+                    file::BitcoinFee {
+                        strategy: Some(file::BitcoinFeeStrategy::Bitcoind),
+                        sat_per_vbyte: None,
+                        estimate_mode: Some(mode),
+                        fees_to_reserve: Some(file::BtcFeesToReserve {
+                            sat_per_vbyte: Some(reserve_fee.sat_per_vbyte),
+                            vbyte_transaction_weight: Some(reserve_fee.vbyte_transaction_weight),
+                        }),
+                    }
+                }
+            }),
+            ethereum: None,
         }
     }
 }
@@ -322,9 +352,6 @@ impl Maker {
             spread: file
                 .spread
                 .unwrap_or_else(|| Spread::new(500).expect("500 is a valid spread value")),
-            fee_strategies: file
-                .fee_strategies
-                .map_or_else(FeeStrategies::default, FeeStrategies::from),
             kraken_api_host: file
                 .kraken_api_host
                 .map_or_else(KrakenApiHost::default, KrakenApiHost),
@@ -337,7 +364,6 @@ impl Default for Maker {
         Self {
             btc_dai: BtcDai::default(),
             spread: Spread::new(500).expect("500 is a valid spread value"),
-            fee_strategies: FeeStrategies::default(),
             kraken_api_host: KrakenApiHost::default(),
         }
     }
@@ -411,6 +437,7 @@ impl From<Settings> for File {
             logging: Logging { level },
             bitcoin,
             ethereum,
+            fee_strategies,
         } = settings;
 
         File {
@@ -422,6 +449,7 @@ impl From<Settings> for File {
             }),
             bitcoin: Some(bitcoin.into()),
             ethereum: Some(ethereum.into()),
+            fee_strategies: Some(fee_strategies.into()),
         }
     }
 }
@@ -438,33 +466,6 @@ impl From<Maker> for file::Maker {
             },
             spread: Some(maker.spread),
             kraken_api_host: Some(maker.kraken_api_host.0),
-            fee_strategies: Some(file::FeeStrategies {
-                bitcoin: Some(match maker.fee_strategies.bitcoin {
-                    BitcoinFeeStrategy::SatsPerByte { fee, reserve_fee } => file::BitcoinFee {
-                        strategy: Some(file::BitcoinFeeStrategy::Static),
-                        sat_per_vbyte: Some(fee),
-                        estimate_mode: None,
-                        fees_to_reserve: Some(file::BtcFeesToReserve {
-                            sat_per_vbyte: Some(reserve_fee.sat_per_vbyte),
-                            vbyte_transaction_weight: Some(reserve_fee.vbyte_transaction_weight),
-                        }),
-                    },
-                    BitcoinFeeStrategy::BitcoindEstimateSmartfee { mode, reserve_fee } => {
-                        file::BitcoinFee {
-                            strategy: Some(file::BitcoinFeeStrategy::Bitcoind),
-                            sat_per_vbyte: None,
-                            estimate_mode: Some(mode),
-                            fees_to_reserve: Some(file::BtcFeesToReserve {
-                                sat_per_vbyte: Some(reserve_fee.sat_per_vbyte),
-                                vbyte_transaction_weight: Some(
-                                    reserve_fee.vbyte_transaction_weight,
-                                ),
-                            }),
-                        }
-                    }
-                }),
-                ethereum: None,
-            }),
         }
     }
 }
@@ -481,6 +482,7 @@ impl Settings {
             logging,
             bitcoin,
             ethereum,
+            fee_strategies,
         } = config_file;
 
         Ok(Self {
@@ -501,7 +503,6 @@ impl Settings {
                     dir: default_data_dir,
                 })
             },
-
             logging: {
                 match logging {
                     None => Logging::default(),
@@ -521,6 +522,7 @@ impl Settings {
                 || Ethereum::new(comit_network.unwrap_or_default().into()),
                 |file| Ethereum::from_file(file, comit_network),
             )?,
+            fee_strategies: fee_strategies.map_or_else(FeeStrategies::default, FeeStrategies::from),
         })
     }
 }

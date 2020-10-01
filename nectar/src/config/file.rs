@@ -22,6 +22,7 @@ pub struct File {
     pub logging: Option<Logging>,
     pub bitcoin: Option<Bitcoin>,
     pub ethereum: Option<Ethereum>,
+    pub fee_strategies: Option<FeeStrategies>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -29,7 +30,6 @@ pub struct Maker {
     pub spread: Option<Spread>,
     pub kraken_api_host: Option<Url>,
     pub btc_dai: Option<BtcDai>,
-    pub fee_strategies: Option<FeeStrategies>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -99,17 +99,6 @@ pub struct Ethereum {
 }
 
 impl File {
-    pub fn default() -> Self {
-        File {
-            maker: None,
-            network: None,
-            data: None,
-            logging: None,
-            bitcoin: None,
-            ethereum: None,
-        }
-    }
-
     pub fn read<D>(config_file: D) -> Result<Self, config_rs::ConfigError>
     where
         D: AsRef<OsStr>,
@@ -119,6 +108,20 @@ impl File {
         let mut config = config_rs::Config::new();
         config.merge(config_rs::File::from(config_file))?;
         config.try_into()
+    }
+}
+
+impl Default for File {
+    fn default() -> Self {
+        File {
+            maker: None,
+            network: None,
+            data: None,
+            logging: None,
+            bitcoin: None,
+            ethereum: None,
+            fee_strategies: None,
+        }
     }
 }
 
@@ -205,20 +208,20 @@ mod tests {
 spread = 1000
 kraken_api_host = "https://api.kraken.com"
 
-[maker.fee_strategies.bitcoin]
-strategy = "bitcoind"
-
-[maker.fee_strategies.bitcoin.fees_to_reserve]
-sat_per_vbyte = 25
-vbyte_transaction_weight = 900
-
-[maker.fee_strategies.ethereum]
-service = "eth_gas_station"
-url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
-
 [maker.btc_dai]
 max_buy_quantity = 1.23456
 max_sell_quantity = 1.23456
+
+[fee_strategies.bitcoin]
+strategy = "bitcoind"
+
+[fee_strategies.bitcoin.fees_to_reserve]
+sat_per_vbyte = 25
+vbyte_transaction_weight = 900
+
+[fee_strategies.ethereum]
+service = "eth_gas_station"
+url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
 
 [network]
 listen = ["/ip4/0.0.0.0/tcp/9939"]
@@ -248,20 +251,6 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                 }),
                 spread: Some(Spread::new(1000).unwrap()),
                 kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
-                fee_strategies: Some(FeeStrategies {
-                    bitcoin: Some(BitcoinFee {
-                        strategy: Some(BitcoinFeeStrategy::Bitcoind),
-                        sat_per_vbyte: None,
-                        estimate_mode: None,
-                        fees_to_reserve: Some(BtcFeesToReserve{ sat_per_vbyte: Some(bitcoin::Amount::from_sat(25)), vbyte_transaction_weight: Some(900) })
-                    }),
-                    ethereum: Some(EthereumGasPrice{ service: EthereumGasPriceService::EthGasStation,
-                    url:
-                        "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
-                        .parse()
-                        .unwrap()
-                    }),
-                }),
             }),
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
@@ -286,6 +275,23 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                         .parse()
                         .unwrap(),
                 ),
+            }),
+            fee_strategies: Some(FeeStrategies {
+                bitcoin: Some(BitcoinFee {
+                    strategy: Some(BitcoinFeeStrategy::Bitcoind),
+                    sat_per_vbyte: None,
+                    estimate_mode: None,
+                    fees_to_reserve: Some(BtcFeesToReserve {
+                        sat_per_vbyte: Some(bitcoin::Amount::from_sat(25)),
+                        vbyte_transaction_weight: Some(900),
+                    }),
+                }),
+                ethereum: Some(EthereumGasPrice {
+                    service: EthereumGasPriceService::EthGasStation,
+                    url: "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
+                        .parse()
+                        .unwrap(),
+                }),
             }),
         };
 
@@ -310,25 +316,6 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                 }),
                 spread: Some(Spread::new(1000).unwrap()),
                 kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
-                fee_strategies: Some(FeeStrategies {
-                    bitcoin: Some(BitcoinFee {
-                        strategy: Some(BitcoinFeeStrategy::Bitcoind),
-                        sat_per_vbyte: None,
-                        estimate_mode: Some(EstimateMode::Conservative),
-                        fees_to_reserve:                 Some(
-                            BtcFeesToReserve {
-                        sat_per_vbyte: Some(bitcoin::Amount::from_sat(34)),
-                        vbyte_transaction_weight: Some(850)
-                    }
-                    ),
-                }),
-                    ethereum: Some(EthereumGasPrice{ service: EthereumGasPriceService::EthGasStation,
-                        url:
-                        "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
-                            .parse()
-                            .unwrap()
-                    }),
-                }),
             }),
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
@@ -354,6 +341,23 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                         .unwrap(),
                 ),
             }),
+            fee_strategies: Some(FeeStrategies {
+                bitcoin: Some(BitcoinFee {
+                    strategy: Some(BitcoinFeeStrategy::Bitcoind),
+                    sat_per_vbyte: None,
+                    estimate_mode: Some(EstimateMode::Conservative),
+                    fees_to_reserve: Some(BtcFeesToReserve {
+                        sat_per_vbyte: Some(bitcoin::Amount::from_sat(34)),
+                        vbyte_transaction_weight: Some(850),
+                    }),
+                }),
+                ethereum: Some(EthereumGasPrice {
+                    service: EthereumGasPriceService::EthGasStation,
+                    url: "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
+                        .parse()
+                        .unwrap(),
+                }),
+            }),
         };
 
         let expected = r#"[maker]
@@ -363,17 +367,6 @@ kraken_api_host = "https://api.kraken.com/"
 [maker.btc_dai]
 max_buy_quantity = 1.23456
 max_sell_quantity = 1.23456
-[maker.fee_strategies.bitcoin]
-strategy = "bitcoind"
-estimate_mode = "conservative"
-
-[maker.fee_strategies.bitcoin.fees_to_reserve]
-sat_per_vbyte = 34
-vbyte_transaction_weight = 850
-
-[maker.fee_strategies.ethereum]
-service = "eth_gas_station"
-url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
 
 [network]
 listen = ["/ip4/0.0.0.0/tcp/9939"]
@@ -394,6 +387,17 @@ node_url = "http://localhost:18443/"
 chain_id = 1337
 node_url = "http://localhost:8545/"
 local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
+[fee_strategies.bitcoin]
+strategy = "bitcoind"
+estimate_mode = "conservative"
+
+[fee_strategies.bitcoin.fees_to_reserve]
+sat_per_vbyte = 34
+vbyte_transaction_weight = 850
+
+[fee_strategies.ethereum]
+service = "eth_gas_station"
+url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
 "#;
 
         let serialized = toml::to_string(&file);

@@ -149,21 +149,6 @@ mod tests {
                     max_sell_quantity: Some(bitcoin::Amount::from_btc(0.1).unwrap()),
                 }),
                 spread: Some(Spread::new(500).unwrap()),
-                fee_strategies: Some(file::FeeStrategies {
-                    bitcoin: Some(file::BitcoinFee {
-                        strategy: Some(file::BitcoinFeeStrategy::Static),
-                        sat_per_vbyte: Some(bitcoin::Amount::from_sat(12)),
-                        estimate_mode: None,
-                        fees_to_reserve: Some(file::BtcFeesToReserve {
-                            sat_per_vbyte: Some(bitcoin::Amount::from_sat(34)),
-                            vbyte_transaction_weight: Some(850),
-                        }),
-                    }),
-                    ethereum: Some(file::EthereumGasPrice {
-                        service: file::EthereumGasPriceService::Geth,
-                        url: "http://some.geth.url:8545/".parse().unwrap(),
-                    }),
-                }),
                 kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
             }),
             network: Some(Network {
@@ -187,6 +172,21 @@ mod tests {
                 chain_id: ChainId::MAINNET,
                 node_url: Some("http://localhost:8545/".parse().unwrap()),
                 local_dai_contract_address: None,
+            }),
+            fee_strategies: Some(file::FeeStrategies {
+                bitcoin: Some(file::BitcoinFee {
+                    strategy: Some(file::BitcoinFeeStrategy::Static),
+                    sat_per_vbyte: Some(bitcoin::Amount::from_sat(12)),
+                    estimate_mode: None,
+                    fees_to_reserve: Some(file::BtcFeesToReserve {
+                        sat_per_vbyte: Some(bitcoin::Amount::from_sat(34)),
+                        vbyte_transaction_weight: Some(850),
+                    }),
+                }),
+                ethereum: Some(file::EthereumGasPrice {
+                    service: file::EthereumGasPriceService::Geth,
+                    url: "http://some.geth.url:8545/".parse().unwrap(),
+                }),
             }),
         };
 
@@ -229,6 +229,7 @@ mod tests {
             logging: None,
             bitcoin: None,
             ethereum: None,
+            fee_strategies: None
         },)
     }
 
