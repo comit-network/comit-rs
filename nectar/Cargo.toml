@@ -52,7 +52,7 @@ default-features = false
 version = "0.6"
 
 [dev-dependencies]
-base64 = "0.12"
+base64 = "0.13"
 proptest = "0.10"
 quickcheck = "0.9"
 quickcheck_async = "0.1"
