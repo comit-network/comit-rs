@@ -181,7 +181,11 @@ impl Settings {
             logging: logging.map_or_else(Logging::default, Logging::from),
 
             bitcoin: bitcoin.map_or_else(
-                || Ok(Bitcoin::new(comit_network.unwrap_or_default().into())),
+                || {
+                    Ok(Bitcoin::default_from_network(
+                        comit_network.unwrap_or_default().into(),
+                    ))
+                },
                 |file| Bitcoin::from_file(file, comit_network),
             )?,
             ethereum: ethereum.map_or_else(
@@ -200,7 +204,7 @@ impl Settings {
 mod tests {
     use super::*;
     use crate::{
-        config::{file, Bitcoind, Geth, Lnd, Tokens, DAI_MAINNET},
+        config::{file, BitcoinFees, Bitcoind, Geth, Lnd, Tokens, DAI_MAINNET},
         ethereum::ChainId,
     };
     use comit::ledger;
@@ -296,6 +300,9 @@ mod tests {
                 bitcoind: Bitcoind {
                     node_url: "http://localhost:8332".parse().unwrap(),
                 },
+                fees: BitcoinFees {
+                    sat_per_vbyte: bitcoin::Amount::from_sat(10),
+                },
             })
     }
 
@@ -312,6 +319,7 @@ mod tests {
                 bitcoin: Some(file::Bitcoin {
                     network,
                     bitcoind: None,
+                    fees: None,
                 }),
                 ..File::default()
             };
@@ -326,6 +334,7 @@ mod tests {
                     bitcoind: Bitcoind {
                         node_url: url.parse().unwrap(),
                     },
+                    fees: Default::default(),
                 })
         }
     }

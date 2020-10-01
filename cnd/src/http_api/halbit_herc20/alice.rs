@@ -112,7 +112,7 @@ impl RedeemAction
 {
     type Output = ethereum::CallContract;
 
-    fn redeem_action(&self) -> anyhow::Result<Self::Output> {
+    fn redeem_action(&self, _btc_per_vbyte: bitcoin::Amount) -> anyhow::Result<Self::Output> {
         match self {
             AliceSwap::Finalized {
                 beta_finalized:
@@ -153,7 +153,7 @@ impl RefundAction
     for AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized>
 {
     type Output = Never;
-    fn refund_action(&self) -> anyhow::Result<Self::Output> {
+    fn refund_action(&self, _btc_per_vbyte: bitcoin::Amount) -> anyhow::Result<Self::Output> {
         anyhow::bail!(ActionNotFound)
     }
 }

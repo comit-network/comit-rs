@@ -1,3 +1,5 @@
+use serde::{de::Error, Deserialize, Deserializer, Serializer};
+
 pub use bitcoin::Amount as Bitcoin;
 
 /// Module specifically desgined for use with the `serde(with)` attribute.
@@ -22,7 +24,6 @@ pub use bitcoin::Amount as Bitcoin;
 /// ```
 pub mod sats_as_string {
     use super::*;
-    use serde::{de::Error, Deserialize, Deserializer, Serializer};
     use std::str::FromStr;
 
     pub fn serialize<S>(value: &Bitcoin, serializer: S) -> Result<S::Ok, S::Error>
@@ -42,5 +43,25 @@ pub mod sats_as_string {
         let amount = Bitcoin::from_sat(value);
 
         Ok(amount)
+    }
+}
+
+pub mod sat_as_unsigned_int {
+    use super::*;
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Bitcoin, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let int = u64::deserialize(deserializer)?;
+        let amount = Bitcoin::from_sat(int);
+        Ok(amount)
+    }
+
+    pub fn serialize<S>(value: &Bitcoin, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_u64(value.as_sat())
     }
 }

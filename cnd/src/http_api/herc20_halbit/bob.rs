@@ -40,7 +40,7 @@ impl FundAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hal
 impl RedeemAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
     type Output = ethereum::CallContract;
 
-    fn redeem_action(&self) -> anyhow::Result<Self::Output> {
+    fn redeem_action(&self, _btc_per_vbyte: bitcoin::Amount) -> anyhow::Result<Self::Output> {
         match self {
             BobSwap::Finalized {
                 alpha_finalized: herc20 @ herc20::Finalized { .. },
@@ -140,7 +140,7 @@ impl InitAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hal
 
 impl RefundAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
     type Output = Never;
-    fn refund_action(&self) -> anyhow::Result<Self::Output> {
+    fn refund_action(&self, _btc_per_vbyte: bitcoin::Amount) -> anyhow::Result<Self::Output> {
         anyhow::bail!(ActionNotFound)
     }
 }

@@ -75,7 +75,7 @@ impl RedeemAction
 {
     type Output = BroadcastSignedTransaction;
 
-    fn redeem_action(&self) -> anyhow::Result<Self::Output> {
+    fn redeem_action(&self, btc_per_vbyte: bitcoin::Amount) -> anyhow::Result<Self::Output> {
         match self {
             BobSwap::Finalized {
                 alpha_finalized:
@@ -92,7 +92,7 @@ impl RedeemAction
                     },
                 ..
             } => {
-                let redeem_action = hbit.build_redeem_action(*secret)?;
+                let redeem_action = hbit.build_redeem_action(*secret, btc_per_vbyte)?;
                 Ok(redeem_action)
             }
             _ => anyhow::bail!(ActionNotFound),
@@ -105,7 +105,7 @@ impl RefundAction
 {
     type Output = ethereum::CallContract;
 
-    fn refund_action(&self) -> anyhow::Result<Self::Output> {
+    fn refund_action(&self, _: bitcoin::Amount) -> anyhow::Result<Self::Output> {
         match self {
             BobSwap::Finalized {
                 beta_finalized:

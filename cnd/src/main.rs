@@ -44,6 +44,7 @@ mod spawn;
 mod state;
 mod storage;
 mod trace;
+
 mod htlc_location {
     pub use comit::htlc_location::*;
 }
@@ -135,7 +136,11 @@ fn main() -> anyhow::Result<()> {
         .build()?;
 
     let bitcoin_connector = {
-        let config::Bitcoin { bitcoind, network } = &settings.bitcoin;
+        let config::Bitcoin {
+            bitcoind,
+            network,
+            fees: _,
+        } = &settings.bitcoin;
         let connector = BitcoindConnector::new(bitcoind.node_url.clone())?;
 
         runtime.block_on(async {

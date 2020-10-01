@@ -45,6 +45,8 @@ static DAI_ROPSTEN: Lazy<ethereum::Address> =
 
 static COMIT_SOCKET: Lazy<Multiaddr> = Lazy::new(|| parse_unchecked("/ip4/0.0.0.0/tcp/9939"));
 
+static FEERATE_SAT_PER_VBYTE: Lazy<bitcoin::Amount> = Lazy::new(|| bitcoin::Amount::from_sat(10));
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Data {
     pub dir: PathBuf,
@@ -62,6 +64,7 @@ impl Data {
 pub struct Bitcoin {
     pub network: ledger::Bitcoin,
     pub bitcoind: Bitcoind,
+    pub fees: BitcoinFees,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -69,11 +72,28 @@ pub struct Bitcoind {
     pub node_url: Url,
 }
 
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct BitcoinFees {
+    /// The static value to use
+    #[serde(default)]
+    #[serde(with = "comit::asset::bitcoin::sat_as_unsigned_int")]
+    pub sat_per_vbyte: bitcoin::Amount,
+}
+
+impl Default for BitcoinFees {
+    fn default() -> Self {
+        Self {
+            sat_per_vbyte: *FEERATE_SAT_PER_VBYTE,
+        }
+    }
+}
+
 impl Bitcoin {
-    fn new(network: ledger::Bitcoin) -> Self {
+    fn default_from_network(network: ledger::Bitcoin) -> Self {
         Self {
             network,
             bitcoind: Bitcoind::new(network),
+            fees: Default::default(),
         }
     }
 
@@ -92,8 +112,12 @@ impl Bitcoin {
 
         let network = bitcoin.network;
         let bitcoind = bitcoin.bitcoind.unwrap_or_else(|| Bitcoind::new(network));
-
-        Ok(Bitcoin { network, bitcoind })
+        let fees = bitcoin.fees.unwrap_or_else(Default::default);
+        Ok(Bitcoin {
+            network,
+            bitcoind,
+            fees,
+        })
     }
 }
 
@@ -114,6 +138,7 @@ impl From<Bitcoin> for file::Bitcoin {
         file::Bitcoin {
             network: bitcoin.network,
             bitcoind: Some(bitcoin.bitcoind),
+            fees: Some(bitcoin.fees),
         }
     }
 }
@@ -399,6 +424,7 @@ mod tests {
         let config_file = file::Bitcoin {
             network: ledger::Bitcoin::Testnet,
             bitcoind: None,
+            fees: None,
         };
 
         let result = Bitcoin::from_file(config_file, Some(comit_network));
@@ -411,6 +437,7 @@ mod tests {
         let config_file = file::Bitcoin {
             network: ledger::Bitcoin::Testnet,
             bitcoind: None,
+            fees: None,
         };
 
         let result = Bitcoin::from_file(config_file, None);
@@ -427,6 +454,7 @@ mod tests {
         let config_file = file::Bitcoin {
             network: ledger::Bitcoin::Mainnet,
             bitcoind: None,
+            fees: None,
         };
 
         let result = Bitcoin::from_file(config_file, Some(comit_network));

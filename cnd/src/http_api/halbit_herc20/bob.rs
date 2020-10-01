@@ -93,7 +93,7 @@ impl FundAction for BobSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, her
 impl RedeemAction for BobSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized> {
     type Output = lnd::SettleInvoice;
 
-    fn redeem_action(&self) -> anyhow::Result<Self::Output> {
+    fn redeem_action(&self, _btc_per_vbyte: bitcoin::Amount) -> anyhow::Result<Self::Output> {
         match self {
             BobSwap::Finalized {
                 alpha_finalized:
@@ -121,7 +121,7 @@ impl RedeemAction for BobSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, h
 impl RefundAction for BobSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized> {
     type Output = ethereum::CallContract;
 
-    fn refund_action(&self) -> anyhow::Result<Self::Output> {
+    fn refund_action(&self, _btc_per_vbyte: bitcoin::Amount) -> anyhow::Result<Self::Output> {
         match self {
             BobSwap::Finalized {
                 alpha_finalized:

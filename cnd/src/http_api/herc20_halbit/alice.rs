@@ -174,7 +174,7 @@ impl RedeemAction
 {
     type Output = lnd::SettleInvoice;
 
-    fn redeem_action(&self) -> anyhow::Result<Self::Output> {
+    fn redeem_action(&self, _btc_per_vbyte: bitcoin::Amount) -> anyhow::Result<Self::Output> {
         match self {
             AliceSwap::Finalized {
                 beta_finalized:
@@ -200,7 +200,7 @@ impl RefundAction
 {
     type Output = ethereum::CallContract;
 
-    fn refund_action(&self) -> anyhow::Result<Self::Output> {
+    fn refund_action(&self, _btc_per_vbyte: bitcoin::Amount) -> anyhow::Result<Self::Output> {
         match self {
             AliceSwap::Finalized {
                 alpha_finalized:
