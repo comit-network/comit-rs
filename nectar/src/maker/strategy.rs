@@ -77,13 +77,6 @@ impl AllIn {
         base_balance: bitcoin::Amount,
         mid_market_rate: Rate,
     ) -> Result<BtcDaiOrderForm> {
-        // TODO: This should be checked when constructing Self.
-        if let Some(max_quantity) = self.max_sell_quantity {
-            if max_quantity < self.bitcoin_fee.max_fee() {
-                anyhow::bail!(MaxAmountSmallerThanMaxFee)
-            }
-        }
-
         match self
             .btc_reserved_funds
             .checked_add(self.bitcoin_fee.max_fee())
