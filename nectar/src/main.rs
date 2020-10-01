@@ -151,11 +151,8 @@ async fn main() -> Result<()> {
         Command::DumpConfig => unreachable!(),
         Command::ResumeOnly => {
             let bitcoind_client = bitcoin::Client::new(settings.bitcoin.bitcoind.node_url.clone());
-            let bitcoin_fee = bitcoin::Fee::new(
-                settings.maker.fee_strategies.bitcoin,
-                settings.maker.btc_fee_to_reserve.fee_per_tx(),
-                bitcoind_client,
-            );
+            let bitcoin_fee =
+                bitcoin::Fee::new(settings.maker.fee_strategies.bitcoin, bitcoind_client);
 
             let ethereum_gas_price =
                 ethereum::GasPrice::new(settings.maker.fee_strategies.ethereum.clone());

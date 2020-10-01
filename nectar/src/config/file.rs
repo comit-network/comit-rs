@@ -29,16 +29,7 @@ pub struct Maker {
     pub spread: Option<Spread>,
     pub kraken_api_host: Option<Url>,
     pub btc_dai: Option<BtcDai>,
-    pub btc_fee_to_reserve: Option<BtcFeesToReserve>,
     pub fee_strategies: Option<FeeStrategies>,
-}
-
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct BtcFeesToReserve {
-    #[serde(default)]
-    #[serde(with = "crate::config::serde::bitcoin_amount::sat_as_optional_unsigned_int")]
-    pub sat_per_vbyte: Option<bitcoin::Amount>,
-    pub vbyte_transaction_weight: Option<u64>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -60,6 +51,7 @@ pub struct BitcoinFee {
     /// The estimate mode to use if the selected strategy is "bitcoind estimate
     /// smart fee"
     pub estimate_mode: Option<EstimateMode>,
+    pub fees_to_reserve: Option<BtcFeesToReserve>,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -67,6 +59,14 @@ pub struct BitcoinFee {
 pub enum BitcoinFeeStrategy {
     Static,
     Bitcoind,
+}
+
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct BtcFeesToReserve {
+    #[serde(default)]
+    #[serde(with = "crate::config::serde::bitcoin_amount::sat_as_optional_unsigned_int")]
+    pub sat_per_vbyte: Option<bitcoin::Amount>,
+    pub vbyte_transaction_weight: Option<u64>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -205,12 +205,12 @@ mod tests {
 spread = 1000
 kraken_api_host = "https://api.kraken.com"
 
-[maker.btc_fee_to_reserve]
-sat_per_vbyte = 25
-vbyte_transaction_weight = 900
-
 [maker.fee_strategies.bitcoin]
 strategy = "bitcoind"
+
+[maker.fee_strategies.bitcoin.fees_to_reserve]
+sat_per_vbyte = 25
+vbyte_transaction_weight = 900
 
 [maker.fee_strategies.ethereum]
 service = "eth_gas_station"
@@ -247,13 +247,13 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                     max_sell_quantity: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
                 }),
                 spread: Some(Spread::new(1000).unwrap()),
-                btc_fee_to_reserve: Some(BtcFeesToReserve{ sat_per_vbyte: Some(bitcoin::Amount::from_sat(25)), vbyte_transaction_weight: Some(900) }),
                 kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
                 fee_strategies: Some(FeeStrategies {
                     bitcoin: Some(BitcoinFee {
                         strategy: Some(BitcoinFeeStrategy::Bitcoind),
                         sat_per_vbyte: None,
                         estimate_mode: None,
+                        fees_to_reserve: Some(BtcFeesToReserve{ sat_per_vbyte: Some(bitcoin::Amount::from_sat(25)), vbyte_transaction_weight: Some(900) })
                     }),
                     ethereum: Some(EthereumGasPrice{ service: EthereumGasPriceService::EthGasStation,
                     url:
@@ -309,19 +309,19 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                     max_sell_quantity: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
                 }),
                 spread: Some(Spread::new(1000).unwrap()),
-                btc_fee_to_reserve: Some(
-                    BtcFeesToReserve {
-                        sat_per_vbyte: Some(bitcoin::Amount::from_sat(34)),
-                        vbyte_transaction_weight: Some(850)
-                    }
-                ),
                 kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
                 fee_strategies: Some(FeeStrategies {
                     bitcoin: Some(BitcoinFee {
                         strategy: Some(BitcoinFeeStrategy::Bitcoind),
                         sat_per_vbyte: None,
                         estimate_mode: Some(EstimateMode::Conservative),
-                    }),
+                        fees_to_reserve:                 Some(
+                            BtcFeesToReserve {
+                        sat_per_vbyte: Some(bitcoin::Amount::from_sat(34)),
+                        vbyte_transaction_weight: Some(850)
+                    }
+                    ),
+                }),
                     ethereum: Some(EthereumGasPrice{ service: EthereumGasPriceService::EthGasStation,
                         url:
                         "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
@@ -363,13 +363,13 @@ kraken_api_host = "https://api.kraken.com/"
 [maker.btc_dai]
 max_buy_quantity = 1.23456
 max_sell_quantity = 1.23456
-
-[maker.btc_fee_to_reserve]
-sat_per_vbyte = 34
-vbyte_transaction_weight = 850
 [maker.fee_strategies.bitcoin]
 strategy = "bitcoind"
 estimate_mode = "conservative"
+
+[maker.fee_strategies.bitcoin.fees_to_reserve]
+sat_per_vbyte = 34
+vbyte_transaction_weight = 850
 
 [maker.fee_strategies.ethereum]
 service = "eth_gas_station"
@@ -591,14 +591,21 @@ local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
             r#"
             strategy = "bitcoind"
             estimate_mode = "unset"
+            [fees_to_reserve]
+            sat_per_vbyte = 34
+            vbyte_transaction_weight = 850
             "#,
             r#"
             strategy = "static"
             estimate_mode = "economical"
+            [fees_to_reserve]
+            sat_per_vbyte = 23
             "#,
             r#"
             sat_per_vbyte = 10
             estimate_mode = "conservative"
+            [fees_to_reserve]
+            vbyte_transaction_weight = 777
             "#,
         ];
 
@@ -607,21 +614,34 @@ local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
                 strategy: Some(BitcoinFeeStrategy::Static),
                 sat_per_vbyte: Some(bitcoin::Amount::from_sat(10)),
                 estimate_mode: None,
+                fees_to_reserve: None,
             },
             BitcoinFee {
                 strategy: Some(BitcoinFeeStrategy::Bitcoind),
                 sat_per_vbyte: None,
                 estimate_mode: Some(EstimateMode::Unset),
+                fees_to_reserve: Some(BtcFeesToReserve {
+                    sat_per_vbyte: Some(bitcoin::Amount::from_sat(34)),
+                    vbyte_transaction_weight: Some(850),
+                }),
             },
             BitcoinFee {
                 strategy: Some(BitcoinFeeStrategy::Static),
                 sat_per_vbyte: None,
                 estimate_mode: Some(EstimateMode::Economical),
+                fees_to_reserve: Some(BtcFeesToReserve {
+                    sat_per_vbyte: Some(bitcoin::Amount::from_sat(23)),
+                    vbyte_transaction_weight: None,
+                }),
             },
             BitcoinFee {
                 strategy: None,
                 sat_per_vbyte: Some(bitcoin::Amount::from_sat(10)),
                 estimate_mode: Some(EstimateMode::Conservative),
+                fees_to_reserve: Some(BtcFeesToReserve {
+                    sat_per_vbyte: None,
+                    vbyte_transaction_weight: Some(777),
+                }),
             },
         ];
 

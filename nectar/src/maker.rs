@@ -370,7 +370,6 @@ mod tests {
     fn published_sell_order_can_be_taken() {
         let strategy = strategy::AllIn::new(
             Default::default(),
-            btc(0.0),
             None,
             Some(btc(1.0)),
             Spread::static_stub(),
@@ -396,7 +395,6 @@ mod tests {
     fn published_buy_order_can_be_taken() {
         let strategy = strategy::AllIn::new(
             Default::default(),
-            btc(0.0),
             Some(btc(1.0)),
             None,
             Spread::static_stub(),
@@ -422,7 +420,6 @@ mod tests {
     fn new_buy_order_with_max_buy() {
         let strategy = strategy::AllIn::new(
             Default::default(),
-            btc(0.0),
             Some(btc(0.002)),
             None,
             Spread::static_stub(),
@@ -446,7 +443,6 @@ mod tests {
     fn new_buy_order() {
         let strategy = strategy::AllIn::new(
             Default::default(),
-            btc(0.0),
             None,
             None,
             Spread::static_stub(),

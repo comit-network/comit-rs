@@ -20,18 +20,18 @@ max_buy_quantity = 0.1
 # If absent, orders are capped by the available base balance.
 max_sell_quantity = 0.1
 
-[maker.btc_fee_to_reserve]
-# An estimation of the maximum network fee that we would expect to pay, used to ensure
-# we always have enough balance to execute an order we publish.
-sat_per_vbyte = 34
-# An estimation of the largest Bitcoin transaction we are likely to pay for.
-vbyte_transaction_weight = 850
-
 # Strategies used for Bitcoin fee handling.
 [maker.fee_strategies.bitcoin]
 # A static sat/byte value can be specified or you can relay on bitcoind's estimatesmartfee feature.
 strategy = "static"
 sat_per_vbyte = 12
+
+[maker.fee_strategies.bitcoin.fees_to_reserve]
+# An estimation of the maximum network fee that we would expect to pay, used to ensure
+# we always have enough balance to execute an order we publish.
+sat_per_vbyte = 34
+# An estimation of the largest Bitcoin transaction we are likely to pay for.
+vbyte_transaction_weight = 850
 
 # Strategies used for Ethereum gas price handling.
 [maker.fee_strategies.ethereum]

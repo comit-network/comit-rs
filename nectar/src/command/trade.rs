@@ -77,11 +77,7 @@ pub async fn trade(
     let bitcoin_connector = Arc::new(BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?);
     let ethereum_connector = Arc::new(Web3Connector::new(settings.ethereum.node_url.clone()));
 
-    let bitcoin_fee = bitcoin::Fee::new(
-        settings.maker.fee_strategies.bitcoin,
-        settings.maker.btc_fee_to_reserve.fee_per_tx(),
-        bitcoind_client,
-    );
+    let bitcoin_fee = bitcoin::Fee::new(settings.maker.fee_strategies.bitcoin, bitcoind_client);
 
     let ethereum_gas_price = ethereum::GasPrice::new(settings.maker.fee_strategies.ethereum);
 
@@ -138,7 +134,6 @@ async fn init_maker(
         .context("Could not get Dai balance")?;
 
     let btc_dai = settings.maker.btc_dai;
-    let max_btc_fee = settings.maker.btc_fee_to_reserve.fee_per_tx();
     let btc_fee_strategy = settings.maker.fee_strategies.bitcoin;
 
     let initial_rate = get_btc_dai_mid_market_rate(&settings.maker.kraken_api_host)
@@ -149,7 +144,6 @@ async fn init_maker(
 
     let strategy = strategy::AllIn::new(
         btc_fee_strategy,
-        max_btc_fee,
         btc_dai.max_buy_quantity,
         btc_dai.max_sell_quantity,
         spread,
@@ -314,7 +308,6 @@ mod tests {
             maker: settings::Maker {
                 btc_dai: Default::default(),
                 spread: StaticStub::static_stub(),
-                btc_fee_to_reserve: Default::default(),
                 fee_strategies: Default::default(),
                 kraken_api_host: Default::default(),
             },
