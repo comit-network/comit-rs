@@ -32,10 +32,10 @@ pub struct Bitcoind {
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct BtcDai {
     #[serde(default)]
-    #[serde(with = "crate::config::serde::bitcoin_amount::btc_as_optional_float")]
+    #[serde(with = "::bitcoin::util::amount::serde::as_btc::opt")]
     pub max_buy_quantity: Option<bitcoin::Amount>,
     #[serde(default)]
-    #[serde(with = "crate::config::serde::bitcoin_amount::btc_as_optional_float")]
+    #[serde(with = "::bitcoin::util::amount::serde::as_btc::opt")]
     pub max_sell_quantity: Option<bitcoin::Amount>,
 }
 

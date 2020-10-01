@@ -46,7 +46,7 @@ pub struct BitcoinFee {
     pub strategy: Option<BitcoinFeeStrategy>,
     /// The static value to use if the selected strategy is "static"
     #[serde(default)]
-    #[serde(with = "crate::config::serde::bitcoin_amount::sat_as_optional_unsigned_int")]
+    #[serde(with = "::bitcoin::util::amount::serde::as_sat::opt")]
     pub sat_per_vbyte: Option<bitcoin::Amount>,
     /// The estimate mode to use if the selected strategy is "bitcoind estimate
     /// smart fee"
@@ -64,7 +64,7 @@ pub enum BitcoinFeeStrategy {
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct BtcFeesToReserve {
     #[serde(default)]
-    #[serde(with = "crate::config::serde::bitcoin_amount::sat_as_optional_unsigned_int")]
+    #[serde(with = "::bitcoin::util::amount::serde::as_sat::opt")]
     pub sat_per_vbyte: Option<bitcoin::Amount>,
     pub vbyte_transaction_weight: Option<u64>,
 }
