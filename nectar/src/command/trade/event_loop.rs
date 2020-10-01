@@ -119,13 +119,13 @@ impl EventLoop {
             new_buy_order,
         }) = publish_order
         {
+            self.swarm.orderbook.clear_own_orders();
             self.swarm
                 .orderbook
                 .publish(new_sell_order.to_comit_order(self.maker.swap_protocol(Position::Sell)));
             self.swarm
                 .orderbook
                 .publish(new_buy_order.to_comit_order(self.maker.swap_protocol(Position::Buy)));
-            self.swarm.orderbook.clear_own_orders();
         }
 
         Ok(())
