@@ -153,7 +153,7 @@ async fn main() -> Result<()> {
             let bitcoind_client = bitcoin::Client::new(settings.bitcoin.bitcoind.node_url.clone());
             let bitcoin_fee = bitcoin::Fee::new(
                 settings.maker.fee_strategies.bitcoin,
-                settings.maker.maximum_possible_fee.bitcoin,
+                settings.maker.btc_fee_to_reserve.fee_per_tx(),
                 bitcoind_client,
             );
 

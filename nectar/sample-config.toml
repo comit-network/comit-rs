@@ -20,10 +20,12 @@ max_buy_quantity = 0.1
 # If absent, orders are capped by the available base balance.
 max_sell_quantity = 0.1
 
-[maker.maximum_possible_fee]
-# An estimation of the maximum fee that we would expect to pay, used to ensure we always have enough
-# balance to execute an order we publish.
-bitcoin = 0.00009275
+[maker.btc_fee_to_reserve]
+# An estimation of the maximum network fee that we would expect to pay, used to ensure
+# we always have enough balance to execute an order we publish.
+sat_per_vbyte = 34
+# An estimation of the largest Bitcoin transaction we are likely to pay for.
+vbyte_transaction_weight = 850
 
 # Strategies used for Bitcoin fee handling.
 [maker.fee_strategies.bitcoin]

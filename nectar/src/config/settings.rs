@@ -166,11 +166,9 @@ pub struct Maker {
     /// Spread to apply to the mid-market rate, format is permyriad. E.g. 5.20
     /// is 5.2% spread
     pub spread: Spread,
-    // TODO: Leave it here. Make it as a sat/vbyte fee
-    /// Maximum possible network fee to consider when calculating the available
-    /// balance. Fees are in the nominal native currency and per
-    /// transaction.
-    pub maximum_possible_fee: Fees,
+    /// Potential Bitcoin network fees to consider when calculating the
+    /// available balance.
+    pub btc_fee_to_reserve: BtcFeesToReserve,
     // TODO: Fees strategy can actually be moved out of maker as they are also used for withdrawal
     // for example. They are more to do with the execution than they are with the market making
     // strategy
@@ -297,9 +295,9 @@ impl Maker {
             spread: file
                 .spread
                 .unwrap_or_else(|| Spread::new(500).expect("500 is a valid spread value")),
-            maximum_possible_fee: file
-                .maximum_possible_fee
-                .map_or_else(Fees::default, Fees::from_file),
+            btc_fee_to_reserve: file
+                .btc_fee_to_reserve
+                .map_or_else(BtcFeesToReserve::default, BtcFeesToReserve::from),
             fee_strategies: file
                 .fee_strategies
                 .map_or_else(FeeStrategies::default, FeeStrategies::from),
@@ -315,7 +313,7 @@ impl Default for Maker {
         Self {
             btc_dai: BtcDai::default(),
             spread: Spread::new(500).expect("500 is a valid spread value"),
-            maximum_possible_fee: Fees::default(),
+            btc_fee_to_reserve: BtcFeesToReserve::default(),
             fee_strategies: FeeStrategies::default(),
             kraken_api_host: KrakenApiHost::default(),
         }
@@ -323,28 +321,43 @@ impl Default for Maker {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Fees {
-    pub bitcoin: bitcoin::Amount,
+pub struct BtcFeesToReserve {
+    pub sat_per_vbyte: bitcoin::Amount,
+    pub vbyte_transaction_weight: u64,
 }
 
-impl Fees {
-    fn from_file(file: file::MaxPossibleFee) -> Self {
+impl BtcFeesToReserve {
+    fn default_fee() -> bitcoin::Amount {
+        // 35 sat/vbyte is very generous (Looking at https://bitcoinfees.github.io/#1m)
+        bitcoin::Amount::from_sat(35)
+    }
+
+    fn default_transaction_weight() -> u64 {
+        // Blockchain contract returns 788 for funding transaction
+        1000
+    }
+
+    pub fn fee_per_tx(&self) -> bitcoin::Amount {
+        self.sat_per_vbyte * self.vbyte_transaction_weight
+    }
+}
+
+impl From<file::BtcFeesToReserve> for BtcFeesToReserve {
+    fn from(file: file::BtcFeesToReserve) -> Self {
         Self {
-            bitcoin: file.bitcoin.unwrap_or_else(Self::default_bitcoin_fee),
+            sat_per_vbyte: file.sat_per_vbyte.unwrap_or_else(Self::default_fee),
+            vbyte_transaction_weight: file
+                .vbyte_transaction_weight
+                .unwrap_or_else(Self::default_transaction_weight),
         }
     }
-
-    // ~265 vbytes (2 inputs 2 outputs segwit transaction)
-    // * 35 sat/vbytes (Looking at https://bitcoinfees.github.io/#1m)
-    fn default_bitcoin_fee() -> bitcoin::Amount {
-        bitcoin::Amount::from_sat(265 * 35)
-    }
 }
 
-impl Default for Fees {
+impl Default for BtcFeesToReserve {
     fn default() -> Self {
-        Fees {
-            bitcoin: Self::default_bitcoin_fee(),
+        Self {
+            sat_per_vbyte: Self::default_fee(),
+            vbyte_transaction_weight: Self::default_transaction_weight(),
         }
     }
 }
@@ -391,8 +404,9 @@ impl From<Maker> for file::Maker {
                 max_sell => Some(max_sell),
             },
             spread: Some(maker.spread),
-            maximum_possible_fee: Some(file::MaxPossibleFee {
-                bitcoin: Some(maker.maximum_possible_fee.bitcoin),
+            btc_fee_to_reserve: Some(file::BtcFeesToReserve {
+                sat_per_vbyte: Some(maker.btc_fee_to_reserve.sat_per_vbyte),
+                vbyte_transaction_weight: Some(maker.btc_fee_to_reserve.vbyte_transaction_weight),
             }),
             kraken_api_host: Some(maker.kraken_api_host.0),
             fee_strategies: Some(file::FeeStrategies {

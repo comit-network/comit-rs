@@ -149,8 +149,9 @@ mod tests {
                     max_sell_quantity: Some(bitcoin::Amount::from_btc(0.1).unwrap()),
                 }),
                 spread: Some(Spread::new(500).unwrap()),
-                maximum_possible_fee: Some(file::MaxPossibleFee {
-                    bitcoin: Some(bitcoin::Amount::from_btc(0.00009275).unwrap()),
+                btc_fee_to_reserve: Some(file::BtcFeesToReserve {
+                    sat_per_vbyte: Some(bitcoin::Amount::from_sat(34)),
+                    vbyte_transaction_weight: Some(850),
                 }),
                 fee_strategies: Some(file::FeeStrategies {
                     bitcoin: Some(file::BitcoinFee {

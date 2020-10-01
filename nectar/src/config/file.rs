@@ -29,17 +29,16 @@ pub struct Maker {
     pub spread: Option<Spread>,
     pub kraken_api_host: Option<Url>,
     pub btc_dai: Option<BtcDai>,
-    pub maximum_possible_fee: Option<MaxPossibleFee>,
+    pub btc_fee_to_reserve: Option<BtcFeesToReserve>,
     pub fee_strategies: Option<FeeStrategies>,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct MaxPossibleFee {
-    // TODO: This should be a sat/byte fee as the user would have no idea of the size of the COMIT
-    // transactions.
+pub struct BtcFeesToReserve {
     #[serde(default)]
-    #[serde(with = "crate::config::serde::bitcoin_amount::btc_as_optional_float")]
-    pub bitcoin: Option<bitcoin::Amount>,
+    #[serde(with = "crate::config::serde::bitcoin_amount::sat_as_optional_unsigned_int")]
+    pub sat_per_vbyte: Option<bitcoin::Amount>,
+    pub vbyte_transaction_weight: Option<u64>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -204,8 +203,11 @@ mod tests {
 [maker]
 # 1000 is 10.00% spread
 spread = 1000
-maximum_possible_fee = { bitcoin = 0.01 }
 kraken_api_host = "https://api.kraken.com"
+
+[maker.btc_fee_to_reserve]
+sat_per_vbyte = 25
+vbyte_transaction_weight = 900
 
 [maker.fee_strategies.bitcoin]
 strategy = "bitcoind"
@@ -245,9 +247,7 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                     max_sell_quantity: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
                 }),
                 spread: Some(Spread::new(1000).unwrap()),
-                maximum_possible_fee: Some(MaxPossibleFee {
-                    bitcoin: Some(bitcoin::Amount::from_btc(0.01).unwrap()),
-                }),
+                btc_fee_to_reserve: Some(BtcFeesToReserve{ sat_per_vbyte: Some(bitcoin::Amount::from_sat(25)), vbyte_transaction_weight: Some(900) }),
                 kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
                 fee_strategies: Some(FeeStrategies {
                     bitcoin: Some(BitcoinFee {
@@ -309,9 +309,12 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                     max_sell_quantity: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
                 }),
                 spread: Some(Spread::new(1000).unwrap()),
-                maximum_possible_fee: Some(MaxPossibleFee {
-                    bitcoin: Some(bitcoin::Amount::from_btc(0.01).unwrap()),
-                }),
+                btc_fee_to_reserve: Some(
+                    BtcFeesToReserve {
+                        sat_per_vbyte: Some(bitcoin::Amount::from_sat(34)),
+                        vbyte_transaction_weight: Some(850)
+                    }
+                ),
                 kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
                 fee_strategies: Some(FeeStrategies {
                     bitcoin: Some(BitcoinFee {
@@ -361,8 +364,9 @@ kraken_api_host = "https://api.kraken.com/"
 max_buy_quantity = 1.23456
 max_sell_quantity = 1.23456
 
-[maker.maximum_possible_fee]
-bitcoin = 0.01
+[maker.btc_fee_to_reserve]
+sat_per_vbyte = 34
+vbyte_transaction_weight = 850
 [maker.fee_strategies.bitcoin]
 strategy = "bitcoind"
 estimate_mode = "conservative"
