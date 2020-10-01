@@ -395,8 +395,23 @@ impl From<Maker> for file::Maker {
                 bitcoin: Some(maker.maximum_possible_fee.bitcoin),
             }),
             kraken_api_host: Some(maker.kraken_api_host.0),
-            // TODO
-            fee_strategies: None,
+            fee_strategies: Some(file::FeeStrategies {
+                bitcoin: Some(match maker.fee_strategies.bitcoin {
+                    BitcoinFeeStrategy::SatsPerByte(sat_per_byte) => file::BitcoinFee {
+                        strategy: Some(file::BitcoinFeeStrategy::Static),
+                        sats_per_byte: Some(sat_per_byte),
+                        estimate_mode: None,
+                    },
+                    BitcoinFeeStrategy::BitcoindEstimateSmartfee(estimate_mode) => {
+                        file::BitcoinFee {
+                            strategy: Some(file::BitcoinFeeStrategy::Bitcoind),
+                            sats_per_byte: None,
+                            estimate_mode: Some(estimate_mode),
+                        }
+                    }
+                }),
+                ethereum: None,
+            }),
         }
     }
 }
