@@ -242,7 +242,7 @@ impl Params {
         fund_location: htlc_location::Bitcoin,
         transient_refund_sk: SecretKey,
         refund_address: Address,
-        fee_rate_per_vbyte: asset::Bitcoin,
+        vbyte_rate: asset::Bitcoin,
     ) -> anyhow::Result<BroadcastSignedTransaction>
     where
         C: Signing,
@@ -252,7 +252,7 @@ impl Params {
             fund_amount,
             fund_location,
             refund_address,
-            fee_rate_per_vbyte,
+            vbyte_rate,
             |htlc| htlc.unlock_after_timeout(&secp, transient_refund_sk),
         )
     }
@@ -267,7 +267,7 @@ impl Params {
         transient_redeem_sk: SecretKey,
         redeem_address: Address,
         secret: Secret,
-        fee_rate_per_vbyte: asset::Bitcoin,
+        vbyte_rate: asset::Bitcoin,
     ) -> anyhow::Result<BroadcastSignedTransaction>
     where
         C: Signing,
@@ -277,7 +277,7 @@ impl Params {
             fund_amount,
             fund_location,
             redeem_address,
-            fee_rate_per_vbyte,
+            vbyte_rate,
             |htlc| htlc.unlock_with_secret(secp, transient_redeem_sk, secret.into_raw_secret()),
         )
     }
@@ -288,7 +288,7 @@ impl Params {
         fund_amount: asset::Bitcoin,
         fund_location: htlc_location::Bitcoin,
         spend_address: Address,
-        fee_rate_per_vbyte: asset::Bitcoin,
+        vbyte_rate: asset::Bitcoin,
         unlock_fn: impl Fn(Htlc) -> UnlockParameters,
     ) -> anyhow::Result<BroadcastSignedTransaction>
     where
@@ -308,7 +308,7 @@ impl Params {
 
             spend_output.spend_to(spend_address)
         };
-        let transaction = sign(&secp, primed_transaction, fee_rate_per_vbyte)?;
+        let transaction = sign(&secp, primed_transaction, vbyte_rate)?;
 
         Ok(BroadcastSignedTransaction {
             transaction,
