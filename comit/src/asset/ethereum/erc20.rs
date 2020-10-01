@@ -134,6 +134,12 @@ impl TryFromWei<BigUint> for Erc20Quantity {
     }
 }
 
+impl From<Erc20Quantity> for BigUint {
+    fn from(quantity: Erc20Quantity) -> Self {
+        quantity.0
+    }
+}
+
 impl<'de> Deserialize<'de> for Erc20Quantity {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where

@@ -223,11 +223,9 @@ impl From<Erc20> for Amount {
     }
 }
 
-// todo: this should be a simple conversion from the internal BigUint in
-// Erc20Quantity
 impl From<Erc20Quantity> for Amount {
     fn from(erc20_quantity: Erc20Quantity) -> Self {
-        Amount(BigUint::from_bytes_le(&erc20_quantity.to_bytes()))
+        Amount(erc20_quantity.into())
     }
 }
 
