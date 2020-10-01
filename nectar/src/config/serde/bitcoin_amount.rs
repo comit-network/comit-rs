@@ -141,7 +141,7 @@ pub mod sat_as_optional_unsigned_int {
         S: Serializer,
     {
         match value {
-            Some(value) => serializer.serialize_f64(value.as_btc()),
+            Some(value) => serializer.serialize_u64(value.as_sat()),
             None => serializer.serialize_none(),
         }
     }
