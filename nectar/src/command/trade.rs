@@ -157,7 +157,6 @@ async fn init_maker(
         strategy,
         settings.bitcoin.network,
         settings.ethereum.chain,
-        // todo: get from config
         Role::Bob,
         network,
     ))
