@@ -124,6 +124,13 @@ jobs:
           name: cnd-${{ matrix.os }}
           path: target/debug/cnd
 
+      - name: Upload nectar-${{ matrix.os }} archive that contains the nectar binary
+        if: matrix.e2e
+        uses: actions/upload-artifact@v1
+        with:
+          name: nectar-${{ matrix.os }}
+          path: target/debug/nectar
+
       - name: Install NodeJS 14.x
         if: matrix.e2e
         uses: actions/setup-node@v1
