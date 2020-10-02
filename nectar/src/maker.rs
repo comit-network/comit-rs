@@ -71,7 +71,7 @@ impl Maker {
     pub fn update_bitcoin_balance(
         &mut self,
         balance: bitcoin::Amount,
-    ) -> anyhow::Result<Option<BtcDaiOrder>> {
+    ) -> anyhow::Result<Option<PublishOrders>> {
         // if we had a balance and the balance did not change => no new orders
         if let Some(previous_balance) = self.btc_balance {
             if previous_balance == balance {
@@ -80,9 +80,11 @@ impl Maker {
         }
 
         self.btc_balance = Some(balance);
-        let order = self.new_sell_order()?;
 
-        Ok(Some(order))
+        Ok(Some(PublishOrders {
+            new_sell_order: self.new_sell_order()?,
+            new_buy_order: self.new_buy_order()?,
+        }))
     }
 
     pub fn invalidate_bitcoin_balance(&mut self) {
@@ -92,7 +94,7 @@ impl Maker {
     pub fn update_dai_balance(
         &mut self,
         balance: dai::Amount,
-    ) -> anyhow::Result<Option<BtcDaiOrder>> {
+    ) -> anyhow::Result<Option<PublishOrders>> {
         // if we had a balance and the balance did not change => no new orders
         if let Some(previous_balance) = self.dai_balance.clone() {
             if previous_balance == balance {
@@ -101,9 +103,11 @@ impl Maker {
         }
 
         self.dai_balance = Some(balance);
-        let order = self.new_buy_order()?;
 
-        Ok(Some(order))
+        Ok(Some(PublishOrders {
+            new_sell_order: self.new_sell_order()?,
+            new_buy_order: self.new_buy_order()?,
+        }))
     }
 
     pub fn invalidate_dai_balance(&mut self) {
@@ -328,33 +332,38 @@ mod tests {
     }
 
     #[test]
-    fn new_sell_order_if_btc_balance_change() {
+    fn new_orders_if_btc_balance_change() {
         let mut maker = Maker {
             btc_balance: some_btc(1.0),
+            dai_balance: some_dai(1.0),
             mid_market_rate: some_rate(1.0),
             ..StaticStub::static_stub()
         };
         let new_balance = btc(0.5);
 
-        let new_sell_order = maker.update_bitcoin_balance(new_balance).unwrap().unwrap();
-        assert_eq!(new_sell_order.position, Position::Sell);
+        maker
+            .update_bitcoin_balance(new_balance)
+            .unwrap()
+            .expect("to publish new orders if btc balance changes");
+
         assert_eq!(maker.btc_balance, Some(new_balance))
     }
 
     #[test]
-    fn new_buy_order_if_dai_balance_change() {
+    fn new_orders_if_dai_balance_change() {
         let mut maker = Maker {
+            btc_balance: some_btc(1.0),
             dai_balance: some_dai(1.0),
             mid_market_rate: some_rate(1.0),
             ..StaticStub::static_stub()
         };
         let new_balance = dai(0.5);
 
-        let new_buy_order = maker
+        maker
             .update_dai_balance(new_balance.clone())
             .unwrap()
-            .unwrap();
-        assert_eq!(new_buy_order.position, Position::Buy);
+            .expect("to publish new orders if dai balance changes");
+
         assert_eq!(maker.dai_balance, Some(new_balance))
     }
 

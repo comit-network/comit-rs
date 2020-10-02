@@ -128,21 +128,31 @@ impl EventLoop {
     }
 
     fn handle_btc_balance_update(&mut self, new_btc_balance: bitcoin::Amount) -> Result<()> {
-        if let Some(new_sell_order) = self.maker.update_bitcoin_balance(new_btc_balance)? {
+        if let Some(PublishOrders {
+            new_sell_order,
+            new_buy_order,
+        }) = self.maker.update_bitcoin_balance(new_btc_balance)?
+        {
             let orderbook = &mut self.swarm.orderbook;
 
             orderbook.clear_own_orders();
             orderbook.publish(new_sell_order);
+            orderbook.publish(new_buy_order);
         }
 
         Ok(())
     }
 
     fn handle_dai_balance_update(&mut self, new_dai_balance: dai::Amount) -> Result<()> {
-        if let Some(new_buy_order) = self.maker.update_dai_balance(new_dai_balance)? {
+        if let Some(PublishOrders {
+            new_sell_order,
+            new_buy_order,
+        }) = self.maker.update_dai_balance(new_dai_balance)?
+        {
             let orderbook = &mut self.swarm.orderbook;
 
             orderbook.clear_own_orders();
+            orderbook.publish(new_sell_order);
             orderbook.publish(new_buy_order);
         }
 
