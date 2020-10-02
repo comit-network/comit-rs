@@ -144,13 +144,6 @@ impl Maker {
         Ok(order)
     }
 
-    pub async fn new_order(&self, position: Position) -> anyhow::Result<BtcDaiOrder> {
-        match position {
-            Position::Buy => self.new_buy_order(),
-            Position::Sell => self.new_sell_order(),
-        }
-    }
-
     pub fn process_taken_order(
         &mut self,
         order: BtcDaiOrder,
