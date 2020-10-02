@@ -84,7 +84,7 @@ pub struct Config {
 
 impl Config {
     /// Construct a config object suitable for a herc20-hbit swap.
-    pub const fn herc20_hbit(network: Network) -> Self {
+    pub fn herc20_hbit(network: Network) -> Self {
         Config {
             protocol: Protocol::Herc20Hbit,
             alpha_required_confirmations: ethereum_confirmations(network),
@@ -103,7 +103,7 @@ impl Config {
     }
 
     /// Construct a config object suitable for a hbit-herc20 swap.
-    pub const fn hbit_herc20(network: Network) -> Self {
+    pub fn hbit_herc20(network: Network) -> Self {
         Config {
             protocol: Protocol::HbitHerc20,
             alpha_required_confirmations: bitcoin_confirmations(network),
@@ -326,42 +326,42 @@ pub enum Protocol {
     HbitHerc20,
 }
 
-const fn bitcoin_blocktime(network: Network) -> u16 {
+fn bitcoin_blocktime(network: Network) -> u16 {
     match network {
         Network::Main | Network::Test => main::BITCOIN_BLOCK_TIME_SECS,
         Network::Dev => dev::BITCOIN_BLOCK_TIME_SECS,
     }
 }
 
-const fn bitcoin_confirmations(network: Network) -> u8 {
+fn bitcoin_confirmations(network: Network) -> u8 {
     match network {
         Network::Main | Network::Test => main::BITCOIN_CONFIRMATIONS,
         Network::Dev => dev::BITCOIN_CONFIRMATIONS,
     }
 }
 
-const fn ethereum_blocktime(network: Network) -> u16 {
+fn ethereum_blocktime(network: Network) -> u16 {
     match network {
         Network::Main | Network::Test => main::ETHEREUM_BLOCK_TIME_SECS,
         Network::Dev => dev::ETHEREUM_BLOCK_TIME_SECS,
     }
 }
 
-const fn ethereum_confirmations(network: Network) -> u8 {
+fn ethereum_confirmations(network: Network) -> u8 {
     match network {
         Network::Main | Network::Test => main::ETHEREUM_CONFIRMATIONS,
         Network::Dev => dev::ETHEREUM_CONFIRMATIONS,
     }
 }
 
-const fn act_in_software(network: Network) -> u32 {
+fn act_in_software(network: Network) -> u32 {
     match network {
         Network::Main | Network::Test => main::ACT_IN_SOFTWARE_SECS,
         Network::Dev => dev::ACT_IN_SOFTWARE_SECS,
     }
 }
 
-const fn act_with_user_interaction(network: Network) -> u32 {
+fn act_with_user_interaction(network: Network) -> u32 {
     match network {
         Network::Main | Network::Test => main::ACT_WITH_USER_INTERACTION_SECS,
         Network::Dev => dev::ACT_WITH_USER_INTERACTION_SECS,
