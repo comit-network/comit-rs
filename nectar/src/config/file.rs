@@ -36,7 +36,7 @@ pub struct Bitcoin {
     pub network: ledger::Bitcoin,
     pub bitcoind: Option<Bitcoind>,
     #[serde(default)]
-    pub fees: Option<BitcoinFee>,
+    pub fees: Option<BitcoinFees>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -51,7 +51,7 @@ pub struct Ethereum {
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct BitcoinFee {
+pub struct BitcoinFees {
     /// Select the strategy to use to set Bitcoin fees
     pub strategy: Option<BitcoinFeeStrategy>,
     /// The static value to use if the selected strategy is "static"
@@ -254,7 +254,7 @@ url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
                 bitcoind: Some(Bitcoind {
                     node_url: "http://localhost:18443".parse().unwrap(),
                 }),
-                fees: Some(BitcoinFee {
+                fees: Some(BitcoinFees {
                     strategy: Some(BitcoinFeeStrategy::Bitcoind),
                     sat_per_vbyte: None,
                     estimate_mode: None,
@@ -314,7 +314,7 @@ url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
                 bitcoind: Some(Bitcoind {
                     node_url: "http://localhost:18443".parse().unwrap(),
                 }),
-                fees: Some(BitcoinFee {
+                fees: Some(BitcoinFees {
                     strategy: Some(BitcoinFeeStrategy::Bitcoind),
                     sat_per_vbyte: None,
                     estimate_mode: Some(EstimateMode::Conservative),
@@ -446,7 +446,7 @@ url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:18443").unwrap(),
                 }),
-                fees: Some(BitcoinFee {
+                fees: Some(BitcoinFees {
                     strategy: Some(BitcoinFeeStrategy::Bitcoind),
                     sat_per_vbyte: Some(bitcoin::Amount::from_sat(12)),
                     estimate_mode: Some(EstimateMode::Unset),
@@ -612,25 +612,25 @@ url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
         ];
 
         let expected = vec![
-            BitcoinFee {
+            BitcoinFees {
                 strategy: Some(BitcoinFeeStrategy::Static),
                 sat_per_vbyte: Some(bitcoin::Amount::from_sat(10)),
                 estimate_mode: None,
                 max_sat_per_vbyte: None,
             },
-            BitcoinFee {
+            BitcoinFees {
                 strategy: Some(BitcoinFeeStrategy::Bitcoind),
                 sat_per_vbyte: None,
                 estimate_mode: Some(EstimateMode::Unset),
                 max_sat_per_vbyte: Some(bitcoin::Amount::from_sat(34)),
             },
-            BitcoinFee {
+            BitcoinFees {
                 strategy: Some(BitcoinFeeStrategy::Bitcoind),
                 sat_per_vbyte: None,
                 estimate_mode: None,
                 max_sat_per_vbyte: Some(bitcoin::Amount::from_sat(50)),
             },
-            BitcoinFee {
+            BitcoinFees {
                 strategy: Some(BitcoinFeeStrategy::Bitcoind),
                 sat_per_vbyte: None,
                 estimate_mode: Some(EstimateMode::Economical),
@@ -641,7 +641,7 @@ url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
         let actual = file_contents
             .into_iter()
             .map(toml::from_str)
-            .collect::<Result<Vec<BitcoinFee>, toml::de::Error>>()
+            .collect::<Result<Vec<BitcoinFees>, toml::de::Error>>()
             .unwrap();
 
         assert_eq!(actual, expected);

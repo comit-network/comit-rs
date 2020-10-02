@@ -25,7 +25,7 @@ pub struct Settings {
 pub struct Bitcoin {
     pub network: ledger::Bitcoin,
     pub bitcoind: Bitcoind,
-    pub fees: BitcoinFeeStrategy,
+    pub fees: BitcoinFees,
 }
 
 impl Bitcoin {
@@ -54,7 +54,7 @@ impl Bitcoin {
         let bitcoind = bitcoin.bitcoind.unwrap_or_else(|| Bitcoind::new(network));
         let fees = bitcoin
             .fees
-            .map_or_else(BitcoinFeeStrategy::default, BitcoinFeeStrategy::from);
+            .map_or_else(BitcoinFees::default, BitcoinFees::from);
 
         Ok(Bitcoin {
             network,
@@ -96,7 +96,7 @@ impl From<Bitcoin> for file::Bitcoin {
 pub struct Ethereum {
     pub node_url: Url,
     pub chain: ethereum::Chain,
-    pub gas_price: EthereumGasPriceStrategy,
+    pub gas_price: EthereumGasPrice,
 }
 
 impl Ethereum {
@@ -217,7 +217,7 @@ impl Default for KrakenApiHost {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum BitcoinFeeStrategy {
+pub enum BitcoinFees {
     SatsPerByte(bitcoin::Amount),
     BitcoindEstimateSmartfee {
         mode: EstimateMode,
@@ -225,11 +225,11 @@ pub enum BitcoinFeeStrategy {
     },
 }
 
-impl BitcoinFeeStrategy {
+impl BitcoinFees {
     pub fn max_tx_fee(&self) -> bitcoin::Amount {
         let rate_per_byte = match self {
-            BitcoinFeeStrategy::SatsPerByte(fee) => fee,
-            BitcoinFeeStrategy::BitcoindEstimateSmartfee {
+            BitcoinFees::SatsPerByte(fee) => fee,
+            BitcoinFees::BitcoindEstimateSmartfee {
                 max_sat_per_vbyte, ..
             } => max_sat_per_vbyte,
         };
@@ -246,7 +246,7 @@ impl BitcoinFeeStrategy {
 const DEFAULT_BITCOIN_STATIC_FEE_SAT: u64 = 10;
 
 #[cfg(test)]
-impl crate::StaticStub for BitcoinFeeStrategy {
+impl crate::StaticStub for BitcoinFees {
     fn static_stub() -> Self {
         Self::SatsPerByte(bitcoin::Amount::ZERO)
     }
@@ -254,8 +254,8 @@ impl crate::StaticStub for BitcoinFeeStrategy {
 
 /// Defaults to static fee mode
 /// Default value for static mode is 10 sat per byte
-impl From<file::BitcoinFee> for BitcoinFeeStrategy {
-    fn from(file: file::BitcoinFee) -> Self {
+impl From<file::BitcoinFees> for BitcoinFees {
+    fn from(file: file::BitcoinFees) -> Self {
         file.strategy
             .map_or_else(Default::default, |strategy| match strategy {
                 file::BitcoinFeeStrategy::Static => {
@@ -271,22 +271,22 @@ impl From<file::BitcoinFee> for BitcoinFeeStrategy {
     }
 }
 
-impl Default for BitcoinFeeStrategy {
+impl Default for BitcoinFees {
     fn default() -> Self {
         Self::SatsPerByte(bitcoin::Amount::from_sat(DEFAULT_BITCOIN_STATIC_FEE_SAT))
     }
 }
 
-impl From<BitcoinFeeStrategy> for file::BitcoinFee {
-    fn from(settings: BitcoinFeeStrategy) -> Self {
+impl From<BitcoinFees> for file::BitcoinFees {
+    fn from(settings: BitcoinFees) -> Self {
         match settings {
-            BitcoinFeeStrategy::SatsPerByte(fee) => Self {
+            BitcoinFees::SatsPerByte(fee) => Self {
                 strategy: Some(file::BitcoinFeeStrategy::Static),
                 sat_per_vbyte: Some(fee),
                 estimate_mode: None,
                 max_sat_per_vbyte: None,
             },
-            BitcoinFeeStrategy::BitcoindEstimateSmartfee {
+            BitcoinFees::BitcoindEstimateSmartfee {
                 mode,
                 max_sat_per_vbyte,
             } => Self {
@@ -306,12 +306,12 @@ static DEFAULT_ETH_GAS_STATION_URL: Lazy<url::Url> = Lazy::new(|| {
 });
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum EthereumGasPriceStrategy {
+pub enum EthereumGasPrice {
     Geth(url::Url),
     EthGasStation(url::Url),
 }
 
-impl From<file::EthereumGasPrice> for EthereumGasPriceStrategy {
+impl From<file::EthereumGasPrice> for EthereumGasPrice {
     fn from(file: file::EthereumGasPrice) -> Self {
         match file.service {
             EthereumGasPriceService::Geth => Self::Geth(file.url),
@@ -320,14 +320,14 @@ impl From<file::EthereumGasPrice> for EthereumGasPriceStrategy {
     }
 }
 
-impl From<EthereumGasPriceStrategy> for file::EthereumGasPrice {
-    fn from(settings: EthereumGasPriceStrategy) -> Self {
+impl From<EthereumGasPrice> for file::EthereumGasPrice {
+    fn from(settings: EthereumGasPrice) -> Self {
         match settings {
-            EthereumGasPriceStrategy::Geth(url) => Self {
+            EthereumGasPrice::Geth(url) => Self {
                 service: EthereumGasPriceService::Geth,
                 url,
             },
-            EthereumGasPriceStrategy::EthGasStation(url) => Self {
+            EthereumGasPrice::EthGasStation(url) => Self {
                 service: EthereumGasPriceService::EthGasStation,
                 url,
             },
@@ -335,7 +335,7 @@ impl From<EthereumGasPriceStrategy> for file::EthereumGasPrice {
     }
 }
 
-impl Default for EthereumGasPriceStrategy {
+impl Default for EthereumGasPrice {
     fn default() -> Self {
         Self::EthGasStation(DEFAULT_ETH_GAS_STATION_URL.clone())
     }
@@ -526,7 +526,7 @@ mod tests {
                 bitcoind: Bitcoind {
                     node_url: "http://localhost:8332".parse().unwrap(),
                 },
-                fees: BitcoinFeeStrategy::SatsPerByte(bitcoin::Amount::from_sat(10)),
+                fees: BitcoinFees::SatsPerByte(bitcoin::Amount::from_sat(10)),
             })
     }
 
@@ -575,9 +575,7 @@ mod tests {
             .is_equal_to(Ethereum {
                 node_url: "http://localhost:8545".parse().unwrap(),
                 chain: ethereum::Chain::Mainnet,
-                gas_price: EthereumGasPriceStrategy::EthGasStation(
-                    DEFAULT_ETH_GAS_STATION_URL.clone(),
-                ),
+                gas_price: EthereumGasPrice::EthGasStation(DEFAULT_ETH_GAS_STATION_URL.clone()),
             })
     }
 }

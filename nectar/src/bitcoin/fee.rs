@@ -5,14 +5,14 @@ const ESTIMATE_FEE_TARGET: u32 = 3;
 
 #[derive(Clone, Debug)]
 pub struct Fee {
-    config: config::BitcoinFeeStrategy,
+    config: config::BitcoinFees,
     client: bitcoin::Client,
 }
 
 impl Fee {
     // TODO: Improve this API, the client is not needed
     // if we use the static fee
-    pub fn new(config: config::BitcoinFeeStrategy, client: bitcoin::Client) -> Self {
+    pub fn new(config: config::BitcoinFees, client: bitcoin::Client) -> Self {
         Self { config, client }
     }
 
@@ -22,7 +22,7 @@ impl Fee {
     }
 
     pub async fn vbyte_rate(&self) -> Result<Amount> {
-        use crate::config::BitcoinFeeStrategy::*;
+        use crate::config::BitcoinFees::*;
         match self.config {
             SatsPerByte(fee) => Ok(fee),
             BitcoindEstimateSmartfee { mode, .. } => {

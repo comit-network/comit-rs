@@ -167,7 +167,7 @@ mod tests {
                 bitcoind: Some(Bitcoind {
                     node_url: "http://localhost:18443/".parse().unwrap(),
                 }),
-                fees: Some(file::BitcoinFee {
+                fees: Some(file::BitcoinFees {
                     strategy: Some(file::BitcoinFeeStrategy::Static),
                     sat_per_vbyte: Some(bitcoin::Amount::from_sat(12)),
                     estimate_mode: None,
