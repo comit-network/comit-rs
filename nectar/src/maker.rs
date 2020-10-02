@@ -1,10 +1,10 @@
 use crate::{
     bitcoin,
     ethereum::{self, dai},
-    order::{BtcDaiOrderForm, Symbol},
+    order::Symbol,
     MidMarketRate,
 };
-use comit::{ledger, order::SwapProtocol, Position, Role};
+use comit::{ledger, order::SwapProtocol, BtcDaiOrder, Position, Role};
 
 pub mod strategy;
 
@@ -71,7 +71,7 @@ impl Maker {
     pub fn update_bitcoin_balance(
         &mut self,
         balance: bitcoin::Amount,
-    ) -> anyhow::Result<Option<BtcDaiOrderForm>> {
+    ) -> anyhow::Result<Option<BtcDaiOrder>> {
         // if we had a balance and the balance did not change => no new orders
         if let Some(previous_balance) = self.btc_balance {
             if previous_balance == balance {
@@ -81,6 +81,7 @@ impl Maker {
 
         self.btc_balance = Some(balance);
         let order = self.new_sell_order()?;
+
         Ok(Some(order))
     }
 
@@ -91,7 +92,7 @@ impl Maker {
     pub fn update_dai_balance(
         &mut self,
         balance: dai::Amount,
-    ) -> anyhow::Result<Option<BtcDaiOrderForm>> {
+    ) -> anyhow::Result<Option<BtcDaiOrder>> {
         // if we had a balance and the balance did not change => no new orders
         if let Some(previous_balance) = self.dai_balance.clone() {
             if previous_balance == balance {
@@ -101,6 +102,7 @@ impl Maker {
 
         self.dai_balance = Some(balance);
         let order = self.new_buy_order()?;
+
         Ok(Some(order))
     }
 
@@ -112,27 +114,35 @@ impl Maker {
         SwapProtocol::new(self.role, position, self.comit_network)
     }
 
-    pub fn new_sell_order(&self) -> anyhow::Result<BtcDaiOrderForm> {
+    pub fn new_sell_order(&self) -> anyhow::Result<BtcDaiOrder> {
         match (self.mid_market_rate, self.btc_balance) {
             (Some(mid_market_rate), Some(btc_balance)) => {
-                self.strategy.new_sell(btc_balance, mid_market_rate.into())
+                let form = self
+                    .strategy
+                    .new_sell(btc_balance, mid_market_rate.into())?;
+                let order = form.to_comit_order(self.swap_protocol(Position::Sell));
+
+                Ok(order)
             }
             (None, _) => anyhow::bail!(RateNotAvailable(Position::Sell)),
             (_, None) => anyhow::bail!(BalanceNotAvailable(Symbol::Btc)),
         }
     }
 
-    pub fn new_buy_order(&self) -> anyhow::Result<BtcDaiOrderForm> {
+    pub fn new_buy_order(&self) -> anyhow::Result<BtcDaiOrder> {
         match (self.mid_market_rate, self.dai_balance.clone()) {
             (Some(mid_market_rate), Some(dai_balance)) => {
-                self.strategy.new_buy(dai_balance, mid_market_rate.into())
+                let form = self.strategy.new_buy(dai_balance, mid_market_rate.into())?;
+                let order = form.to_comit_order(self.swap_protocol(Position::Buy));
+
+                Ok(order)
             }
             (None, _) => anyhow::bail!(RateNotAvailable(Position::Buy)),
             (_, None) => anyhow::bail!(BalanceNotAvailable(Symbol::Dai)),
         }
     }
 
-    pub async fn new_order(&self, position: Position) -> anyhow::Result<BtcDaiOrderForm> {
+    pub async fn new_order(&self, position: Position) -> anyhow::Result<BtcDaiOrder> {
         match position {
             Position::Buy => self.new_buy_order(),
             Position::Sell => self.new_sell_order(),
@@ -141,7 +151,7 @@ impl Maker {
 
     pub fn process_taken_order(
         &mut self,
-        order: BtcDaiOrderForm,
+        order: BtcDaiOrder,
     ) -> anyhow::Result<TakeRequestDecision> {
         let current_mid_market_rate = match self.mid_market_rate {
             None => anyhow::bail!(RateNotAvailable(order.position)),
@@ -176,8 +186,8 @@ pub enum TakeRequestDecision {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PublishOrders {
-    pub new_sell_order: BtcDaiOrderForm,
-    pub new_buy_order: BtcDaiOrderForm,
+    pub new_sell_order: BtcDaiOrder,
+    pub new_buy_order: BtcDaiOrder,
 }
 
 #[derive(Debug, Copy, Clone, thiserror::Error)]
@@ -195,7 +205,7 @@ mod tests {
         bitcoin,
         bitcoin::amount::{btc, some_btc},
         ethereum::dai::{dai, some_dai},
-        order::{btc_dai_order_form, BtcDaiOrderForm},
+        order::btc_dai_order,
         rate::rate,
         MidMarketRate, Rate, Spread, StaticStub,
     };
@@ -227,7 +237,7 @@ mod tests {
             ..StaticStub::static_stub()
         };
 
-        let taken_order = BtcDaiOrderForm {
+        let taken_order = BtcDaiOrder {
             ..StaticStub::static_stub()
         };
 
@@ -248,7 +258,7 @@ mod tests {
             ..StaticStub::static_stub()
         };
 
-        let taken_order = btc_dai_order_form(Position::Sell, btc(1.0), rate(9000.0));
+        let taken_order = btc_dai_order(Position::Sell, btc(1.0), rate(9000.0));
 
         let result = maker.process_taken_order(taken_order).unwrap();
 
@@ -262,7 +272,7 @@ mod tests {
             ..StaticStub::static_stub()
         };
 
-        let taken_order = btc_dai_order_form(Position::Buy, btc(1.0), rate(11000.0));
+        let taken_order = btc_dai_order(Position::Buy, btc(1.0), rate(11000.0));
 
         let result = maker.process_taken_order(taken_order).unwrap();
 

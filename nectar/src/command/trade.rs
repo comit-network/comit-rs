@@ -15,7 +15,7 @@ use crate::{
 use anyhow::Context;
 use comit::{
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
-    Position, Role,
+    Role,
 };
 use futures::{channel::mpsc, Future, SinkExt};
 use futures_timer::Delay;
@@ -58,12 +58,8 @@ pub async fn trade(
         .new_buy_order()
         .context("Could not generate buy order")?;
 
-    swarm
-        .orderbook
-        .publish(initial_sell_order.to_comit_order(maker.swap_protocol(Position::Sell)));
-    swarm
-        .orderbook
-        .publish(initial_buy_order.to_comit_order(maker.swap_protocol(Position::Buy)));
+    swarm.orderbook.publish(initial_sell_order);
+    swarm.orderbook.publish(initial_buy_order);
 
     let update_interval = Duration::from_secs(15u64);
 

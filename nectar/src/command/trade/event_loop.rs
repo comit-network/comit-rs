@@ -5,7 +5,6 @@ use crate::{
     history::History,
     maker::{PublishOrders, TakeRequestDecision},
     network::{self, ActivePeer, SetupSwapContext, Swarm},
-    order::BtcDaiOrderForm,
     swap::{hbit, Database, SwapExecutor, SwapKind, SwapParams},
     Maker, MidMarketRate, SwapId,
 };
@@ -18,7 +17,6 @@ use comit::{
     },
     order::SwapProtocol,
     orderpool::Match,
-    Position,
 };
 use futures::{channel::mpsc::Receiver, FutureExt, StreamExt};
 use std::sync::Arc;
@@ -119,13 +117,11 @@ impl EventLoop {
             new_buy_order,
         }) = publish_order
         {
-            self.swarm.orderbook.clear_own_orders();
-            self.swarm
-                .orderbook
-                .publish(new_sell_order.to_comit_order(self.maker.swap_protocol(Position::Sell)));
-            self.swarm
-                .orderbook
-                .publish(new_buy_order.to_comit_order(self.maker.swap_protocol(Position::Buy)));
+            let orderbook = &mut self.swarm.orderbook;
+
+            orderbook.clear_own_orders();
+            orderbook.publish(new_sell_order);
+            orderbook.publish(new_buy_order);
         }
 
         Ok(())
@@ -133,9 +129,10 @@ impl EventLoop {
 
     fn handle_btc_balance_update(&mut self, new_btc_balance: bitcoin::Amount) -> Result<()> {
         if let Some(new_sell_order) = self.maker.update_bitcoin_balance(new_btc_balance)? {
-            let order = new_sell_order.to_comit_order(self.maker.swap_protocol(Position::Sell));
-            self.swarm.orderbook.clear_own_orders();
-            self.swarm.orderbook.publish(order);
+            let orderbook = &mut self.swarm.orderbook;
+
+            orderbook.clear_own_orders();
+            orderbook.publish(new_sell_order);
         }
 
         Ok(())
@@ -143,9 +140,10 @@ impl EventLoop {
 
     fn handle_dai_balance_update(&mut self, new_dai_balance: dai::Amount) -> Result<()> {
         if let Some(new_buy_order) = self.maker.update_dai_balance(new_dai_balance)? {
-            let order = new_buy_order.to_comit_order(self.maker.swap_protocol(Position::Buy));
-            self.swarm.orderbook.clear_own_orders();
-            self.swarm.orderbook.publish(order);
+            let orderbook = &mut self.swarm.orderbook;
+
+            orderbook.clear_own_orders();
+            orderbook.publish(new_buy_order);
         }
 
         Ok(())
@@ -241,7 +239,6 @@ impl EventLoop {
                 peer,
                 price,
                 quantity,
-                our_position,
                 swap_protocol,
                 match_reference_point: match_ref_point,
                 ours,
@@ -288,12 +285,6 @@ impl EventLoop {
                     identity::Bitcoin::from_secret_key(&crate::SECP, &bitcoin_transient_sk);
 
                 let erc20_quantity = quantity * price.clone();
-
-                let form = BtcDaiOrderForm {
-                    position: our_position,
-                    quantity,
-                    price,
-                };
 
                 let ethereum_chain_id = self.ethereum_wallet.chain_id();
                 let bitcoin_network = self.bitcoin_wallet.ledger;
@@ -346,9 +337,17 @@ impl EventLoop {
                         }
                     };
 
+                let our_order = self
+                    .swarm
+                    .orderbook
+                    .orderpool()
+                    .ours()
+                    .find(|o| o.id == ours)
+                    .context("unable to find order that just matched in order pool")?;
+
                 let decision = self
                     .maker
-                    .process_taken_order(form)
+                    .process_taken_order(our_order.clone())
                     .context("Processing taken order yielded error")?;
 
                 match decision {

@@ -84,6 +84,10 @@ impl BtcDaiOrder {
             created_at: OffsetDateTime::now_utc(),
         }
     }
+
+    pub fn quote(&self) -> Erc20Quantity {
+        self.quantity * self.price.clone()
+    }
 }
 
 /// A newtype representing a quantity in a certain base currency B.

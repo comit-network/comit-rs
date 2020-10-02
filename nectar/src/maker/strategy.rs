@@ -9,7 +9,7 @@ use crate::{
     Rate, Result, Spread,
 };
 use anyhow::anyhow;
-use comit::{Position, Quantity};
+use comit::{BtcDaiOrder, Position, Quantity};
 use std::cmp::min;
 
 /// Create orders with the full balance, capped by a configuration setting.
@@ -152,14 +152,14 @@ impl AllIn {
     /// `hbit_herc20_swap_resumed` when a swap starts.
     pub fn process_taken_order(
         &mut self,
-        order: BtcDaiOrderForm,
+        order: BtcDaiOrder,
         current_mid_market_rate: Rate,
         dai_balance: &dai::Amount,
         btc_balance: &bitcoin::Amount,
     ) -> anyhow::Result<TakeRequestDecision> {
         let current_profitable_rate = self.spread.apply(current_mid_market_rate, order.position)?;
 
-        if !order.is_as_profitable_as(current_profitable_rate)? {
+        if !is_as_profitable_as(&order, current_profitable_rate)? {
             return Ok(TakeRequestDecision::RateNotProfitable);
         }
 
@@ -202,6 +202,27 @@ impl AllIn {
     }
 }
 
+fn is_as_profitable_as(order: &BtcDaiOrder, profitable_rate: Rate) -> anyhow::Result<bool> {
+    match order.position {
+        Position::Buy => {
+            // We are buying BTC for DAI
+            // Given an order rate of: 1:9000
+            // It is NOT profitable to buy, if the current rate is greater than the order
+            // rate. 1:8800 -> We give less DAI for getting BTC -> Good.
+            // 1:9200 -> We have to give more DAI for getting BTC -> Sucks.
+            Ok(order.price <= profitable_rate.into())
+        }
+        Position::Sell => {
+            // We are selling BTC for DAI
+            // Given an order rate of: 1:9000
+            // It is NOT profitable to sell, if the current rate is smaller than the order
+            // rate. 1:8800 -> We get less DAI for our BTC -> Sucks.
+            // 1:9200 -> We get more DAI for our BTC -> Good.
+            Ok(order.price >= profitable_rate.into())
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, thiserror::Error)]
 #[error("Insufficient {0} funds to create new order.")]
 pub struct InsufficientFunds(Symbol);
@@ -222,7 +243,8 @@ pub struct BalanceNotAvailable(Symbol);
 mod test {
     use super::*;
     use crate::{
-        bitcoin::amount::btc, ethereum::dai::dai, order::btc_dai_order_form, rate::rate, StaticStub,
+        bitcoin::amount::btc, ethereum::dai::dai, order::btc_dai_order, rate::rate, MidMarketRate,
+        StaticStub,
     };
     use num::BigUint;
     use proptest::prelude::*;
@@ -470,7 +492,7 @@ mod test {
             StaticStub::static_stub(),
         );
 
-        let taken_order = btc_dai_order_form(Position::Sell, btc(1.5), rate(0.0));
+        let taken_order = btc_dai_order(Position::Sell, btc(1.5), rate(0.0));
 
         let event = strategy
             .process_taken_order(taken_order, Rate::static_stub(), &dai(0.0), &btc(3.0))
@@ -568,7 +590,7 @@ mod test {
             StaticStub::static_stub(),
         );
 
-        let taken_order = btc_dai_order_form(Position::Sell, btc(1.5), rate(0.0));
+        let taken_order = btc_dai_order(Position::Sell, btc(1.5), rate(0.0));
 
         let event = strategy
             .process_taken_order(taken_order, Rate::static_stub(), &dai(0.0), &btc(3.0))
@@ -589,7 +611,7 @@ mod test {
             StaticStub::static_stub(),
         );
 
-        let taken_order = btc_dai_order_form(Position::Buy, btc(1.0), rate(1.5));
+        let taken_order = btc_dai_order(Position::Buy, btc(1.0), rate(1.5));
 
         let result = strategy
             .process_taken_order(taken_order, rate(1.5), &dai(10000.0), &btc(0.0))
@@ -610,7 +632,7 @@ mod test {
             StaticStub::static_stub(),
         );
 
-        let taken_order = btc_dai_order_form(Position::Buy, btc(1.0), rate(1.5));
+        let taken_order = btc_dai_order(Position::Buy, btc(1.0), rate(1.5));
 
         let result = strategy
             .process_taken_order(taken_order, rate(1.5), &dai(10000.0), &btc(0.0))
@@ -631,7 +653,7 @@ mod test {
             StaticStub::static_stub(),
         );
 
-        let taken_order = btc_dai_order_form(Position::Sell, btc(1.5), rate(0.0));
+        let taken_order = btc_dai_order(Position::Sell, btc(1.5), rate(0.0));
 
         let result = strategy
             .process_taken_order(taken_order, Rate::static_stub(), &dai(0.1), &btc(0.1))
@@ -651,12 +673,72 @@ mod test {
             StaticStub::static_stub(),
         );
 
-        let taken_order = btc_dai_order_form(Position::Buy, btc(1.0), rate(1.5));
+        let taken_order = btc_dai_order(Position::Buy, btc(1.0), rate(1.5));
 
         let result = strategy
             .process_taken_order(taken_order, rate(1.5), &dai(0.0), &btc(0.0))
             .unwrap();
 
         assert_eq!(result, TakeRequestDecision::InsufficientFunds);
+    }
+
+    #[test]
+    fn sell_order_is_as_good_as_market_rate() {
+        let order = btc_dai_order(Position::Sell, btc(1.0), rate(1.0));
+
+        let rate = MidMarketRate::new(Rate::try_from(1.0).unwrap());
+
+        let is_profitable = is_as_profitable_as(&order, rate.into()).unwrap();
+        assert!(is_profitable)
+    }
+
+    #[test]
+    fn sell_order_is_better_than_market_rate() {
+        let order = btc_dai_order(Position::Sell, btc(1.0), rate(1.0));
+
+        let rate = MidMarketRate::new(Rate::try_from(0.9).unwrap());
+
+        let is_profitable = is_as_profitable_as(&order, rate.into()).unwrap();
+        assert!(is_profitable)
+    }
+
+    #[test]
+    fn sell_order_is_worse_than_market_rate() {
+        let order = btc_dai_order(Position::Sell, btc(1.0), rate(1.0));
+
+        let rate = MidMarketRate::new(Rate::try_from(1.1).unwrap());
+
+        let is_profitable = is_as_profitable_as(&order, rate.into()).unwrap();
+        assert!(!is_profitable)
+    }
+
+    #[test]
+    fn buy_order_is_as_good_as_market_rate() {
+        let order = btc_dai_order(Position::Buy, btc(1.0), rate(1.0));
+
+        let rate = MidMarketRate::new(Rate::try_from(1.0).unwrap());
+
+        let is_profitable = is_as_profitable_as(&order, rate.into()).unwrap();
+        assert!(is_profitable)
+    }
+
+    #[test]
+    fn buy_order_is_better_than_market_rate() {
+        let order = btc_dai_order(Position::Buy, btc(1.0), rate(1.0));
+
+        let rate = MidMarketRate::new(Rate::try_from(1.1).unwrap());
+
+        let is_profitable = is_as_profitable_as(&order, rate.into()).unwrap();
+        assert!(is_profitable)
+    }
+
+    #[test]
+    fn buy_order_is_worse_than_market_rate() {
+        let order = btc_dai_order(Position::Buy, btc(1.0), rate(1.0));
+
+        let rate = MidMarketRate::new(Rate::try_from(0.9).unwrap());
+
+        let is_profitable = is_as_profitable_as(&order, rate.into()).unwrap();
+        assert!(!is_profitable)
     }
 }
