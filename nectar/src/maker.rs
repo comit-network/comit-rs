@@ -119,31 +119,32 @@ impl Maker {
     }
 
     pub fn new_sell_order(&self) -> anyhow::Result<BtcDaiOrder> {
-        let order = match (self.mid_market_rate, self.btc_balance) {
-            (Some(mid_market_rate), Some(btc_balance)) => {
-                let form = self
-                    .strategy
-                    .new_sell(btc_balance, mid_market_rate.into())?;
+        let mid_market_rate = self
+            .mid_market_rate
+            .ok_or_else(|| RateNotAvailable(Position::Sell))?;
+        let btc_balance = self
+            .btc_balance
+            .ok_or_else(|| BalanceNotAvailable(Symbol::Btc))?;
 
-                form.to_comit_order(self.swap_protocol(Position::Sell))
-            }
-            (None, _) => anyhow::bail!(RateNotAvailable(Position::Sell)),
-            (_, None) => anyhow::bail!(BalanceNotAvailable(Symbol::Btc)),
-        };
+        let form = self
+            .strategy
+            .new_sell(btc_balance, mid_market_rate.into())?;
+        let order = form.to_comit_order(self.swap_protocol(Position::Sell));
 
         Ok(order)
     }
 
     pub fn new_buy_order(&self) -> anyhow::Result<BtcDaiOrder> {
-        let order = match (self.mid_market_rate, self.dai_balance.clone()) {
-            (Some(mid_market_rate), Some(dai_balance)) => {
-                let form = self.strategy.new_buy(dai_balance, mid_market_rate.into())?;
+        let mid_market_rate = self
+            .mid_market_rate
+            .ok_or_else(|| RateNotAvailable(Position::Buy))?;
+        let dai_balance = self
+            .dai_balance
+            .clone()
+            .ok_or_else(|| BalanceNotAvailable(Symbol::Dai))?;
 
-                form.to_comit_order(self.swap_protocol(Position::Buy))
-            }
-            (None, _) => anyhow::bail!(RateNotAvailable(Position::Buy)),
-            (_, None) => anyhow::bail!(BalanceNotAvailable(Symbol::Dai)),
-        };
+        let form = self.strategy.new_buy(dai_balance, mid_market_rate.into())?;
+        let order = form.to_comit_order(self.swap_protocol(Position::Buy));
 
         Ok(order)
     }
@@ -152,20 +153,18 @@ impl Maker {
         &mut self,
         order: BtcDaiOrder,
     ) -> anyhow::Result<TakeRequestDecision> {
-        let current_mid_market_rate = match self.mid_market_rate {
-            None => anyhow::bail!(RateNotAvailable(order.position)),
-            Some(rate) => rate,
-        };
-
-        let dai_balance = match self.dai_balance {
-            Some(ref dai_balance) => dai_balance,
-            None => anyhow::bail!(BalanceNotAvailable(Symbol::Dai)),
-        };
-
-        let btc_balance = match self.btc_balance {
-            Some(ref btc_balance) => btc_balance,
-            None => anyhow::bail!(BalanceNotAvailable(Symbol::Btc)),
-        };
+        let current_mid_market_rate = self
+            .mid_market_rate
+            .clone()
+            .ok_or_else(|| RateNotAvailable(order.position))?;
+        let dai_balance = self
+            .dai_balance
+            .as_ref()
+            .ok_or_else(|| BalanceNotAvailable(Symbol::Dai))?;
+        let btc_balance = self
+            .btc_balance
+            .as_ref()
+            .ok_or_else(|| BalanceNotAvailable(Symbol::Btc))?;
 
         self.strategy.process_taken_order(
             order,
