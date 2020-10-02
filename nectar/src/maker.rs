@@ -115,31 +115,33 @@ impl Maker {
     }
 
     pub fn new_sell_order(&self) -> anyhow::Result<BtcDaiOrder> {
-        match (self.mid_market_rate, self.btc_balance) {
+        let order = match (self.mid_market_rate, self.btc_balance) {
             (Some(mid_market_rate), Some(btc_balance)) => {
                 let form = self
                     .strategy
                     .new_sell(btc_balance, mid_market_rate.into())?;
-                let order = form.to_comit_order(self.swap_protocol(Position::Sell));
 
-                Ok(order)
+                form.to_comit_order(self.swap_protocol(Position::Sell))
             }
             (None, _) => anyhow::bail!(RateNotAvailable(Position::Sell)),
             (_, None) => anyhow::bail!(BalanceNotAvailable(Symbol::Btc)),
-        }
+        };
+
+        Ok(order)
     }
 
     pub fn new_buy_order(&self) -> anyhow::Result<BtcDaiOrder> {
-        match (self.mid_market_rate, self.dai_balance.clone()) {
+        let order = match (self.mid_market_rate, self.dai_balance.clone()) {
             (Some(mid_market_rate), Some(dai_balance)) => {
                 let form = self.strategy.new_buy(dai_balance, mid_market_rate.into())?;
-                let order = form.to_comit_order(self.swap_protocol(Position::Buy));
 
-                Ok(order)
+                form.to_comit_order(self.swap_protocol(Position::Buy))
             }
             (None, _) => anyhow::bail!(RateNotAvailable(Position::Buy)),
             (_, None) => anyhow::bail!(BalanceNotAvailable(Symbol::Dai)),
-        }
+        };
+
+        Ok(order)
     }
 
     pub async fn new_order(&self, position: Position) -> anyhow::Result<BtcDaiOrder> {
