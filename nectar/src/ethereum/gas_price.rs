@@ -1,5 +1,5 @@
 use crate::{
-    config::EthereumGasPriceStrategy,
+    config::EthereumGasPrice,
     ethereum::{ether, geth},
     Result,
 };
@@ -18,15 +18,15 @@ enum Service {
 }
 
 impl GasPrice {
-    pub fn new(strategy: crate::config::EthereumGasPriceStrategy) -> Self {
+    pub fn new(strategy: crate::config::EthereumGasPrice) -> Self {
         match strategy {
-            EthereumGasPriceStrategy::Geth(url) => {
+            EthereumGasPrice::Geth(url) => {
                 let client = geth::Client::new(url);
                 Self {
                     service: Service::Geth(client),
                 }
             }
-            EthereumGasPriceStrategy::EthGasStation(url) => {
+            EthereumGasPrice::EthGasStation(url) => {
                 let client = eth_gas_station::Client::new(url);
                 Self {
                     service: Service::EthGasStation(client),

@@ -32,10 +32,10 @@ pub struct Bitcoind {
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 pub struct BtcDai {
     #[serde(default)]
-    #[serde(with = "crate::config::serde::bitcoin_amount::btc_as_optional_float")]
+    #[serde(with = "::bitcoin::util::amount::serde::as_btc::opt")]
     pub max_buy_quantity: Option<bitcoin::Amount>,
     #[serde(default)]
-    #[serde(with = "crate::config::serde::bitcoin_amount::btc_as_optional_float")]
+    #[serde(with = "::bitcoin::util::amount::serde::as_btc::opt")]
     pub max_sell_quantity: Option<bitcoin::Amount>,
 }
 
@@ -149,20 +149,6 @@ mod tests {
                     max_sell_quantity: Some(bitcoin::Amount::from_btc(0.1).unwrap()),
                 }),
                 spread: Some(Spread::new(500).unwrap()),
-                maximum_possible_fee: Some(file::MaxPossibleFee {
-                    bitcoin: Some(bitcoin::Amount::from_btc(0.00009275).unwrap()),
-                }),
-                fee_strategies: Some(file::FeeStrategies {
-                    bitcoin: Some(file::BitcoinFee {
-                        strategy: Some(file::BitcoinFeeStrategy::Static),
-                        sats_per_byte: Some(bitcoin::Amount::from_sat(12)),
-                        estimate_mode: None,
-                    }),
-                    ethereum: Some(file::EthereumGasPrice {
-                        service: file::EthereumGasPriceService::Geth,
-                        url: "http://some.geth.url:8545/".parse().unwrap(),
-                    }),
-                }),
                 kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
             }),
             network: Some(Network {
@@ -181,11 +167,21 @@ mod tests {
                 bitcoind: Some(Bitcoind {
                     node_url: "http://localhost:18443/".parse().unwrap(),
                 }),
+                fees: Some(file::BitcoinFees {
+                    strategy: Some(file::BitcoinFeeStrategy::Static),
+                    sat_per_vbyte: Some(bitcoin::Amount::from_sat(12)),
+                    estimate_mode: None,
+                    max_sat_per_vbyte: None,
+                }),
             }),
             ethereum: Some(file::Ethereum {
                 chain_id: ChainId::MAINNET,
                 node_url: Some("http://localhost:8545/".parse().unwrap()),
                 local_dai_contract_address: None,
+                gas_price: Some(file::EthereumGasPrice {
+                    service: file::EthereumGasPriceService::Geth,
+                    url: "http://some.geth.url:8545/".parse().unwrap(),
+                }),
             }),
         };
 

@@ -80,7 +80,7 @@ impl FinalizedAsFunder {
     pub fn build_refund_action(
         &self,
         secret_hash: SecretHash,
-        fee_rate_per_vbyte: bitcoin::Amount,
+        vbyte_rate: bitcoin::Amount,
     ) -> anyhow::Result<BroadcastSignedTransaction> {
         let (fund_amount, fund_location) = match &self.state {
             State::Funded {
@@ -100,7 +100,7 @@ impl FinalizedAsFunder {
             *fund_location,
             transient_refund_sk,
             refund_address,
-            fee_rate_per_vbyte,
+            vbyte_rate,
         )
     }
 
@@ -124,7 +124,7 @@ impl FinalizedAsRedeemer {
     pub fn build_redeem_action(
         &self,
         secret: Secret,
-        fee_rate_per_vbyte: bitcoin::Amount,
+        vbyte_rate: bitcoin::Amount,
     ) -> anyhow::Result<BroadcastSignedTransaction> {
         let (fund_amount, fund_location) = match &self.state {
             State::Funded {
@@ -147,7 +147,7 @@ impl FinalizedAsRedeemer {
             transient_redeem_sk,
             redeem_address,
             secret,
-            fee_rate_per_vbyte,
+            vbyte_rate,
         )
     }
 

@@ -10,6 +10,10 @@ pub use wallet::Wallet;
 
 pub const SATS_IN_BITCOIN_EXP: u16 = 8;
 
+// Looking at the mainnet on 2Oct2020, biggest segwit tx with 21 inputs
+// Had a size of 2073vB. 3000 seems to be a safe bet.
+pub const MAX_EXPECTED_TRANSACTION_VBYTE_WEIGHT: u64 = 3000;
+
 #[cfg(test)]
 pub mod amount {
     use super::*;

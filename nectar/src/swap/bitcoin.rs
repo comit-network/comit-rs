@@ -24,7 +24,7 @@ impl hbit::ExecuteFund for Wallet {
     async fn execute_fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::Funded> {
         let action = params.shared.build_fund_action();
 
-        let kbyte_fee_rate = self.fee.kbyte_rate().await?;
+        let kbyte_fee_rate = self.fee.kvbyte_rate().await?;
 
         let location = self
             .inner
@@ -46,7 +46,7 @@ impl hbit::ExecuteRedeem for Wallet {
     ) -> anyhow::Result<hbit::Redeemed> {
         let redeem_address = self.inner.new_address().await?;
 
-        let fee_rate_per_byte = self.fee.byte_rate().await?;
+        let vbyte_rate = self.fee.vbyte_rate().await?;
 
         let action = params.shared.build_redeem_action(
             &crate::SECP,
@@ -55,7 +55,7 @@ impl hbit::ExecuteRedeem for Wallet {
             params.transient_sk,
             redeem_address,
             secret,
-            fee_rate_per_byte,
+            vbyte_rate,
         )?;
         let transaction = self.spend(action).await?;
 
@@ -88,7 +88,7 @@ impl hbit::ExecuteRefund for Wallet {
 
         let refund_address = self.inner.new_address().await?;
 
-        let fee_rate_per_byte = self.fee.byte_rate().await?;
+        let vbyte_rate = self.fee.vbyte_rate().await?;
 
         let action = params.shared.build_refund_action(
             &crate::SECP,
@@ -96,7 +96,7 @@ impl hbit::ExecuteRefund for Wallet {
             fund_event.location,
             params.transient_sk,
             refund_address,
-            fee_rate_per_byte,
+            vbyte_rate,
         )?;
         let transaction = self.spend(action).await?;
 

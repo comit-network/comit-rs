@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 -   A set of API endpoints that expose the decentralized orderbook functionality.
+-   Ability to configure the Bitcoin fee rate with a static value for the redeem and refund transactions.
 
 ### Changed
 

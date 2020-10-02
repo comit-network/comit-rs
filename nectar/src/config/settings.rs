@@ -25,13 +25,15 @@ pub struct Settings {
 pub struct Bitcoin {
     pub network: ledger::Bitcoin,
     pub bitcoind: Bitcoind,
+    pub fees: BitcoinFees,
 }
 
 impl Bitcoin {
-    pub fn new(network: ledger::Bitcoin) -> Self {
+    pub fn default_from_network(network: ledger::Bitcoin) -> Self {
         Self {
             network,
             bitcoind: Bitcoind::new(network),
+            fees: Default::default(),
         }
     }
 
@@ -50,8 +52,15 @@ impl Bitcoin {
 
         let network = bitcoin.network;
         let bitcoind = bitcoin.bitcoind.unwrap_or_else(|| Bitcoind::new(network));
+        let fees = bitcoin
+            .fees
+            .map_or_else(BitcoinFees::default, BitcoinFees::from);
 
-        Ok(Bitcoin { network, bitcoind })
+        Ok(Bitcoin {
+            network,
+            bitcoind,
+            fees,
+        })
     }
 }
 
@@ -78,6 +87,7 @@ impl From<Bitcoin> for file::Bitcoin {
         file::Bitcoin {
             network: bitcoin.network,
             bitcoind: Some(bitcoin.bitcoind),
+            fees: Some(bitcoin.fees.into()),
         }
     }
 }
@@ -86,16 +96,21 @@ impl From<Bitcoin> for file::Bitcoin {
 pub struct Ethereum {
     pub node_url: Url,
     pub chain: ethereum::Chain,
+    pub gas_price: EthereumGasPrice,
 }
 
 impl Ethereum {
-    fn new(chain_id: ethereum::ChainId) -> Result<Self> {
+    fn default_from_chain_id(chain_id: ethereum::ChainId) -> Result<Self> {
         let chain = ethereum::Chain::from_public_chain_id(chain_id)?;
         let node_url = "http://localhost:8545"
             .parse()
             .expect("to be valid static string");
 
-        Ok(Ethereum { node_url, chain })
+        Ok(Ethereum {
+            node_url,
+            chain,
+            gas_price: Default::default(),
+        })
     }
 
     fn from_file(ethereum: file::Ethereum, comit_network: Option<comit::Network>) -> Result<Self> {
@@ -126,7 +141,13 @@ impl Ethereum {
             (chain_id, None) => ethereum::Chain::from_public_chain_id(chain_id)?,
         };
 
-        Ok(Ethereum { node_url, chain })
+        let gas_price = ethereum.gas_price.map_or_else(Default::default, From::from);
+
+        Ok(Ethereum {
+            node_url,
+            chain,
+            gas_price,
+        })
     }
 }
 
@@ -140,11 +161,13 @@ impl From<Ethereum> for file::Ethereum {
                 chain_id: chain_id.into(),
                 node_url: Some(ethereum.node_url),
                 local_dai_contract_address: Some(dai_contract_address),
+                gas_price: Some(ethereum.gas_price.into()),
             },
             _ => file::Ethereum {
                 chain_id: ethereum.chain.chain_id(),
                 node_url: Some(ethereum.node_url),
                 local_dai_contract_address: None,
+                gas_price: Some(ethereum.gas_price.into()),
             },
         }
     }
@@ -155,6 +178,7 @@ impl Default for Ethereum {
         Self {
             node_url: Url::parse("http://localhost:8545").expect("static string to be a valid url"),
             chain: ethereum::Chain::Mainnet,
+            gas_price: Default::default(),
         }
     }
 }
@@ -166,16 +190,6 @@ pub struct Maker {
     /// Spread to apply to the mid-market rate, format is permyriad. E.g. 5.20
     /// is 5.2% spread
     pub spread: Spread,
-    // TODO: Leave it here. Make it as a sat/vbyte fee
-    /// Maximum possible network fee to consider when calculating the available
-    /// balance. Fees are in the nominal native currency and per
-    /// transaction.
-    pub maximum_possible_fee: Fees,
-    // TODO: Fees strategy can actually be moved out of maker as they are also used for withdrawal
-    // for example. They are more to do with the execution than they are with the market making
-    // strategy
-    /// Fee strategies
-    pub fee_strategies: FeeStrategies,
     pub kraken_api_host: KrakenApiHost,
 }
 
@@ -202,64 +216,86 @@ impl Default for KrakenApiHost {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct FeeStrategies {
-    pub bitcoin: BitcoinFeeStrategy,
-    pub ethereum: EthereumGasPriceStrategy,
-}
-
-impl From<file::FeeStrategies> for FeeStrategies {
-    fn from(file: file::FeeStrategies) -> Self {
-        Self {
-            bitcoin: file
-                .bitcoin
-                .map_or_else(BitcoinFeeStrategy::default, BitcoinFeeStrategy::from),
-            ethereum: file.ethereum.map_or_else(
-                EthereumGasPriceStrategy::default,
-                EthereumGasPriceStrategy::from,
-            ),
-        }
-    }
-}
-
-impl Default for FeeStrategies {
-    fn default() -> Self {
-        Self {
-            bitcoin: BitcoinFeeStrategy::default(),
-            ethereum: EthereumGasPriceStrategy::default(),
-        }
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum BitcoinFeeStrategy {
+pub enum BitcoinFees {
     SatsPerByte(bitcoin::Amount),
-    BitcoindEstimateSmartfee(EstimateMode),
+    BitcoindEstimateSmartfee {
+        mode: EstimateMode,
+        max_sat_per_vbyte: bitcoin::Amount,
+    },
+}
+
+impl BitcoinFees {
+    pub fn max_tx_fee(&self) -> bitcoin::Amount {
+        let rate_per_byte = match self {
+            BitcoinFees::SatsPerByte(fee) => fee,
+            BitcoinFees::BitcoindEstimateSmartfee {
+                max_sat_per_vbyte, ..
+            } => max_sat_per_vbyte,
+        };
+
+        *rate_per_byte * crate::bitcoin::MAX_EXPECTED_TRANSACTION_VBYTE_WEIGHT
+    }
+
+    pub fn default_fee() -> bitcoin::Amount {
+        // 35 sat/vbyte is very generous (Looking at https://bitcoinfees.github.io/#1m)
+        bitcoin::Amount::from_sat(35)
+    }
 }
 
 const DEFAULT_BITCOIN_STATIC_FEE_SAT: u64 = 10;
 
+#[cfg(test)]
+impl crate::StaticStub for BitcoinFees {
+    fn static_stub() -> Self {
+        Self::SatsPerByte(bitcoin::Amount::ZERO)
+    }
+}
+
 /// Defaults to static fee mode
 /// Default value for static mode is 10 sat per byte
-impl From<file::BitcoinFee> for BitcoinFeeStrategy {
-    fn from(file: file::BitcoinFee) -> Self {
+impl From<file::BitcoinFees> for BitcoinFees {
+    fn from(file: file::BitcoinFees) -> Self {
         file.strategy
             .map_or_else(Default::default, |strategy| match strategy {
                 file::BitcoinFeeStrategy::Static => {
-                    Self::SatsPerByte(file.sats_per_byte.unwrap_or_else(|| {
+                    Self::SatsPerByte(file.sat_per_vbyte.unwrap_or_else(|| {
                         bitcoin::Amount::from_sat(DEFAULT_BITCOIN_STATIC_FEE_SAT)
                     }))
                 }
-                file::BitcoinFeeStrategy::Bitcoind => Self::BitcoindEstimateSmartfee(
-                    file.estimate_mode.unwrap_or_else(EstimateMode::default),
-                ),
+                file::BitcoinFeeStrategy::Bitcoind => Self::BitcoindEstimateSmartfee {
+                    mode: file.estimate_mode.unwrap_or_else(EstimateMode::default),
+                    max_sat_per_vbyte: Default::default(),
+                },
             })
     }
 }
 
-impl Default for BitcoinFeeStrategy {
+impl Default for BitcoinFees {
     fn default() -> Self {
         Self::SatsPerByte(bitcoin::Amount::from_sat(DEFAULT_BITCOIN_STATIC_FEE_SAT))
+    }
+}
+
+impl From<BitcoinFees> for file::BitcoinFees {
+    fn from(settings: BitcoinFees) -> Self {
+        match settings {
+            BitcoinFees::SatsPerByte(fee) => Self {
+                strategy: Some(file::BitcoinFeeStrategy::Static),
+                sat_per_vbyte: Some(fee),
+                estimate_mode: None,
+                max_sat_per_vbyte: None,
+            },
+            BitcoinFees::BitcoindEstimateSmartfee {
+                mode,
+                max_sat_per_vbyte,
+            } => Self {
+                strategy: Some(file::BitcoinFeeStrategy::Bitcoind),
+                sat_per_vbyte: None,
+                estimate_mode: Some(mode),
+                max_sat_per_vbyte: Some(max_sat_per_vbyte),
+            },
+        }
     }
 }
 
@@ -270,12 +306,12 @@ static DEFAULT_ETH_GAS_STATION_URL: Lazy<url::Url> = Lazy::new(|| {
 });
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum EthereumGasPriceStrategy {
+pub enum EthereumGasPrice {
     Geth(url::Url),
     EthGasStation(url::Url),
 }
 
-impl From<file::EthereumGasPrice> for EthereumGasPriceStrategy {
+impl From<file::EthereumGasPrice> for EthereumGasPrice {
     fn from(file: file::EthereumGasPrice) -> Self {
         match file.service {
             EthereumGasPriceService::Geth => Self::Geth(file.url),
@@ -284,7 +320,22 @@ impl From<file::EthereumGasPrice> for EthereumGasPriceStrategy {
     }
 }
 
-impl Default for EthereumGasPriceStrategy {
+impl From<EthereumGasPrice> for file::EthereumGasPrice {
+    fn from(settings: EthereumGasPrice) -> Self {
+        match settings {
+            EthereumGasPrice::Geth(url) => Self {
+                service: EthereumGasPriceService::Geth,
+                url,
+            },
+            EthereumGasPrice::EthGasStation(url) => Self {
+                service: EthereumGasPriceService::EthGasStation,
+                url,
+            },
+        }
+    }
+}
+
+impl Default for EthereumGasPrice {
     fn default() -> Self {
         Self::EthGasStation(DEFAULT_ETH_GAS_STATION_URL.clone())
     }
@@ -297,12 +348,6 @@ impl Maker {
             spread: file
                 .spread
                 .unwrap_or_else(|| Spread::new(500).expect("500 is a valid spread value")),
-            maximum_possible_fee: file
-                .maximum_possible_fee
-                .map_or_else(Fees::default, Fees::from_file),
-            fee_strategies: file
-                .fee_strategies
-                .map_or_else(FeeStrategies::default, FeeStrategies::from),
             kraken_api_host: file
                 .kraken_api_host
                 .map_or_else(KrakenApiHost::default, KrakenApiHost),
@@ -315,36 +360,7 @@ impl Default for Maker {
         Self {
             btc_dai: BtcDai::default(),
             spread: Spread::new(500).expect("500 is a valid spread value"),
-            maximum_possible_fee: Fees::default(),
-            fee_strategies: FeeStrategies::default(),
             kraken_api_host: KrakenApiHost::default(),
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Fees {
-    pub bitcoin: bitcoin::Amount,
-}
-
-impl Fees {
-    fn from_file(file: file::MaxPossibleFee) -> Self {
-        Self {
-            bitcoin: file.bitcoin.unwrap_or_else(Self::default_bitcoin_fee),
-        }
-    }
-
-    // ~265 vbytes (2 inputs 2 outputs segwit transaction)
-    // * 35 sat/vbytes (Looking at https://bitcoinfees.github.io/#1m)
-    fn default_bitcoin_fee() -> bitcoin::Amount {
-        bitcoin::Amount::from_sat(265 * 35)
-    }
-}
-
-impl Default for Fees {
-    fn default() -> Self {
-        Fees {
-            bitcoin: Self::default_bitcoin_fee(),
         }
     }
 }
@@ -391,12 +407,7 @@ impl From<Maker> for file::Maker {
                 max_sell => Some(max_sell),
             },
             spread: Some(maker.spread),
-            maximum_possible_fee: Some(file::MaxPossibleFee {
-                bitcoin: Some(maker.maximum_possible_fee.bitcoin),
-            }),
             kraken_api_host: Some(maker.kraken_api_host.0),
-            // TODO
-            fee_strategies: None,
         }
     }
 }
@@ -433,7 +444,6 @@ impl Settings {
                     dir: default_data_dir,
                 })
             },
-
             logging: {
                 match logging {
                     None => Logging::default(),
@@ -446,11 +456,15 @@ impl Settings {
                 }
             },
             bitcoin: bitcoin.map_or_else(
-                || Ok(Bitcoin::new(comit_network.unwrap_or_default().into())),
+                || {
+                    Ok(Bitcoin::default_from_network(
+                        comit_network.unwrap_or_default().into(),
+                    ))
+                },
                 |file| Bitcoin::from_file(file, comit_network),
             )?,
             ethereum: ethereum.map_or_else(
-                || Ethereum::new(comit_network.unwrap_or_default().into()),
+                || Ethereum::default_from_chain_id(comit_network.unwrap_or_default().into()),
                 |file| Ethereum::from_file(file, comit_network),
             )?,
         })
@@ -512,6 +526,7 @@ mod tests {
                 bitcoind: Bitcoind {
                     node_url: "http://localhost:8332".parse().unwrap(),
                 },
+                fees: BitcoinFees::SatsPerByte(bitcoin::Amount::from_sat(10)),
             })
     }
 
@@ -528,6 +543,7 @@ mod tests {
                 bitcoin: Some(file::Bitcoin {
                     network,
                     bitcoind: None,
+                    fees: None,
                 }),
                 ..File::default()
             };
@@ -542,6 +558,7 @@ mod tests {
                     bitcoind: Bitcoind {
                         node_url: url.parse().unwrap(),
                     },
+                    fees: Default::default(),
                 })
         }
     }
@@ -558,6 +575,7 @@ mod tests {
             .is_equal_to(Ethereum {
                 node_url: "http://localhost:8545".parse().unwrap(),
                 chain: ethereum::Chain::Mainnet,
+                gas_price: EthereumGasPrice::EthGasStation(DEFAULT_ETH_GAS_STATION_URL.clone()),
             })
     }
 }

@@ -77,13 +77,9 @@ pub async fn trade(
     let bitcoin_connector = Arc::new(BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?);
     let ethereum_connector = Arc::new(Web3Connector::new(settings.ethereum.node_url.clone()));
 
-    let bitcoin_fee = bitcoin::Fee::new(
-        settings.maker.fee_strategies.bitcoin,
-        settings.maker.maximum_possible_fee.bitcoin,
-        bitcoind_client,
-    );
+    let bitcoin_fee = bitcoin::Fee::new(settings.bitcoin.fees, bitcoind_client);
 
-    let ethereum_gas_price = ethereum::GasPrice::new(settings.maker.fee_strategies.ethereum);
+    let ethereum_gas_price = ethereum::GasPrice::new(settings.ethereum.gas_price);
 
     let (swap_executor, swap_execution_finished_receiver) = SwapExecutor::new(
         Arc::clone(&db),
@@ -138,8 +134,7 @@ async fn init_maker(
         .context("Could not get Dai balance")?;
 
     let btc_dai = settings.maker.btc_dai;
-    let max_btc_fee = settings.maker.maximum_possible_fee.bitcoin;
-    let btc_fee_strategy = settings.maker.fee_strategies.bitcoin;
+    let btc_fee_strategy = settings.bitcoin.fees;
 
     let initial_rate = get_btc_dai_mid_market_rate(&settings.maker.kraken_api_host)
         .await
@@ -149,7 +144,6 @@ async fn init_maker(
 
     let strategy = strategy::AllIn::new(
         btc_fee_strategy,
-        max_btc_fee,
         btc_dai.max_buy_quantity,
         btc_dai.max_sell_quantity,
         spread,
@@ -163,7 +157,6 @@ async fn init_maker(
         strategy,
         settings.bitcoin.network,
         settings.ethereum.chain,
-        // todo: get from config
         Role::Bob,
         network,
     ))
@@ -314,8 +307,6 @@ mod tests {
             maker: settings::Maker {
                 btc_dai: Default::default(),
                 spread: StaticStub::static_stub(),
-                maximum_possible_fee: Default::default(),
-                fee_strategies: Default::default(),
                 kraken_api_host: Default::default(),
             },
             network: Network {
@@ -329,13 +320,14 @@ mod tests {
             logging: Logging {
                 level: LevelFilter::Trace,
             },
-            bitcoin: settings::Bitcoin::new(ledger::Bitcoin::Regtest),
+            bitcoin: settings::Bitcoin::default_from_network(ledger::Bitcoin::Regtest),
             ethereum: settings::Ethereum {
                 node_url: ethereum_blockchain.node_url.clone(),
                 chain: ethereum::Chain::new(
                     ChainId::GETH_DEV,
                     ethereum_blockchain.token_contract(),
                 ),
+                gas_price: Default::default(),
             },
         };
 
