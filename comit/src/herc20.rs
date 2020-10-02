@@ -12,6 +12,7 @@ use crate::{
     timestamp::Timestamp,
     transaction, Secret, SecretHash,
 };
+use anyhow::Result;
 use blockchain_contracts::ethereum::herc20::Htlc;
 use conquer_once::Lazy;
 use futures::{
@@ -97,7 +98,7 @@ pub fn new<'a, C>(
     connector: &'a C,
     params: Params,
     start_of_swap: OffsetDateTime,
-) -> impl Stream<Item = anyhow::Result<Event>> + 'a
+) -> impl Stream<Item = Result<Event>> + 'a
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
@@ -114,8 +115,8 @@ async fn watch_ledger<C, R>(
     connector: &C,
     params: Params,
     start_of_swap: OffsetDateTime,
-    co: &Co<anyhow::Result<Event>, R>,
-) -> anyhow::Result<()>
+    co: &Co<Result<Event>, R>,
+) -> Result<()>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
@@ -154,7 +155,7 @@ pub async fn watch_for_deployed<C>(
     connector: &C,
     params: Params,
     start_of_swap: OffsetDateTime,
-) -> anyhow::Result<Deployed>
+) -> Result<Deployed>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
@@ -176,7 +177,7 @@ pub async fn watch_for_funded<C>(
     params: Params,
     start_of_swap: OffsetDateTime,
     deployed: Deployed,
-) -> anyhow::Result<Funded>
+) -> Result<Funded>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
@@ -212,7 +213,7 @@ pub async fn watch_for_redeemed<C>(
     connector: &C,
     start_of_swap: OffsetDateTime,
     deployed: Deployed,
-) -> anyhow::Result<Redeemed>
+) -> Result<Redeemed>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
@@ -240,7 +241,7 @@ pub async fn watch_for_refunded<C>(
     connector: &C,
     start_of_swap: OffsetDateTime,
     deployed: Deployed,
-) -> anyhow::Result<Refunded>
+) -> Result<Refunded>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {

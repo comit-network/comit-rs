@@ -11,6 +11,7 @@ use crate::{
     timestamp::Timestamp,
     transaction, Secret, SecretHash,
 };
+use anyhow::Result;
 use bitcoin::{
     hashes::{hash160, Hash},
     secp256k1::{Secp256k1, SecretKey, Signing},
@@ -85,7 +86,7 @@ pub fn new<'a, C>(
     connector: &'a C,
     params: Params,
     start_of_swap: OffsetDateTime,
-) -> impl Stream<Item = anyhow::Result<Event>> + 'a
+) -> impl Stream<Item = Result<Event>> + 'a
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
 {
@@ -102,8 +103,8 @@ async fn watch_ledger<C, R>(
     connector: &C,
     params: Params,
     start_of_swap: OffsetDateTime,
-    co: &Co<anyhow::Result<Event>, R>,
-) -> anyhow::Result<()>
+    co: &Co<Result<Event>, R>,
+) -> Result<()>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
 {
@@ -143,7 +144,7 @@ pub async fn watch_for_funded<C>(
     connector: &C,
     params: &Params,
     start_of_swap: OffsetDateTime,
-) -> anyhow::Result<Funded>
+) -> Result<Funded>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
 {
@@ -177,7 +178,7 @@ pub async fn watch_for_redeemed<C>(
     params: &Params,
     location: htlc_location::Bitcoin,
     start_of_swap: OffsetDateTime,
-) -> anyhow::Result<Redeemed>
+) -> Result<Redeemed>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
 {
@@ -200,7 +201,7 @@ pub async fn watch_for_refunded<C>(
     params: &Params,
     location: htlc_location::Bitcoin,
     start_of_swap: OffsetDateTime,
-) -> anyhow::Result<Refunded>
+) -> Result<Refunded>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
 {
@@ -243,7 +244,7 @@ impl Params {
         transient_refund_sk: SecretKey,
         refund_address: Address,
         vbyte_rate: asset::Bitcoin,
-    ) -> anyhow::Result<BroadcastSignedTransaction>
+    ) -> Result<BroadcastSignedTransaction>
     where
         C: Signing,
     {
@@ -268,7 +269,7 @@ impl Params {
         redeem_address: Address,
         secret: Secret,
         vbyte_rate: asset::Bitcoin,
-    ) -> anyhow::Result<BroadcastSignedTransaction>
+    ) -> Result<BroadcastSignedTransaction>
     where
         C: Signing,
     {
@@ -290,7 +291,7 @@ impl Params {
         spend_address: Address,
         vbyte_rate: asset::Bitcoin,
         unlock_fn: impl Fn(Htlc) -> UnlockParameters,
-    ) -> anyhow::Result<BroadcastSignedTransaction>
+    ) -> Result<BroadcastSignedTransaction>
     where
         C: Signing,
     {

@@ -3,6 +3,7 @@ pub mod ethereum;
 mod jsonrpc;
 
 use crate::Never;
+use anyhow::Result;
 use async_trait::async_trait;
 use genawaiter::sync::{Co, Gen};
 use std::{collections::HashSet, future::Future, hash::Hash};
@@ -12,7 +13,7 @@ use time::OffsetDateTime;
 pub trait LatestBlock: Send + Sync + 'static {
     type Block;
 
-    async fn latest_block(&self) -> anyhow::Result<Self::Block>;
+    async fn latest_block(&self) -> Result<Self::Block>;
 }
 
 #[async_trait]
@@ -20,7 +21,7 @@ pub trait BlockByHash: Send + Sync + 'static {
     type Block;
     type BlockHash;
 
-    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block>;
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> Result<Self::Block>;
 }
 
 /// Checks if a given block predates a certain timestamp.
@@ -54,7 +55,7 @@ pub trait PreviousBlockHash {
 pub fn fetch_blocks_since<'a, C, B, H>(
     connector: &'a C,
     start_of_swap: OffsetDateTime,
-) -> Gen<B, (), impl Future<Output = anyhow::Result<Never>> + 'a>
+) -> Gen<B, (), impl Future<Output = Result<Never>> + 'a>
 where
     C: LatestBlock<Block = B> + BlockByHash<Block = B, BlockHash = H>,
     B: Predates + BlockHash<BlockHash = H> + PreviousBlockHash<BlockHash = H> + Clone + 'a,
@@ -64,8 +65,14 @@ where
         let block = connector.latest_block().await?;
 
         // Look back in time until we get a block that predates start_of_swap.
-        let mut seen_blocks =
-            walk_back_until(predates_start_of_swap(start_of_swap), block, connector, &co).await?;
+        let mut seen_blocks = walk_back_until(
+            predates_start_of_swap(start_of_swap),
+            block,
+            |_| true, // initially, yield all blocks because we haven't seen any of them
+            connector,
+            &co,
+        )
+        .await?;
 
         // Look forward in time, but keep going back for missed blocks
         loop {
@@ -74,6 +81,7 @@ where
             let missed_blocks = walk_back_until(
                 seen_block_or_predates_start_of_swap(&seen_blocks, start_of_swap),
                 block,
+                |b| !seen_blocks.contains(b), // only yield if we haven't seen the block before
                 connector,
                 &co,
             )
@@ -92,15 +100,17 @@ where
 ///
 /// This function yields all blocks as part of its process.
 /// This function returns the block-hashes of all visited blocks.
-async fn walk_back_until<C, P, B, H>(
+async fn walk_back_until<C, P, Y, B, H>(
     should_stop_here: P,
     starting_block: B,
+    should_yield: Y,
     connector: &C,
     co: &Co<B>,
-) -> anyhow::Result<HashSet<H>>
+) -> Result<HashSet<H>>
 where
     C: BlockByHash<Block = B, BlockHash = H>,
     P: Fn(&B) -> bool,
+    Y: Fn(&H) -> bool,
     B: BlockHash<BlockHash = H> + PreviousBlockHash<BlockHash = H>,
     H: Eq + Hash + Copy,
 {
@@ -117,8 +127,9 @@ where
         current_blockhash = current_block.previous_block_hash();
         let should_stop_here = should_stop_here(&current_block);
 
-        // we have to yield the block before exiting
-        co.yield_(current_block).await;
+        if should_yield(&current_block.block_hash()) {
+            co.yield_(current_block).await;
+        }
 
         if should_stop_here {
             return Ok(seen_blocks);

@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{Context, Result};
 use futures::TryFutureExt;
 use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
@@ -17,7 +17,7 @@ impl Client {
         }
     }
 
-    pub async fn send<Req, Res>(&self, request: Request<Req>) -> anyhow::Result<Res>
+    pub async fn send<Req, Res>(&self, request: Request<Req>) -> Result<Res>
     where
         Req: Debug + Serialize,
         Res: DeserializeOwned,
@@ -80,7 +80,7 @@ pub struct JsonRpcError {
 #[error("connection error: {0}")]
 pub struct ConnectionFailed(#[from] reqwest::Error);
 
-pub fn serialize<T>(t: T) -> anyhow::Result<serde_json::Value>
+pub fn serialize<T>(t: T) -> Result<serde_json::Value>
 where
     T: Serialize,
 {

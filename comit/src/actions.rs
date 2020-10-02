@@ -12,6 +12,7 @@ pub trait Actions {
 
 pub mod bitcoin {
     use crate::{asset, ledger};
+    use anyhow::Result;
     use bitcoin::{
         secp256k1::{self, Secp256k1},
         OutPoint,
@@ -60,7 +61,7 @@ pub mod bitcoin {
         secp: &Secp256k1<C>,
         primed_transaction: PrimedTransaction,
         byte_rate: bitcoin::Amount,
-    ) -> anyhow::Result<Transaction>
+    ) -> Result<Transaction>
     where
         C: secp256k1::Signing,
     {

@@ -14,7 +14,7 @@ pub fn init_tracing(level: log::LevelFilter) -> anyhow::Result<()> {
 
     let is_terminal = atty::is(Stream::Stdout);
     let subscriber = FmtSubscriber::builder()
-        .with_env_filter(format!("cnd={},comit={},http=info,warp=info", level, level))
+        .with_env_filter(format!("cnd={},comit={}", level, level))
         .with_ansi(is_terminal)
         .finish();
 
