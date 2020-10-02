@@ -159,7 +159,7 @@ impl AllIn {
     ) -> anyhow::Result<TakeRequestDecision> {
         let current_profitable_rate = self.spread.apply(current_mid_market_rate, order.position)?;
 
-        if !is_as_profitable_as(&order, current_profitable_rate)? {
+        if !is_as_profitable_as(&order, current_profitable_rate) {
             return Ok(TakeRequestDecision::RateNotProfitable);
         }
 
@@ -202,7 +202,7 @@ impl AllIn {
     }
 }
 
-fn is_as_profitable_as(order: &BtcDaiOrder, profitable_rate: Rate) -> anyhow::Result<bool> {
+fn is_as_profitable_as(order: &BtcDaiOrder, profitable_rate: Rate) -> bool {
     match order.position {
         Position::Buy => {
             // We are buying BTC for DAI
@@ -210,7 +210,7 @@ fn is_as_profitable_as(order: &BtcDaiOrder, profitable_rate: Rate) -> anyhow::Re
             // It is NOT profitable to buy, if the current rate is greater than the order
             // rate. 1:8800 -> We give less DAI for getting BTC -> Good.
             // 1:9200 -> We have to give more DAI for getting BTC -> Sucks.
-            Ok(order.price <= profitable_rate.into())
+            order.price <= profitable_rate.into()
         }
         Position::Sell => {
             // We are selling BTC for DAI
@@ -218,7 +218,7 @@ fn is_as_profitable_as(order: &BtcDaiOrder, profitable_rate: Rate) -> anyhow::Re
             // It is NOT profitable to sell, if the current rate is smaller than the order
             // rate. 1:8800 -> We get less DAI for our BTC -> Sucks.
             // 1:9200 -> We get more DAI for our BTC -> Good.
-            Ok(order.price >= profitable_rate.into())
+            order.price >= profitable_rate.into()
         }
     }
 }
@@ -688,7 +688,7 @@ mod test {
 
         let rate = MidMarketRate::new(Rate::try_from(1.0).unwrap());
 
-        let is_profitable = is_as_profitable_as(&order, rate.into()).unwrap();
+        let is_profitable = is_as_profitable_as(&order, rate.into());
         assert!(is_profitable)
     }
 
@@ -698,7 +698,7 @@ mod test {
 
         let rate = MidMarketRate::new(Rate::try_from(0.9).unwrap());
 
-        let is_profitable = is_as_profitable_as(&order, rate.into()).unwrap();
+        let is_profitable = is_as_profitable_as(&order, rate.into());
         assert!(is_profitable)
     }
 
@@ -708,7 +708,7 @@ mod test {
 
         let rate = MidMarketRate::new(Rate::try_from(1.1).unwrap());
 
-        let is_profitable = is_as_profitable_as(&order, rate.into()).unwrap();
+        let is_profitable = is_as_profitable_as(&order, rate.into());
         assert!(!is_profitable)
     }
 
@@ -718,7 +718,7 @@ mod test {
 
         let rate = MidMarketRate::new(Rate::try_from(1.0).unwrap());
 
-        let is_profitable = is_as_profitable_as(&order, rate.into()).unwrap();
+        let is_profitable = is_as_profitable_as(&order, rate.into());
         assert!(is_profitable)
     }
 
@@ -728,7 +728,7 @@ mod test {
 
         let rate = MidMarketRate::new(Rate::try_from(1.1).unwrap());
 
-        let is_profitable = is_as_profitable_as(&order, rate.into()).unwrap();
+        let is_profitable = is_as_profitable_as(&order, rate.into());
         assert!(is_profitable)
     }
 
@@ -738,7 +738,7 @@ mod test {
 
         let rate = MidMarketRate::new(Rate::try_from(0.9).unwrap());
 
-        let is_profitable = is_as_profitable_as(&order, rate.into()).unwrap();
+        let is_profitable = is_as_profitable_as(&order, rate.into());
         assert!(!is_profitable)
     }
 }
