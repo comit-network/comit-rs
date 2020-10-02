@@ -90,7 +90,7 @@ where
             seen_blocks.extend(missed_blocks);
 
             // The duration of this timeout could/should depend on the network
-            tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
+            tokio::time::delay_for(std::time::Duration::from_secs(30)).await;
         }
     })
 }
