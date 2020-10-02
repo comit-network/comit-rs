@@ -54,7 +54,7 @@ impl AllIn {
     /// Inform the strategy that a herc20_hbit swap execution was resumed
     pub fn herc20_hbit_swap_resumed(&mut self, fund_amount: bitcoin::Amount) -> Result<()> {
         let amount_to_reserve = fund_amount
-            .checked_add(self.bitcoin_fee.max_fee())
+            .checked_add(self.bitcoin_fee.max_tx_fee())
             .ok_or_else(|| anyhow!(Overflow))?;
 
         self.btc_reserved_funds = self
@@ -79,7 +79,7 @@ impl AllIn {
     ) -> Result<BtcDaiOrderForm> {
         match self
             .btc_reserved_funds
-            .checked_add(self.bitcoin_fee.max_fee())
+            .checked_add(self.bitcoin_fee.max_tx_fee())
         {
             Some(added) => {
                 if base_balance <= added {
@@ -168,7 +168,7 @@ impl AllIn {
             Position::Sell => {
                 let updated_btc_reserved_funds = self.btc_reserved_funds
                     + order.quantity.to_inner()
-                    + self.bitcoin_fee.max_fee();
+                    + self.bitcoin_fee.max_tx_fee();
                 if updated_btc_reserved_funds > *btc_balance {
                     return Ok(TakeRequestDecision::InsufficientFunds);
                 }
@@ -185,7 +185,7 @@ impl AllIn {
         match swap {
             SwapKind::Herc20Hbit(swap) => {
                 self.btc_reserved_funds -=
-                    swap.hbit_params.shared.asset + self.bitcoin_fee.max_fee();
+                    swap.hbit_params.shared.asset + self.bitcoin_fee.max_tx_fee();
             }
             SwapKind::HbitHerc20(swap) => {
                 self.dai_reserved_funds -= swap.herc20_params.asset.into();
@@ -259,13 +259,7 @@ mod test {
         let rate = Rate::try_from(1.0).unwrap();
         let spread = Spread::new(0).unwrap();
 
-        let btc_fee_strategy = config::BitcoinFeeStrategy::SatsPerByte {
-            fee: Default::default(),
-            reserve_fee: config::BtcFeesToReserve {
-                sat_per_vbyte: btc(0.1),
-                vbyte_transaction_weight: 1,
-            },
-        };
+        let btc_fee_strategy = config::BitcoinFeeStrategy::SatsPerByte(btc(0.001));
 
         let strategy = AllIn::new(
             btc_fee_strategy,
@@ -275,7 +269,7 @@ mod test {
             StaticStub::static_stub(),
         );
 
-        let result = strategy.new_sell(btc(0.09), rate);
+        let result = strategy.new_sell(btc(0.07), rate);
         assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
     }
 
@@ -322,7 +316,7 @@ mod test {
         let order = strategy.new_sell(btc(10.0), rate).unwrap();
 
         // 35 sat * 1000 fees.
-        assert_eq!(order.quantity.to_inner(), btc(7.99965));
+        assert_eq!(order.quantity.to_inner(), btc(7.9997));
 
         let order = strategy.new_buy(dai(10.0), rate).unwrap();
 
@@ -354,7 +348,6 @@ mod test {
         let rate = Rate::try_from(1.0).unwrap();
         let strategy = AllIn::new(
             Default::default(),
-            // btc(0.001),
             None,
             None,
             Spread::static_stub(),
@@ -369,30 +362,7 @@ mod test {
     #[test]
     fn given_balance_is_fees_sell_order_fails() {
         let rate = Rate::try_from(1.0).unwrap();
-        let strategy = AllIn::new(
-            Default::default(),
-            None,
-            None,
-            Spread::static_stub(),
-            StaticStub::static_stub(),
-        );
-
-        let result = strategy.new_sell(btc(0.0002), rate);
-
-        assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
-    }
-
-    #[test]
-    fn given_balance_is_less_than_fees_sell_order_fails() {
-        let rate = Rate::try_from(1.0).unwrap();
-
-        let btc_fee_strategy = BitcoinFeeStrategy::SatsPerByte {
-            fee: Default::default(),
-            reserve_fee: config::BtcFeesToReserve {
-                sat_per_vbyte: bitcoin::Amount::from_sat(10000),
-                vbyte_transaction_weight: 1000,
-            },
-        };
+        let btc_fee_strategy = config::BitcoinFeeStrategy::SatsPerByte(btc(0.1));
 
         let strategy = AllIn::new(
             btc_fee_strategy,
@@ -402,7 +372,26 @@ mod test {
             StaticStub::static_stub(),
         );
 
-        let result = strategy.new_sell(btc(0.09), rate);
+        let result = strategy.new_sell(btc(1.0), rate);
+
+        assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
+    }
+
+    #[test]
+    fn given_balance_is_less_than_fees_sell_order_fails() {
+        let rate = Rate::try_from(1.0).unwrap();
+
+        let btc_fee_strategy = BitcoinFeeStrategy::SatsPerByte(bitcoin::Amount::from_sat(10000));
+
+        let strategy = AllIn::new(
+            btc_fee_strategy,
+            None,
+            None,
+            Spread::static_stub(),
+            StaticStub::static_stub(),
+        );
+
+        let result = strategy.new_sell(btc(0.07), rate);
 
         assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
     }
@@ -501,7 +490,7 @@ mod test {
             .unwrap();
 
         assert_eq!(event, TakeRequestDecision::GoForSwap);
-        assert_eq!(strategy.btc_reserved_funds, btc(1.50035))
+        assert_eq!(strategy.btc_reserved_funds, btc(1.5003))
     }
 
     proptest! {
@@ -575,13 +564,7 @@ mod test {
 
     #[test]
     fn btc_funds_reserved_upon_taking_sell_order_with_fee() {
-        let btc_fee_strategy = BitcoinFeeStrategy::SatsPerByte {
-            fee: Default::default(),
-            reserve_fee: config::BtcFeesToReserve {
-                sat_per_vbyte: bitcoin::Amount::from_sat(100_000),
-                vbyte_transaction_weight: 1000,
-            },
-        };
+        let btc_fee_strategy = BitcoinFeeStrategy::SatsPerByte(bitcoin::Amount::from_sat(1000));
 
         let mut strategy = AllIn::new(
             btc_fee_strategy,
@@ -598,7 +581,7 @@ mod test {
             .unwrap();
 
         assert_eq!(event, TakeRequestDecision::GoForSwap);
-        assert_eq!(strategy.btc_reserved_funds, btc(2.5))
+        assert_eq!(strategy.btc_reserved_funds, btc(1.53))
     }
 
     #[test]

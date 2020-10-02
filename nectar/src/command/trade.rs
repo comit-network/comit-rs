@@ -77,9 +77,9 @@ pub async fn trade(
     let bitcoin_connector = Arc::new(BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?);
     let ethereum_connector = Arc::new(Web3Connector::new(settings.ethereum.node_url.clone()));
 
-    let bitcoin_fee = bitcoin::Fee::new(settings.fee_strategies.bitcoin, bitcoind_client);
+    let bitcoin_fee = bitcoin::Fee::new(settings.bitcoin.fees, bitcoind_client);
 
-    let ethereum_gas_price = ethereum::GasPrice::new(settings.fee_strategies.ethereum);
+    let ethereum_gas_price = ethereum::GasPrice::new(settings.ethereum.gas_price);
 
     let (swap_executor, swap_execution_finished_receiver) = SwapExecutor::new(
         Arc::clone(&db),
@@ -134,7 +134,7 @@ async fn init_maker(
         .context("Could not get Dai balance")?;
 
     let btc_dai = settings.maker.btc_dai;
-    let btc_fee_strategy = settings.fee_strategies.bitcoin;
+    let btc_fee_strategy = settings.bitcoin.fees;
 
     let initial_rate = get_btc_dai_mid_market_rate(&settings.maker.kraken_api_host)
         .await
@@ -320,15 +320,15 @@ mod tests {
             logging: Logging {
                 level: LevelFilter::Trace,
             },
-            bitcoin: settings::Bitcoin::new(ledger::Bitcoin::Regtest),
+            bitcoin: settings::Bitcoin::default_from_network(ledger::Bitcoin::Regtest),
             ethereum: settings::Ethereum {
                 node_url: ethereum_blockchain.node_url.clone(),
                 chain: ethereum::Chain::new(
                     ChainId::GETH_DEV,
                     ethereum_blockchain.token_contract(),
                 ),
+                gas_price: Default::default(),
             },
-            fee_strategies: Default::default(),
         };
 
         let bitcoin_wallet = bitcoin::Wallet::new(

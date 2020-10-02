@@ -22,7 +22,6 @@ pub struct File {
     pub logging: Option<Logging>,
     pub bitcoin: Option<Bitcoin>,
     pub ethereum: Option<Ethereum>,
-    pub fee_strategies: Option<FeeStrategies>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -33,11 +32,22 @@ pub struct Maker {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct FeeStrategies {
+pub struct Bitcoin {
+    pub network: ledger::Bitcoin,
+    pub bitcoind: Option<Bitcoind>,
     #[serde(default)]
-    pub bitcoin: Option<BitcoinFee>,
+    pub fees: Option<BitcoinFee>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Ethereum {
+    pub chain_id: ChainId,
+    pub node_url: Option<Url>,
     #[serde(default)]
-    pub ethereum: Option<EthereumGasPrice>,
+    #[serde(with = "crate::config::serde::ethereum_address")]
+    pub local_dai_contract_address: Option<comit::ethereum::Address>,
+    #[serde(default)]
+    pub gas_price: Option<EthereumGasPrice>,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -51,7 +61,12 @@ pub struct BitcoinFee {
     /// The estimate mode to use if the selected strategy is "bitcoind estimate
     /// smart fee"
     pub estimate_mode: Option<EstimateMode>,
-    pub fees_to_reserve: Option<BtcFeesToReserve>,
+    /// The Maximum rate we would expected bitcoind estimatesmartfee to return.
+    /// This is used as a safeguard to be sure we can always fund Bitcoin if we
+    /// committed to it.
+    #[serde(default)]
+    #[serde(with = "::bitcoin::util::amount::serde::as_sat::opt")]
+    pub max_sat_per_vbyte: Option<bitcoin::Amount>,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -59,14 +74,6 @@ pub struct BitcoinFee {
 pub enum BitcoinFeeStrategy {
     Static,
     Bitcoind,
-}
-
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct BtcFeesToReserve {
-    #[serde(default)]
-    #[serde(with = "::bitcoin::util::amount::serde::as_sat::opt")]
-    pub sat_per_vbyte: Option<bitcoin::Amount>,
-    pub vbyte_transaction_weight: Option<u64>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -81,21 +88,6 @@ pub struct EthereumGasPrice {
 pub enum EthereumGasPriceService {
     Geth,
     EthGasStation,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Bitcoin {
-    pub network: ledger::Bitcoin,
-    pub bitcoind: Option<Bitcoind>,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Ethereum {
-    pub chain_id: ChainId,
-    pub node_url: Option<Url>,
-    #[serde(default)]
-    #[serde(with = "crate::config::serde::ethereum_address")]
-    pub local_dai_contract_address: Option<comit::ethereum::Address>,
 }
 
 impl File {
@@ -120,7 +112,6 @@ impl Default for File {
             logging: None,
             bitcoin: None,
             ethereum: None,
-            fee_strategies: None,
         }
     }
 }
@@ -212,17 +203,6 @@ kraken_api_host = "https://api.kraken.com"
 max_buy_quantity = 1.23456
 max_sell_quantity = 1.23456
 
-[fee_strategies.bitcoin]
-strategy = "bitcoind"
-
-[fee_strategies.bitcoin.fees_to_reserve]
-sat_per_vbyte = 25
-vbyte_transaction_weight = 900
-
-[fee_strategies.ethereum]
-service = "eth_gas_station"
-url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
-
 [network]
 listen = ["/ip4/0.0.0.0/tcp/9939"]
 
@@ -238,10 +218,18 @@ network = "regtest"
 [bitcoin.bitcoind]
 node_url = "http://localhost:18443/"
 
+[bitcoin.fees]
+strategy = "bitcoind"
+max_sat_per_vbyte = 25
+
 [ethereum]
 chain_id = 1337
 node_url = "http://localhost:8545/"
 local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
+
+[ethereum.gas_price]
+service = "eth_gas_station"
+url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
 "#;
         let expected = File {
             maker: Some(Maker {
@@ -266,6 +254,12 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                 bitcoind: Some(Bitcoind {
                     node_url: "http://localhost:18443".parse().unwrap(),
                 }),
+                fees: Some(BitcoinFee {
+                    strategy: Some(BitcoinFeeStrategy::Bitcoind),
+                    sat_per_vbyte: None,
+                    estimate_mode: None,
+                    max_sat_per_vbyte: Some(bitcoin::Amount::from_sat(25)),
+                }),
             }),
             ethereum: Some(Ethereum {
                 chain_id: ChainId::GETH_DEV,
@@ -275,18 +269,7 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                         .parse()
                         .unwrap(),
                 ),
-            }),
-            fee_strategies: Some(FeeStrategies {
-                bitcoin: Some(BitcoinFee {
-                    strategy: Some(BitcoinFeeStrategy::Bitcoind),
-                    sat_per_vbyte: None,
-                    estimate_mode: None,
-                    fees_to_reserve: Some(BtcFeesToReserve {
-                        sat_per_vbyte: Some(bitcoin::Amount::from_sat(25)),
-                        vbyte_transaction_weight: Some(900),
-                    }),
-                }),
-                ethereum: Some(EthereumGasPrice {
+                gas_price: Some(EthereumGasPrice {
                     service: EthereumGasPriceService::EthGasStation,
                     url: "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
                         .parse()
@@ -331,6 +314,12 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                 bitcoind: Some(Bitcoind {
                     node_url: "http://localhost:18443".parse().unwrap(),
                 }),
+                fees: Some(BitcoinFee {
+                    strategy: Some(BitcoinFeeStrategy::Bitcoind),
+                    sat_per_vbyte: None,
+                    estimate_mode: Some(EstimateMode::Conservative),
+                    max_sat_per_vbyte: Some(bitcoin::Amount::from_sat(34)),
+                }),
             }),
             ethereum: Some(Ethereum {
                 chain_id: ChainId::GETH_DEV,
@@ -340,18 +329,7 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
                         .parse()
                         .unwrap(),
                 ),
-            }),
-            fee_strategies: Some(FeeStrategies {
-                bitcoin: Some(BitcoinFee {
-                    strategy: Some(BitcoinFeeStrategy::Bitcoind),
-                    sat_per_vbyte: None,
-                    estimate_mode: Some(EstimateMode::Conservative),
-                    fees_to_reserve: Some(BtcFeesToReserve {
-                        sat_per_vbyte: Some(bitcoin::Amount::from_sat(34)),
-                        vbyte_transaction_weight: Some(850),
-                    }),
-                }),
-                ethereum: Some(EthereumGasPrice {
+                gas_price: Some(EthereumGasPrice {
                     service: EthereumGasPriceService::EthGasStation,
                     url: "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
                         .parse()
@@ -383,19 +361,17 @@ network = "regtest"
 [bitcoin.bitcoind]
 node_url = "http://localhost:18443/"
 
+[bitcoin.fees]
+strategy = "bitcoind"
+estimate_mode = "conservative"
+max_sat_per_vbyte = 34
+
 [ethereum]
 chain_id = 1337
 node_url = "http://localhost:8545/"
 local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
-[fee_strategies.bitcoin]
-strategy = "bitcoind"
-estimate_mode = "conservative"
 
-[fee_strategies.bitcoin.fees_to_reserve]
-sat_per_vbyte = 34
-vbyte_transaction_weight = 850
-
-[fee_strategies.ethereum]
+[ethereum.gas_price]
 service = "eth_gas_station"
 url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
 "#;
@@ -442,6 +418,11 @@ url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
             network = "regtest"
             [bitcoind]
             node_url = "http://example.com:18443"
+            [fees]
+            strategy = "bitcoind"
+            estimate_mode = "unset"
+            sat_per_vbyte = 12
+            max_sat_per_vbyte = 34
             "#,
         ];
 
@@ -451,17 +432,25 @@ url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:8332").unwrap(),
                 }),
+                fees: None,
             },
             Bitcoin {
                 network: ledger::Bitcoin::Testnet,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:18332").unwrap(),
                 }),
+                fees: None,
             },
             Bitcoin {
                 network: ledger::Bitcoin::Regtest,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:18443").unwrap(),
+                }),
+                fees: Some(BitcoinFee {
+                    strategy: Some(BitcoinFeeStrategy::Bitcoind),
+                    sat_per_vbyte: Some(bitcoin::Amount::from_sat(12)),
+                    estimate_mode: Some(EstimateMode::Unset),
+                    max_sat_per_vbyte: Some(bitcoin::Amount::from_sat(34)),
                 }),
             },
         ];
@@ -482,10 +471,16 @@ url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
             chain_id = 1337
             node_url = "http://example.com:8545"
             local_dai_contract_address = "0x31F42841c2db5173425b5223809CF3A38FEde360"
+            [gas_price]
+            service = "geth"
+            url = "http://example.com:1234"
             "#,
             r#"
             chain_id = 3
             node_url = "http://example.com:8545"
+            [gas_price]
+            service = "eth_gas_station"
+            url = "http://example.url:5678"
             "#,
             r#"
             chain_id = 1
@@ -502,16 +497,25 @@ url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
                         .parse()
                         .unwrap(),
                 ),
+                gas_price: Some(EthereumGasPrice {
+                    service: EthereumGasPriceService::Geth,
+                    url: "http://example.com:1234".parse().unwrap(),
+                }),
             },
             Ethereum {
                 chain_id: ChainId::ROPSTEN,
                 node_url: Some(Url::parse("http://example.com:8545").unwrap()),
                 local_dai_contract_address: None,
+                gas_price: Some(EthereumGasPrice {
+                    service: EthereumGasPriceService::EthGasStation,
+                    url: "http://example.url:5678".parse().unwrap(),
+                }),
             },
             Ethereum {
                 chain_id: ChainId::MAINNET,
                 node_url: Some(Url::parse("http://example.com:8545").unwrap()),
                 local_dai_contract_address: None,
+                gas_price: None,
             },
         ];
 
@@ -595,21 +599,15 @@ url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
             r#"
             strategy = "bitcoind"
             estimate_mode = "unset"
-            [fees_to_reserve]
-            sat_per_vbyte = 34
-            vbyte_transaction_weight = 850
+            max_sat_per_vbyte = 34
             "#,
             r#"
-            strategy = "static"
+            strategy = "bitcoind"
+            max_sat_per_vbyte = 50
+            "#,
+            r#"
+            strategy = "bitcoind"
             estimate_mode = "economical"
-            [fees_to_reserve]
-            sat_per_vbyte = 23
-            "#,
-            r#"
-            sat_per_vbyte = 10
-            estimate_mode = "conservative"
-            [fees_to_reserve]
-            vbyte_transaction_weight = 777
             "#,
         ];
 
@@ -618,34 +616,25 @@ url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
                 strategy: Some(BitcoinFeeStrategy::Static),
                 sat_per_vbyte: Some(bitcoin::Amount::from_sat(10)),
                 estimate_mode: None,
-                fees_to_reserve: None,
+                max_sat_per_vbyte: None,
             },
             BitcoinFee {
                 strategy: Some(BitcoinFeeStrategy::Bitcoind),
                 sat_per_vbyte: None,
                 estimate_mode: Some(EstimateMode::Unset),
-                fees_to_reserve: Some(BtcFeesToReserve {
-                    sat_per_vbyte: Some(bitcoin::Amount::from_sat(34)),
-                    vbyte_transaction_weight: Some(850),
-                }),
+                max_sat_per_vbyte: Some(bitcoin::Amount::from_sat(34)),
             },
             BitcoinFee {
-                strategy: Some(BitcoinFeeStrategy::Static),
+                strategy: Some(BitcoinFeeStrategy::Bitcoind),
+                sat_per_vbyte: None,
+                estimate_mode: None,
+                max_sat_per_vbyte: Some(bitcoin::Amount::from_sat(50)),
+            },
+            BitcoinFee {
+                strategy: Some(BitcoinFeeStrategy::Bitcoind),
                 sat_per_vbyte: None,
                 estimate_mode: Some(EstimateMode::Economical),
-                fees_to_reserve: Some(BtcFeesToReserve {
-                    sat_per_vbyte: Some(bitcoin::Amount::from_sat(23)),
-                    vbyte_transaction_weight: None,
-                }),
-            },
-            BitcoinFee {
-                strategy: None,
-                sat_per_vbyte: Some(bitcoin::Amount::from_sat(10)),
-                estimate_mode: Some(EstimateMode::Conservative),
-                fees_to_reserve: Some(BtcFeesToReserve {
-                    sat_per_vbyte: None,
-                    vbyte_transaction_weight: Some(777),
-                }),
+                max_sat_per_vbyte: None,
             },
         ];
 

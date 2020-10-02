@@ -24,7 +24,7 @@ impl Fee {
     pub async fn vbyte_rate(&self) -> Result<Amount> {
         use crate::config::BitcoinFeeStrategy::*;
         match self.config {
-            SatsPerByte { fee, .. } => Ok(fee),
+            SatsPerByte(fee) => Ok(fee),
             BitcoindEstimateSmartfee { mode, .. } => {
                 let kvbyte_rate = self
                     .client
@@ -40,8 +40,8 @@ impl Fee {
         }
     }
 
-    pub fn max_fee(&self) -> bitcoin::Amount {
-        self.config.reserve_fee().fee_per_tx()
+    pub fn max_tx_fee(&self) -> bitcoin::Amount {
+        self.config.max_tx_fee()
     }
 }
 

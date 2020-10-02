@@ -167,23 +167,18 @@ mod tests {
                 bitcoind: Some(Bitcoind {
                     node_url: "http://localhost:18443/".parse().unwrap(),
                 }),
+                fees: Some(file::BitcoinFee {
+                    strategy: Some(file::BitcoinFeeStrategy::Static),
+                    sat_per_vbyte: Some(bitcoin::Amount::from_sat(12)),
+                    estimate_mode: None,
+                    max_sat_per_vbyte: None,
+                }),
             }),
             ethereum: Some(file::Ethereum {
                 chain_id: ChainId::MAINNET,
                 node_url: Some("http://localhost:8545/".parse().unwrap()),
                 local_dai_contract_address: None,
-            }),
-            fee_strategies: Some(file::FeeStrategies {
-                bitcoin: Some(file::BitcoinFee {
-                    strategy: Some(file::BitcoinFeeStrategy::Static),
-                    sat_per_vbyte: Some(bitcoin::Amount::from_sat(12)),
-                    estimate_mode: None,
-                    fees_to_reserve: Some(file::BtcFeesToReserve {
-                        sat_per_vbyte: Some(bitcoin::Amount::from_sat(34)),
-                        vbyte_transaction_weight: Some(850),
-                    }),
-                }),
-                ethereum: Some(file::EthereumGasPrice {
+                gas_price: Some(file::EthereumGasPrice {
                     service: file::EthereumGasPriceService::Geth,
                     url: "http://some.geth.url:8545/".parse().unwrap(),
                 }),
@@ -229,7 +224,6 @@ mod tests {
             logging: None,
             bitcoin: None,
             ethereum: None,
-            fee_strategies: None
         },)
     }
 

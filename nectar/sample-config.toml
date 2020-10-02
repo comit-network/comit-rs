@@ -40,26 +40,25 @@ network = "regtest"
 # The url to the bitcoind json rpc, can include user and password if necessary: `http://user:password@host:port`
 node_url = "http://localhost:18443/"
 
+# Strategies used for Bitcoin fee handling.
+[bitcoin.fees]
+# A static sat/byte value can be specified or you can relay on bitcoind's estimatesmartfee feature.
+strategy = "static"
+sat_per_vbyte = 12
+# Alternatively, bitcoind's estimatesmartfee command can be used.
+# strategy = "bitcoind"
+# Estimate mode can be optionally selected
+# estimate_mode = "conservative"
+# A max fee cap is needed to ensure that there is enough funds to proceed with a swap and cover the fees
+# max_sat_per_vbyte = 34
+
 [ethereum]
 # The Ethereum chain id nectar is acting on
 chain_id = 1
 # The url to the web3 node, can include an infura key: `https://mainnet.infura.io/v3/YOUR-PROJECT-ID`
 node_url = "http://localhost:8545/"
 
-# Strategies used for Bitcoin fee handling.
-[fee_strategies.bitcoin]
-# A static sat/byte value can be specified or you can relay on bitcoind's estimatesmartfee feature.
-strategy = "static"
-sat_per_vbyte = 12
-
-[fee_strategies.bitcoin.fees_to_reserve]
-# An estimation of the maximum network fee that we would expect to pay, used to ensure
-# we always have enough balance to execute an order we publish.
-sat_per_vbyte = 34
-# An estimation of the largest Bitcoin transaction we are likely to pay for.
-vbyte_transaction_weight = 850
-
 # Strategies used for Ethereum gas price handling.
-[fee_strategies.ethereum]
+[ethereum.gas_price]
 service = "geth"
 url = "http://some.geth.url:8545/"
