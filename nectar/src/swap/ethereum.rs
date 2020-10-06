@@ -108,7 +108,7 @@ impl herc20::ExecuteRefund for Wallet {
 #[async_trait::async_trait]
 impl LedgerTime for Web3Connector {
     async fn ledger_time(&self) -> anyhow::Result<Timestamp> {
-        ethereum_latest_time(self).await
+        comit::ethereum::latest_time(self).await
     }
 }
 
@@ -117,15 +117,6 @@ impl LedgerTime for Wallet {
     async fn ledger_time(&self) -> anyhow::Result<Timestamp> {
         self.connector.as_ref().ledger_time().await
     }
-}
-
-async fn ethereum_latest_time<C>(connector: &C) -> anyhow::Result<Timestamp>
-where
-    C: LatestBlock<Block = Block>,
-{
-    let timestamp = connector.latest_block().await?.timestamp.into();
-
-    Ok(timestamp)
 }
 
 #[async_trait::async_trait]
