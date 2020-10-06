@@ -1,4 +1,4 @@
-use crate::btsieve::{BlockByHash, LatestBlock};
+use crate::btsieve::{BlockByHash, ConnectedNetwork, LatestBlock};
 use anyhow::Result;
 use async_trait::async_trait;
 use bitcoin::{Block, BlockHash as Hash, BlockHash};
@@ -66,5 +66,18 @@ where
         guard.put(block_hash, block.clone());
 
         Ok(block)
+    }
+}
+
+#[async_trait]
+impl<N, C> ConnectedNetwork for Cache<C>
+where
+    C: ConnectedNetwork<Network = N>,
+    N: Send + Sync + 'static,
+{
+    type Network = N;
+
+    async fn connected_network(&self) -> Result<Self::Network> {
+        self.connector.connected_network().await
     }
 }

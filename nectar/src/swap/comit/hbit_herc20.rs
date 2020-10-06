@@ -5,8 +5,8 @@ use crate::swap::{
 use anyhow::{Context, Result};
 use comit::{
     btsieve,
-    btsieve::{BlockByHash, LatestBlock},
-    ethereum, Secret,
+    btsieve::{BlockByHash, ConnectedNetwork, LatestBlock},
+    ethereum, ledger, Secret,
 };
 use time::OffsetDateTime;
 
@@ -73,7 +73,8 @@ pub async fn hbit_herc20_bob<B, BC, EC>(
 where
     B: herc20::ExecuteDeploy + herc20::ExecuteFund + hbit::ExecuteRedeem + herc20::ExecuteRefund,
     BC: LatestBlock<Block = ::bitcoin::Block>
-        + BlockByHash<Block = ::bitcoin::Block, BlockHash = ::bitcoin::BlockHash>,
+        + BlockByHash<Block = ::bitcoin::Block, BlockHash = ::bitcoin::BlockHash>
+        + ConnectedNetwork<Network = ledger::Bitcoin>,
     EC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + btsieve::ethereum::ReceiptByHash,

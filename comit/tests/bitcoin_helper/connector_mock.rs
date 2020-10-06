@@ -1,7 +1,10 @@
 use anyhow::Context;
 use async_trait::async_trait;
 use bitcoin::BlockHash;
-use comit::btsieve::{BlockByHash, LatestBlock};
+use comit::{
+    btsieve::{BlockByHash, ConnectedNetwork, LatestBlock},
+    ledger,
+};
 use futures::{stream::BoxStream, StreamExt};
 use std::{collections::HashMap, time::Duration};
 use tokio::{stream, sync::Mutex, time::throttle};
@@ -58,6 +61,15 @@ impl BlockByHash for BitcoinConnectorMock {
             .get(&block_hash)
             .cloned()
             .with_context(|| format!("could not find block with hash {}", block_hash))
+    }
+}
+
+#[async_trait]
+impl ConnectedNetwork for BitcoinConnectorMock {
+    type Network = ledger::Bitcoin;
+
+    async fn connected_network(&self) -> anyhow::Result<Self::Network> {
+        Ok(ledger::Bitcoin::Regtest)
     }
 }
 

@@ -7,9 +7,10 @@ pub use self::{
 };
 use crate::{
     btsieve::{
-        fetch_blocks_since, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
+        fetch_blocks_since, BlockByHash, BlockHash, ConnectedNetwork, LatestBlock, Predates,
+        PreviousBlockHash,
     },
-    identity,
+    identity, ledger,
 };
 use anyhow::Result;
 use bitcoin::{self, OutPoint};
@@ -44,7 +45,9 @@ pub async fn watch_for_spent_outpoint<C>(
     identity: identity::Bitcoin,
 ) -> Result<(bitcoin::Transaction, bitcoin::TxIn)>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ConnectedNetwork<Network = ledger::Bitcoin>,
 {
     let (transaction, txin) = watch(blockchain_connector, start_of_swap, |transaction| {
         transaction
@@ -66,7 +69,9 @@ pub async fn watch_for_created_outpoint<C>(
     address: bitcoin::Address,
 ) -> Result<(bitcoin::Transaction, bitcoin::OutPoint)>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ConnectedNetwork<Network = ledger::Bitcoin>,
 {
     let (transaction, out_point) = watch(blockchain_connector, start_of_swap, |transaction| {
         let txid = transaction.txid();
@@ -95,10 +100,13 @@ async fn watch<C, S, M>(
     sieve: S,
 ) -> Result<(bitcoin::Transaction, M)>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ConnectedNetwork<Network = ledger::Bitcoin>,
     S: Fn(&bitcoin::Transaction) -> Option<M>,
 {
-    let mut block_generator = fetch_blocks_since(connector, start_of_swap, Duration::from_secs(1));
+    let poll_interval = poll_interval(connector).await?;
+    let mut block_generator = fetch_blocks_since(connector, start_of_swap, poll_interval);
 
     loop {
         match block_generator.async_resume().await {
@@ -134,4 +142,19 @@ impl Predates for Block {
 
         block_time < unix_timestamp
     }
+}
+
+async fn poll_interval<C>(connector: &C) -> Result<Duration>
+where
+    C: ConnectedNetwork<Network = ledger::Bitcoin>,
+{
+    use ledger::Bitcoin::*;
+
+    let network = connector.connected_network().await?;
+    let seconds = match network {
+        Mainnet | Testnet => 30,
+        Regtest => 1,
+    };
+
+    Ok(Duration::from_secs(seconds))
 }
