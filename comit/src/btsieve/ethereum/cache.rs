@@ -3,7 +3,7 @@ use crate::{
         ethereum::{self, Hash, ReceiptByHash},
         BlockByHash, ConnectedNetwork, LatestBlock,
     },
-    ethereum::TransactionReceipt,
+    ethereum::{ChainId, TransactionReceipt},
 };
 use anyhow::Result;
 use async_trait::async_trait;
@@ -25,6 +25,8 @@ pub struct Cache<C> {
     pub block_cache: Arc<Mutex<LruCache<Hash, Block>>>,
     #[derivative(Debug = "ignore")]
     pub receipt_cache: Arc<Mutex<LruCache<Hash, TransactionReceipt>>>,
+    #[derivative(Debug = "ignore")]
+    pub connected_network_cache: Arc<Mutex<Option<ChainId>>>,
 }
 
 impl<C> Cache<C> {
@@ -35,10 +37,13 @@ impl<C> Cache<C> {
     ) -> Cache<C> {
         let block_cache = Arc::new(Mutex::new(LruCache::new(block_cache_capacity)));
         let receipt_cache = Arc::new(Mutex::new(LruCache::new(receipt_cache_capacity)));
+        let connected_network_cache = Arc::new(Mutex::new(None));
+
         Cache {
             connector,
             block_cache,
             receipt_cache,
+            connected_network_cache,
         }
     }
 }
@@ -108,14 +113,20 @@ where
 }
 
 #[async_trait]
-impl<C, N> ConnectedNetwork for Cache<C>
+impl<C> ConnectedNetwork for Cache<C>
 where
-    C: ConnectedNetwork<Network = N>,
-    N: Send + Sync + 'static,
+    C: ConnectedNetwork<Network = ChainId>,
 {
-    type Network = N;
+    type Network = ChainId;
 
     async fn connected_network(&self) -> Result<Self::Network> {
-        self.connector.connected_network().await
+        if let Some(network) = *self.connected_network_cache.lock().await {
+            return Ok(network);
+        }
+
+        let network = self.connector.connected_network().await?;
+        let _ = self.connected_network_cache.lock().await.replace(network);
+
+        Ok(network)
     }
 }

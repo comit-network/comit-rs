@@ -1,4 +1,7 @@
-use crate::btsieve::{BlockByHash, ConnectedNetwork, LatestBlock};
+use crate::{
+    btsieve::{BlockByHash, ConnectedNetwork, LatestBlock},
+    ledger,
+};
 use anyhow::Result;
 use async_trait::async_trait;
 use bitcoin::{Block, BlockHash as Hash, BlockHash};
@@ -13,14 +16,19 @@ pub struct Cache<C> {
     pub connector: C,
     #[derivative(Debug = "ignore")]
     pub block_cache: Arc<Mutex<LruCache<BlockHash, Block>>>,
+    #[derivative(Debug = "ignore")]
+    pub connected_network_cache: Arc<Mutex<Option<ledger::Bitcoin>>>,
 }
 
 impl<C> Cache<C> {
     pub fn new(connector: C, capacity: usize) -> Cache<C> {
         let block_cache = Arc::new(Mutex::new(LruCache::new(capacity)));
+        let connected_network_cache = Arc::new(Mutex::new(None));
+
         Cache {
             connector,
             block_cache,
+            connected_network_cache,
         }
     }
 }
@@ -70,14 +78,20 @@ where
 }
 
 #[async_trait]
-impl<N, C> ConnectedNetwork for Cache<C>
+impl<C> ConnectedNetwork for Cache<C>
 where
-    C: ConnectedNetwork<Network = N>,
-    N: Send + Sync + 'static,
+    C: ConnectedNetwork<Network = ledger::Bitcoin>,
 {
-    type Network = N;
+    type Network = ledger::Bitcoin;
 
     async fn connected_network(&self) -> Result<Self::Network> {
-        self.connector.connected_network().await
+        if let Some(network) = *self.connected_network_cache.lock().await {
+            return Ok(network);
+        }
+
+        let network = self.connector.connected_network().await?;
+        let _ = self.connected_network_cache.lock().await.replace(network);
+
+        Ok(network)
     }
 }
