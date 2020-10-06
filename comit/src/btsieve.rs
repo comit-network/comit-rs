@@ -97,7 +97,6 @@ where
 
             seen_blocks.extend(missed_blocks);
 
-            // The duration of this timeout could/should depend on the network
             tokio::time::delay_for(poll_interval).await;
         }
     })
