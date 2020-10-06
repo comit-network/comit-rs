@@ -1,7 +1,6 @@
 use crate::{bitcoin, bitcoin::Amount, config, Result};
 use anyhow::Context;
-
-const ESTIMATE_FEE_TARGET: u32 = 3;
+use comit::expiries::bitcoin_mine_within_blocks;
 
 #[derive(Clone, Debug)]
 pub struct Fee {
@@ -26,9 +25,12 @@ impl Fee {
         match self.config.fees {
             SatsPerByte(fee) => Ok(fee),
             BitcoindEstimateSmartfee { mode, .. } => {
+                let network = self.config.network.into();
+                let mine_within_blocks = bitcoin_mine_within_blocks(network) as u32;
+
                 let kvbyte_rate = self
                     .client
-                    .estimate_smart_fee(ESTIMATE_FEE_TARGET, Some(mode.into()))
+                    .estimate_smart_fee(mine_within_blocks, Some(mode.into()))
                     .await
                     .map(|res| res.kbyte_rate)?;
 
