@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -   A set of API endpoints that expose the decentralized orderbook functionality.
 -   Ability to configure the Bitcoin fee rate with a static value for the redeem and refund transactions.
+-   Disallow unknown keys in the config file.
+Previously, unknown configuration keys would just be ignored.
+`cnd` will now refuse to startup if the configuration file contains unknown keys.
 
 ### Changed
 

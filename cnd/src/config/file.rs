@@ -19,6 +19,7 @@ use std::{
 /// represented as `Option`s` here. This allows us to create a dedicated step
 /// for filling in default values for absent configuration options.
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct File {
     pub network: Option<Network>,
     pub http_api: Option<HttpApi>,
@@ -30,12 +31,14 @@ pub struct File {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Network {
     pub listen: Vec<Multiaddr>,
     pub peer_addresses: Option<Vec<Multiaddr>>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Bitcoin {
     pub network: ledger::Bitcoin,
     pub bitcoind: Option<Bitcoind>,
@@ -43,6 +46,7 @@ pub struct Bitcoin {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Ethereum {
     pub chain_id: ChainId,
     pub geth: Option<Geth>,
@@ -50,17 +54,20 @@ pub struct Ethereum {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Tokens {
     pub dai: Option<ethereum::Address>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Lightning {
     pub network: ledger::Bitcoin,
     pub lnd: Option<Lnd>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Lnd {
     pub rest_api_url: reqwest::Url,
     pub dir: PathBuf,
@@ -92,6 +99,7 @@ impl File {
 }
 
 #[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct Logging {
     pub level: Option<Level>,
 }
@@ -131,12 +139,14 @@ impl From<Level> for LevelFilter {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct HttpApi {
     pub socket: SocketAddr,
     pub cors: Option<Cors>,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct Cors {
     pub allowed_origins: AllowedOrigins,
 }
