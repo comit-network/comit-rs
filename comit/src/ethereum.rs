@@ -208,6 +208,7 @@ impl fmt::Display for ChainId {
         match self {
             &Self::MAINNET => write!(f, "MAINNET"),
             &Self::ROPSTEN => write!(f, "ROPSTEN"),
+            &Self::KOVAN => write!(f, "KOVAN"),
             &Self::GETH_DEV => write!(f, "GETH-DEV"),
             other => write!(f, "UNKNOWN ({})", other.0),
         }
