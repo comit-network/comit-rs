@@ -314,7 +314,7 @@ fn happy_path_swap_period_for_alice(config: &Config) -> Duration {
 
 /// Duration for a complete happy path swap for Bob.
 fn happy_path_swap_period_for_bob(config: &Config) -> Duration {
-    period_for_bob_to_complete(&config, BobState::Started)
+    config.start() + period_for_bob_to_complete(&config, BobState::Started)
 }
 
 /// The minimum time we should allow for Alice to transition from
@@ -326,11 +326,11 @@ fn period_for_alice_to_complete(config: &Config, current_state: AliceState) -> D
             return acc;
         }
 
+        let transition_period = state.transition_period(config);
         let (_action, next_state) = match config.protocol() {
             Protocol::Herc20Hbit => state.next_herc20_hbit(),
             Protocol::HbitHerc20 => state.next_hbit_herc20(),
         };
-        let transition_period = state.transition_period(config);
 
         period_to_complete(config, next_state, acc + transition_period)
     }
@@ -347,11 +347,11 @@ fn period_for_bob_to_complete(config: &Config, current_state: BobState) -> Durat
             return acc;
         }
 
+        let transition_period = state.transition_period(config);
         let (_action, next_state) = match config.protocol() {
             Protocol::Herc20Hbit => state.next_herc20_hbit(),
             Protocol::HbitHerc20 => state.next_hbit_herc20(),
         };
-        let transition_period = state.transition_period(config);
 
         period_to_complete(config, next_state, acc + transition_period)
     }
@@ -992,8 +992,10 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_herc20_hbit(Network::Main, start_at, ac.clone(), bc.clone());
-        let inc = 50.minutes(); // Alice takes this long to start.
+        let network = Network::Main;
+        let exp = Expiries::new_herc20_hbit(network, start_at, ac.clone(), bc.clone());
+        let config = Config::herc20_hbit(network);
+        let inc = config.period_to_act_with_user_interaction() - 2.minutes(); // Alice takes this long to start.
         inc_connectors(inc, ac.clone(), bc.clone()).await;
 
         let mut cur = BobState::initial();
@@ -1016,8 +1018,10 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_hbit_herc20(Network::Main, start_at, ac.clone(), bc.clone());
-        let inc = 50.minutes(); // Alice takes this long to start.
+        let network = Network::Main;
+        let exp = Expiries::new_hbit_herc20(network, start_at, ac.clone(), bc.clone());
+        let config = Config::hbit_herc20(network);
+        let inc = config.period_to_act_with_user_interaction() - 2.minutes(); // Alice takes this long to start.
         inc_connectors(inc, ac.clone(), bc.clone()).await;
 
         let mut cur = BobState::initial();
@@ -1112,9 +1116,10 @@ mod tests {
         let start_at = Timestamp::now();
         let (ac, bc) = mock_connectors();
 
-        let exp = Expiries::new_herc20_hbit(Network::Main, start_at, ac.clone(), bc.clone());
-
-        let inc = 2.hours();
+        let network = Network::Main;
+        let exp = Expiries::new_herc20_hbit(network, start_at, ac.clone(), bc.clone());
+        let config = Config::herc20_hbit(network);
+        let inc = config.period_to_act_with_user_interaction() + 1.minutes();
         inc_connectors(inc, ac, bc).await;
 
         let bob_state = BobState::Started;
@@ -1210,5 +1215,55 @@ mod tests {
         let got_action = exp.next_action_for_bob(bob_state).await;
 
         assert_that!(got_action).is_equal_to(want_action);
+    }
+
+    #[tokio::test]
+    async fn alice_can_complete_an_hbit_herc20_swap_with_slow_bob_fund() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+
+        let network = Network::Main;
+        let exp = Expiries::new_hbit_herc20(network, start_at, ac.clone(), bc.clone());
+        let config = Config::hbit_herc20(network);
+
+        // Alice waits the last minute
+        let inc = config.period_to_act_with_user_interaction();
+        inc_connectors(inc, ac.clone(), bc.clone()).await;
+
+        let mut cur = AliceState::AlphaFunded;
+
+        // Bob waits the last minute
+        let inc = config.period_to_act_in_software() - 1.minutes();
+        inc_connectors(inc, ac.clone(), bc.clone()).await;
+
+        let inc = 1.minutes();
+        while cur != AliceState::Done {
+            let (want_action, state) = cur.next_hbit_herc20();
+            let got_action = exp.next_action_for_alice(cur).await;
+
+            assert_that!(got_action).is_equal_to(want_action);
+
+            cur = state;
+            inc_connectors(inc, ac.clone(), bc.clone()).await;
+        }
+    }
+
+    #[tokio::test]
+    async fn alice_next_action_wait_to_refund_when_redeem_is_unsafe() {
+        let start_at = Timestamp::now();
+        let (ac, bc) = mock_connectors();
+        let network = Network::Main;
+        let config = Config::herc20_hbit(network);
+        let exp = Expiries::new_herc20_hbit(network, start_at, ac.clone(), bc.clone());
+        let alice_state = AliceState::AlphaFunded;
+
+        let safe_period = config.mine_beta_redeem_transaction() + config.finality_beta();
+
+        let inc = Duration::from(exp.beta_offset) - safe_period + 1.minutes();
+        inc_connectors(inc, ac.clone(), bc.clone()).await;
+
+        let next_action = exp.next_action_for_alice(alice_state).await;
+
+        assert_that!(next_action).is_equal_to(AliceAction::WaitToRefund);
     }
 }
