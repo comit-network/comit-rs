@@ -147,7 +147,7 @@ impl Wallet {
             .send_raw_transaction(transaction_hex)
             .await?;
 
-        let contract_address = match self.wait_until_transaction_receipt(hash).await? {
+        let contract_address = match self.wait_until_transaction_receipt(hash, chain_id).await? {
             TransactionReceipt {
                 successful: true,
                 contract_address: Some(contract_address),
@@ -213,7 +213,7 @@ impl Wallet {
             .send_raw_transaction(transaction_hex)
             .await?;
 
-        let _ = self.wait_until_transaction_receipt(hash).await?;
+        let _ = self.wait_until_transaction_receipt(hash, chain_id).await?;
 
         Ok(hash)
     }
@@ -253,7 +253,7 @@ impl Wallet {
             .send_raw_transaction(transaction_hex)
             .await?;
 
-        let _ = self.wait_until_transaction_receipt(hash).await?;
+        let _ = self.wait_until_transaction_receipt(hash, chain_id).await?;
 
         Ok(hash)
     }
@@ -289,49 +289,9 @@ impl Wallet {
             .send_raw_transaction(transaction_hex)
             .await?;
 
-        let _ = self.wait_until_transaction_receipt(hash).await?;
+        let _ = self.wait_until_transaction_receipt(hash, chain_id).await?;
 
         Ok(hash)
-    }
-
-    pub async fn get_transaction_by_hash(
-        &self,
-        transaction_hash: Hash,
-    ) -> anyhow::Result<Transaction> {
-        self.geth_client
-            .get_transaction_by_hash(transaction_hash)
-            .await
-    }
-
-    pub async fn wait_until_transaction_receipt(
-        &self,
-        transaction_hash: Hash,
-    ) -> anyhow::Result<TransactionReceipt> {
-        let start_time = std::time::Instant::now();
-        let max_retry_time = Duration::from_millis(60_000);
-
-        loop {
-            if std::time::Instant::now() > start_time + max_retry_time {
-                anyhow::bail!(
-                    "failed to find transaction receipt for transaction {}",
-                    transaction_hash
-                )
-            }
-
-            if let Some(transaction_receipt) =
-                self.get_transaction_receipt(transaction_hash).await?
-            {
-                return Ok(transaction_receipt);
-            }
-
-            tokio::time::delay_for(Duration::from_millis(1_000)).await;
-        }
-    }
-
-    pub async fn erc20_balance(&self, token_contract: Address) -> anyhow::Result<Erc20> {
-        self.geth_client
-            .erc20_balance(self.account(), token_contract)
-            .await
     }
 
     pub async fn dai_balance(&self) -> anyhow::Result<dai::Amount> {
@@ -346,6 +306,12 @@ impl Wallet {
         self.geth_client.get_balance(self.account()).await
     }
 
+    pub async fn erc20_balance(&self, token_contract: Address) -> anyhow::Result<Erc20> {
+        self.geth_client
+            .erc20_balance(self.account(), token_contract)
+            .await
+    }
+
     async fn get_transaction_receipt(
         &self,
         transaction_hash: Hash,
@@ -353,6 +319,36 @@ impl Wallet {
         self.geth_client
             .get_transaction_receipt(transaction_hash)
             .await
+    }
+
+    async fn get_transaction_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<Transaction> {
+        self.geth_client
+            .get_transaction_by_hash(transaction_hash)
+            .await
+    }
+
+    async fn wait_until_transaction_receipt(
+        &self,
+        transaction_hash: Hash,
+        chain: ChainId,
+    ) -> anyhow::Result<TransactionReceipt> {
+        let poll_interval = match chain {
+            ChainId::MAINNET => 10, // roughly half the blocktime
+            ChainId::KOVAN => 2,    // roughly half the blocktime
+            ChainId::ROPSTEN => 10, // ropsten has inconsistent blocktime between 1 sec and 1 min
+            ChainId::GETH_DEV => 1, // locally we mine a block every second
+            _ => 10,                // unknown chain, assume similar to mainnet
+        };
+
+        loop {
+            if let Some(transaction_receipt) =
+                self.get_transaction_receipt(transaction_hash).await?
+            {
+                return Ok(transaction_receipt);
+            }
+
+            tokio::time::delay_for(Duration::from_secs(poll_interval)).await;
+        }
     }
 
     async fn get_transaction_count(&self) -> anyhow::Result<u32> {
