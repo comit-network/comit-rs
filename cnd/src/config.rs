@@ -45,7 +45,9 @@ static DAI_ROPSTEN: Lazy<ethereum::Address> =
 
 static COMIT_SOCKET: Lazy<Multiaddr> = Lazy::new(|| parse_unchecked("/ip4/0.0.0.0/tcp/9939"));
 
-static FEERATE_SAT_PER_VBYTE: Lazy<bitcoin::Amount> = Lazy::new(|| bitcoin::Amount::from_sat(10));
+// Low value that would allow inclusion in ~6 blocks:
+// https://txstats.com/dashboard/db/fee-estimation?orgId=1&panelId=2&fullscreen&from=now-6M&to=now&var-source=blockcypher
+static FEERATE_SAT_PER_VBYTE: Lazy<bitcoin::Amount> = Lazy::new(|| bitcoin::Amount::from_sat(50));
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]

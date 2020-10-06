@@ -20,6 +20,7 @@ Previously, unknown configuration keys would just be ignored.
 -   **Breaking Change** Remove support for RFC003 swaps
 -   **Breaking Change** Config directory for MacOS changed from `/Users/<user>/Library/Preferences/comit/` to `/Users/<user>/Library/Application Support/comit/`.
 -   Update the expected network times to calculate the expiries: We expect Bitcoin's transactions to be included within 6 blocks and Ethereum's within 30 blocks.
+-   Changed the default Bitcoin fee value for redeem and refund to 50 sats/vByte.
 
 ## [0.8.0] - 2020-06-12
 
