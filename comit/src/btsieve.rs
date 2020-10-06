@@ -24,6 +24,13 @@ pub trait BlockByHash: Send + Sync + 'static {
     async fn block_by_hash(&self, block_hash: Self::BlockHash) -> Result<Self::Block>;
 }
 
+#[async_trait]
+pub trait ConnectedNetwork: Send + Sync + 'static {
+    type Network;
+
+    async fn connected_network(&self) -> Result<Self::Network>;
+}
+
 /// Checks if a given block predates a certain timestamp.
 pub trait Predates {
     fn predates(&self, timestamp: OffsetDateTime) -> bool;
