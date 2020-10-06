@@ -15,6 +15,7 @@ use url::Url;
 /// represented as `Option`s` here. This allows us to create a dedicated step
 /// for filling in default values for absent configuration options.
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct File {
     pub maker: Option<Maker>,
     pub network: Option<Network>,
@@ -25,6 +26,7 @@ pub struct File {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Maker {
     pub spread: Option<Spread>,
     pub kraken_api_host: Option<Url>,
@@ -32,6 +34,7 @@ pub struct Maker {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Bitcoin {
     pub network: ledger::Bitcoin,
     pub bitcoind: Option<Bitcoind>,
@@ -40,6 +43,7 @@ pub struct Bitcoin {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Ethereum {
     pub chain_id: ChainId,
     pub node_url: Option<Url>,
@@ -51,6 +55,7 @@ pub struct Ethereum {
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct BitcoinFees {
     /// Select the strategy to use to set Bitcoin fees
     pub strategy: Option<BitcoinFeeStrategy>,
@@ -78,6 +83,7 @@ pub enum BitcoinFeeStrategy {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
+#[serde(deny_unknown_fields)]
 pub struct EthereumGasPrice {
     pub service: EthereumGasPriceService,
     pub url: url::Url,
@@ -117,6 +123,7 @@ impl Default for File {
 }
 
 #[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct Logging {
     pub level: Option<Level>,
 }

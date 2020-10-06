@@ -48,6 +48,7 @@ static COMIT_SOCKET: Lazy<Multiaddr> = Lazy::new(|| parse_unchecked("/ip4/0.0.0.
 static FEERATE_SAT_PER_VBYTE: Lazy<bitcoin::Amount> = Lazy::new(|| bitcoin::Amount::from_sat(10));
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Data {
     pub dir: PathBuf,
 }
@@ -68,11 +69,13 @@ pub struct Bitcoin {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Bitcoind {
     pub node_url: Url,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct BitcoinFees {
     /// The static value to use
     #[serde(default)]
@@ -206,6 +209,7 @@ impl From<Tokens> for file::Tokens {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Geth {
     pub node_url: Url,
 }

@@ -19,7 +19,7 @@ export async function newNectarConfig(env: Environment): Promise<NectarConfig> {
             level: "Trace",
         },
         ...makeLedgerConfig(env),
-        ...makeMakerConfig(env, env.ethereum),
+        ...makeMakerConfig(env),
     };
 }
 
@@ -39,18 +39,9 @@ function makeLedgerConfig(
     return ledgerConfig;
 }
 
-function makeMakerConfig(
-    env: Environment,
-    ethereum: EthereumNode
-): Pick<NectarConfig, "maker"> {
+function makeMakerConfig(env: Environment): Pick<NectarConfig, "maker"> {
     const maxBuyQuantity = 0.1;
     const maxSellQuantity = 0.1;
-    const feeStrategies = {
-        ethereum: {
-            service: EthereumGasPriceService.Geth,
-            url: ethereum.rpc_url,
-        },
-    };
 
     if (env.treasury) {
         return {
@@ -60,7 +51,6 @@ function makeMakerConfig(
                     max_sell_quantity: maxSellQuantity,
                 },
                 kraken_api_host: env.treasury.host,
-                fee_strategies: feeStrategies,
             },
         };
     } else {
@@ -69,7 +59,6 @@ function makeMakerConfig(
                 btc_dai: {
                     max_sell_quantity: maxSellQuantity,
                 },
-                fee_strategies: feeStrategies,
             },
         };
     }
@@ -83,14 +72,21 @@ function makeBitcoinConfig(bitcoin: BitcoinNode): Bitcoin {
             node_url: `http://${bitcoin.username}:${bitcoin.password}@${parts.hostname}:${parts.port}/`,
         },
         network: bitcoin.network,
+        fees: {
+            strategy: BitcoinFeesStrategy.Static,
+        },
     };
 }
 
-function makeEthereumConfig(ethereum: EthereumNode): Ethereum {
+function makeEthereumConfig(ethereumNode: EthereumNode): Ethereum {
     return {
-        chain_id: ethereum.chain_id,
-        node_url: ethereum.rpc_url,
-        local_dai_contract_address: ethereum.tokenContract,
+        chain_id: ethereumNode.chain_id,
+        node_url: ethereumNode.rpc_url,
+        local_dai_contract_address: ethereumNode.tokenContract,
+        gas_price: {
+            service: EthereumGasPriceService.Geth,
+            url: ethereumNode.rpc_url,
+        },
     };
 }
 
@@ -110,17 +106,6 @@ interface Maker {
         max_sell_quantity?: number;
     };
     kraken_api_host?: string;
-    fee_strategies?: {
-        ethereum?: {
-            service: EthereumGasPriceService;
-            url: string;
-        };
-    };
-}
-
-enum EthereumGasPriceService {
-    Geth = "geth",
-    EthGasStation = "eth_gas_station",
 }
 
 interface Network {
@@ -140,10 +125,36 @@ interface Bitcoin {
     bitcoind?: {
         node_url: string;
     };
+    fees?: {
+        strategy?: BitcoinFeesStrategy;
+        sat_per_vbyte?: number;
+        estimate_mode?: BitcoinFeesEstimateMode;
+        max_sat_per_vbyte?: number;
+    };
+}
+
+enum BitcoinFeesStrategy {
+    Static = "static",
+    Bitcoind = "bitcoind",
+}
+
+enum BitcoinFeesEstimateMode {
+    Unset = "unset",
+    Conservative = "conservative",
+    Economical = "economical",
 }
 
 interface Ethereum {
     chain_id?: number;
     node_url?: string;
     local_dai_contract_address?: string;
+    gas_price?: {
+        service: EthereumGasPriceService;
+        url: string;
+    };
+}
+
+enum EthereumGasPriceService {
+    Geth = "geth",
+    EthGasStation = "eth_gas_station",
 }

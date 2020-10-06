@@ -15,21 +15,25 @@ pub use self::{file::File, seed::Seed, settings::*};
 use anyhow::Context;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Data {
     pub dir: PathBuf,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Network {
     pub listen: Vec<Multiaddr>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Bitcoind {
     pub node_url: Url,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct BtcDai {
     #[serde(default)]
     #[serde(with = "::bitcoin::util::amount::serde::as_btc::opt")]
