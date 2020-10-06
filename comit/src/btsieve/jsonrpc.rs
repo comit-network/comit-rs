@@ -22,24 +22,26 @@ impl Client {
         Req: Debug + Serialize,
         Res: DeserializeOwned,
     {
-        let url = self.url.clone();
         let response = self
             .inner
-            .post(url.clone())
+            .post(self.url.clone())
             .json(&request)
             .send()
             .map_err(ConnectionFailed)
             .await?
             .json::<Response<Res>>()
             .await
-            .context("failed to deserialize JSON response as JSON-RPC response")?;
+            .context("failed to deserialize JSON response as JSON-RPC response")?
+            .payload
+            .into_result()
+            .with_context(|| {
+                format!(
+                    "JSON-RPC request {} failed",
+                    serde_json::to_string(&request).expect("can always serialize to JSON")
+                )
+            })?;
 
-        match response {
-            Response::Success { result } => Ok(result),
-            Response::Error(error) => {
-                Err(error).with_context(|| format!("JSON-RPC request {:?} failed", request))
-            }
-        }
+        Ok(response)
     }
 }
 
@@ -62,14 +64,29 @@ impl<T> Request<T> {
     }
 }
 
-#[derive(serde::Deserialize, Debug)]
-#[serde(untagged)]
-pub enum Response<T> {
-    Success { result: T },
+#[derive(serde::Deserialize, Debug, PartialEq)]
+pub struct Response<R> {
+    #[serde(flatten)]
+    pub payload: ResponsePayload<R>,
+}
+
+#[derive(serde::Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ResponsePayload<R> {
+    Result(R),
     Error(JsonRpcError),
 }
 
-#[derive(Debug, serde::Deserialize, thiserror::Error)]
+impl<R> ResponsePayload<R> {
+    fn into_result(self) -> Result<R, JsonRpcError> {
+        match self {
+            ResponsePayload::Result(result) => Ok(result),
+            ResponsePayload::Error(e) => Err(e),
+        }
+    }
+}
+
+#[derive(Debug, serde::Deserialize, PartialEq, thiserror::Error)]
 #[error("JSON-RPC request failed with code {code}: {message}")]
 pub struct JsonRpcError {
     code: i64,
