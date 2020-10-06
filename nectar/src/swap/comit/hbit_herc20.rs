@@ -1,6 +1,9 @@
-use crate::swap::{
-    comit::{SwapFailedNoRefund, SwapFailedShouldRefund},
-    hbit, herc20,
+use crate::{
+    ethereum::ChainId,
+    swap::{
+        comit::{SwapFailedNoRefund, SwapFailedShouldRefund},
+        hbit, herc20,
+    },
 };
 use anyhow::{Context, Result};
 use comit::{
@@ -24,7 +27,8 @@ where
     A: hbit::ExecuteFund + herc20::ExecuteRedeem + hbit::ExecuteRefund,
     EC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-        + btsieve::ethereum::ReceiptByHash,
+        + btsieve::ethereum::ReceiptByHash
+        + ConnectedNetwork<Network = ChainId>,
 {
     let swap_result = async {
         let hbit_funded = alice
@@ -77,7 +81,8 @@ where
         + ConnectedNetwork<Network = ledger::Bitcoin>,
     EC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-        + btsieve::ethereum::ReceiptByHash,
+        + btsieve::ethereum::ReceiptByHash
+        + ConnectedNetwork<Network = ChainId>,
 {
     tracing::info!("starting swap");
 

@@ -1,13 +1,12 @@
 use crate::{
     btsieve::{
-        ethereum::{Event, ReceiptByHash, Topic},
-        fetch_blocks_since, BlockByHash, LatestBlock,
+        ethereum::{poll_interval, Event, ReceiptByHash, Topic},
+        fetch_blocks_since, BlockByHash, ConnectedNetwork, LatestBlock,
     },
-    ethereum::{Block, Hash, Input, Log, Transaction, TransactionReceipt},
+    ethereum::{Block, ChainId, Hash, Input, Log, Transaction, TransactionReceipt},
 };
 use anyhow::Result;
 use genawaiter::GeneratorState;
-use std::time::Duration;
 use time::OffsetDateTime;
 use tracing_futures::Instrument;
 
@@ -17,7 +16,10 @@ pub async fn watch_for_event<C>(
     expected_event: Event,
 ) -> Result<(Transaction, Log)>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash
+        + ConnectedNetwork<Network = ChainId>,
 {
     matching_transaction_and_log(
         connector,
@@ -55,10 +57,14 @@ async fn matching_transaction_and_log<C, F>(
     matcher: F,
 ) -> Result<(Transaction, Log)>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash
+        + ConnectedNetwork<Network = ChainId>,
     F: Fn(TransactionReceipt) -> Option<Log> + Clone,
 {
-    let mut block_generator = fetch_blocks_since(connector, start_of_swap, Duration::from_secs(1));
+    let poll_interval = poll_interval(connector).await?;
+    let mut block_generator = fetch_blocks_since(connector, start_of_swap, poll_interval);
 
     loop {
         match block_generator.async_resume().await {

@@ -6,7 +6,9 @@ use anyhow::Context;
 use comit::{
     btsieve,
     btsieve::{BlockByHash, ConnectedNetwork, LatestBlock},
-    ethereum, ledger, Secret,
+    ethereum,
+    ethereum::ChainId,
+    ledger, Secret,
 };
 use time::OffsetDateTime;
 
@@ -71,7 +73,8 @@ where
     B: hbit::ExecuteFund + hbit::ExecuteRefund + herc20::ExecuteRedeem,
     EC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-        + btsieve::ethereum::ReceiptByHash,
+        + btsieve::ethereum::ReceiptByHash
+        + ConnectedNetwork<Network = ChainId>,
     BC: LatestBlock<Block = ::bitcoin::Block>
         + BlockByHash<Block = ::bitcoin::Block, BlockHash = ::bitcoin::BlockHash>
         + ConnectedNetwork<Network = ledger::Bitcoin>,

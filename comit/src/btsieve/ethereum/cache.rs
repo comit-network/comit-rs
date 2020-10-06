@@ -1,7 +1,7 @@
 use crate::{
     btsieve::{
         ethereum::{self, Hash, ReceiptByHash},
-        BlockByHash, LatestBlock,
+        BlockByHash, ConnectedNetwork, LatestBlock,
     },
     ethereum::TransactionReceipt,
 };
@@ -104,5 +104,18 @@ where
         guard.put(transaction_hash, receipt.clone());
 
         Ok(receipt)
+    }
+}
+
+#[async_trait]
+impl<C, N> ConnectedNetwork for Cache<C>
+where
+    C: ConnectedNetwork<Network = N>,
+    N: Send + Sync + 'static,
+{
+    type Network = N;
+
+    async fn connected_network(&self) -> Result<Self::Network> {
+        self.connector.connected_network().await
     }
 }

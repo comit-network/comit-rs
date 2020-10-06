@@ -1,6 +1,7 @@
 use crate::swap::comit::SwapFailedShouldRefund;
 use anyhow::Result;
 
+use comit::btsieve::ConnectedNetwork;
 pub use comit::{
     actions::ethereum::*,
     asset,
@@ -60,7 +61,10 @@ pub async fn watch_for_funded<C>(
     deployed: Deployed,
 ) -> Result<Funded>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash
+        + ConnectedNetwork<Network = ChainId>,
 {
     match comit::herc20::watch_for_funded(connector, params, utc_start_of_swap, deployed).await? {
         comit::herc20::Funded::Correctly { transaction, asset } => {

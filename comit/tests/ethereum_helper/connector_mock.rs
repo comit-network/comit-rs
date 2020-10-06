@@ -1,8 +1,8 @@
 use anyhow::Context;
 use async_trait::async_trait;
 use comit::{
-    btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
-    ethereum::{Block, Hash, TransactionReceipt},
+    btsieve::{ethereum::ReceiptByHash, BlockByHash, ConnectedNetwork, LatestBlock},
+    ethereum::{Block, ChainId, Hash, TransactionReceipt},
 };
 use futures::{stream::BoxStream, StreamExt};
 use std::{collections::HashMap, time::Duration};
@@ -78,5 +78,14 @@ impl ReceiptByHash for EthereumConnectorMock {
             .get(&transaction_hash)
             .cloned()
             .with_context(|| format!("could not find block with hash {}", transaction_hash))
+    }
+}
+
+#[async_trait]
+impl ConnectedNetwork for EthereumConnectorMock {
+    type Network = ChainId;
+
+    async fn connected_network(&self) -> anyhow::Result<Self::Network> {
+        Ok(ChainId::GETH_DEV)
     }
 }

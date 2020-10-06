@@ -5,7 +5,7 @@ use crate::{
     asset::{ethereum::FromWei, Erc20, Erc20Quantity},
     btsieve::{
         ethereum::{watch_for_contract_creation, watch_for_event, ReceiptByHash, Topic},
-        BlockByHash, LatestBlock,
+        BlockByHash, ConnectedNetwork, LatestBlock,
     },
     ethereum::{Block, ChainId, Hash, U256},
     htlc_location, identity,
@@ -100,7 +100,10 @@ pub fn new<'a, C>(
     start_of_swap: OffsetDateTime,
 ) -> impl Stream<Item = Result<Event>> + 'a
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash
+        + ConnectedNetwork<Network = ChainId>,
 {
     Gen::new({
         |co| async move {
@@ -118,7 +121,10 @@ async fn watch_ledger<C, R>(
     co: &Co<Result<Event>, R>,
 ) -> Result<()>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash
+        + ConnectedNetwork<Network = ChainId>,
 {
     co.yield_(Ok(Event::Started)).await;
 
@@ -157,7 +163,10 @@ pub async fn watch_for_deployed<C>(
     start_of_swap: OffsetDateTime,
 ) -> Result<Deployed>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash
+        + ConnectedNetwork<Network = ChainId>,
 {
     let expected_bytecode = params.clone().bytecode();
 
@@ -179,7 +188,10 @@ pub async fn watch_for_funded<C>(
     deployed: Deployed,
 ) -> Result<Funded>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash
+        + ConnectedNetwork<Network = ChainId>,
 {
     use crate::btsieve::ethereum::Event;
 
@@ -215,7 +227,10 @@ pub async fn watch_for_redeemed<C>(
     deployed: Deployed,
 ) -> Result<Redeemed>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash
+        + ConnectedNetwork<Network = ChainId>,
 {
     use crate::btsieve::ethereum::Event;
 
@@ -243,7 +258,10 @@ pub async fn watch_for_refunded<C>(
     deployed: Deployed,
 ) -> Result<Refunded>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash
+        + ConnectedNetwork<Network = ChainId>,
 {
     use crate::btsieve::ethereum::Event;
 

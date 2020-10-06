@@ -56,7 +56,8 @@ impl Connectors {
     ) -> Arc<
         impl LatestBlock<Block = ethereum::Block>
             + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-            + ReceiptByHash,
+            + ReceiptByHash
+            + ConnectedNetwork<Network = ethereum::ChainId>,
     > {
         self.ethereum.clone()
     }
