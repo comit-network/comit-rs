@@ -25,15 +25,15 @@ where
         connector,
         start_of_swap,
         expected_event.topics.clone(),
-        |receipt| find_log_for_event_in_receipt(&expected_event, receipt),
+        |receipt| find_log_for_event(&expected_event, receipt.logs),
     )
     .await
 }
 
-fn find_log_for_event_in_receipt(event: &Event, receipt: TransactionReceipt) -> Option<Log> {
+fn find_log_for_event(event: &Event, logs: Vec<Log>) -> Option<Log> {
     match event {
         Event { topics, .. } if topics.is_empty() => None,
-        Event { address, topics } => receipt.logs.into_iter().find(|log| {
+        Event { address, topics } => logs.into_iter().find(|log| {
             if address != &log.address {
                 return false;
             }
