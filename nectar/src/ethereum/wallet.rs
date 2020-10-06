@@ -294,16 +294,40 @@ impl Wallet {
         Ok(hash)
     }
 
-    pub async fn get_transaction_by_hash(
+    pub async fn dai_balance(&self) -> anyhow::Result<dai::Amount> {
+        let balance = self
+            .erc20_balance(self.chain.dai_contract_address())
+            .await?;
+        let int = BigUint::from_bytes_le(&balance.quantity.to_bytes());
+        Ok(dai::Amount::from_atto(int))
+    }
+
+    pub async fn ether_balance(&self) -> anyhow::Result<ether::Amount> {
+        self.geth_client.get_balance(self.account()).await
+    }
+
+    pub async fn erc20_balance(&self, token_contract: Address) -> anyhow::Result<Erc20> {
+        self.geth_client
+            .erc20_balance(self.account(), token_contract)
+            .await
+    }
+
+    async fn get_transaction_receipt(
         &self,
         transaction_hash: Hash,
-    ) -> anyhow::Result<Transaction> {
+    ) -> anyhow::Result<Option<TransactionReceipt>> {
+        self.geth_client
+            .get_transaction_receipt(transaction_hash)
+            .await
+    }
+
+    async fn get_transaction_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<Transaction> {
         self.geth_client
             .get_transaction_by_hash(transaction_hash)
             .await
     }
 
-    pub async fn wait_until_transaction_receipt(
+    async fn wait_until_transaction_receipt(
         &self,
         transaction_hash: Hash,
     ) -> anyhow::Result<TransactionReceipt> {
@@ -326,33 +350,6 @@ impl Wallet {
 
             tokio::time::delay_for(Duration::from_millis(1_000)).await;
         }
-    }
-
-    pub async fn erc20_balance(&self, token_contract: Address) -> anyhow::Result<Erc20> {
-        self.geth_client
-            .erc20_balance(self.account(), token_contract)
-            .await
-    }
-
-    pub async fn dai_balance(&self) -> anyhow::Result<dai::Amount> {
-        let balance = self
-            .erc20_balance(self.chain.dai_contract_address())
-            .await?;
-        let int = BigUint::from_bytes_le(&balance.quantity.to_bytes());
-        Ok(dai::Amount::from_atto(int))
-    }
-
-    pub async fn ether_balance(&self) -> anyhow::Result<ether::Amount> {
-        self.geth_client.get_balance(self.account()).await
-    }
-
-    async fn get_transaction_receipt(
-        &self,
-        transaction_hash: Hash,
-    ) -> anyhow::Result<Option<TransactionReceipt>> {
-        self.geth_client
-            .get_transaction_receipt(transaction_hash)
-            .await
     }
 
     async fn get_transaction_count(&self) -> anyhow::Result<u32> {
