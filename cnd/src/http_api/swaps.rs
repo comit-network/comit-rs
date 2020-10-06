@@ -24,6 +24,7 @@ use crate::{
 };
 use comit::Timestamp;
 use serde::Serialize;
+use std::future::Future;
 use warp::{http, Rejection, Reply};
 
 #[allow(clippy::needless_pass_by_value)]
@@ -76,27 +77,27 @@ async fn handle_get_swap(
     let swap_context = storage.load(id).await?;
     within_swap_context!(swap_context, {
         let swap: ActorSwap = storage.load(id).await?;
-        let bitcoin_median_time_past =
-            bitcoin::median_time_past(connectors.bitcoin().as_ref()).await?;
-        let ethereum_latest_time = ethereum::latest_time(connectors.ethereum().as_ref()).await?;
+        let bitcoin_connector = connectors.bitcoin();
+        let ethereum_connector = connectors.ethereum();
 
         let swap_entity = make_swap_entity(
             id,
             swap,
-            bitcoin_median_time_past,
-            ethereum_latest_time,
+            bitcoin::median_time_past(bitcoin_connector.as_ref()),
+            ethereum::latest_time(ethereum_connector.as_ref()),
             btc_per_vbyte,
-        )?;
+        )
+        .await?;
 
         Ok(swap_entity)
     })
 }
 
-fn make_swap_entity<S>(
+async fn make_swap_entity<S>(
     id: LocalSwapId,
     swap: S,
-    bitcoin_median_time_past: Timestamp,
-    ethereum_latest_time: Timestamp,
+    bitcoin_median_time_past: impl Future<Output = anyhow::Result<Timestamp>>,
+    ethereum_latest_time: impl Future<Output = anyhow::Result<Timestamp>>,
     btc_per_vbyte: ::bitcoin::Amount,
 ) -> anyhow::Result<siren::Entity>
 where
@@ -122,7 +123,9 @@ where
         bitcoin_median_time_past,
         ethereum_latest_time,
         btc_per_vbyte,
-    )? {
+    )
+    .await?
+    {
         None => Ok(entity),
         Some(action) => {
             let siren_action = make_siren_action(id, action);
@@ -153,10 +156,10 @@ where
     Ok(entity)
 }
 
-fn next_available_action<S>(
+async fn next_available_action<S>(
     swap: &S,
-    bitcoin_median_time_past: Timestamp,
-    ethereum_latest_time: Timestamp,
+    bitcoin_median_time_past: impl Future<Output = anyhow::Result<Timestamp>>,
+    ethereum_latest_time: impl Future<Output = anyhow::Result<Timestamp>>,
     btc_per_vbyte: ::bitcoin::Amount,
 ) -> anyhow::Result<Option<ActionName>>
 where
@@ -190,16 +193,16 @@ where
             Role::Alice => {
                 let expiry = swap.alpha_absolute_expiry().unwrap();
                 let time = match swap.alpha_ledger() {
-                    Ledger::Bitcoin => bitcoin_median_time_past,
-                    Ledger::Ethereum => ethereum_latest_time,
+                    Ledger::Bitcoin => bitcoin_median_time_past.await?,
+                    Ledger::Ethereum => ethereum_latest_time.await?,
                 };
                 (expiry, time)
             }
             Role::Bob => {
                 let expiry = swap.beta_absolute_expiry().unwrap();
                 let time = match swap.beta_ledger() {
-                    Ledger::Bitcoin => bitcoin_median_time_past,
-                    Ledger::Ethereum => ethereum_latest_time,
+                    Ledger::Bitcoin => bitcoin_median_time_past.await?,
+                    Ledger::Ethereum => ethereum_latest_time.await?,
                 };
                 (expiry, time)
             }
