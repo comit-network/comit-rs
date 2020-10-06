@@ -11,7 +11,7 @@ pub use self::{
 };
 use crate::{
     btsieve::{BlockHash, ConnectedNetwork, Predates, PreviousBlockHash},
-    ethereum::{Address, Block, ChainId, Hash, TransactionReceipt, U256},
+    ethereum::{Address, Block, ChainId, Hash, Log, Transaction, TransactionReceipt, U256},
 };
 use anyhow::Result;
 use async_trait::async_trait;
@@ -21,6 +21,16 @@ use time::OffsetDateTime;
 #[async_trait]
 pub trait ReceiptByHash: Send + Sync + 'static {
     async fn receipt_by_hash(&self, transaction_hash: Hash) -> Result<TransactionReceipt>;
+}
+
+#[async_trait]
+pub trait TransactionByHash: Send + Sync + 'static {
+    async fn transaction_by_hash(&self, transaction_hash: Hash) -> Result<Transaction>;
+}
+
+#[async_trait]
+pub trait GetLogs: Send + Sync + 'static {
+    async fn get_logs(&self, event: Event) -> Result<Vec<Log>>;
 }
 
 impl BlockHash for Block {
@@ -47,15 +57,12 @@ impl Predates for Block {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub struct Topic(pub Hash);
-
 /// Event works similar to web3 filters:
 /// https://web3js.readthedocs.io/en/1.0/web3-eth-subscribe.html?highlight=filter#subscribe-logs
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Event {
     pub address: Address,
-    pub topics: Vec<Option<Topic>>,
+    pub topics: Vec<Option<Hash>>,
 }
 
 async fn poll_interval<C>(connector: &C) -> Result<Duration>

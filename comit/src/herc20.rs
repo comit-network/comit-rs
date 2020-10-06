@@ -4,7 +4,9 @@ use crate::{
     actions, asset,
     asset::{ethereum::FromWei, Erc20, Erc20Quantity},
     btsieve::{
-        ethereum::{watch_for_contract_creation, watch_for_event, ReceiptByHash, Topic},
+        ethereum::{
+            watch_for_contract_creation, watch_for_event, GetLogs, ReceiptByHash, TransactionByHash,
+        },
         BlockByHash, ConnectedNetwork, LatestBlock,
     },
     ethereum::{Block, ChainId, Hash, U256},
@@ -103,7 +105,9 @@ where
     C: LatestBlock<Block = Block>
         + BlockByHash<Block = Block, BlockHash = Hash>
         + ReceiptByHash
-        + ConnectedNetwork<Network = ChainId>,
+        + TransactionByHash
+        + ConnectedNetwork<Network = ChainId>
+        + GetLogs,
 {
     Gen::new({
         |co| async move {
@@ -124,7 +128,9 @@ where
     C: LatestBlock<Block = Block>
         + BlockByHash<Block = Block, BlockHash = Hash>
         + ReceiptByHash
-        + ConnectedNetwork<Network = ChainId>,
+        + TransactionByHash
+        + ConnectedNetwork<Network = ChainId>
+        + GetLogs,
 {
     co.yield_(Ok(Event::Started)).await;
 
@@ -191,16 +197,18 @@ where
     C: LatestBlock<Block = Block>
         + BlockByHash<Block = Block, BlockHash = Hash>
         + ReceiptByHash
-        + ConnectedNetwork<Network = ChainId>,
+        + TransactionByHash
+        + ConnectedNetwork<Network = ChainId>
+        + GetLogs,
 {
     use crate::btsieve::ethereum::Event;
 
     let event = Event {
         address: params.asset.token_contract,
         topics: vec![
-            Some(Topic(*TRANSFER_LOG_MSG)),
+            Some(*TRANSFER_LOG_MSG),
             None,
-            Some(Topic(deployed.location.into())),
+            Some(deployed.location.into()),
         ],
     };
 
@@ -230,13 +238,15 @@ where
     C: LatestBlock<Block = Block>
         + BlockByHash<Block = Block, BlockHash = Hash>
         + ReceiptByHash
-        + ConnectedNetwork<Network = ChainId>,
+        + TransactionByHash
+        + ConnectedNetwork<Network = ChainId>
+        + GetLogs,
 {
     use crate::btsieve::ethereum::Event;
 
     let event = Event {
         address: deployed.location,
-        topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
+        topics: vec![Some(*REDEEM_LOG_MSG)],
     };
 
     let (transaction, log) = watch_for_event(connector, start_of_swap, event)
@@ -261,13 +271,15 @@ where
     C: LatestBlock<Block = Block>
         + BlockByHash<Block = Block, BlockHash = Hash>
         + ReceiptByHash
-        + ConnectedNetwork<Network = ChainId>,
+        + TransactionByHash
+        + ConnectedNetwork<Network = ChainId>
+        + GetLogs,
 {
     use crate::btsieve::ethereum::Event;
 
     let event = Event {
         address: deployed.location,
-        topics: vec![Some(Topic(*REFUND_LOG_MSG))],
+        topics: vec![Some(*REFUND_LOG_MSG)],
     };
 
     let (transaction, _) = watch_for_event(connector, start_of_swap, event)

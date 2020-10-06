@@ -170,6 +170,8 @@ pub struct Log {
     pub topics: Vec<Hash>,
     /// Data
     pub data: crate::ethereum::UnformattedData,
+    #[serde(rename = "transactionHash")]
+    pub transaction_hash: Hash,
 }
 
 /// The block returned from RPC calls.

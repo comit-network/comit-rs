@@ -8,7 +8,10 @@ use crate::{
 use anyhow::{Context, Result};
 use comit::{
     btsieve,
-    btsieve::{BlockByHash, ConnectedNetwork, LatestBlock},
+    btsieve::{
+        ethereum::{GetLogs, TransactionByHash},
+        BlockByHash, ConnectedNetwork, LatestBlock,
+    },
     ethereum, ledger, Secret,
 };
 use time::OffsetDateTime;
@@ -28,7 +31,9 @@ where
     EC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + btsieve::ethereum::ReceiptByHash
-        + ConnectedNetwork<Network = ChainId>,
+        + ConnectedNetwork<Network = ChainId>
+        + GetLogs
+        + TransactionByHash,
 {
     let swap_result = async {
         let hbit_funded = alice
@@ -82,7 +87,9 @@ where
     EC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + btsieve::ethereum::ReceiptByHash
-        + ConnectedNetwork<Network = ChainId>,
+        + ConnectedNetwork<Network = ChainId>
+        + GetLogs
+        + TransactionByHash,
 {
     tracing::info!("starting swap");
 

@@ -5,7 +5,10 @@ use crate::swap::{
 use anyhow::Context;
 use comit::{
     btsieve,
-    btsieve::{BlockByHash, ConnectedNetwork, LatestBlock},
+    btsieve::{
+        ethereum::{GetLogs, TransactionByHash},
+        BlockByHash, ConnectedNetwork, LatestBlock,
+    },
     ethereum,
     ethereum::ChainId,
     ledger, Secret,
@@ -74,7 +77,9 @@ where
     EC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + btsieve::ethereum::ReceiptByHash
-        + ConnectedNetwork<Network = ChainId>,
+        + ConnectedNetwork<Network = ChainId>
+        + GetLogs
+        + TransactionByHash,
     BC: LatestBlock<Block = ::bitcoin::Block>
         + BlockByHash<Block = ::bitcoin::Block, BlockHash = ::bitcoin::BlockHash>
         + ConnectedNetwork<Network = ledger::Bitcoin>,
