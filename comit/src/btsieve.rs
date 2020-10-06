@@ -6,7 +6,7 @@ use crate::Never;
 use anyhow::Result;
 use async_trait::async_trait;
 use genawaiter::sync::{Co, Gen};
-use std::{collections::HashSet, future::Future, hash::Hash};
+use std::{collections::HashSet, future::Future, hash::Hash, time::Duration};
 use time::OffsetDateTime;
 
 #[async_trait]
@@ -62,6 +62,7 @@ pub trait PreviousBlockHash {
 pub fn fetch_blocks_since<'a, C, B, H>(
     connector: &'a C,
     start_of_swap: OffsetDateTime,
+    poll_interval: Duration,
 ) -> Gen<B, (), impl Future<Output = Result<Never>> + 'a>
 where
     C: LatestBlock<Block = B> + BlockByHash<Block = B, BlockHash = H>,
@@ -97,7 +98,7 @@ where
             seen_blocks.extend(missed_blocks);
 
             // The duration of this timeout could/should depend on the network
-            tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
+            tokio::time::delay_for(poll_interval).await;
         }
     })
 }

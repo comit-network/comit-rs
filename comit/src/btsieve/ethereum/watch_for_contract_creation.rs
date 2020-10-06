@@ -4,6 +4,7 @@ use crate::{
 };
 use anyhow::Result;
 use genawaiter::GeneratorState;
+use std::time::Duration;
 use time::OffsetDateTime;
 use tracing_futures::Instrument;
 
@@ -63,7 +64,7 @@ where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
     F: Fn(&Transaction) -> bool + Clone,
 {
-    let mut block_generator = fetch_blocks_since(connector, start_of_swap);
+    let mut block_generator = fetch_blocks_since(connector, start_of_swap, Duration::from_secs(1));
 
     loop {
         match block_generator.async_resume().await {

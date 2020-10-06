@@ -14,6 +14,7 @@ use crate::{
 use anyhow::Result;
 use bitcoin::{self, OutPoint};
 use genawaiter::GeneratorState;
+use std::time::Duration;
 use time::OffsetDateTime;
 
 type Hash = bitcoin::BlockHash;
@@ -97,7 +98,7 @@ where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
     S: Fn(&bitcoin::Transaction) -> Option<M>,
 {
-    let mut block_generator = fetch_blocks_since(connector, start_of_swap);
+    let mut block_generator = fetch_blocks_since(connector, start_of_swap, Duration::from_secs(1));
 
     loop {
         match block_generator.async_resume().await {
