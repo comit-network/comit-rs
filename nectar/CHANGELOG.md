@@ -19,4 +19,9 @@ Previously, unknown configuration keys would just be ignored.
 
 -   Update the expected network times to calculate the expiries: We expect Bitcoin's transactions to be included within 6 blocks and Ethereum's within 30 blocks.
 
+### Changed
+
+-   By default, use bitcoind's `estimatsmartfee` feature to estimate Bitcoin fees.
+For Ethereum, Eth Gas Station API is used.
+
 [Unreleased]: https://github.com/comit-network/comit-rs/compare/d5d26e42a2d8dd026ae94f2c8a9e0bd80ab81133...HEAD

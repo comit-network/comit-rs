@@ -335,7 +335,7 @@ mod tests {
                 crate::ethereum::GasPrice::geth_url(ethereum_blockchain.node_url.clone());
 
             let bitcoin_fee = crate::bitcoin::Fee::new(
-                Default::default(),
+                crate::config::BitcoinFees::SatsPerByte(bitcoin::Amount::from_sat(50)),
                 crate::bitcoin::Client::new(bitcoind_url.clone()),
             );
 
@@ -385,7 +385,7 @@ mod tests {
                 crate::ethereum::GasPrice::geth_url(ethereum_blockchain.node_url.clone());
 
             let bitcoin_fee = crate::bitcoin::Fee::new(
-                Default::default(),
+                crate::config::BitcoinFees::SatsPerByte(bitcoin::Amount::from_sat(50)),
                 crate::bitcoin::Client::new(bitcoind_url),
             );
 

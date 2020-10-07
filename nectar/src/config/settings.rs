@@ -243,6 +243,11 @@ static DEFAULT_BITCOIN_STATIC_FEE_SAT: Lazy<bitcoin::Amount> =
     // https://txstats.com/dashboard/db/fee-estimation?orgId=1&panelId=2&fullscreen&from=now-6M&to=now&var-source=blockcypher
     Lazy::new(|| bitcoin::Amount::from_sat(50));
 
+static DEFAULT_MAX_BITCOIN_FEE_SAT_PER_VBYTE: Lazy<bitcoin::Amount> =
+// Bitcoind's highest estimate in the past year:
+// https://txstats.com/dashboard/db/fee-estimation?orgId=1&panelId=5&fullscreen&from=now-1y&to=now
+    Lazy::new(|| bitcoin::Amount::from_sat(200));
+
 #[cfg(test)]
 impl crate::StaticStub for BitcoinFees {
     fn static_stub() -> Self {
@@ -270,7 +275,10 @@ impl From<file::BitcoinFees> for BitcoinFees {
 
 impl Default for BitcoinFees {
     fn default() -> Self {
-        Self::SatsPerByte(*DEFAULT_BITCOIN_STATIC_FEE_SAT)
+        Self::BitcoindEstimateSmartfee {
+            mode: EstimateMode::Economical,
+            max_sat_per_vbyte: *DEFAULT_MAX_BITCOIN_FEE_SAT_PER_VBYTE,
+        }
     }
 }
 
@@ -523,7 +531,10 @@ mod tests {
                 bitcoind: Bitcoind {
                     node_url: "http://localhost:8332".parse().unwrap(),
                 },
-                fees: BitcoinFees::SatsPerByte(bitcoin::Amount::from_sat(50)),
+                fees: BitcoinFees::BitcoindEstimateSmartfee {
+                    mode: EstimateMode::Economical,
+                    max_sat_per_vbyte: bitcoin::Amount::from_sat(200),
+                },
             })
     }
 
