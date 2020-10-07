@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
 use crate::StaticStub;
+use comit::identity;
 use std::{collections::HashSet, iter::FromIterator};
 use time::OffsetDateTime;
 
@@ -238,6 +239,40 @@ impl Database {
     }
 }
 
+impl Database {
+    const KEYPAIRS: &'static str = "keypairs";
+
+    pub async fn insert_keypair(
+        &self,
+        identity: identity::Bitcoin,
+        secret_key: bitcoin::secp256k1::SecretKey,
+    ) -> anyhow::Result<()> {
+        self.db
+            .insert(
+                serialize(&(&Self::KEYPAIRS, identity))?,
+                serialize(&secret_key)?,
+            )
+            .context("failed to insert secret key")?;
+
+        Ok(())
+    }
+
+    pub async fn load_secret_key(
+        &self,
+        identity: identity::Bitcoin,
+    ) -> anyhow::Result<bitcoin::secp256k1::SecretKey> {
+        let data = self
+            .db
+            .get(serialize(&(&Self::KEYPAIRS, identity))?)
+            .context("failed to access database")?
+            .with_context(|| format!("no secret key for {} found in database", identity))?;
+        let key = bitcoin::secp256k1::SecretKey::from_slice(deserialize(&data)?)
+            .context("failed to deserialize data as secret key")?;
+
+        Ok(key)
+    }
+}
+
 pub fn serialize<T>(t: &T) -> anyhow::Result<Vec<u8>>
 where
     T: Serialize,
@@ -362,6 +397,7 @@ impl From<SwapKind> for Swap {
 mod tests {
     use super::*;
     use quickcheck::{Arbitrary, StdThreadGen};
+    use rand::thread_rng;
 
     #[quickcheck_async::tokio]
     async fn save_and_retrieve_swaps(swap_1: SwapKind, swap_2: SwapKind) -> bool {
@@ -442,5 +478,18 @@ mod tests {
 
         assert_eq!(db.fetch_inc_bitcoin_transient_key_index().await.unwrap(), 0);
         assert_eq!(db.fetch_inc_bitcoin_transient_key_index().await.unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn save_and_load_secret_key_from_public_key() {
+        let db = Database::new_test().unwrap();
+
+        let secret_key = bitcoin::secp256k1::SecretKey::new(&mut thread_rng());
+        let public_key = identity::Bitcoin::from_secret_key(&crate::SECP, &secret_key);
+
+        db.insert_keypair(public_key, secret_key).await.unwrap();
+        let got = db.load_secret_key(public_key).await.unwrap();
+
+        assert_eq!(got, secret_key);
     }
 }
