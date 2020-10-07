@@ -64,6 +64,17 @@ impl Bitcoin {
     }
 }
 
+#[cfg(test)]
+impl crate::StaticStub for Bitcoin {
+    fn static_stub() -> Self {
+        Bitcoin {
+            network: ledger::Bitcoin::Regtest,
+            bitcoind: Bitcoind::new(ledger::Bitcoin::Regtest),
+            fees: BitcoinFees::static_stub(),
+        }
+    }
+}
+
 impl Bitcoind {
     fn new(network: ledger::Bitcoin) -> Self {
         let node_url = match network {

@@ -74,10 +74,12 @@ pub async fn trade(
     tokio::spawn(btc_balance_future);
     tokio::spawn(dai_balance_future);
 
-    let bitcoin_connector = Arc::new(BitcoindConnector::new(settings.bitcoin.bitcoind.node_url)?);
+    let bitcoin_connector = Arc::new(BitcoindConnector::new(
+        settings.bitcoin.bitcoind.node_url.clone(),
+    )?);
     let ethereum_connector = Arc::new(Web3Connector::new(settings.ethereum.node_url.clone()));
 
-    let bitcoin_fee = bitcoin::Fee::new(settings.bitcoin.fees, bitcoind_client);
+    let bitcoin_fee = bitcoin::Fee::new(settings.bitcoin.clone(), bitcoind_client);
 
     let ethereum_gas_price = ethereum::GasPrice::new(settings.ethereum.gas_price);
 
@@ -134,7 +136,6 @@ async fn init_maker(
         .context("Could not get Dai balance")?;
 
     let btc_dai = settings.maker.btc_dai;
-    let btc_fee_strategy = settings.bitcoin.fees;
 
     let initial_rate = get_btc_dai_mid_market_rate(&settings.maker.kraken_api_host)
         .await
@@ -143,7 +144,7 @@ async fn init_maker(
     let spread: Spread = settings.maker.spread;
 
     let strategy = strategy::AllIn::new(
-        btc_fee_strategy,
+        settings.bitcoin.clone(),
         btc_dai.max_buy_quantity,
         btc_dai.max_sell_quantity,
         spread,
