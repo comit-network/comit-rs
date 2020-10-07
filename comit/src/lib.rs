@@ -171,4 +171,26 @@ impl From<Network> for ethereum::ChainId {
     }
 }
 
+impl From<ledger::Bitcoin> for Network {
+    fn from(network: ledger::Bitcoin) -> Self {
+        match network {
+            ledger::Bitcoin::Mainnet => Network::Main,
+            ledger::Bitcoin::Testnet => Network::Test,
+            ledger::Bitcoin::Regtest => Network::Dev,
+        }
+    }
+}
+
+impl From<ethereum::ChainId> for Network {
+    fn from(chain_id: ethereum::ChainId) -> Self {
+        match chain_id {
+            ethereum::ChainId::MAINNET => Network::Main,
+            ethereum::ChainId::ROPSTEN => Network::Test,
+            ethereum::ChainId::KOVAN => Network::Test,
+            ethereum::ChainId::GETH_DEV => Network::Dev,
+            _ => Network::Dev,
+        }
+    }
+}
+
 pub type Never = std::convert::Infallible;
