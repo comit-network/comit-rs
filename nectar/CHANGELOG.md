@@ -7,12 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## Added
+### Added
 
 -   Ability to configure strategies to be used for Bitcoin fees and Ethereum Gas Price resolution.
     See `./sample-config.toml` for more details.
 -   Disallow unknown keys in the config file.
 Previously, unknown configuration keys would just be ignored.
 `nectar` will now refuse to startup if the configuration file contains unknown keys.
+
+### Changed
+
+-   Update the expected network times to calculate the expiries: We expect Bitcoin's transactions to be included within 6 blocks and Ethereum's within 30 blocks.
 
 [Unreleased]: https://github.com/comit-network/comit-rs/compare/d5d26e42a2d8dd026ae94f2c8a9e0bd80ab81133...HEAD
