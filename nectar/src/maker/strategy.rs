@@ -184,8 +184,7 @@ impl AllIn {
     pub fn swap_finished(&mut self, swap: SwapKind) {
         match swap {
             SwapKind::Herc20Hbit(swap) => {
-                self.btc_reserved_funds -=
-                    swap.hbit_params.shared.asset + self.bitcoin_fee.max_tx_fee();
+                self.btc_reserved_funds -= swap.hbit_params.asset + self.bitcoin_fee.max_tx_fee();
             }
             SwapKind::HbitHerc20(swap) => {
                 self.dai_reserved_funds -= swap.herc20_params.asset.into();

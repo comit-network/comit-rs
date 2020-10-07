@@ -3,7 +3,6 @@ use crate::{
     swap::hbit,
     SwapId,
 };
-use ::bitcoin::secp256k1;
 use anyhow::{anyhow, Context};
 use comit::{identity, Secret, SecretHash, Timestamp};
 use serde::{Deserialize, Serialize};
@@ -220,7 +219,6 @@ pub struct Params {
     pub refund_identity: identity::Bitcoin,
     pub expiry: Timestamp,
     pub secret_hash: SecretHash,
-    pub transient_sk: secp256k1::SecretKey,
 }
 
 impl From<Params> for hbit::Params {
@@ -232,19 +230,15 @@ impl From<Params> for hbit::Params {
             refund_identity,
             expiry,
             secret_hash,
-            transient_sk,
         } = params;
 
         hbit::Params {
-            shared: hbit::SharedParams {
-                network: network.into(),
-                asset: asset.into(),
-                redeem_identity,
-                refund_identity,
-                expiry,
-                secret_hash,
-            },
-            transient_sk,
+            network: network.into(),
+            asset: asset.into(),
+            redeem_identity,
+            refund_identity,
+            expiry,
+            secret_hash,
         }
     }
 }
@@ -252,13 +246,12 @@ impl From<Params> for hbit::Params {
 impl From<hbit::Params> for Params {
     fn from(params: hbit::Params) -> Self {
         Params {
-            network: params.shared.network.into(),
-            asset: params.shared.asset.into(),
-            redeem_identity: params.shared.redeem_identity,
-            refund_identity: params.shared.refund_identity,
-            expiry: params.shared.expiry,
-            secret_hash: params.shared.secret_hash,
-            transient_sk: params.transient_sk,
+            network: params.network.into(),
+            asset: params.asset.into(),
+            redeem_identity: params.redeem_identity,
+            refund_identity: params.refund_identity,
+            expiry: params.expiry,
+            secret_hash: params.secret_hash,
         }
     }
 }
@@ -281,10 +274,6 @@ impl crate::StaticStub for Params {
             .unwrap(),
             expiry: 12345678.into(),
             secret_hash: SecretHash::new(Secret::from(*b"hello world, you are beautiful!!")),
-            transient_sk: secp256k1::SecretKey::from_str(
-                "01010101010101010001020304050607ffff0000ffff00006363636363636363",
-            )
-            .unwrap(),
         }
     }
 }

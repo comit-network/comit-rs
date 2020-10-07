@@ -1,6 +1,6 @@
 use crate::swap::comit::SwapFailedShouldRefund;
 use anyhow::Result;
-use bitcoin::{secp256k1::SecretKey, Block, BlockHash};
+use bitcoin::{Block, BlockHash};
 use comit::{asset, ledger};
 
 use comit::btsieve::ConnectedNetwork;
@@ -11,23 +11,6 @@ pub use comit::{
     htlc_location, transaction, Secret, SecretHash, Timestamp,
 };
 use time::OffsetDateTime;
-
-pub type SharedParams = comit::hbit::Params;
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Params {
-    pub shared: SharedParams,
-    pub transient_sk: SecretKey,
-}
-
-impl Params {
-    pub fn new(shared: SharedParams, transient_sk: SecretKey) -> Self {
-        Self {
-            shared,
-            transient_sk,
-        }
-    }
-}
 
 #[async_trait::async_trait]
 pub trait ExecuteFund {
@@ -57,7 +40,7 @@ pub struct Funded {
 
 pub async fn watch_for_funded<C>(
     connector: &C,
-    params: &SharedParams,
+    params: &Params,
     utc_start_of_swap: OffsetDateTime,
 ) -> Result<Funded>
 where
@@ -90,25 +73,20 @@ where
 }
 
 #[cfg(test)]
-mod arbitrary {
-    use crate::swap::hbit::{Params, SharedParams};
+pub mod arbitrary {
+    use super::*;
     use ::bitcoin::secp256k1::SecretKey;
     use comit::{asset, identity, ledger};
     use quickcheck::{Arbitrary, Gen};
 
-    impl Arbitrary for Params {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            Params {
-                shared: SharedParams {
-                    network: bitcoin_network(g),
-                    asset: bitcoin_asset(g),
-                    redeem_identity: bitcoin_identity(g),
-                    refund_identity: bitcoin_identity(g),
-                    expiry: crate::arbitrary::timestamp(g),
-                    secret_hash: crate::arbitrary::secret_hash(g),
-                },
-                transient_sk: secret_key(g),
-            }
+    pub fn params<G: Gen>(g: &mut G) -> Params {
+        Params {
+            network: bitcoin_network(g),
+            asset: bitcoin_asset(g),
+            redeem_identity: bitcoin_identity(g),
+            refund_identity: bitcoin_identity(g),
+            expiry: crate::arbitrary::timestamp(g),
+            secret_hash: crate::arbitrary::secret_hash(g),
         }
     }
 

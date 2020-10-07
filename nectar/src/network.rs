@@ -60,7 +60,6 @@ impl From<setup_swap::BehaviourOutEvent<SetupSwapContext>> for BehaviourOutEvent
 #[derive(Debug, Copy, Clone)]
 pub struct SetupSwapContext {
     pub swap_id: SwapId,
-    pub bitcoin_transient_key_index: u32,
     pub match_ref_point: OffsetDateTime,
 }
 

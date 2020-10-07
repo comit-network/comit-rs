@@ -5,7 +5,7 @@ use crate::{
     history::History,
     maker::{PublishOrders, TakeRequestDecision},
     network::{self, ActivePeer, SetupSwapContext, Swarm},
-    swap::{hbit, Database, SwapExecutor, SwapKind, SwapParams},
+    swap::{Database, SwapExecutor, SwapKind, SwapParams},
     Maker, MidMarketRate, SwapId,
 };
 use anyhow::{bail, Context, Result};
@@ -207,16 +207,11 @@ impl EventLoop {
             setup_swap::BehaviourOutEvent::ExecutableSwap(exec_swap) => {
                 let swap_id = exec_swap.context.swap_id;
                 let start_of_swap = exec_swap.context.match_ref_point;
-                let bitcoin_transient_sk = self
-                    .bitcoin_wallet
-                    .derive_transient_sk(exec_swap.context.bitcoin_transient_key_index)
-                    .context("Could not derive Bitcoin transient key")?;
-                let hbit_params = hbit::Params::new(exec_swap.hbit, bitcoin_transient_sk);
 
                 let params = SwapParams {
                     swap_id,
                     start_of_swap,
-                    hbit_params,
+                    hbit_params: exec_swap.hbit,
                     herc20_params: exec_swap.herc20,
                     secret_hash: exec_swap.hbit.secret_hash,
                     taker: ActivePeer {
@@ -278,21 +273,9 @@ impl EventLoop {
                 }
 
                 let swap_id = SwapId::default();
-                let index = self
-                    .database
-                    .fetch_inc_bitcoin_transient_key_index()
-                    .await
-                    .context("Could not fetch the index for the Bitcoin transient key")?;
-
                 let token_contract = self.ethereum_wallet.dai_contract_address();
                 let ethereum_identity = self.ethereum_wallet.account();
-                let bitcoin_transient_sk = self
-                    .bitcoin_wallet
-                    .derive_transient_sk(index)
-                    .context("Could not derive Bitcoin transient key")?;
-
-                let bitcoin_identity =
-                    identity::Bitcoin::from_secret_key(&crate::SECP, &bitcoin_transient_sk);
+                let bitcoin_identity = self.make_bitcoin_identity_for_swap().await?;
 
                 let erc20_quantity = quantity * price.clone();
 
@@ -385,7 +368,6 @@ impl EventLoop {
                                 SetupSwapContext {
                                     swap_id,
                                     match_ref_point,
-                                    bitcoin_transient_key_index: index,
                                 },
                             )
                             .context("Sending setup swap message yielded error")?;
@@ -407,5 +389,27 @@ impl EventLoop {
         }
 
         Ok(())
+    }
+
+    async fn make_bitcoin_identity_for_swap(&mut self) -> anyhow::Result<identity::Bitcoin> {
+        let index = self
+            .database
+            .fetch_inc_bitcoin_transient_key_index()
+            .await
+            .context("Could not fetch the index for the Bitcoin transient key")?;
+
+        let bitcoin_transient_sk = self
+            .bitcoin_wallet
+            .derive_transient_sk(index)
+            .context("Could not derive Bitcoin transient key")?;
+
+        let bitcoin_identity =
+            identity::Bitcoin::from_secret_key(&crate::SECP, &bitcoin_transient_sk);
+
+        self.database
+            .insert_keypair(bitcoin_identity, bitcoin_transient_sk)
+            .await?;
+
+        Ok(bitcoin_identity)
     }
 }

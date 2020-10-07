@@ -88,7 +88,7 @@ where
 
     let swap_result = async {
         let hbit_funded =
-            hbit::watch_for_funded(bitcoin_connector, &hbit_params.shared, utc_start_of_swap)
+            hbit::watch_for_funded(bitcoin_connector, &hbit_params, utc_start_of_swap)
                 .await
                 .context(SwapFailedNoRefund)?;
 

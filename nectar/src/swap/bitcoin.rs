@@ -1,5 +1,6 @@
 use crate::{
     bitcoin,
+    database::Database,
     swap::{hbit, LedgerTime},
 };
 use comit::{
@@ -17,12 +18,13 @@ pub struct Wallet {
     pub inner: Arc<crate::bitcoin::Wallet>,
     pub fee: bitcoin::Fee,
     pub connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
+    pub db: Arc<Database>,
 }
 
 #[async_trait::async_trait]
 impl hbit::ExecuteFund for Wallet {
     async fn execute_fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::Funded> {
-        let action = params.shared.build_fund_action();
+        let action = params.build_fund_action();
 
         let kbyte_fee_rate = self.fee.kvbyte_rate().await?;
 
@@ -48,11 +50,11 @@ impl hbit::ExecuteRedeem for Wallet {
 
         let vbyte_rate = self.fee.vbyte_rate().await?;
 
-        let action = params.shared.build_redeem_action(
+        let action = params.build_redeem_action(
             &crate::SECP,
             fund_event.asset,
             fund_event.location,
-            params.transient_sk,
+            self.db.load_secret_key(params.redeem_identity).await?,
             redeem_address,
             secret,
             vbyte_rate,
@@ -79,7 +81,7 @@ impl hbit::ExecuteRefund for Wallet {
         loop {
             let bitcoin_time = comit::bitcoin::median_time_past(self.connector.as_ref()).await?;
 
-            if bitcoin_time >= params.shared.expiry {
+            if bitcoin_time >= params.expiry {
                 break;
             }
 
@@ -90,11 +92,11 @@ impl hbit::ExecuteRefund for Wallet {
 
         let vbyte_rate = self.fee.vbyte_rate().await?;
 
-        let action = params.shared.build_refund_action(
+        let action = params.build_refund_action(
             &crate::SECP,
             fund_event.asset,
             fund_event.location,
-            params.transient_sk,
+            self.db.load_secret_key(params.refund_identity).await?,
             refund_address,
             vbyte_rate,
         )?;

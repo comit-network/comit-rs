@@ -78,7 +78,6 @@ where
 impl crate::StaticStub for SwapParams {
     fn static_stub() -> Self {
         use crate::swap::hbit::SecretHash;
-        use ::bitcoin::secp256k1;
         use std::str::FromStr;
 
         let secret_hash =
@@ -86,24 +85,18 @@ impl crate::StaticStub for SwapParams {
 
         SwapParams {
             hbit_params: hbit::Params {
-                shared: hbit::SharedParams {
-                    network: comit::ledger::Bitcoin::Regtest,
-                    asset: comit::asset::Bitcoin::from_sat(12_345_678),
-                    redeem_identity: comit::bitcoin::PublicKey::from_str(
-                        "039b6347398505f5ec93826dc61c19f47c66c0283ee9be980e29ce325a0f4679ef",
-                    )
-                    .unwrap(),
-                    refund_identity: comit::bitcoin::PublicKey::from_str(
-                        "032e58afe51f9ed8ad3cc7897f634d881fdbe49a81564629ded8156bebd2ffd1af",
-                    )
-                    .unwrap(),
-                    expiry: 12345678u32.into(),
-                    secret_hash,
-                },
-                transient_sk: secp256k1::SecretKey::from_str(
-                    "01010101010101010001020304050607ffff0000ffff00006363636363636363",
+                network: comit::ledger::Bitcoin::Regtest,
+                asset: comit::asset::Bitcoin::from_sat(12_345_678),
+                redeem_identity: comit::bitcoin::PublicKey::from_str(
+                    "039b6347398505f5ec93826dc61c19f47c66c0283ee9be980e29ce325a0f4679ef",
                 )
                 .unwrap(),
+                refund_identity: comit::bitcoin::PublicKey::from_str(
+                    "032e58afe51f9ed8ad3cc7897f634d881fdbe49a81564629ded8156bebd2ffd1af",
+                )
+                .unwrap(),
+                expiry: 12345678u32.into(),
+                secret_hash,
             },
             herc20_params: herc20::Params {
                 asset: comit::asset::Erc20 {
@@ -161,7 +154,7 @@ mod arbitrary {
             };
 
             SwapParams {
-                hbit_params: hbit::Params::arbitrary(g),
+                hbit_params: hbit::arbitrary::params(g),
                 herc20_params,
                 secret_hash: secret_hash(g),
                 start_of_swap: OffsetDateTime::from_unix_timestamp(u32::arbitrary(g) as i64),
@@ -217,10 +210,12 @@ mod tests {
     use std::{str::FromStr, sync::Arc};
     use testcontainers::clients;
 
-    fn hbit_params(
+    async fn hbit_params(
         secret_hash: SecretHash,
+        redeemer_db: &Database,
+        refunder_db: &Database,
         network: comit::ledger::Bitcoin,
-    ) -> (hbit::SharedParams, bitcoin::SecretKey, bitcoin::SecretKey) {
+    ) -> hbit::Params {
         let asset = asset::Bitcoin::from_sat(100_000_000);
         let expiry = Timestamp::now().plus(60 * 60);
 
@@ -234,6 +229,10 @@ mod tests {
 
             (transient_refund_sk, transient_refund_pk)
         };
+        refunder_db
+            .insert_keypair(transient_refund_pk, transient_refund_sk)
+            .await
+            .unwrap();
 
         let (transient_redeem_sk, transient_redeem_pk) = {
             let transient_redeem_sk = secp256k1::SecretKey::from_str(
@@ -245,17 +244,19 @@ mod tests {
 
             (transient_redeem_sk, transient_redeem_pk)
         };
+        redeemer_db
+            .insert_keypair(transient_redeem_pk, transient_redeem_sk)
+            .await
+            .unwrap();
 
-        let shared_params = hbit::SharedParams {
+        hbit::Params {
             network,
             asset,
             redeem_identity: transient_redeem_pk,
             refund_identity: transient_refund_pk,
             expiry,
             secret_hash,
-        };
-
-        (shared_params, transient_refund_sk, transient_redeem_sk)
+        }
     }
 
     fn secret() -> Secret {
@@ -339,6 +340,7 @@ mod tests {
                     inner: Arc::new(bitcoin_wallet),
                     connector: Arc::clone(&bitcoin_connector),
                     fee: StaticStub::static_stub(),
+                    db: alice_db.clone(),
                 },
                 ethereum::Wallet {
                     inner: Arc::new(ethereum_wallet),
@@ -384,6 +386,7 @@ mod tests {
                     inner: Arc::new(bitcoin_wallet),
                     connector: Arc::clone(&bitcoin_connector),
                     fee: StaticStub::static_stub(),
+                    db: bob_db.clone(),
                 },
                 ethereum::Wallet {
                     inner: Arc::new(ethereum_wallet),
@@ -399,8 +402,7 @@ mod tests {
         let start_of_swap = OffsetDateTime::now_utc();
         let beta_expiry = Timestamp::now().plus(60 * 60);
 
-        let (hbit_params, hbit_transient_refund_sk, hbit_transient_redeem_sk) =
-            hbit_params(secret_hash, bitcoin_network);
+        let hbit_params = hbit_params(secret_hash, &bob_db, &alice_db, bitcoin_network).await;
 
         let herc20_params = herc20::params(
             secret_hash,
@@ -415,10 +417,7 @@ mod tests {
             let swap_id = SwapId::default();
 
             let swap = SwapKind::HbitHerc20(SwapParams {
-                hbit_params: hbit::Params {
-                    shared: hbit_params,
-                    transient_sk: hbit_transient_refund_sk,
-                },
+                hbit_params,
                 herc20_params: herc20_params.clone(),
                 secret_hash,
                 start_of_swap,
@@ -428,7 +427,6 @@ mod tests {
 
             alice_db.insert_swap(swap).await.unwrap();
 
-            let hbit_params = hbit::Params::new(hbit_params, hbit_transient_refund_sk);
             let alice = Alice {
                 alpha_wallet: alice_bitcoin_wallet.clone(),
                 beta_wallet: alice_ethereum_wallet.clone(),
@@ -453,10 +451,7 @@ mod tests {
             let swap_id = SwapId::default();
 
             let swap = SwapKind::HbitHerc20(SwapParams {
-                hbit_params: hbit::Params {
-                    shared: hbit_params,
-                    transient_sk: hbit_transient_redeem_sk,
-                },
+                hbit_params,
                 herc20_params: herc20_params.clone(),
                 secret_hash,
                 start_of_swap,
@@ -466,7 +461,6 @@ mod tests {
 
             bob_db.insert_swap(swap).await.unwrap();
 
-            let hbit_params = hbit::Params::new(hbit_params, hbit_transient_redeem_sk);
             let bob = Bob {
                 alpha_wallet: bob_bitcoin_wallet.clone(),
                 beta_wallet: bob_ethereum_wallet.clone(),
@@ -591,6 +585,7 @@ impl SwapExecutor {
                 inner: self.bitcoin_wallet.clone(),
                 connector: self.bitcoin_connector.clone(),
                 fee: self.bitcoin_fee.clone(),
+                db: self.db.clone(),
             },
             self.bitcoin_connector.clone(),
             ethereum::Wallet {

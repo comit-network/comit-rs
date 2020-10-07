@@ -136,7 +136,7 @@ pub fn into_history_trade(
         base_symbol: Symbol::Btc,
         quote_symbol: Symbol::Dai,
         position,
-        base_precise_amount: swap.hbit_params.shared.asset.as_sat().into(),
+        base_precise_amount: swap.hbit_params.asset.as_sat().into(),
         quote_precise_amount: BigUint::from_str(&swap.herc20_params.asset.quantity.to_wei_dec())
             .expect("number to number conversion"),
         peer: peer_id,

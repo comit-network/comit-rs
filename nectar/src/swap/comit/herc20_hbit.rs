@@ -44,7 +44,7 @@ where
             .context(SwapFailedNoRefund)?;
 
         let hbit_funded =
-            hbit::watch_for_funded(bitcoin_connector, &hbit_params.shared, utc_start_of_swap)
+            hbit::watch_for_funded(bitcoin_connector, &hbit_params, utc_start_of_swap)
                 .await
                 .context(SwapFailedShouldRefund(herc20_deployed.clone()))?;
 
@@ -112,7 +112,7 @@ where
 
         let hbit_redeemed = hbit::watch_for_redeemed(
             bitcoin_connector,
-            &hbit_params.shared,
+            &hbit_params,
             hbit_funded.location,
             utc_start_of_swap,
         )
