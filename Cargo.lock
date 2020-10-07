@@ -601,7 +601,7 @@ dependencies = [
  "socket2",
  "spectral",
  "structopt",
- "strum 0.19.2",
+ "strum",
  "strum_macros",
  "tempfile",
  "testcontainers",
@@ -652,7 +652,7 @@ dependencies = [
  "serde_json",
  "serdebug",
  "spectral",
- "strum 0.19.2",
+ "strum",
  "strum_macros",
  "testcontainers",
  "thiserror",
@@ -2316,7 +2316,7 @@ dependencies = [
  "sled",
  "spectral",
  "structopt",
- "strum 0.18.0",
+ "strum",
  "strum_macros",
  "tempfile",
  "testcontainers",
@@ -3868,15 +3868,9 @@ dependencies = [
 
 [[package]]
 name = "strum"
-version = "0.18.0"
+version = "0.19.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57bd81eb48f4c437cadc685403cad539345bf703d78e63707418431cecd4522b"
-
-[[package]]
-name = "strum"
-version = "0.19.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3924a58d165da3b7b2922c667ab0673c7b5fd52b5c19ea3442747bcb3cd15abe"
+checksum = "b89a286a7e3b5720b9a477b23253bc50debac207c8d21505f8e70b36792f11b5"
 
 [[package]]
 name = "strum_macros"
