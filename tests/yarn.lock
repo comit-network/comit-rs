@@ -271,10 +271,10 @@
     exec-sh "^0.3.2"
     minimist "^1.2.0"
 
-"@ethersproject/abi@5.0.6", "@ethersproject/abi@^5.0.5":
-  version "5.0.6"
-  resolved "https://registry.yarnpkg.com/@ethersproject/abi/-/abi-5.0.6.tgz#129b794e5868472374d1ecb8ff55d3ebec1f6769"
-  integrity sha512-ldhyQANDeVH0tMJM4SeySx9HTuKdev15/CUTSJMyvjgfLrWApE4Fmz8FRz9/giN1Nw8gRCWlPOfKkfmuypA7pg==
+"@ethersproject/abi@5.0.7", "@ethersproject/abi@^5.0.5":
+  version "5.0.7"
+  resolved "https://registry.yarnpkg.com/@ethersproject/abi/-/abi-5.0.7.tgz#79e52452bd3ca2956d0e1c964207a58ad1a0ee7b"
+  integrity sha512-Cqktk+hSIckwP/W8O47Eef60VwmoSC/L3lY0+dIBhQPCNn9E4V7rwmm2aFrNRRDJfFlGuZ1khkQUOc3oBX+niw==
   dependencies:
     "@ethersproject/address" "^5.0.4"
     "@ethersproject/bignumber" "^5.0.7"
@@ -457,10 +457,10 @@
   dependencies:
     "@ethersproject/logger" "^5.0.5"
 
-"@ethersproject/providers@5.0.10":
-  version "5.0.10"
-  resolved "https://registry.yarnpkg.com/@ethersproject/providers/-/providers-5.0.10.tgz#761ae58aa0749dfc6059fc01c46fe04df2b6346d"
-  integrity sha512-Nre9ZxO+Bjpf5bK1noUS7lx7YFuSAofYr9MM71zbrOuLuR2IhJm8yeKLewbRpnA/Cx6ZHUCYCo4B8FVOWXW2Zg==
+"@ethersproject/providers@5.0.11":
+  version "5.0.11"
+  resolved "https://registry.yarnpkg.com/@ethersproject/providers/-/providers-5.0.11.tgz#55488881452624a59b38436f81d74948d93783f9"
+  integrity sha512-SD82AMgUpDgqvSPJxjVgSqMBde9LsIAfroS3YcK2dE/VUuVeJQFWtjFbkFRF4pjTd2u+qYXh0eo1gq7LU7B1YQ==
   dependencies:
     "@ethersproject/abstract-provider" "^5.0.4"
     "@ethersproject/abstract-signer" "^5.0.4"
@@ -2490,12 +2490,12 @@ etag@~1.8.1:
   resolved "https://registry.yarnpkg.com/etag/-/etag-1.8.1.tgz#41ae2eeb65efa62268aebfea83ac7d79299b0887"
   integrity sha1-Qa4u62XvpiJorr/qg6x9eSmbCIc=
 
-ethers@^5.0.15:
-  version "5.0.15"
-  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.15.tgz#958818605ea1bfe5a745bbe6b6f4f2c5c0e4637c"
-  integrity sha512-ODBTkK+dg44d4yzLgD/w3IxDBa9nLFBF4z8OgICISvkVO2uLLmlR5boqv61PtTMTIPydT9wTn5C1cUntHKFkqQ==
+ethers@^5.0.16:
+  version "5.0.16"
+  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.16.tgz#2d261ce844f37f0cff5a4db4a11bf03a058788dd"
+  integrity sha512-MsE/N07DRAq6LtvtXUougAPouGoLMWMoJ7iD4OoYXtyZpXG9UsWYPfvCrIEYeUhGBWOeaHBamrT5X9dQQ2NYqQ==
   dependencies:
-    "@ethersproject/abi" "5.0.6"
+    "@ethersproject/abi" "5.0.7"
     "@ethersproject/abstract-provider" "5.0.5"
     "@ethersproject/abstract-signer" "5.0.6"
     "@ethersproject/address" "5.0.5"
@@ -2513,7 +2513,7 @@ ethers@^5.0.15:
     "@ethersproject/networks" "5.0.4"
     "@ethersproject/pbkdf2" "5.0.4"
     "@ethersproject/properties" "5.0.4"
-    "@ethersproject/providers" "5.0.10"
+    "@ethersproject/providers" "5.0.11"
     "@ethersproject/random" "5.0.4"
     "@ethersproject/rlp" "5.0.4"
     "@ethersproject/sha2" "5.0.4"
