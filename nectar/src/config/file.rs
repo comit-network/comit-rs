@@ -384,7 +384,6 @@ url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
 "#;
 
         let serialized = toml::to_string(&file);
-        dbg!(&serialized);
         assert_that(&serialized)
             .is_ok()
             .is_equal_to(expected.to_string());
