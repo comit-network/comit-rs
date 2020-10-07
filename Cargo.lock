@@ -395,9 +395,9 @@ checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
 
 [[package]]
 name = "blockchain_contracts"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a03be37fcc500553a77460ac4879e0f6562d492ff958cfc40f96f800ee3ccdd"
+checksum = "dc2452b20fe06584a09b40428e16000a72a8f241493577565b5e89505ba017e7"
 dependencies = [
  "bitcoin 0.25.0",
  "byteorder",
