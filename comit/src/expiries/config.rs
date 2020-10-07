@@ -44,6 +44,11 @@ mod main {
     pub const ACT_IN_SOFTWARE_SECS: u32 = 15 * 60; // Value arbitrarily chosen.
     pub const ACT_WITH_USER_INTERACTION_SECS: u32 = 60 * 60; // Value arbitrarily
                                                              // chosen.
+
+    // Considering current market, less than 6 blocks is very expensive.
+    pub const BITCOIN_MINE_WITHIN_N_BLOCKS: u8 = 6;
+    // Approx. 10min wait seems to match the `safeLowWait` of ethgasstation.
+    pub const ETHEREUM_MINE_WITHIN_N_BLOCKS: u8 = 30;
 }
 
 mod dev {
@@ -58,10 +63,10 @@ mod dev {
     // The e2e tests act very fast :)
     pub const ACT_IN_SOFTWARE_SECS: u32 = 1;
     pub const ACT_WITH_USER_INTERACTION_SECS: u32 = 1;
-}
 
-const BITCOIN_MINE_WITHIN_N_BLOCKS: u8 = 3; // Value arbitrarily chosen.
-const ETHEREUM_MINE_WITHIN_N_BLOCKS: u8 = 3; // Value arbitrarily chosen.
+    pub const BITCOIN_MINE_WITHIN_N_BLOCKS: u8 = 3;
+    pub const ETHEREUM_MINE_WITHIN_N_BLOCKS: u8 = 3;
+}
 
 /// Configuration values used during transition period calculations.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -90,12 +95,12 @@ impl Config {
             beta_required_confirmations: bitcoin_confirmations(network),
             alpha_average_block_time: ethereum_blocktime(network),
             beta_average_block_time: bitcoin_blocktime(network),
-            alpha_mine_deploy_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
-            beta_mine_deploy_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
-            alpha_mine_fund_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
-            beta_mine_fund_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
-            alpha_mine_redeem_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
-            beta_mine_redeem_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
+            alpha_mine_deploy_within_n_blocks: ethereum_mine_within_blocks(network),
+            beta_mine_deploy_within_n_blocks: bitcoin_mine_within_blocks(network),
+            alpha_mine_fund_within_n_blocks: ethereum_mine_within_blocks(network),
+            beta_mine_fund_within_n_blocks: bitcoin_mine_within_blocks(network),
+            alpha_mine_redeem_within_n_blocks: ethereum_mine_within_blocks(network),
+            beta_mine_redeem_within_n_blocks: bitcoin_mine_within_blocks(network),
             act_in_software: act_in_software(network),
             act_with_user_interaction: act_with_user_interaction(network),
         }
@@ -109,12 +114,12 @@ impl Config {
             beta_required_confirmations: ethereum_confirmations(network),
             alpha_average_block_time: bitcoin_blocktime(network),
             beta_average_block_time: ethereum_blocktime(network),
-            alpha_mine_deploy_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
-            beta_mine_deploy_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
-            alpha_mine_fund_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
-            beta_mine_fund_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
-            alpha_mine_redeem_within_n_blocks: BITCOIN_MINE_WITHIN_N_BLOCKS,
-            beta_mine_redeem_within_n_blocks: ETHEREUM_MINE_WITHIN_N_BLOCKS,
+            alpha_mine_deploy_within_n_blocks: bitcoin_mine_within_blocks(network),
+            beta_mine_deploy_within_n_blocks: ethereum_mine_within_blocks(network),
+            alpha_mine_fund_within_n_blocks: bitcoin_mine_within_blocks(network),
+            beta_mine_fund_within_n_blocks: ethereum_mine_within_blocks(network),
+            alpha_mine_redeem_within_n_blocks: bitcoin_mine_within_blocks(network),
+            beta_mine_redeem_within_n_blocks: ethereum_mine_within_blocks(network),
             act_in_software: act_in_software(network),
             act_with_user_interaction: act_with_user_interaction(network),
         }
@@ -339,6 +344,13 @@ fn bitcoin_confirmations(network: Network) -> u8 {
     }
 }
 
+fn bitcoin_mine_within_blocks(network: Network) -> u8 {
+    match network {
+        Network::Main | Network::Test => main::BITCOIN_MINE_WITHIN_N_BLOCKS,
+        Network::Dev => dev::BITCOIN_MINE_WITHIN_N_BLOCKS,
+    }
+}
+
 fn ethereum_blocktime(network: Network) -> u16 {
     match network {
         Network::Main | Network::Test => main::ETHEREUM_BLOCK_TIME_SECS,
@@ -350,6 +362,13 @@ fn ethereum_confirmations(network: Network) -> u8 {
     match network {
         Network::Main | Network::Test => main::ETHEREUM_CONFIRMATIONS,
         Network::Dev => dev::ETHEREUM_CONFIRMATIONS,
+    }
+}
+
+fn ethereum_mine_within_blocks(network: Network) -> u8 {
+    match network {
+        Network::Main | Network::Test => main::ETHEREUM_MINE_WITHIN_N_BLOCKS,
+        Network::Dev => dev::ETHEREUM_MINE_WITHIN_N_BLOCKS,
     }
 }
 
