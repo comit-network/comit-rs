@@ -334,11 +334,16 @@ mod tests {
             let ethereum_gas_price =
                 crate::ethereum::GasPrice::geth_url(ethereum_blockchain.node_url.clone());
 
+            let bitcoin_fee = crate::bitcoin::Fee::new(
+                Default::default(),
+                crate::bitcoin::Client::new(bitcoind_url.clone()),
+            );
+
             (
                 bitcoin::Wallet {
                     inner: Arc::new(bitcoin_wallet),
                     connector: Arc::clone(&bitcoin_connector),
-                    fee: StaticStub::static_stub(),
+                    fee: bitcoin_fee,
                 },
                 ethereum::Wallet {
                     inner: Arc::new(ethereum_wallet),
@@ -379,11 +384,16 @@ mod tests {
             let ethereum_gas_price =
                 crate::ethereum::GasPrice::geth_url(ethereum_blockchain.node_url.clone());
 
+            let bitcoin_fee = crate::bitcoin::Fee::new(
+                Default::default(),
+                crate::bitcoin::Client::new(bitcoind_url),
+            );
+
             (
                 bitcoin::Wallet {
                     inner: Arc::new(bitcoin_wallet),
                     connector: Arc::clone(&bitcoin_connector),
-                    fee: StaticStub::static_stub(),
+                    fee: bitcoin_fee,
                 },
                 ethereum::Wallet {
                     inner: Arc::new(ethereum_wallet),

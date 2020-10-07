@@ -49,7 +49,7 @@ impl Fee {
 impl crate::StaticStub for Fee {
     fn static_stub() -> Self {
         Self {
-            config: Default::default(),
+            config: crate::StaticStub::static_stub(),
             client: bitcoin::Client::new("http://example.com/".parse().unwrap()), // Not used
         }
     }
