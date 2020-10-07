@@ -60,7 +60,6 @@ mod dev {
     pub const ACT_WITH_USER_INTERACTION_SECS: u32 = 1;
 }
 
-// TODO: Fee recommendation must use this value of N.
 const BITCOIN_MINE_WITHIN_N_BLOCKS: u8 = 3; // Value arbitrarily chosen.
 const ETHEREUM_MINE_WITHIN_N_BLOCKS: u8 = 3; // Value arbitrarily chosen.
 
