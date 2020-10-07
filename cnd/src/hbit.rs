@@ -13,6 +13,7 @@ use std::collections::{hash_map::Entry, HashMap};
 use time::OffsetDateTime;
 use tokio::sync::Mutex;
 
+use crate::btsieve::ConnectedNetwork;
 pub use comit::{hbit::*, identity};
 
 /// Creates a new instance of the hbit protocol, annotated with tracing spans
@@ -31,7 +32,9 @@ pub async fn new<C>(
     connector: impl AsRef<C>,
 ) -> Result<()>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = BlockHash>
+        + ConnectedNetwork<Network = ledger::Bitcoin>,
 {
     let mut events = comit::hbit::new(connector.as_ref(), params, start_of_swap);
 

@@ -1,5 +1,5 @@
 use crate::{
-    btsieve::{ethereum::ReceiptByHash, jsonrpc, BlockByHash, LatestBlock},
+    btsieve::{ethereum::ReceiptByHash, jsonrpc, BlockByHash, ConnectedNetwork, LatestBlock},
     ethereum::{ChainId, Hash, TransactionReceipt},
 };
 use anyhow::Result;
@@ -73,5 +73,16 @@ impl ReceiptByHash for Web3Connector {
             .await?;
 
         Ok(receipt)
+    }
+}
+
+#[async_trait]
+impl ConnectedNetwork for Web3Connector {
+    type Network = ChainId;
+
+    async fn connected_network(&self) -> anyhow::Result<ChainId> {
+        let chain_id = self.net_version().await?;
+
+        Ok(chain_id)
     }
 }

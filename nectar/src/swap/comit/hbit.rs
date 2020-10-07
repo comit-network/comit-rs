@@ -1,8 +1,9 @@
 use crate::swap::comit::SwapFailedShouldRefund;
 use anyhow::Result;
 use bitcoin::{secp256k1::SecretKey, Block, BlockHash};
-use comit::asset;
+use comit::{asset, ledger};
 
+use comit::btsieve::ConnectedNetwork;
 pub use comit::{
     actions::bitcoin::{BroadcastSignedTransaction, SendToAddress},
     btsieve::{BlockByHash, LatestBlock},
@@ -60,7 +61,9 @@ pub async fn watch_for_funded<C>(
     utc_start_of_swap: OffsetDateTime,
 ) -> Result<Funded>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = BlockHash>
+        + ConnectedNetwork<Network = ledger::Bitcoin>,
 {
     match comit::hbit::watch_for_funded(connector, &params, utc_start_of_swap).await? {
         comit::hbit::Funded::Correctly {

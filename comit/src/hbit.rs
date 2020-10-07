@@ -5,7 +5,7 @@ use crate::{
     asset,
     btsieve::{
         bitcoin::{watch_for_created_outpoint, watch_for_spent_outpoint},
-        BlockByHash, LatestBlock,
+        BlockByHash, ConnectedNetwork, LatestBlock,
     },
     htlc_location, identity, ledger,
     timestamp::Timestamp,
@@ -88,7 +88,9 @@ pub fn new<'a, C>(
     start_of_swap: OffsetDateTime,
 ) -> impl Stream<Item = Result<Event>> + 'a
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = BlockHash>
+        + ConnectedNetwork<Network = ledger::Bitcoin>,
 {
     Gen::new({
         |co| async move {
@@ -106,7 +108,9 @@ async fn watch_ledger<C, R>(
     co: &Co<Result<Event>, R>,
 ) -> Result<()>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = BlockHash>
+        + ConnectedNetwork<Network = ledger::Bitcoin>,
 {
     co.yield_(Ok(Event::Started)).await;
 
@@ -146,7 +150,9 @@ pub async fn watch_for_funded<C>(
     start_of_swap: OffsetDateTime,
 ) -> Result<Funded>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = BlockHash>
+        + ConnectedNetwork<Network = ledger::Bitcoin>,
 {
     let expected_asset = params.asset;
 
@@ -180,7 +186,9 @@ pub async fn watch_for_redeemed<C>(
     start_of_swap: OffsetDateTime,
 ) -> Result<Redeemed>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = BlockHash>
+        + ConnectedNetwork<Network = ledger::Bitcoin>,
 {
     let (transaction, _) =
         watch_for_spent_outpoint(connector, start_of_swap, location, params.redeem_identity)
@@ -203,7 +211,9 @@ pub async fn watch_for_refunded<C>(
     start_of_swap: OffsetDateTime,
 ) -> Result<Refunded>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = BlockHash>
+        + ConnectedNetwork<Network = ledger::Bitcoin>,
 {
     let (transaction, _) =
         watch_for_spent_outpoint(connector, start_of_swap, location, params.refund_identity)

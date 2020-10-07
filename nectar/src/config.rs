@@ -2,7 +2,6 @@ pub mod file;
 mod seed;
 mod serde;
 pub mod settings;
-pub mod validation;
 
 use crate::bitcoin;
 use ::serde::{Deserialize, Serialize};

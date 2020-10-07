@@ -10,11 +10,12 @@ pub use self::{
     web3_connector::Web3Connector,
 };
 use crate::{
-    btsieve::{BlockHash, Predates, PreviousBlockHash},
-    ethereum::{Address, Block, Hash, TransactionReceipt, U256},
+    btsieve::{BlockHash, ConnectedNetwork, Predates, PreviousBlockHash},
+    ethereum::{Address, Block, ChainId, Hash, TransactionReceipt, U256},
 };
 use anyhow::Result;
 use async_trait::async_trait;
+use std::time::Duration;
 use time::OffsetDateTime;
 
 #[async_trait]
@@ -55,4 +56,17 @@ pub struct Topic(pub Hash);
 pub struct Event {
     pub address: Address,
     pub topics: Vec<Option<Topic>>,
+}
+
+async fn poll_interval<C>(connector: &C) -> Result<Duration>
+where
+    C: ConnectedNetwork<Network = ChainId>,
+{
+    let network = connector.connected_network().await?;
+    let seconds = match network {
+        ChainId::GETH_DEV => 1,
+        _ => 10,
+    };
+
+    Ok(Duration::from_secs(seconds))
 }

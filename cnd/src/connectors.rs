@@ -1,12 +1,13 @@
 use crate::{
     btsieve,
-    btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector, LatestBlock},
+    btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector, ConnectedNetwork, LatestBlock},
     ethereum,
     http_api::LedgerNotConfigured,
 };
 use anyhow::Result;
 use comit::{
     btsieve::{ethereum::ReceiptByHash, BlockByHash},
+    ledger,
     lnd::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams},
 };
 use std::sync::Arc;
@@ -40,7 +41,8 @@ impl Connectors {
         &self,
     ) -> Arc<
         impl LatestBlock<Block = bitcoin::Block>
-            + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
+            + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>
+            + ConnectedNetwork<Network = ledger::Bitcoin>,
     > {
         self.bitcoin.clone()
     }
@@ -54,7 +56,8 @@ impl Connectors {
     ) -> Arc<
         impl LatestBlock<Block = ethereum::Block>
             + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-            + ReceiptByHash,
+            + ReceiptByHash
+            + ConnectedNetwork<Network = ethereum::ChainId>,
     > {
         self.ethereum.clone()
     }

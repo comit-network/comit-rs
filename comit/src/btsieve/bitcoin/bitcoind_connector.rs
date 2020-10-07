@@ -1,5 +1,5 @@
 use crate::{
-    btsieve::{BlockByHash, LatestBlock},
+    btsieve::{BlockByHash, ConnectedNetwork, LatestBlock},
     ledger,
 };
 use anyhow::{Context, Result};
@@ -84,6 +84,17 @@ impl BlockByHash for BitcoindConnector {
             .await??;
 
         Ok(block)
+    }
+}
+
+#[async_trait]
+impl ConnectedNetwork for BitcoindConnector {
+    type Network = ledger::Bitcoin;
+
+    async fn connected_network(&self) -> anyhow::Result<ledger::Bitcoin> {
+        let chain = self.chain_info().await?.chain;
+
+        Ok(chain)
     }
 }
 

@@ -5,8 +5,10 @@ use crate::swap::{
 use anyhow::Context;
 use comit::{
     btsieve,
-    btsieve::{BlockByHash, LatestBlock},
-    ethereum, Secret,
+    btsieve::{BlockByHash, ConnectedNetwork, LatestBlock},
+    ethereum,
+    ethereum::ChainId,
+    ledger, Secret,
 };
 use time::OffsetDateTime;
 
@@ -23,7 +25,8 @@ pub async fn herc20_hbit_alice<A, BC>(
 where
     A: herc20::ExecuteDeploy + herc20::ExecuteFund + herc20::ExecuteRefund + hbit::ExecuteRedeem,
     BC: LatestBlock<Block = ::bitcoin::Block>
-        + BlockByHash<Block = ::bitcoin::Block, BlockHash = ::bitcoin::BlockHash>,
+        + BlockByHash<Block = ::bitcoin::Block, BlockHash = ::bitcoin::BlockHash>
+        + ConnectedNetwork<Network = ledger::Bitcoin>,
 {
     let swap_result = async {
         let herc20_deployed = alice
@@ -70,9 +73,11 @@ where
     B: hbit::ExecuteFund + hbit::ExecuteRefund + herc20::ExecuteRedeem,
     EC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-        + btsieve::ethereum::ReceiptByHash,
+        + btsieve::ethereum::ReceiptByHash
+        + ConnectedNetwork<Network = ChainId>,
     BC: LatestBlock<Block = ::bitcoin::Block>
-        + BlockByHash<Block = ::bitcoin::Block, BlockHash = ::bitcoin::BlockHash>,
+        + BlockByHash<Block = ::bitcoin::Block, BlockHash = ::bitcoin::BlockHash>
+        + ConnectedNetwork<Network = ledger::Bitcoin>,
 {
     tracing::info!("starting swap");
 
