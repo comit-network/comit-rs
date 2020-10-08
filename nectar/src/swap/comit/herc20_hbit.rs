@@ -8,57 +8,9 @@ use comit::{
     btsieve::{BlockByHash, ConnectedNetwork, LatestBlock},
     ethereum,
     ethereum::ChainId,
-    ledger, Secret,
+    ledger,
 };
 use time::OffsetDateTime;
-
-/// Execute a Herc20<->Hbit swap for Alice.
-#[allow(dead_code)] // This is library code
-pub async fn herc20_hbit_alice<A, BC>(
-    alice: A,
-    bitcoin_connector: &BC,
-    herc20_params: herc20::Params,
-    hbit_params: hbit::Params,
-    secret: Secret,
-    utc_start_of_swap: OffsetDateTime,
-) -> anyhow::Result<()>
-where
-    A: herc20::ExecuteDeploy + herc20::ExecuteFund + herc20::ExecuteRefund + hbit::ExecuteRedeem,
-    BC: LatestBlock<Block = ::bitcoin::Block>
-        + BlockByHash<Block = ::bitcoin::Block, BlockHash = ::bitcoin::BlockHash>
-        + ConnectedNetwork<Network = ledger::Bitcoin>,
-{
-    let swap_result = async {
-        let herc20_deployed = alice
-            .execute_deploy(herc20_params.clone())
-            .await
-            .context(SwapFailedNoRefund)?;
-
-        let _herc20_funded = alice
-            .execute_fund(
-                herc20_params.clone(),
-                herc20_deployed.clone(),
-                utc_start_of_swap,
-            )
-            .await
-            .context(SwapFailedNoRefund)?;
-
-        let hbit_funded =
-            hbit::watch_for_funded(bitcoin_connector, &hbit_params.shared, utc_start_of_swap)
-                .await
-                .context(SwapFailedShouldRefund(herc20_deployed.clone()))?;
-
-        let _hbit_redeemed = alice
-            .execute_redeem(hbit_params, hbit_funded, secret)
-            .await
-            .context(SwapFailedShouldRefund(herc20_deployed))?;
-
-        Ok(())
-    }
-    .await;
-
-    herc20::refund_if_necessary(alice, herc20_params, utc_start_of_swap, swap_result).await
-}
 
 /// Execute a Herc20<->Hbit swap for Bob.
 pub async fn herc20_hbit_bob<B, EC, BC>(

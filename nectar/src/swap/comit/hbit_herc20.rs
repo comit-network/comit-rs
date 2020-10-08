@@ -14,7 +14,7 @@ use comit::{
 use time::OffsetDateTime;
 
 /// Execute a Hbit<->Herc20 swap for Alice.
-#[allow(dead_code)] // This is library code
+#[allow(dead_code)] // This is library code but used in the tests.
 pub async fn hbit_herc20_alice<A, EC>(
     alice: A,
     ethereum_connector: &EC,
