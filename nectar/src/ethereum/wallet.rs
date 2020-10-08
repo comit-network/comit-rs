@@ -127,24 +127,15 @@ impl Wallet {
         }: DeployContract,
         gas_price: ether::Amount,
     ) -> anyhow::Result<DeployedContract> {
-        self.assert_chain(chain_id).await?;
-
-        let nonce = self.get_transaction_count().await?;
-
-        let transaction = clarity::Transaction {
-            nonce: nonce.into(),
-            gas_price: gas_price.into(),
-            gas_limit: gas_limit.into(),
-            to: clarity::Address::default(),
-            value: 0u64.into(),
-            data,
-            signature: None,
-        };
-        let transaction_hex = self.sign(transaction)?;
-
         let hash = self
-            .geth_client
-            .send_raw_transaction(transaction_hex)
+            .sign_and_send(
+                data,
+                0u64.into(),
+                clarity::Address::default(),
+                gas_limit.into(),
+                gas_price.into(),
+                chain_id,
+            )
             .await?;
 
         let contract_address = match self.wait_until_transaction_receipt(hash, chain_id).await? {
@@ -179,10 +170,6 @@ impl Wallet {
         chain_id: ChainId,
         gas_price: ether::Amount,
     ) -> anyhow::Result<Hash> {
-        self.assert_chain(chain_id).await?;
-
-        let nonce = self.get_transaction_count().await?;
-
         let gas_limit = match gas_limit {
             Some(gas_limit) => gas_limit.into(),
             None => {
@@ -196,21 +183,15 @@ impl Wallet {
                 .await?
             }
         };
-
-        let transaction = clarity::Transaction {
-            nonce: nonce.into(),
-            gas_price: gas_price.into(),
-            gas_limit,
-            to: to_clarity_address(to)?,
-            value: value.into(),
-            data: data.unwrap_or_default(),
-            signature: None,
-        };
-        let transaction_hex = self.sign(transaction)?;
-
         let hash = self
-            .geth_client
-            .send_raw_transaction(transaction_hex)
+            .sign_and_send(
+                data.unwrap_or_default(),
+                value.into(),
+                to_clarity_address(to)?,
+                gas_limit,
+                gas_price.into(),
+                chain_id,
+            )
             .await?;
 
         let _ = self.wait_until_transaction_receipt(hash, chain_id).await?;
@@ -225,10 +206,6 @@ impl Wallet {
         chain_id: ChainId,
         gas_price: ether::Amount,
     ) -> anyhow::Result<Hash> {
-        self.assert_chain(chain_id).await?;
-
-        let nonce = self.get_transaction_count().await?;
-
         let to = to_clarity_address(to)?;
         let dai_contract_addr = to_clarity_address(self.chain.dai_contract_address())?;
 
@@ -237,20 +214,15 @@ impl Wallet {
             clarity::abi::Token::Uint(Uint256::from_bytes_le(value.to_bytes().as_slice())),
         ])?;
 
-        let transaction = clarity::Transaction {
-            nonce: nonce.into(),
-            gas_price: gas_price.into(),
-            gas_limit: DAI_TRANSFER_GAS_LIMIT.into(),
-            to: dai_contract_addr,
-            value: 0u16.into(),
-            data,
-            signature: None,
-        };
-        let transaction_hex = self.sign(transaction)?;
-
         let hash = self
-            .geth_client
-            .send_raw_transaction(transaction_hex)
+            .sign_and_send(
+                data,
+                0u64.into(),
+                dai_contract_addr,
+                DAI_TRANSFER_GAS_LIMIT.into(),
+                gas_price.into(),
+                chain_id,
+            )
             .await?;
 
         let _ = self.wait_until_transaction_receipt(hash, chain_id).await?;
@@ -269,27 +241,50 @@ impl Wallet {
         }: CallContract,
         gas_price: ether::Amount,
     ) -> anyhow::Result<Hash> {
-        self.assert_chain(chain_id).await?;
+        let hash = self
+            .sign_and_send(
+                data.unwrap_or_default(),
+                0u64.into(),
+                to_clarity_address(to)?,
+                gas_limit.into(),
+                gas_price.into(),
+                chain_id,
+            )
+            .await?;
 
-        let nonce = self.get_transaction_count().await?;
+        let _ = self.wait_until_transaction_receipt(hash, chain_id).await?;
 
-        let transaction = clarity::Transaction {
-            nonce: nonce.into(),
-            gas_price: gas_price.into(),
-            gas_limit: gas_limit.into(),
-            to: to_clarity_address(to)?,
-            value: 0u32.into(),
-            data: data.unwrap_or_default(),
-            signature: None,
-        };
-        let transaction_hex = self.sign(transaction)?;
+        Ok(hash)
+    }
+
+    pub async fn sign_and_send(
+        &self,
+        data: Vec<u8>,
+        value: Uint256,
+        to: clarity::Address,
+        gas_limit: Uint256,
+        gas_price: Uint256,
+        chain_id: ChainId,
+    ) -> anyhow::Result<Hash> {
+        let transaction_hex = self
+            .sign(
+                |nonce| clarity::Transaction {
+                    nonce,
+                    gas_price,
+                    gas_limit,
+                    to,
+                    value,
+                    data,
+                    signature: None,
+                },
+                chain_id,
+            )
+            .await?;
 
         let hash = self
             .geth_client
             .send_raw_transaction(transaction_hex)
             .await?;
-
-        let _ = self.wait_until_transaction_receipt(hash, chain_id).await?;
 
         Ok(hash)
     }
@@ -369,7 +364,16 @@ impl Wallet {
         self.geth_client.gas_limit(request).await
     }
 
-    fn sign(&self, transaction: clarity::Transaction) -> anyhow::Result<String> {
+    async fn sign(
+        &self,
+        transaction_fn: impl FnOnce(Uint256) -> clarity::Transaction,
+        chain_id: ChainId,
+    ) -> anyhow::Result<String> {
+        self.assert_chain(chain_id).await?;
+
+        let nonce = self.get_transaction_count().await?;
+        let transaction = transaction_fn(nonce.into());
+
         let signed_transaction = transaction.sign(
             &self.private_key,
             Some(u32::from(self.chain.chain_id()) as u64),
