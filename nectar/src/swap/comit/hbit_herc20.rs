@@ -1,137 +1,146 @@
-use crate::{
-    ethereum::ChainId,
-    swap::{
-        comit::{SwapFailedNoRefund, SwapFailedShouldRefund},
-        hbit, herc20,
-    },
+use crate::swap::{
+    comit::{Action, Error},
+    hbit, herc20,
 };
-use anyhow::{Context, Result};
-use comit::{
-    btsieve,
-    btsieve::{
-        ethereum::{GetLogs, TransactionByHash},
-        BlockByHash, ConnectedNetwork, LatestBlock,
-    },
-    ethereum, ledger, Secret,
-};
+use comit::Secret;
+use futures::Stream;
+use genawaiter::sync::Gen;
 use time::OffsetDateTime;
 
 /// Execute a Hbit<->Herc20 swap for Alice.
 #[allow(dead_code)] // This is library code
-pub async fn hbit_herc20_alice<A, EC>(
-    alice: A,
-    ethereum_connector: &EC,
+pub fn hbit_herc20_alice<A, B>(
+    hbit: A,
+    herc20: B,
     hbit_params: hbit::Params,
     herc20_params: herc20::Params,
     secret: Secret,
     utc_start_of_swap: OffsetDateTime,
-) -> anyhow::Result<()>
+) -> impl Stream<Item = Result<Action, Error<hbit::IncorrectlyFunded, herc20::IncorrectlyFunded>>>
 where
-    A: hbit::ExecuteFund + herc20::ExecuteRedeem + hbit::ExecuteRefund,
-    EC: LatestBlock<Block = ethereum::Block>
-        + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-        + btsieve::ethereum::ReceiptByHash
-        + ConnectedNetwork<Network = ChainId>
-        + GetLogs
-        + TransactionByHash,
+    A: hbit::WatchForFunded + hbit::WatchForRedeemed,
+    B: herc20::WatchForDeployed + herc20::WatchForFunded + herc20::WatchForRedeemed,
 {
-    let swap_result = async {
-        let hbit_funded = alice
-            .execute_fund(&hbit_params)
+    Gen::new(|co| async move {
+        tracing::info!("starting swap");
+
+        co.yield_(Ok(Action::HbitFund(hbit_params.clone()))).await;
+        let hbit_funded = match hbit.watch_for_funded(&hbit_params, utc_start_of_swap).await {
+            Ok(hbit_funded) => hbit_funded,
+            Err(e) => {
+                co.yield_(Err(Error::AlphaIncorrectlyFunded(e))).await;
+                return;
+            }
+        };
+
+        tracing::info!("we funded the hbit htlc");
+
+        let herc20_deployed = herc20
+            .watch_for_deployed(herc20_params.clone(), utc_start_of_swap)
+            .await;
+
+        tracing::info!("bob deployed the herc20 htlc");
+
+        match herc20
+            .watch_for_funded(herc20_params.clone(), herc20_deployed, utc_start_of_swap)
             .await
-            .context(SwapFailedNoRefund)?;
+        {
+            Ok(_) => {}
+            Err(e) => {
+                co.yield_(Err(Error::BetaIncorrectlyFunded(e))).await;
+                return;
+            }
+        };
 
-        let herc20_deployed = herc20::watch_for_deployed(
-            ethereum_connector,
-            herc20_params.clone(),
-            utc_start_of_swap,
-        )
-        .await
-        .context(SwapFailedShouldRefund(hbit_funded))?;
+        tracing::info!("bob funded the herc20 htlc");
 
-        let _herc20_funded = herc20::watch_for_funded(
-            ethereum_connector,
+        co.yield_(Ok(Action::Herc20Redeem(
             herc20_params.clone(),
-            utc_start_of_swap,
             herc20_deployed,
-        )
-        .await
-        .context(SwapFailedShouldRefund(hbit_funded))?;
+            secret,
+        )))
+        .await;
+        let _ = herc20
+            .watch_for_redeemed(herc20_params, herc20_deployed, utc_start_of_swap)
+            .await;
 
-        let _herc20_redeemed = alice
-            .execute_redeem(herc20_params, secret, herc20_deployed, utc_start_of_swap)
-            .await
-            .context(SwapFailedShouldRefund(hbit_funded))?;
+        tracing::info!("we redeemed the herc20 htlc");
 
-        Ok(())
-    }
-    .await;
+        let _ = hbit
+            .watch_for_redeemed(&hbit_params, hbit_funded, utc_start_of_swap)
+            .await;
 
-    hbit::refund_if_necessary(alice, hbit_params, swap_result).await
+        tracing::info!("bob redeemed the hbit htlc");
+    })
 }
 
 /// Execute a Hbit<->Herc20 swap for Bob.
-pub async fn hbit_herc20_bob<B, BC, EC>(
-    bob: B,
-    bitcoin_connector: &BC,
-    ethereum_connector: &EC,
+pub fn hbit_herc20_bob<A, B>(
+    hbit: A,
+    herc20: B,
     hbit_params: hbit::Params,
     herc20_params: herc20::Params,
     utc_start_of_swap: OffsetDateTime,
-) -> Result<()>
+) -> impl Stream<Item = Result<Action, Error<hbit::IncorrectlyFunded, herc20::IncorrectlyFunded>>>
 where
-    B: herc20::ExecuteDeploy + herc20::ExecuteFund + hbit::ExecuteRedeem + herc20::ExecuteRefund,
-    BC: LatestBlock<Block = ::bitcoin::Block>
-        + BlockByHash<Block = ::bitcoin::Block, BlockHash = ::bitcoin::BlockHash>
-        + ConnectedNetwork<Network = ledger::Bitcoin>,
-    EC: LatestBlock<Block = ethereum::Block>
-        + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-        + btsieve::ethereum::ReceiptByHash
-        + ConnectedNetwork<Network = ChainId>
-        + GetLogs
-        + TransactionByHash,
+    A: hbit::WatchForFunded + hbit::WatchForRedeemed,
+    B: herc20::WatchForDeployed + herc20::WatchForFunded + herc20::WatchForRedeemed,
 {
-    tracing::info!("starting swap");
+    Gen::new(|co| async move {
+        tracing::info!("starting swap");
 
-    let swap_result = async {
-        let hbit_funded =
-            hbit::watch_for_funded(bitcoin_connector, &hbit_params.shared, utc_start_of_swap)
-                .await
-                .context(SwapFailedNoRefund)?;
+        let hbit_funded = match hbit.watch_for_funded(&hbit_params, utc_start_of_swap).await {
+            Ok(hbit_funded) => hbit_funded,
+            Err(e) => {
+                co.yield_(Err(Error::AlphaIncorrectlyFunded(e))).await;
+                return;
+            }
+        };
 
         tracing::info!("alice funded the hbit htlc");
 
-        let herc20_deployed = bob
-            .execute_deploy(herc20_params.clone())
-            .await
-            .context(SwapFailedNoRefund)?;
+        co.yield_(Ok(Action::Herc20Deploy(herc20_params.clone())))
+            .await;
+        let herc20_deployed = herc20
+            .watch_for_deployed(herc20_params.clone(), utc_start_of_swap)
+            .await;
 
         tracing::info!("we deployed the herc20 htlc");
 
-        let _herc20_funded = bob
-            .execute_fund(herc20_params.clone(), herc20_deployed, utc_start_of_swap)
+        co.yield_(Ok(Action::Herc20Fund(
+            herc20_params.clone(),
+            herc20_deployed,
+        )))
+        .await;
+        match herc20
+            .watch_for_funded(herc20_params.clone(), herc20_deployed, utc_start_of_swap)
             .await
-            .context(SwapFailedNoRefund)?;
+        {
+            Ok(_) => {}
+            Err(e) => {
+                co.yield_(Err(Error::BetaIncorrectlyFunded(e))).await;
+                return;
+            }
+        };
 
         tracing::info!("we funded the herc20 htlc");
 
-        let herc20_redeemed =
-            herc20::watch_for_redeemed(ethereum_connector, utc_start_of_swap, herc20_deployed)
-                .await
-                .context(SwapFailedShouldRefund(herc20_deployed))?;
+        let herc20_redeemed = herc20
+            .watch_for_redeemed(herc20_params.clone(), herc20_deployed, utc_start_of_swap)
+            .await;
 
         tracing::info!("alice redeemed the herc20 htlc");
 
-        let _hbit_redeem = bob
-            .execute_redeem(hbit_params, hbit_funded, herc20_redeemed.secret)
-            .await
-            .context(SwapFailedNoRefund)?;
+        co.yield_(Ok(Action::HbitRedeem(
+            hbit_params.clone(),
+            hbit_funded,
+            herc20_redeemed.secret,
+        )))
+        .await;
+        let _ = hbit
+            .watch_for_redeemed(&hbit_params, hbit_funded, utc_start_of_swap)
+            .await;
 
         tracing::info!("we redeemed the hbit htlc");
-
-        Ok(())
-    }
-    .await;
-
-    herc20::refund_if_necessary(bob, herc20_params, utc_start_of_swap, swap_result).await
+    })
 }

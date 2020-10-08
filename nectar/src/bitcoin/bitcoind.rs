@@ -289,6 +289,20 @@ impl Client {
         Ok(txid)
     }
 
+    pub async fn get_confirmations(&self, transaction: Txid) -> anyhow::Result<i32> {
+        let response: GetRawTransactionResponse = self
+            .rpc_client
+            .send(jsonrpc::Request::new(
+                "getrawtransaction",
+                serde_json::json!([transaction, true]),
+                JSONRPC_VERSION.into(),
+            ))
+            .await
+            .context("failed to fetch transaction")?;
+
+        Ok(response.confirmations.unwrap_or(0))
+    }
+
     #[cfg(test)]
     pub async fn dump_wallet(
         &self,
@@ -500,6 +514,11 @@ pub struct EstimateSmartFeeResponse {
     #[serde(with = "btc_as_float")]
     pub kbyte_rate: Amount,
     pub blocks: u32,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
+pub struct GetRawTransactionResponse {
+    pub confirmations: Option<i32>,
 }
 
 mod btc_as_float {

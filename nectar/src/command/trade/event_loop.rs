@@ -5,7 +5,7 @@ use crate::{
     history::History,
     maker::{PublishOrders, TakeRequestDecision},
     network::{self, ActivePeer, SetupSwapContext, Swarm},
-    swap::{hbit, Database, SwapExecutor, SwapKind, SwapParams},
+    swap::{Database, SwapExecutor, SwapKind, SwapParams},
     Maker, MidMarketRate, SwapId,
 };
 use anyhow::{bail, Context, Result};
@@ -211,7 +211,7 @@ impl EventLoop {
                     .bitcoin_wallet
                     .derive_transient_sk(exec_swap.context.bitcoin_transient_key_index)
                     .context("Could not derive Bitcoin transient key")?;
-                let hbit_params = hbit::Params::new(
+                let hbit_params = crate::swap::hbit::Params::new(
                     exec_swap.hbit,
                     bitcoin_transient_sk,
                     self.bitcoin_wallet.new_address().await?,

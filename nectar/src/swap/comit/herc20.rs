@@ -1,110 +1,60 @@
-use crate::swap::comit::SwapFailedShouldRefund;
 use anyhow::Result;
+use comit::ethereum;
+use thiserror::Error;
+use time::OffsetDateTime;
 
 pub use comit::{
     actions::ethereum::*,
     asset,
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
     ethereum::{Block, ChainId, Hash},
-    herc20::*,
+    herc20::{
+        watch_for_deployed, watch_for_funded, watch_for_redeemed, watch_for_refunded, Deployed,
+        Params, Redeemed, Refunded,
+    },
     identity, transaction, Secret, SecretHash, Timestamp,
 };
-use comit::{
-    btsieve::{
-        ethereum::{GetLogs, TransactionByHash},
-        ConnectedNetwork,
-    },
-    ethereum,
-};
-use time::OffsetDateTime;
 
-#[async_trait::async_trait]
-pub trait ExecuteDeploy {
-    async fn execute_deploy(&self, params: Params) -> Result<Deployed>;
+#[derive(Debug, Clone, Error)]
+#[error("herc20 HTLC was incorrectly funded, expected {expected} but got {got}")]
+pub struct IncorrectlyFunded {
+    pub expected: asset::Erc20,
+    pub got: asset::Erc20,
 }
 
 #[async_trait::async_trait]
-pub trait ExecuteFund {
-    async fn execute_fund(
+pub trait WatchForDeployed {
+    async fn watch_for_deployed(
+        &self,
+        params: Params,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> Deployed;
+}
+
+#[async_trait::async_trait]
+pub trait WatchForFunded {
+    async fn watch_for_funded(
         &self,
         params: Params,
         deploy_event: Deployed,
         utc_start_of_swap: OffsetDateTime,
-    ) -> Result<Funded>;
+    ) -> Result<Funded, IncorrectlyFunded>;
 }
 
 #[async_trait::async_trait]
-pub trait ExecuteRedeem {
-    async fn execute_redeem(
-        &self,
-        params: Params,
-        secret: Secret,
-        deploy_event: Deployed,
-        utc_start_of_swap: OffsetDateTime,
-    ) -> Result<Redeemed>;
-}
-
-#[async_trait::async_trait]
-pub trait ExecuteRefund {
-    async fn execute_refund(
+pub trait WatchForRedeemed {
+    async fn watch_for_redeemed(
         &self,
         params: Params,
         deploy_event: Deployed,
         utc_start_of_swap: OffsetDateTime,
-    ) -> Result<Refunded>;
+    ) -> Redeemed;
 }
 
 #[derive(Debug, Clone)]
 pub struct Funded {
     pub transaction: ethereum::Hash,
     pub asset: asset::Erc20,
-}
-
-pub async fn watch_for_funded<C>(
-    connector: &C,
-    params: Params,
-    utc_start_of_swap: OffsetDateTime,
-    deployed: Deployed,
-) -> Result<Funded>
-where
-    C: LatestBlock<Block = Block>
-        + BlockByHash<Block = Block, BlockHash = Hash>
-        + ReceiptByHash
-        + ConnectedNetwork<Network = ChainId>
-        + GetLogs
-        + TransactionByHash,
-{
-    match comit::herc20::watch_for_funded(connector, params, utc_start_of_swap, deployed).await? {
-        comit::herc20::Funded::Correctly { transaction, asset } => {
-            Ok(Funded { transaction, asset })
-        }
-        comit::herc20::Funded::Incorrectly { .. } => {
-            anyhow::bail!("Ethereum HTLC incorrectly funded")
-        }
-    }
-}
-
-/// Executes refund if deemed necessary based on the result of the swap.
-pub async fn refund_if_necessary<A>(
-    actor: A,
-    herc20: Params,
-    utc_start_of_swap: OffsetDateTime,
-    swap_result: Result<()>,
-) -> Result<()>
-where
-    A: ExecuteRefund,
-{
-    if let Err(e) = swap_result {
-        if let Some(swap_failed) = e.downcast_ref::<SwapFailedShouldRefund<Deployed>>() {
-            actor
-                .execute_refund(herc20, swap_failed.0, utc_start_of_swap)
-                .await?;
-        }
-
-        return Err(e);
-    }
-
-    Ok(())
 }
 
 #[cfg(all(test, feature = "testcontainers"))]

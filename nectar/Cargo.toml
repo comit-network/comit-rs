@@ -13,6 +13,7 @@ clarity = "0.4"
 comit = { path = "../comit/", package = "comit" }
 config = { version = "0.10", default-features = false, features = ["toml"] }
 conquer-once = "0.2"
+contract-address = "0.4.0"
 csv = "1.1"
 derivative = "2.1"
 directories-next = "2"
@@ -20,6 +21,7 @@ ethabi = "12.0"
 ethereum-types = "0.9"
 futures = "0.3"
 futures-timer = "3.0"
+genawaiter = { version = "0.99", default-features = false, features = ["futures03"] }
 hex = "0.4"
 libp2p = { version = "0.29", default-features = false, features = ["tcp-tokio", "noise", "yamux", "mplex", "dns"] }
 log = "0.4"
@@ -44,7 +46,7 @@ time = { version = "0.2", features = ["serde"] }
 tokio = { version = "0.2", features = ["macros", "time"] }
 toml = "0.5"
 tracing = "0.1"
-tracing-futures = "0.2"
+tracing-futures = { version = "0.2", features = ["futures-03"] }
 tracing-log = "0.1"
 tracing-subscriber = { version = "0.2", default-features = false, features = ["fmt", "ansi", "env-filter"] }
 url = { version = "2", features = ["serde"] }

@@ -12,7 +12,6 @@ use clarity::Uint256;
 use comit::{
     actions::ethereum::{CallContract, DeployContract},
     asset::Erc20,
-    ethereum::TransactionReceipt,
 };
 use conquer_once::Lazy;
 use num::BigUint;
@@ -126,37 +125,43 @@ impl Wallet {
             ..
         }: DeployContract,
         gas_price: ether::Amount,
-    ) -> anyhow::Result<DeployedContract> {
-        let hash = self
-            .sign_and_send(
-                data,
-                0u64.into(),
-                clarity::Address::default(),
-                gas_limit.into(),
-                gas_price.into(),
+    ) -> anyhow::Result<(Hash, ethereum::Address)> {
+        let (signed_transaction, nonce) = self
+            .sign(
+                |nonce| clarity::Transaction {
+                    nonce,
+                    gas_price: gas_price.into(),
+                    gas_limit: gas_limit.into(),
+                    to: clarity::Address::default(),
+                    value: 0u64.into(),
+                    data,
+                    signature: None,
+                },
                 chain_id,
             )
             .await?;
 
-        let contract_address = match self.wait_until_transaction_receipt(hash, chain_id).await? {
-            TransactionReceipt {
-                successful: true,
-                contract_address: Some(contract_address),
-                ..
-            } => contract_address,
-            TransactionReceipt {
-                successful: false, ..
-            } => anyhow::bail!("Transaction receipt status failed"),
-            TransactionReceipt {
-                contract_address: None,
-                ..
-            } => anyhow::bail!("No contract address in deployment transaction receipt"),
-        };
+        let transaction_hex = format!(
+            "0x{}",
+            hex::encode(
+                signed_transaction
+                    .to_bytes()
+                    .context("failed to serialize signed transaction to bytes")?
+            )
+        );
 
-        Ok(DeployedContract {
-            transaction: hash,
-            contract_address,
-        })
+        let hash = self
+            .geth_client
+            .send_raw_transaction(transaction_hex)
+            .await?;
+
+        // TODO: upstream this functionality to clarity using clarity types
+        let address = contract_address::ContractAddress::from_sender_and_nonce(
+            &contract_address::Address::from_slice(self.private_key.to_public_key()?.as_bytes()),
+            &contract_address::U256::from_big_endian(&nonce.0.to_bytes_be()),
+        );
+
+        Ok((hash, ethereum::Address::from((*address).0)))
     }
 
     pub async fn send_transaction(
@@ -192,8 +197,6 @@ impl Wallet {
             )
             .await?;
 
-        let _ = self.wait_until_transaction_receipt(hash, chain_id).await?;
-
         Ok(hash)
     }
 
@@ -223,8 +226,6 @@ impl Wallet {
             )
             .await?;
 
-        let _ = self.wait_until_transaction_receipt(hash, chain_id).await?;
-
         Ok(hash)
     }
 
@@ -249,8 +250,6 @@ impl Wallet {
                 chain_id,
             )
             .await?;
-
-        let _ = self.wait_until_transaction_receipt(hash, chain_id).await?;
 
         Ok(hash)
     }
@@ -332,20 +331,11 @@ impl Wallet {
         Ok((signed_transaction, nonce))
     }
 
-    async fn get_transaction_receipt(
-        &self,
-        transaction_hash: Hash,
-    ) -> anyhow::Result<Option<TransactionReceipt>> {
-        self.geth_client
-            .get_transaction_receipt(transaction_hash)
-            .await
-    }
-
-    async fn wait_until_transaction_receipt(
+    pub async fn wait_until_confirmed(
         &self,
         transaction_hash: Hash,
         chain: ChainId,
-    ) -> anyhow::Result<TransactionReceipt> {
+    ) -> anyhow::Result<()> {
         let poll_interval = match chain {
             ChainId::MAINNET => 10, // roughly half the blocktime
             ChainId::KOVAN => 2,    // roughly half the blocktime
@@ -358,11 +348,22 @@ impl Wallet {
             if let Some(transaction_receipt) =
                 self.get_transaction_receipt(transaction_hash).await?
             {
-                return Ok(transaction_receipt);
+                if transaction_receipt.block_number.is_some() {
+                    return Ok(());
+                }
             }
 
             tokio::time::delay_for(Duration::from_secs(poll_interval)).await;
         }
+    }
+
+    async fn get_transaction_receipt(
+        &self,
+        transaction_hash: Hash,
+    ) -> anyhow::Result<Option<comit::ethereum::TransactionReceipt>> {
+        self.geth_client
+            .get_transaction_receipt(transaction_hash)
+            .await
     }
 
     async fn get_transaction_count(&self) -> anyhow::Result<u32> {
@@ -388,14 +389,13 @@ impl Wallet {
         &mut self,
         deployment_data: DeployContract,
         gas_price: ether::Amount,
-    ) -> anyhow::Result<()> {
-        let deployed_contract = self.deploy_contract(deployment_data, gas_price).await?;
+    ) -> anyhow::Result<Hash> {
+        let (hash, contract_address) = self.deploy_contract(deployment_data, gas_price).await?;
 
         // Set correct value for DAI token contract address after deployment
-        self.chain =
-            ethereum::Chain::new(self.chain.chain_id(), deployed_contract.contract_address);
+        self.chain = ethereum::Chain::new(self.chain.chain_id(), contract_address);
 
-        Ok(())
+        Ok(hash)
     }
 }
 
@@ -519,7 +519,7 @@ mod tests {
             .await
             .unwrap();
 
-        wallet
+        let hash = wallet
             .transfer_dai(
                 Address::random(),
                 dai::Amount::from_dai_trunc(1.0).unwrap(),
@@ -528,6 +528,8 @@ mod tests {
             )
             .await
             .unwrap();
+
+        wallet.wait_until_confirmed(hash, chain_id).await.unwrap();
 
         let balance = wallet.dai_balance().await.unwrap();
         assert_eq!(
@@ -587,7 +589,7 @@ mod tests {
             .await
             .unwrap();
 
-        wallet
+        let (hash, _) = wallet
             .deploy_contract(
                 DeployContract {
                     data: htlc_params.bytecode(),
@@ -599,5 +601,7 @@ mod tests {
             )
             .await
             .unwrap();
+
+        wallet.wait_until_confirmed(hash, chain_id).await.unwrap();
     }
 }

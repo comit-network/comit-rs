@@ -1,16 +1,15 @@
-use crate::swap::comit::SwapFailedShouldRefund;
 use anyhow::Result;
-use bitcoin::{secp256k1::SecretKey, Block, BlockHash};
-use comit::{asset, ledger};
+use bitcoin::secp256k1::SecretKey;
+use comit::asset;
+use thiserror::Error;
+use time::OffsetDateTime;
 
-use comit::btsieve::ConnectedNetwork;
 pub use comit::{
     actions::bitcoin::{BroadcastSignedTransaction, SendToAddress},
     btsieve::{BlockByHash, LatestBlock},
-    hbit::*,
+    hbit::{watch_for_funded, watch_for_redeemed, Redeemed, Refunded},
     htlc_location, transaction, Secret, SecretHash, Timestamp,
 };
-use time::OffsetDateTime;
 
 pub type SharedParams = comit::hbit::Params;
 
@@ -35,64 +34,36 @@ impl Params {
     }
 }
 
-#[async_trait::async_trait]
-pub trait ExecuteFund {
-    async fn execute_fund(&self, params: &Params) -> Result<Funded>;
+#[derive(Debug, Clone, Copy, Error)]
+#[error("hbit HTLC was incorrectly funded, expected {expected} but got {got}")]
+pub struct IncorrectlyFunded {
+    pub expected: asset::Bitcoin,
+    pub got: asset::Bitcoin,
 }
 
 #[async_trait::async_trait]
-pub trait ExecuteRedeem {
-    async fn execute_redeem(
+pub trait WatchForFunded {
+    async fn watch_for_funded(
         &self,
-        params: Params,
-        fund_event: Funded,
-        secret: Secret,
-    ) -> Result<Redeemed>;
+        params: &Params,
+        start_of_swap: OffsetDateTime,
+    ) -> Result<Funded, IncorrectlyFunded>;
 }
 
 #[async_trait::async_trait]
-pub trait ExecuteRefund {
-    async fn execute_refund(&self, params: Params, fund_event: Funded) -> Result<Refunded>;
+pub trait WatchForRedeemed {
+    async fn watch_for_redeemed(
+        &self,
+        params: &Params,
+        fund_event: Funded,
+        start_of_swap: OffsetDateTime,
+    ) -> Redeemed;
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Funded {
     pub asset: asset::Bitcoin,
     pub location: htlc_location::Bitcoin,
-}
-
-pub async fn watch_for_funded<C>(
-    connector: &C,
-    params: &SharedParams,
-    utc_start_of_swap: OffsetDateTime,
-) -> Result<Funded>
-where
-    C: LatestBlock<Block = Block>
-        + BlockByHash<Block = Block, BlockHash = BlockHash>
-        + ConnectedNetwork<Network = ledger::Bitcoin>,
-{
-    match comit::hbit::watch_for_funded(connector, &params, utc_start_of_swap).await? {
-        comit::hbit::Funded::Correctly {
-            asset, location, ..
-        } => Ok(Funded { asset, location }),
-        comit::hbit::Funded::Incorrectly { .. } => anyhow::bail!("Bitcoin HTLC incorrectly funded"),
-    }
-}
-
-/// Executes refund if deemed necessary based on the result of the swap.
-pub async fn refund_if_necessary<A>(actor: A, hbit: Params, swap_result: Result<()>) -> Result<()>
-where
-    A: ExecuteRefund,
-{
-    if let Err(e) = swap_result {
-        if let Some(swap_failed) = e.downcast_ref::<SwapFailedShouldRefund<Funded>>() {
-            actor.execute_refund(hbit, swap_failed.0).await?;
-        }
-
-        return Err(e);
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]

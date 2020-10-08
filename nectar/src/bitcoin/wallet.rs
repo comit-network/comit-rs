@@ -253,6 +253,36 @@ impl Wallet {
         Ok(txid)
     }
 
+    pub async fn wait_until_confirmed(
+        &self,
+        transaction_hash: Txid,
+        ledger: ledger::Bitcoin,
+    ) -> anyhow::Result<()> {
+        let poll_interval = match ledger {
+            ledger::Bitcoin::Mainnet | ledger::Bitcoin::Testnet => 30,
+            ledger::Bitcoin::Regtest => 1,
+        };
+
+        loop {
+            let confirmations = self
+                .bitcoind_client
+                .get_confirmations(transaction_hash)
+                .await?;
+
+            if confirmations > 0 {
+                tracing::debug!(
+                    "found tx {} in chain with {} confirmations",
+                    transaction_hash,
+                    confirmations
+                );
+
+                return Ok(());
+            }
+
+            tokio::time::delay_for(std::time::Duration::from_secs(poll_interval)).await;
+        }
+    }
+
     #[cfg(all(test, feature = "testcontainers"))]
     pub async fn dump(&self, filename: &std::path::Path) -> anyhow::Result<()> {
         self.bitcoind_client.dump_wallet(&self.name, filename).await

@@ -1,13 +1,9 @@
-use crate::{
-    bitcoin,
-    swap::{hbit, LedgerTime},
-};
+use crate::{bitcoin, swap::hbit};
 use comit::{
-    bitcoin::median_time_past,
-    btsieve::{bitcoin::BitcoindConnector, BlockByHash, LatestBlock},
-    Secret, Timestamp,
+    btsieve::{BlockByHash, LatestBlock},
+    Secret,
 };
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 pub use crate::bitcoin::Amount;
 pub use ::bitcoin::{secp256k1::SecretKey, Address, Block, BlockHash, OutPoint, Transaction};
@@ -19,9 +15,8 @@ pub struct Wallet {
     pub connector: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
 }
 
-#[async_trait::async_trait]
-impl hbit::ExecuteFund for Wallet {
-    async fn execute_fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::Funded> {
+impl Wallet {
+    pub async fn execute_fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::Funded> {
         let action = params.shared.build_fund_action();
 
         let kbyte_fee_rate = self.fee.kvbyte_rate().await?;
@@ -30,15 +25,18 @@ impl hbit::ExecuteFund for Wallet {
             .inner
             .fund_htlc(action.to, action.amount, action.network, kbyte_fee_rate)
             .await?;
-        let asset = action.amount;
 
-        Ok(hbit::Funded { asset, location })
+        let txid = location.txid;
+
+        tracing::info!("signed hbit fund transaction {}", txid);
+
+        Ok(hbit::Funded {
+            asset: action.amount,
+            location,
+        })
     }
-}
 
-#[async_trait::async_trait]
-impl hbit::ExecuteRedeem for Wallet {
-    async fn execute_redeem(
+    pub async fn execute_redeem(
         &self,
         params: hbit::Params,
         fund_event: hbit::Funded,
@@ -56,54 +54,17 @@ impl hbit::ExecuteRedeem for Wallet {
             vbyte_rate,
         )?;
         let transaction = self.spend(action).await?;
+        let txid = transaction.txid();
+
+        tracing::info!("signed hbit redeem transaction {}", txid);
 
         Ok(hbit::Redeemed {
-            transaction: transaction.txid(),
+            transaction: txid,
             secret,
         })
     }
-}
 
-/// Trigger the refund path of the HTLC corresponding to the
-/// `hbit::Params` and the `hbit::Funded` event passed, once it's
-/// possible.
-#[async_trait::async_trait]
-impl hbit::ExecuteRefund for Wallet {
-    async fn execute_refund(
-        &self,
-        params: hbit::Params,
-        fund_event: hbit::Funded,
-    ) -> anyhow::Result<hbit::Refunded> {
-        loop {
-            let bitcoin_time = comit::bitcoin::median_time_past(self.connector.as_ref()).await?;
-
-            if bitcoin_time >= params.shared.expiry {
-                break;
-            }
-
-            tokio::time::delay_for(Duration::from_secs(1)).await;
-        }
-
-        let vbyte_rate = self.fee.vbyte_rate().await?;
-
-        let action = params.shared.build_refund_action(
-            &crate::SECP,
-            fund_event.asset,
-            fund_event.location,
-            params.transient_sk,
-            params.final_address,
-            vbyte_rate,
-        )?;
-        let transaction = self.spend(action).await?;
-
-        Ok(hbit::Refunded {
-            transaction: transaction.txid(),
-        })
-    }
-}
-
-impl Wallet {
-    async fn spend(
+    pub async fn spend(
         &self,
         action: hbit::BroadcastSignedTransaction,
     ) -> anyhow::Result<bitcoin::Transaction> {
@@ -130,19 +91,5 @@ impl BlockByHash for Wallet {
     type BlockHash = bitcoin::BlockHash;
     async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
         self.connector.as_ref().block_by_hash(block_hash).await
-    }
-}
-
-#[async_trait::async_trait]
-impl LedgerTime for BitcoindConnector {
-    async fn ledger_time(&self) -> anyhow::Result<Timestamp> {
-        median_time_past(self).await
-    }
-}
-
-#[async_trait::async_trait]
-impl LedgerTime for Wallet {
-    async fn ledger_time(&self) -> anyhow::Result<Timestamp> {
-        self.connector.as_ref().ledger_time().await
     }
 }

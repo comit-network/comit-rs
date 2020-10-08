@@ -137,6 +137,9 @@ pub struct TransactionReceipt {
     /// Status: Whether or not the transaction executed successfully
     #[serde(rename = "status", deserialize_with = "deserialize_status")]
     pub successful: bool,
+    /// The block number this transaction was included in.
+    #[serde(rename = "blockNumber")]
+    pub block_number: Option<U256>,
 }
 
 fn deserialize_status<'de, D>(deserializer: D) -> Result<bool, <D as Deserializer<'de>>::Error>

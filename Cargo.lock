@@ -722,6 +722,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "245097e9a4535ee1e3e3931fcfcd55a796a44c643e8596ff6566d68f09b87bbc"
 
 [[package]]
+name = "contract-address"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5470a8a1894bc6d6e8608a7e12f5a7836d4705c26da5933c2ab6f7a8fcffdf53"
+dependencies = [
+ "ethereum-types",
+ "keccak-hash",
+ "rlp",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1822,6 +1833,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67c21572b4949434e4fc1e1978b99c5f77064153c59d998bf13ecd96fb5ecba7"
 
 [[package]]
+name = "keccak-hash"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f58a51ef3df9398cf2434bea8d4eb61fb748d0feb1571f87388579a120a4c8f"
+dependencies = [
+ "primitive-types",
+ "tiny-keccak 2.0.2",
+]
+
+[[package]]
 name = "kernel32-sys"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2398,6 +2419,7 @@ dependencies = [
  "comit",
  "config",
  "conquer-once",
+ "contract-address",
  "csv",
  "derivative",
  "directories-next",
@@ -2405,6 +2427,7 @@ dependencies = [
  "ethereum-types",
  "futures",
  "futures-timer",
+ "genawaiter",
  "hex 0.4.2",
  "libp2p",
  "log 0.4.11",
