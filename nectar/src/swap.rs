@@ -499,13 +499,7 @@ mod tests {
                 beta_expiry: herc20_params.expiry,
             };
 
-            comit::hbit_herc20_bob(
-                bob,
-                ethereum_connector.as_ref(),
-                hbit_params,
-                herc20_params.clone(),
-                start_of_swap,
-            )
+            comit::hbit_herc20_bob(bob, hbit_params, herc20_params.clone(), start_of_swap)
         };
 
         let alice_bitcoin_starting_balance = alice_bitcoin_wallet.inner.balance().await?;
@@ -660,15 +654,9 @@ async fn execute(
                 beta_expiry: herc20_params.expiry,
             };
 
-            comit::hbit_herc20_bob(
-                bob,
-                ethereum_connector.as_ref(),
-                hbit_params,
-                herc20_params,
-                start_of_swap,
-            )
-            .instrument(tracing::error_span!("hbit_herc20_bob", %swap_id))
-            .await?
+            comit::hbit_herc20_bob(bob, hbit_params, herc20_params, start_of_swap)
+                .instrument(tracing::error_span!("hbit_herc20_bob", %swap_id))
+                .await?
         }
         SwapKind::Herc20Hbit(SwapParams {
             hbit_params,

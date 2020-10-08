@@ -66,9 +66,8 @@ where
 }
 
 /// Execute a Hbit<->Herc20 swap for Bob.
-pub async fn hbit_herc20_bob<B, EC>(
+pub async fn hbit_herc20_bob<B>(
     bob: B,
-    ethereum_connector: &EC,
     hbit_params: hbit::Params,
     herc20_params: herc20::Params,
     utc_start_of_swap: OffsetDateTime,
@@ -78,11 +77,8 @@ where
         + herc20::ExecuteFund
         + hbit::ExecuteRedeem
         + herc20::ExecuteRefund
-        + hbit::WatchForFunded,
-    EC: LatestBlock<Block = ethereum::Block>
-        + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-        + btsieve::ethereum::ReceiptByHash
-        + ConnectedNetwork<Network = ChainId>,
+        + hbit::WatchForFunded
+        + herc20::WatchForRedeemed,
 {
     tracing::info!("starting swap");
 
@@ -112,13 +108,10 @@ where
 
         tracing::info!("we funded the herc20 htlc");
 
-        let herc20_redeemed = herc20::watch_for_redeemed(
-            ethereum_connector,
-            utc_start_of_swap,
-            herc20_deployed.clone(),
-        )
-        .await
-        .context(SwapFailedShouldRefund(herc20_deployed.clone()))?;
+        let herc20_redeemed = bob
+            .watch_for_redeemed(herc20_deployed.clone(), utc_start_of_swap)
+            .await
+            .context(SwapFailedShouldRefund(herc20_deployed.clone()))?;
 
         tracing::info!("alice redeemed the herc20 htlc");
 

@@ -9,7 +9,7 @@ use crate::{
     },
     SwapId,
 };
-use comit::{hbit::Params, Secret, SecretHash, Timestamp};
+use comit::{herc20::Deployed, Secret, SecretHash, Timestamp};
 use std::sync::Arc;
 use time::OffsetDateTime;
 
@@ -90,6 +90,25 @@ where
             self.swap_id,
             action,
             futures::future::pending(),
+        )
+        .await
+    }
+}
+
+#[async_trait::async_trait]
+impl<AW> herc20::WatchForRedeemed for Bob<AW, ethereum::Wallet>
+where
+    AW: Send + Sync,
+{
+    async fn watch_for_redeemed(
+        &self,
+        deploy_event: Deployed,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> anyhow::Result<herc20::Redeemed> {
+        herc20::watch_for_redeemed(
+            self.beta_wallet.connector.as_ref(),
+            utc_start_of_swap,
+            deploy_event,
         )
         .await
     }

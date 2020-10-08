@@ -39,6 +39,15 @@ pub trait ExecuteRedeem {
 }
 
 #[async_trait::async_trait]
+pub trait WatchForRedeemed {
+    async fn watch_for_redeemed(
+        &self,
+        deploy_event: Deployed,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> Result<Redeemed>;
+}
+
+#[async_trait::async_trait]
 pub trait ExecuteRefund {
     async fn execute_refund(
         &self,
