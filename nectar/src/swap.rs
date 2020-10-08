@@ -436,11 +436,12 @@ mod tests {
         let alice_swap = {
             let swap_id = SwapId::default();
 
+            let hbit_params = hbit::Params {
+                shared: hbit_params,
+                transient_sk: hbit_transient_refund_sk,
+            };
             let swap = SwapKind::HbitHerc20(SwapParams {
-                hbit_params: hbit::Params {
-                    shared: hbit_params,
-                    transient_sk: hbit_transient_refund_sk,
-                },
+                hbit_params,
                 herc20_params: herc20_params.clone(),
                 secret_hash,
                 start_of_swap,
@@ -450,7 +451,6 @@ mod tests {
 
             alice_db.insert_swap(swap).await.unwrap();
 
-            let hbit_params = hbit::Params::new(hbit_params, hbit_transient_refund_sk);
             let alice = Alice {
                 alpha_wallet: alice_bitcoin_wallet.clone(),
                 beta_wallet: alice_ethereum_wallet.clone(),
