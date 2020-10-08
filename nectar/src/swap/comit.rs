@@ -9,6 +9,9 @@ pub use comit::{ethereum, *};
 pub use hbit_herc20::{hbit_herc20_alice, hbit_herc20_bob};
 pub use herc20_hbit::herc20_hbit_bob;
 
+use anyhow::Result;
+use async_trait::async_trait;
+use clarity::Uint256;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -23,3 +26,13 @@ pub struct SwapFailedShouldRefund<E: Debug>(pub E);
 #[derive(Clone, Copy, Debug, Error)]
 #[error("swap execution failed")]
 pub struct SwapFailedNoRefund;
+
+#[async_trait]
+pub trait EstimateBitcoinFee {
+    async fn estimate_bitcoin_fee(&self) -> Result<::bitcoin::Amount>;
+}
+
+#[async_trait]
+pub trait EstimateEthereumGasPrice {
+    async fn estimate_ethereum_gas_price(&self) -> Result<Uint256>;
+}

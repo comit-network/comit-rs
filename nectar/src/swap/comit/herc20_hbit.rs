@@ -1,16 +1,43 @@
 use crate::swap::{
-    comit::{SwapFailedNoRefund, SwapFailedShouldRefund},
+    comit::{
+        EstimateBitcoinFee, EstimateEthereumGasPrice, SwapFailedNoRefund, SwapFailedShouldRefund,
+        Timestamp,
+    },
     hbit, herc20,
 };
 use anyhow::{Context, Result};
-use comit::Secret;
+use clarity::Uint256;
+use comit::{ethereum::ChainId, ledger};
 use genawaiter::sync::{Gen, GenBoxed};
 use time::OffsetDateTime;
 
 pub enum Action {
-    ExecuteHbitFund(hbit::Params),
-    ExecuteHerc20Redeem(herc20::Params, Secret, herc20::Deployed),
-    ExecuteHbitRefund(hbit::Params, hbit::Funded),
+    /// The caller should send a Bitcoin transaction with the given parameters
+    /// from their wallet.
+    BitcoinSendFromWallet {
+        to: bitcoin::Address,
+        amount: bitcoin::Amount,
+        sats_per_kbyte: bitcoin::Amount,
+        network: ledger::Bitcoin,
+    },
+    /// The caller should send an Ethereum transaction with the given parameters
+    /// from their wallet.
+    EthereumSendFromWallet {
+        gas_price: Uint256,
+        gas_limit: Uint256,
+        to: clarity::Address,
+        value: Uint256,
+        data: Vec<u8>,
+        chain_id: ChainId,
+    },
+    /// The caller should send this transaction to the network at the given
+    /// timestamp.
+    BitcoinSendTransaction {
+        tx: bitcoin::Transaction,
+        /// When the transaction should be sent
+        at: Timestamp,
+        network: ledger::Bitcoin,
+    },
 }
 
 pub enum Event {
@@ -39,6 +66,8 @@ where
         + herc20::WatchForDeployed
         + herc20::WatchForFunded
         + herc20::WatchForRedeemed
+        + EstimateBitcoinFee
+        + EstimateEthereumGasPrice
         + Send
         + Sync
         + 'static,
@@ -68,8 +97,13 @@ where
             tracing::info!("alice funded the herc20 htlc");
             co.yield_(Out::Event(Event::Herc20Funded(herc20_funded.clone())))
                 .await;
-            co.yield_(Out::Action(Action::ExecuteHbitFund(hbit_params)))
-                .await;
+            co.yield_(Out::Action(Action::BitcoinSendFromWallet {
+                to: hbit_params.shared.compute_address(),
+                amount: hbit_params.shared.asset,
+                sats_per_kbyte: world.estimate_bitcoin_fee().await?,
+                network: hbit_params.shared.network,
+            }))
+            .await;
 
             let hbit_funded =
                 hbit::WatchForFunded::watch_for_funded(&world, &hbit_params, utc_start_of_swap)
@@ -92,11 +126,17 @@ where
             co.yield_(Out::Event(Event::HbitRedeemed(hbit_redeemed.clone())))
                 .await;
 
-            co.yield_(Out::Action(Action::ExecuteHerc20Redeem(
-                herc20_params,
-                hbit_redeemed.secret,
-                herc20_deployed.clone(),
-            )))
+            let call_contract =
+                herc20_params.build_redeem_action(herc20_deployed.location, hbit_redeemed.secret);
+            co.yield_(Out::Action(Action::EthereumSendFromWallet {
+                gas_price: world.estimate_ethereum_gas_price().await?,
+                gas_limit: call_contract.gas_limit.into(),
+                to: clarity::Address::from_slice(call_contract.to.as_bytes())
+                    .context("failed to create private key from byte slice")?,
+                value: Uint256::from(0u32),
+                data: call_contract.data.unwrap_or_default(),
+                chain_id: call_contract.chain_id,
+            }))
             .await;
 
             let herc20_redeemed = herc20::WatchForRedeemed::watch_for_redeemed(
@@ -117,8 +157,22 @@ where
 
         if let Err(e) = swap_result {
             if let Some(error) = e.downcast_ref::<SwapFailedShouldRefund<hbit::Funded>>() {
-                co.yield_(Out::Action(Action::ExecuteHbitRefund(hbit_params, error.0)))
-                    .await;
+                co.yield_(Out::Action(Action::BitcoinSendTransaction {
+                    tx: hbit_params
+                        .shared
+                        .build_refund_action(
+                            &crate::SECP, // TODO: This should be a parameter
+                            error.0.asset,
+                            error.0.location,
+                            hbit_params.transient_sk,
+                            hbit_params.final_address,
+                            world.estimate_bitcoin_fee().await?,
+                        )?
+                        .transaction,
+                    at: hbit_params.shared.expiry,
+                    network: hbit_params.shared.network,
+                }))
+                .await;
             }
 
             return Err(e);

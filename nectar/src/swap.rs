@@ -17,11 +17,9 @@ use tracing_futures::Instrument;
 
 pub use self::comit::{hbit, herc20};
 pub use crate::database::Database;
-use crate::swap::{
-    hbit::{ExecuteFund, ExecuteRefund},
-    herc20::ExecuteRedeem,
-};
+use crate::swap::comit::{EstimateBitcoinFee, EstimateEthereumGasPrice};
 use genawaiter::GeneratorState;
+use std::time::Duration;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -640,6 +638,8 @@ impl SwapExecutor {
 struct World {
     bitcoin: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
     ethereum: Arc<comit::btsieve::ethereum::Web3Connector>,
+    bitcoin_fee: crate::bitcoin::Fee,
+    gas_price: crate::ethereum::GasPrice,
 }
 
 #[async_trait::async_trait]
@@ -711,6 +711,23 @@ impl herc20::WatchForRedeemed for World {
     }
 }
 
+#[async_trait::async_trait]
+impl EstimateBitcoinFee for World {
+    async fn estimate_bitcoin_fee(&self) -> Result<bitcoin::Amount> {
+        self.bitcoin_fee.kvbyte_rate().await // TODO: Encode in the type
+                                             // signature that is this sats/vKB
+    }
+}
+
+#[async_trait::async_trait]
+impl EstimateEthereumGasPrice for World {
+    async fn estimate_ethereum_gas_price(&self) -> Result<clarity::Uint256> {
+        let amount = self.gas_price.gas_price().await?;
+
+        Ok(amount.into())
+    }
+}
+
 async fn execute(
     swap: SwapKind,
     bitcoin_wallet: bitcoin::Wallet,
@@ -751,6 +768,8 @@ async fn execute(
             let world = World {
                 bitcoin: bitcoin_wallet.connector.clone(),
                 ethereum: ethereum_wallet.connector.clone(),
+                bitcoin_fee: bitcoin_wallet.fee.clone(),
+                gas_price: ethereum_wallet.gas_price.clone(),
             };
             let mut swap = comit::herc20_hbit_bob(world, herc20_params, hbit_params, start_of_swap);
 
@@ -761,20 +780,52 @@ async fn execute(
                     .await
                 {
                     GeneratorState::Yielded(comit::herc20_hbit::Out::Action(
-                        comit::herc20_hbit::Action::ExecuteHbitFund(params),
+                        comit::herc20_hbit::Action::BitcoinSendFromWallet {
+                            to,
+                            amount,
+                            sats_per_kbyte,
+                            network,
+                        },
                     )) => {
-                        bitcoin_wallet.execute_fund(&params).await?;
+                        let _out_point = bitcoin_wallet
+                            .inner
+                            .fund_htlc(to, amount, network, sats_per_kbyte)
+                            .await?;
                     }
                     GeneratorState::Yielded(comit::herc20_hbit::Out::Action(
-                        comit::herc20_hbit::Action::ExecuteHbitRefund(params, funded),
+                        comit::herc20_hbit::Action::BitcoinSendTransaction { tx, at, network },
                     )) => {
-                        bitcoin_wallet.execute_refund(params, funded).await?;
+                        // TODO: Should we wait inside the protocol to do this?
+                        loop {
+                            let bitcoin_time =
+                                comit::bitcoin::median_time_past(bitcoin_wallet.connector.as_ref())
+                                    .await?;
+
+                            if bitcoin_time >= at {
+                                break;
+                            }
+
+                            tokio::time::delay_for(Duration::from_secs(30)).await;
+                        }
+
+                        bitcoin_wallet
+                            .inner
+                            .send_raw_transaction(tx, network)
+                            .await?;
                     }
                     GeneratorState::Yielded(comit::herc20_hbit::Out::Action(
-                        comit::herc20_hbit::Action::ExecuteHerc20Redeem(params, secret, deployed),
+                        comit::herc20_hbit::Action::EthereumSendFromWallet {
+                            gas_price,
+                            gas_limit,
+                            to,
+                            value,
+                            data,
+                            chain_id,
+                        },
                     )) => {
                         ethereum_wallet
-                            .execute_redeem(params, secret, deployed, start_of_swap)
+                            .inner
+                            .sign_and_send(data, value, to, gas_limit, gas_price, chain_id)
                             .await?;
                     }
                     GeneratorState::Yielded(comit::herc20_hbit::Out::Event(_)) => {}
