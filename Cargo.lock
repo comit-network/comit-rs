@@ -2265,6 +2265,7 @@ dependencies = [
  "ethereum-types",
  "futures",
  "futures-timer",
+ "genawaiter",
  "hex 0.4.2",
  "libp2p",
  "log 0.4.11",

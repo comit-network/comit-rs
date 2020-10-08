@@ -17,6 +17,7 @@ use tracing_futures::Instrument;
 
 pub use self::comit::{hbit, herc20};
 pub use crate::database::Database;
+use genawaiter::GeneratorState;
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -671,9 +672,19 @@ async fn execute(
                 beta_expiry: herc20_params.expiry,
             };
 
-            comit::herc20_hbit_bob(bob, herc20_params, hbit_params, start_of_swap)
-                .instrument(tracing::error_span!("herc20_hbit_bob", %swap_id))
-                .await?
+            let mut swap = comit::herc20_hbit_bob(bob, herc20_params, hbit_params, start_of_swap);
+
+            loop {
+                match swap
+                    .async_resume()
+                    .instrument(tracing::error_span!("herc20_hbit_bob", %swap_id))
+                    .await
+                {
+                    GeneratorState::Yielded(_) => {}
+                    GeneratorState::Complete(Err(e)) => return Err(e),
+                    GeneratorState::Complete(Ok(())) => {}
+                }
+            }
         }
     };
 
