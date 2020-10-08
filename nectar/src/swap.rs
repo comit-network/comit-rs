@@ -628,6 +628,80 @@ impl SwapExecutor {
     }
 }
 
+struct World {
+    bitcoin: Arc<comit::btsieve::bitcoin::BitcoindConnector>,
+    ethereum: Arc<comit::btsieve::ethereum::Web3Connector>,
+}
+
+#[async_trait::async_trait]
+impl hbit::WatchForFunded for World {
+    async fn watch_for_funded(
+        &self,
+        params: &hbit::Params,
+        start_of_swap: OffsetDateTime,
+    ) -> anyhow::Result<hbit::Funded> {
+        hbit::watch_for_funded(self.bitcoin.as_ref(), &params.shared, start_of_swap).await
+    }
+}
+
+#[async_trait::async_trait]
+impl hbit::WatchForRedeemed for World {
+    async fn watch_for_redeemed(
+        &self,
+        params: &hbit::Params,
+        fund_event: hbit::Funded,
+        start_of_swap: OffsetDateTime,
+    ) -> anyhow::Result<hbit::Redeemed> {
+        hbit::watch_for_redeemed(
+            self.bitcoin.as_ref(),
+            &params.shared,
+            fund_event.location,
+            start_of_swap,
+        )
+        .await
+    }
+}
+
+#[async_trait::async_trait]
+impl herc20::WatchForDeployed for World {
+    async fn watch_for_deployed(
+        &self,
+        params: herc20::Params,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> anyhow::Result<herc20::Deployed> {
+        herc20::watch_for_deployed(self.ethereum.as_ref(), params, utc_start_of_swap).await
+    }
+}
+
+#[async_trait::async_trait]
+impl herc20::WatchForFunded for World {
+    async fn watch_for_funded(
+        &self,
+        params: herc20::Params,
+        deploy_event: herc20::Deployed,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> anyhow::Result<herc20::Funded> {
+        herc20::watch_for_funded(
+            self.ethereum.as_ref(),
+            params,
+            utc_start_of_swap,
+            deploy_event,
+        )
+        .await
+    }
+}
+
+#[async_trait::async_trait]
+impl herc20::WatchForRedeemed for World {
+    async fn watch_for_redeemed(
+        &self,
+        deploy_event: herc20::Deployed,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> Result<herc20::Redeemed> {
+        herc20::watch_for_redeemed(self.ethereum.as_ref(), utc_start_of_swap, deploy_event).await
+    }
+}
+
 async fn execute(
     swap: SwapKind,
     bitcoin_wallet: bitcoin::Wallet,
@@ -661,22 +735,15 @@ async fn execute(
         SwapKind::Herc20Hbit(SwapParams {
             hbit_params,
             herc20_params,
-            secret_hash,
             start_of_swap,
             swap_id,
             ..
         }) => {
-            let bob = Bob {
-                alpha_wallet: ethereum_wallet.clone(),
-                beta_wallet: bitcoin_wallet.clone(),
-                db,
-                swap_id,
-                secret_hash,
-                utc_start_of_swap: start_of_swap,
-                beta_expiry: herc20_params.expiry,
+            let world = World {
+                bitcoin: bitcoin_wallet.connector.clone(),
+                ethereum: ethereum_wallet.connector.clone(),
             };
-
-            let mut swap = comit::herc20_hbit_bob(bob, herc20_params, hbit_params, start_of_swap);
+            let mut swap = comit::herc20_hbit_bob(world, herc20_params, hbit_params, start_of_swap);
 
             loop {
                 match swap

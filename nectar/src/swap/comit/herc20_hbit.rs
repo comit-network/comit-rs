@@ -27,18 +27,17 @@ pub enum Out {
 }
 
 /// Execute a Herc20<->Hbit swap for Bob.
-pub fn herc20_hbit_bob<B>(
-    bob: B,
+pub fn herc20_hbit_bob<W>(
+    world: W,
     herc20_params: herc20::Params,
     hbit_params: hbit::Params,
     utc_start_of_swap: OffsetDateTime,
 ) -> GenBoxed<Out, (), anyhow::Result<()>>
 where
-    B: hbit::WatchForFunded
-        + herc20::WatchForDeployed
+    W: hbit::WatchForFunded
+        + hbit::WatchForRedeemed
         + herc20::WatchForDeployed
         + herc20::WatchForFunded
-        + hbit::WatchForRedeemed
         + herc20::WatchForRedeemed
         + Send
         + Sync
@@ -48,7 +47,7 @@ where
         tracing::info!("starting swap");
 
         let swap_result: Result<()> = async {
-            let herc20_deployed = bob
+            let herc20_deployed = world
                 .watch_for_deployed(herc20_params.clone(), utc_start_of_swap)
                 .await
                 .context(SwapFailedNoRefund)?;
@@ -58,7 +57,7 @@ where
                 .await;
 
             let herc20_funded = herc20::WatchForFunded::watch_for_funded(
-                &bob,
+                &world,
                 herc20_params.clone(),
                 herc20_deployed.clone(),
                 utc_start_of_swap,
@@ -73,7 +72,7 @@ where
                 .await;
 
             let hbit_funded =
-                hbit::WatchForFunded::watch_for_funded(&bob, &hbit_params, utc_start_of_swap)
+                hbit::WatchForFunded::watch_for_funded(&world, &hbit_params, utc_start_of_swap)
                     .await
                     .context(SwapFailedNoRefund)?;
 
@@ -81,8 +80,8 @@ where
             co.yield_(Out::Event(Event::HbitFunded(hbit_funded))).await;
 
             let hbit_redeemed = hbit::WatchForRedeemed::watch_for_redeemed(
-                &bob,
-                &hbit_params.shared,
+                &world,
+                &hbit_params,
                 hbit_funded,
                 utc_start_of_swap,
             )
@@ -101,7 +100,7 @@ where
             .await;
 
             let herc20_redeemed = herc20::WatchForRedeemed::watch_for_redeemed(
-                &bob,
+                &world,
                 herc20_deployed.clone(),
                 utc_start_of_swap,
             )

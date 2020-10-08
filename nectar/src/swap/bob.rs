@@ -115,25 +115,10 @@ where
 }
 
 #[async_trait::async_trait]
-impl herc20::WatchForFunded for Bob<ethereum::Wallet, bitcoin::Wallet> {
-    async fn watch_for_funded(
-        &self,
-        params: herc20::Params,
-        deploy_event: Deployed,
-        utc_start_of_swap: OffsetDateTime,
-    ) -> anyhow::Result<herc20::Funded> {
-        herc20::watch_for_funded(
-            self.alpha_wallet.connector.as_ref(),
-            params,
-            utc_start_of_swap,
-            deploy_event,
-        )
-        .await
-    }
-}
-
-#[async_trait::async_trait]
-impl herc20::WatchForFunded for Bob<bitcoin::Wallet, ethereum::Wallet> {
+impl<AW> herc20::WatchForFunded for Bob<AW, ethereum::Wallet>
+where
+    AW: Send + Sync,
+{
     async fn watch_for_funded(
         &self,
         params: herc20::Params,
@@ -151,7 +136,10 @@ impl herc20::WatchForFunded for Bob<bitcoin::Wallet, ethereum::Wallet> {
 }
 
 #[async_trait::async_trait]
-impl herc20::WatchForRedeemed for Bob<bitcoin::Wallet, ethereum::Wallet> {
+impl<AW> herc20::WatchForRedeemed for Bob<AW, ethereum::Wallet>
+where
+    AW: Send + Sync,
+{
     async fn watch_for_redeemed(
         &self,
         deploy_event: Deployed,
@@ -159,22 +147,6 @@ impl herc20::WatchForRedeemed for Bob<bitcoin::Wallet, ethereum::Wallet> {
     ) -> anyhow::Result<herc20::Redeemed> {
         herc20::watch_for_redeemed(
             self.beta_wallet.connector.as_ref(),
-            utc_start_of_swap,
-            deploy_event,
-        )
-        .await
-    }
-}
-
-#[async_trait::async_trait]
-impl herc20::WatchForRedeemed for Bob<ethereum::Wallet, bitcoin::Wallet> {
-    async fn watch_for_redeemed(
-        &self,
-        deploy_event: Deployed,
-        utc_start_of_swap: OffsetDateTime,
-    ) -> anyhow::Result<herc20::Redeemed> {
-        herc20::watch_for_redeemed(
-            self.alpha_wallet.connector.as_ref(),
             utc_start_of_swap,
             deploy_event,
         )
@@ -227,7 +199,10 @@ where
 }
 
 #[async_trait::async_trait]
-impl hbit::WatchForFunded for Bob<bitcoin::Wallet, ethereum::Wallet> {
+impl<BW> hbit::WatchForFunded for Bob<bitcoin::Wallet, BW>
+where
+    BW: Send + Sync,
+{
     async fn watch_for_funded(
         &self,
         params: &hbit::Params,
@@ -236,53 +211,6 @@ impl hbit::WatchForFunded for Bob<bitcoin::Wallet, ethereum::Wallet> {
         hbit::watch_for_funded(
             self.alpha_wallet.connector.as_ref(),
             &params.shared,
-            start_of_swap,
-        )
-        .await
-    }
-}
-
-#[async_trait::async_trait]
-impl hbit::WatchForFunded for Bob<ethereum::Wallet, bitcoin::Wallet> {
-    async fn watch_for_funded(
-        &self,
-        params: &Params,
-        start_of_swap: OffsetDateTime,
-    ) -> anyhow::Result<hbit::Funded> {
-        hbit::watch_for_funded(self.beta_wallet.connector.as_ref(), &params, start_of_swap).await
-    }
-}
-
-#[async_trait::async_trait]
-impl hbit::WatchForRedeemed for Bob<ethereum::Wallet, bitcoin::Wallet> {
-    async fn watch_for_redeemed(
-        &self,
-        params: &Params,
-        fund_event: hbit::Funded,
-        start_of_swap: OffsetDateTime,
-    ) -> anyhow::Result<hbit::Redeemed> {
-        hbit::watch_for_redeemed(
-            self.beta_wallet.connector.as_ref(),
-            &params,
-            fund_event.location,
-            start_of_swap,
-        )
-        .await
-    }
-}
-
-#[async_trait::async_trait]
-impl hbit::WatchForRedeemed for Bob<bitcoin::Wallet, ethereum::Wallet> {
-    async fn watch_for_redeemed(
-        &self,
-        params: &Params,
-        fund_event: hbit::Funded,
-        start_of_swap: OffsetDateTime,
-    ) -> anyhow::Result<hbit::Redeemed> {
-        hbit::watch_for_redeemed(
-            self.alpha_wallet.connector.as_ref(),
-            &params,
-            fund_event.location,
             start_of_swap,
         )
         .await
