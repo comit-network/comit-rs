@@ -24,7 +24,7 @@ pub async fn hbit_herc20_alice<A, EC>(
     utc_start_of_swap: OffsetDateTime,
 ) -> anyhow::Result<()>
 where
-    A: hbit::ExecuteFund + herc20::ExecuteRedeem + hbit::ExecuteRefund,
+    A: hbit::ExecuteFund + herc20::ExecuteRedeem + hbit::ExecuteRefund + herc20::WatchForDeployed,
     EC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + btsieve::ethereum::ReceiptByHash
@@ -36,13 +36,10 @@ where
             .await
             .context(SwapFailedNoRefund)?;
 
-        let herc20_deployed = herc20::watch_for_deployed(
-            ethereum_connector,
-            herc20_params.clone(),
-            utc_start_of_swap,
-        )
-        .await
-        .context(SwapFailedShouldRefund(hbit_funded))?;
+        let herc20_deployed = alice
+            .watch_for_deployed(herc20_params.clone(), utc_start_of_swap)
+            .await
+            .context(SwapFailedShouldRefund(hbit_funded))?;
 
         let _herc20_funded = herc20::watch_for_funded(
             ethereum_connector,

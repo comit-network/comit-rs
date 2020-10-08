@@ -18,6 +18,15 @@ pub trait ExecuteDeploy {
 }
 
 #[async_trait::async_trait]
+pub trait WatchForDeployed {
+    async fn watch_for_deployed(
+        &self,
+        params: Params,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> Result<Deployed>;
+}
+
+#[async_trait::async_trait]
 pub trait ExecuteFund {
     async fn execute_fund(
         &self,

@@ -22,7 +22,7 @@ pub async fn herc20_hbit_bob<B, EC, BC>(
     utc_start_of_swap: OffsetDateTime,
 ) -> anyhow::Result<()>
 where
-    B: hbit::ExecuteFund + hbit::ExecuteRefund + herc20::ExecuteRedeem,
+    B: hbit::ExecuteFund + hbit::ExecuteRefund + herc20::ExecuteRedeem + herc20::WatchForDeployed,
     EC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + btsieve::ethereum::ReceiptByHash
@@ -34,13 +34,10 @@ where
     tracing::info!("starting swap");
 
     let swap_result = async {
-        let herc20_deployed = herc20::watch_for_deployed(
-            ethereum_connector,
-            herc20_params.clone(),
-            utc_start_of_swap,
-        )
-        .await
-        .context(SwapFailedNoRefund)?;
+        let herc20_deployed = bob
+            .watch_for_deployed(herc20_params.clone(), utc_start_of_swap)
+            .await
+            .context(SwapFailedNoRefund)?;
 
         tracing::info!("alice deployed the herc20 htlc");
 

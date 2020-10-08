@@ -8,7 +8,7 @@ use crate::{
     },
     SwapId,
 };
-use comit::{Secret, Timestamp};
+use comit::{herc20::Params, Secret, Timestamp};
 use std::sync::Arc;
 use time::OffsetDateTime;
 
@@ -64,6 +64,25 @@ where
             self.swap_id,
             action,
             poll_beta_has_expired,
+        )
+        .await
+    }
+}
+
+#[async_trait::async_trait]
+impl<AW> herc20::WatchForDeployed for Alice<AW, ethereum::Wallet>
+where
+    AW: Send + Sync,
+{
+    async fn watch_for_deployed(
+        &self,
+        params: Params,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> anyhow::Result<herc20::Deployed> {
+        herc20::watch_for_deployed(
+            self.beta_wallet.connector.as_ref(),
+            params,
+            utc_start_of_swap,
         )
         .await
     }
