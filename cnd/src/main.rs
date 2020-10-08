@@ -224,7 +224,7 @@ fn main() -> anyhow::Result<()> {
         Err(e) => tracing::warn!("failed to republish orders: {:#}", e),
     };
 
-    let bitcoin_fees = BitcoinFees::new(settings.bitcoin.fees.sat_per_vbyte);
+    let bitcoin_fees = BitcoinFees::static_rate(settings.bitcoin.fees.sat_per_vbyte);
 
     runtime.spawn(make_http_api_worker(
         settings,

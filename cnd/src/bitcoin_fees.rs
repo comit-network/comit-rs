@@ -1,18 +1,35 @@
 use ::bitcoin::Amount;
 
 #[derive(Debug, Clone)]
-pub struct BitcoinFees(Amount);
+pub enum BitcoinFees {
+    StaticPerVbyte(Amount),
+    BlockCypher(block_cypher::Client),
+}
 
 impl BitcoinFees {
-    pub fn new(per_vbyte_rate: Amount) -> Self {
-        Self(per_vbyte_rate)
+    pub fn static_rate(per_vbyte_rate: Amount) -> Self {
+        Self::StaticPerVbyte(per_vbyte_rate)
     }
+
+    pub fn block_cypher(url: url::Url, network: comit::Network) -> Self {
+        let client = block_cypher::Client::new(url, network);
+        Self::BlockCypher(client)
+    }
+
     pub async fn get_per_vbyte_rate(&self) -> anyhow::Result<Amount> {
-        Ok(self.0)
+        match self {
+            BitcoinFees::StaticPerVbyte(rate) => Ok(*rate),
+            BitcoinFees::BlockCypher(client) => {
+                let per_kb = client
+                    .get_fee_per_kb_as_per_expiries_recommendation()
+                    .await?;
+                Ok(per_kb / 1000)
+            }
+        }
     }
 }
 
-mod blockcypher {
+mod block_cypher {
     use ::bitcoin::Amount;
     use anyhow::Result;
     use serde::Deserialize;
