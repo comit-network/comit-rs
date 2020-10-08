@@ -1,34 +1,26 @@
-use crate::{
-    ethereum::ChainId,
-    swap::{
-        comit::{SwapFailedNoRefund, SwapFailedShouldRefund},
-        hbit, herc20,
-    },
+use crate::swap::{
+    comit::{SwapFailedNoRefund, SwapFailedShouldRefund},
+    hbit, herc20,
 };
 use anyhow::{Context, Result};
-use comit::{
-    btsieve,
-    btsieve::{BlockByHash, ConnectedNetwork, LatestBlock},
-    ethereum, Secret,
-};
+use comit::Secret;
 use time::OffsetDateTime;
 
 /// Execute a Hbit<->Herc20 swap for Alice.
 #[allow(dead_code)] // This is library code but used in the tests.
-pub async fn hbit_herc20_alice<A, EC>(
+pub async fn hbit_herc20_alice<A>(
     alice: A,
-    ethereum_connector: &EC,
     hbit_params: hbit::Params,
     herc20_params: herc20::Params,
     secret: Secret,
     utc_start_of_swap: OffsetDateTime,
 ) -> anyhow::Result<()>
 where
-    A: hbit::ExecuteFund + herc20::ExecuteRedeem + hbit::ExecuteRefund + herc20::WatchForDeployed,
-    EC: LatestBlock<Block = ethereum::Block>
-        + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
-        + btsieve::ethereum::ReceiptByHash
-        + ConnectedNetwork<Network = ChainId>,
+    A: hbit::ExecuteFund
+        + herc20::ExecuteRedeem
+        + hbit::ExecuteRefund
+        + herc20::WatchForDeployed
+        + herc20::WatchForFunded,
 {
     let swap_result = async {
         let hbit_funded = alice
@@ -41,14 +33,14 @@ where
             .await
             .context(SwapFailedShouldRefund(hbit_funded))?;
 
-        let _herc20_funded = herc20::watch_for_funded(
-            ethereum_connector,
-            herc20_params.clone(),
-            utc_start_of_swap,
-            herc20_deployed.clone(),
-        )
-        .await
-        .context(SwapFailedShouldRefund(hbit_funded))?;
+        let _herc20_funded = alice
+            .watch_for_funded(
+                herc20_params.clone(),
+                herc20_deployed.clone(),
+                utc_start_of_swap,
+            )
+            .await
+            .context(SwapFailedShouldRefund(hbit_funded))?;
 
         let _herc20_redeemed = alice
             .execute_redeem(herc20_params, secret, herc20_deployed, utc_start_of_swap)

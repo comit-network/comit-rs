@@ -89,6 +89,27 @@ where
 }
 
 #[async_trait::async_trait]
+impl<AW> herc20::WatchForFunded for Alice<AW, ethereum::Wallet>
+where
+    AW: Send + Sync,
+{
+    async fn watch_for_funded(
+        &self,
+        params: Params,
+        deploy_event: herc20::Deployed,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> anyhow::Result<herc20::Funded> {
+        herc20::watch_for_funded(
+            self.beta_wallet.connector.as_ref(),
+            params,
+            utc_start_of_swap,
+            deploy_event,
+        )
+        .await
+    }
+}
+
+#[async_trait::async_trait]
 impl<BW> hbit::ExecuteRefund for Alice<bitcoin::Wallet, BW>
 where
     BW: Send + Sync,

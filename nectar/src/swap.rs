@@ -463,7 +463,6 @@ mod tests {
 
             comit::hbit_herc20_alice(
                 alice,
-                ethereum_connector.as_ref(),
                 hbit_params,
                 herc20_params.clone(),
                 secret,
@@ -613,7 +612,6 @@ impl SwapExecutor {
                 connector: self.ethereum_connector.clone(),
                 gas_price: self.ethereum_gas_price.clone(),
             },
-            self.ethereum_connector.clone(),
             self.db.clone(),
             self.finished_swap_sender.clone(),
         );
@@ -631,7 +629,6 @@ async fn execute(
     bitcoin_wallet: bitcoin::Wallet,
     bitcoin_connector: Arc<BitcoindConnector>,
     ethereum_wallet: ethereum::Wallet,
-    ethereum_connector: Arc<Web3Connector>,
     db: Arc<Database>,
     mut sender: mpsc::Sender<FinishedSwap>,
 ) -> Result<()> {
@@ -678,7 +675,6 @@ async fn execute(
 
             comit::herc20_hbit_bob(
                 bob,
-                ethereum_connector.as_ref(),
                 bitcoin_connector.as_ref(),
                 herc20_params,
                 hbit_params,

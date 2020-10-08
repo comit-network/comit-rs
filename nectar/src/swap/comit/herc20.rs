@@ -27,6 +27,16 @@ pub trait WatchForDeployed {
 }
 
 #[async_trait::async_trait]
+pub trait WatchForFunded {
+    async fn watch_for_funded(
+        &self,
+        params: Params,
+        deploy_event: Deployed,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> Result<Funded>;
+}
+
+#[async_trait::async_trait]
 pub trait ExecuteFund {
     async fn execute_fund(
         &self,

@@ -115,6 +115,27 @@ where
 }
 
 #[async_trait::async_trait]
+impl<BW> herc20::WatchForFunded for Bob<ethereum::Wallet, BW>
+where
+    BW: Send + Sync,
+{
+    async fn watch_for_funded(
+        &self,
+        params: herc20::Params,
+        deploy_event: Deployed,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> anyhow::Result<herc20::Funded> {
+        herc20::watch_for_funded(
+            self.alpha_wallet.connector.as_ref(),
+            params,
+            utc_start_of_swap,
+            deploy_event,
+        )
+        .await
+    }
+}
+
+#[async_trait::async_trait]
 impl<AW> herc20::WatchForRedeemed for Bob<AW, ethereum::Wallet>
 where
     AW: Send + Sync,
