@@ -54,6 +54,16 @@ pub trait ExecuteRedeem {
 }
 
 #[async_trait::async_trait]
+pub trait WatchForRedeemed {
+    async fn watch_for_redeemed(
+        &self,
+        params: &Params,
+        fund_event: Funded,
+        start_of_swap: OffsetDateTime,
+    ) -> Result<Redeemed>;
+}
+
+#[async_trait::async_trait]
 pub trait ExecuteRefund {
     async fn execute_refund(&self, params: Params, fund_event: Funded) -> Result<Refunded>;
 }

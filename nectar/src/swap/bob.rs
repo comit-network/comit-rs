@@ -218,6 +218,27 @@ where
 }
 
 #[async_trait::async_trait]
+impl<AW> hbit::WatchForRedeemed for Bob<AW, bitcoin::Wallet>
+where
+    AW: Send + Sync,
+{
+    async fn watch_for_redeemed(
+        &self,
+        params: &Params,
+        fund_event: hbit::Funded,
+        start_of_swap: OffsetDateTime,
+    ) -> anyhow::Result<hbit::Redeemed> {
+        hbit::watch_for_redeemed(
+            self.beta_wallet.connector.as_ref(),
+            &params,
+            fund_event.location,
+            start_of_swap,
+        )
+        .await
+    }
+}
+
+#[async_trait::async_trait]
 impl<BW> hbit::ExecuteRedeem for Bob<bitcoin::Wallet, BW>
 where
     BW: Send + Sync,

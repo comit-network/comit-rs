@@ -3,16 +3,11 @@ use crate::swap::{
     hbit, herc20,
 };
 use anyhow::Context;
-use comit::{
-    btsieve::{BlockByHash, ConnectedNetwork, LatestBlock},
-    ledger,
-};
 use time::OffsetDateTime;
 
 /// Execute a Herc20<->Hbit swap for Bob.
-pub async fn herc20_hbit_bob<B, BC>(
+pub async fn herc20_hbit_bob<B>(
     bob: B,
-    bitcoin_connector: &BC,
     herc20_params: herc20::Params,
     hbit_params: hbit::Params,
     utc_start_of_swap: OffsetDateTime,
@@ -22,10 +17,8 @@ where
         + hbit::ExecuteRefund
         + herc20::ExecuteRedeem
         + herc20::WatchForDeployed
-        + herc20::WatchForFunded,
-    BC: LatestBlock<Block = ::bitcoin::Block>
-        + BlockByHash<Block = ::bitcoin::Block, BlockHash = ::bitcoin::BlockHash>
-        + ConnectedNetwork<Network = ledger::Bitcoin>,
+        + herc20::WatchForFunded
+        + hbit::WatchForRedeemed,
 {
     tracing::info!("starting swap");
 
@@ -55,14 +48,10 @@ where
 
         tracing::info!("we funded the hbit htlc");
 
-        let hbit_redeemed = hbit::watch_for_redeemed(
-            bitcoin_connector,
-            &hbit_params.shared,
-            hbit_funded.location,
-            utc_start_of_swap,
-        )
-        .await
-        .context(SwapFailedShouldRefund(hbit_funded))?;
+        let hbit_redeemed = bob
+            .watch_for_redeemed(&hbit_params.shared, hbit_funded, utc_start_of_swap)
+            .await
+            .context(SwapFailedShouldRefund(hbit_funded))?;
 
         tracing::info!("alice redeemed the hbit htlc");
 

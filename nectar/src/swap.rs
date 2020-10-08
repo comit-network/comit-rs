@@ -606,7 +606,6 @@ impl SwapExecutor {
                 connector: self.bitcoin_connector.clone(),
                 fee: self.bitcoin_fee.clone(),
             },
-            self.bitcoin_connector.clone(),
             ethereum::Wallet {
                 inner: self.ethereum_wallet.clone(),
                 connector: self.ethereum_connector.clone(),
@@ -627,7 +626,6 @@ impl SwapExecutor {
 async fn execute(
     swap: SwapKind,
     bitcoin_wallet: bitcoin::Wallet,
-    bitcoin_connector: Arc<BitcoindConnector>,
     ethereum_wallet: ethereum::Wallet,
     db: Arc<Database>,
     mut sender: mpsc::Sender<FinishedSwap>,
@@ -673,15 +671,9 @@ async fn execute(
                 beta_expiry: herc20_params.expiry,
             };
 
-            comit::herc20_hbit_bob(
-                bob,
-                bitcoin_connector.as_ref(),
-                herc20_params,
-                hbit_params,
-                start_of_swap,
-            )
-            .instrument(tracing::error_span!("herc20_hbit_bob", %swap_id))
-            .await?
+            comit::herc20_hbit_bob(bob, herc20_params, hbit_params, start_of_swap)
+                .instrument(tracing::error_span!("herc20_hbit_bob", %swap_id))
+                .await?
         }
     };
 
