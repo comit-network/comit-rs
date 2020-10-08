@@ -501,7 +501,6 @@ mod tests {
 
             comit::hbit_herc20_bob(
                 bob,
-                bitcoin_connector.as_ref(),
                 ethereum_connector.as_ref(),
                 hbit_params,
                 herc20_params.clone(),
@@ -663,7 +662,6 @@ async fn execute(
 
             comit::hbit_herc20_bob(
                 bob,
-                bitcoin_connector.as_ref(),
                 ethereum_connector.as_ref(),
                 hbit_params,
                 herc20_params,

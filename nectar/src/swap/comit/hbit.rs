@@ -35,6 +35,15 @@ pub trait ExecuteFund {
 }
 
 #[async_trait::async_trait]
+pub trait WatchForFunded {
+    async fn watch_for_funded(
+        &self,
+        params: &Params,
+        start_of_swap: OffsetDateTime,
+    ) -> Result<Funded>;
+}
+
+#[async_trait::async_trait]
 pub trait ExecuteRedeem {
     async fn execute_redeem(
         &self,

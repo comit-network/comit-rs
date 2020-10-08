@@ -9,7 +9,7 @@ use anyhow::{Context, Result};
 use comit::{
     btsieve,
     btsieve::{BlockByHash, ConnectedNetwork, LatestBlock},
-    ethereum, ledger, Secret,
+    ethereum, Secret,
 };
 use time::OffsetDateTime;
 
@@ -66,19 +66,19 @@ where
 }
 
 /// Execute a Hbit<->Herc20 swap for Bob.
-pub async fn hbit_herc20_bob<B, BC, EC>(
+pub async fn hbit_herc20_bob<B, EC>(
     bob: B,
-    bitcoin_connector: &BC,
     ethereum_connector: &EC,
     hbit_params: hbit::Params,
     herc20_params: herc20::Params,
     utc_start_of_swap: OffsetDateTime,
 ) -> Result<()>
 where
-    B: herc20::ExecuteDeploy + herc20::ExecuteFund + hbit::ExecuteRedeem + herc20::ExecuteRefund,
-    BC: LatestBlock<Block = ::bitcoin::Block>
-        + BlockByHash<Block = ::bitcoin::Block, BlockHash = ::bitcoin::BlockHash>
-        + ConnectedNetwork<Network = ledger::Bitcoin>,
+    B: herc20::ExecuteDeploy
+        + herc20::ExecuteFund
+        + hbit::ExecuteRedeem
+        + herc20::ExecuteRefund
+        + hbit::WatchForFunded,
     EC: LatestBlock<Block = ethereum::Block>
         + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
         + btsieve::ethereum::ReceiptByHash
@@ -87,10 +87,10 @@ where
     tracing::info!("starting swap");
 
     let swap_result = async {
-        let hbit_funded =
-            hbit::watch_for_funded(bitcoin_connector, &hbit_params.shared, utc_start_of_swap)
-                .await
-                .context(SwapFailedNoRefund)?;
+        let hbit_funded = bob
+            .watch_for_funded(&hbit_params, utc_start_of_swap)
+            .await
+            .context(SwapFailedNoRefund)?;
 
         tracing::info!("alice funded the hbit htlc");
 

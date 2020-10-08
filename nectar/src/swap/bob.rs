@@ -9,7 +9,7 @@ use crate::{
     },
     SwapId,
 };
-use comit::{Secret, SecretHash, Timestamp};
+use comit::{hbit::Params, Secret, SecretHash, Timestamp};
 use std::sync::Arc;
 use time::OffsetDateTime;
 
@@ -134,6 +134,25 @@ where
             self.swap_id,
             action,
             poll_beta_has_expired,
+        )
+        .await
+    }
+}
+
+#[async_trait::async_trait]
+impl<BW> hbit::WatchForFunded for Bob<bitcoin::Wallet, BW>
+where
+    BW: Send + Sync,
+{
+    async fn watch_for_funded(
+        &self,
+        params: &hbit::Params,
+        start_of_swap: OffsetDateTime,
+    ) -> anyhow::Result<hbit::Funded> {
+        hbit::watch_for_funded(
+            self.alpha_wallet.connector.as_ref(),
+            &params.shared,
+            start_of_swap,
         )
         .await
     }
