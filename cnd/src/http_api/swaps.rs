@@ -11,7 +11,7 @@
 
 use crate::{
     bitcoin,
-    config::Settings,
+    bitcoin_fees::BitcoinFees,
     connectors::Connectors,
     ethereum,
     http_api::{
@@ -32,9 +32,9 @@ pub async fn get_swap(
     id: LocalSwapId,
     storage: Storage,
     connectors: Connectors,
-    settings: Settings,
+    bitcoin_fees: BitcoinFees,
 ) -> Result<impl Reply, Rejection> {
-    handle_get_swap(id, storage, connectors, settings.bitcoin.fees.sat_per_vbyte)
+    handle_get_swap(id, storage, connectors, bitcoin_fees)
         .await
         .map(|swap_resource| warp::reply::json(&swap_resource))
         .map_err(problem::from_anyhow)
@@ -72,9 +72,11 @@ async fn handle_get_swap(
     id: LocalSwapId,
     storage: Storage,
     connectors: Connectors,
-    btc_per_vbyte: ::bitcoin::Amount,
+    bitcoin_fees: BitcoinFees,
 ) -> anyhow::Result<siren::Entity> {
     let swap_context = storage.load(id).await?;
+    let btc_per_vbyte = bitcoin_fees.get_per_vbyte_rate().await?;
+
     within_swap_context!(swap_context, {
         let swap: ActorSwap = storage.load(id).await?;
         let bitcoin_connector = connectors.bitcoin();
@@ -330,9 +332,9 @@ async fn handle_action_fund(
 pub async fn action_redeem(
     id: LocalSwapId,
     storage: Storage,
-    settings: Settings,
+    bitcoin_fees: BitcoinFees,
 ) -> Result<impl Reply, Rejection> {
-    handle_action_redeem(id, storage, settings.bitcoin.fees.sat_per_vbyte)
+    handle_action_redeem(id, storage, bitcoin_fees)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -343,11 +345,12 @@ pub async fn action_redeem(
 async fn handle_action_redeem(
     id: LocalSwapId,
     storage: Storage,
-    btc_per_vbyte: ::bitcoin::Amount,
+    bitcoin_fees: BitcoinFees,
 ) -> anyhow::Result<ActionResponseBody> {
     let swap_context = storage.load(id).await?;
     let response = within_swap_context!(swap_context, {
         let swap: ActorSwap = storage.load(id).await?;
+        let btc_per_vbyte = bitcoin_fees.get_per_vbyte_rate().await?;
         let action = swap.redeem_action(btc_per_vbyte)?;
         ActionResponseBody::from(action)
     });
@@ -359,9 +362,9 @@ async fn handle_action_redeem(
 pub async fn action_refund(
     id: LocalSwapId,
     storage: Storage,
-    settings: Settings,
+    bitcoin_fees: BitcoinFees,
 ) -> Result<impl Reply, Rejection> {
-    handle_action_refund(id, storage, settings.bitcoin.fees.sat_per_vbyte)
+    handle_action_refund(id, storage, bitcoin_fees)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -372,11 +375,12 @@ pub async fn action_refund(
 async fn handle_action_refund(
     id: LocalSwapId,
     storage: Storage,
-    btc_per_vbyte: ::bitcoin::Amount,
+    bitcoin_fees: BitcoinFees,
 ) -> anyhow::Result<ActionResponseBody> {
     let swap_context = storage.load(id).await?;
     let response = within_swap_context!(swap_context, {
         let swap: ActorSwap = storage.load(id).await?;
+        let btc_per_vbyte = bitcoin_fees.get_per_vbyte_rate().await?;
         let action = swap.refund_action(btc_per_vbyte)?;
         ActionResponseBody::from(action)
     });
