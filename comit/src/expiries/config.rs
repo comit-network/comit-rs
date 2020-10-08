@@ -344,7 +344,7 @@ fn bitcoin_confirmations(network: Network) -> u8 {
     }
 }
 
-fn bitcoin_mine_within_blocks(network: Network) -> u8 {
+pub fn bitcoin_mine_within_blocks(network: Network) -> u8 {
     match network {
         Network::Main | Network::Test => main::BITCOIN_MINE_WITHIN_N_BLOCKS,
         Network::Dev => dev::BITCOIN_MINE_WITHIN_N_BLOCKS,
@@ -365,7 +365,7 @@ fn ethereum_confirmations(network: Network) -> u8 {
     }
 }
 
-fn ethereum_mine_within_blocks(network: Network) -> u8 {
+pub fn ethereum_mine_within_blocks(network: Network) -> u8 {
     match network {
         Network::Main | Network::Test => main::ETHEREUM_MINE_WITHIN_N_BLOCKS,
         Network::Dev => dev::ETHEREUM_MINE_WITHIN_N_BLOCKS,

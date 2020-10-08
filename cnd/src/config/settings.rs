@@ -301,7 +301,7 @@ mod tests {
                     node_url: "http://localhost:8332".parse().unwrap(),
                 },
                 fees: BitcoinFees {
-                    sat_per_vbyte: bitcoin::Amount::from_sat(10),
+                    sat_per_vbyte: bitcoin::Amount::from_sat(50),
                 },
             })
     }

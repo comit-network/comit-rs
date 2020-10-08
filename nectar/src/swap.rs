@@ -334,11 +334,22 @@ mod tests {
             let ethereum_gas_price =
                 crate::ethereum::GasPrice::geth_url(ethereum_blockchain.node_url.clone());
 
+            let bitcoin_fee = crate::bitcoin::Fee::new(
+                crate::config::Bitcoin {
+                    network: ledger::Bitcoin::Regtest,
+                    bitcoind: crate::config::Bitcoind {
+                        node_url: bitcoind_url.clone(),
+                    },
+                    fees: crate::config::BitcoinFees::SatsPerByte(bitcoin::Amount::from_sat(50)),
+                },
+                crate::bitcoin::Client::new(bitcoind_url.clone()),
+            );
+
             (
                 bitcoin::Wallet {
                     inner: Arc::new(bitcoin_wallet),
                     connector: Arc::clone(&bitcoin_connector),
-                    fee: StaticStub::static_stub(),
+                    fee: bitcoin_fee,
                 },
                 ethereum::Wallet {
                     inner: Arc::new(ethereum_wallet),
@@ -379,11 +390,22 @@ mod tests {
             let ethereum_gas_price =
                 crate::ethereum::GasPrice::geth_url(ethereum_blockchain.node_url.clone());
 
+            let bitcoin_fee = crate::bitcoin::Fee::new(
+                crate::config::Bitcoin {
+                    network: ledger::Bitcoin::Regtest,
+                    bitcoind: crate::config::Bitcoind {
+                        node_url: bitcoind_url.clone(),
+                    },
+                    fees: crate::config::BitcoinFees::SatsPerByte(bitcoin::Amount::from_sat(50)),
+                },
+                crate::bitcoin::Client::new(bitcoind_url.clone()),
+            );
+
             (
                 bitcoin::Wallet {
                     inner: Arc::new(bitcoin_wallet),
                     connector: Arc::clone(&bitcoin_connector),
-                    fee: StaticStub::static_stub(),
+                    fee: bitcoin_fee,
                 },
                 ethereum::Wallet {
                     inner: Arc::new(ethereum_wallet),

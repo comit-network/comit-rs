@@ -6,7 +6,8 @@
 
 mod config;
 
-use self::config::{Config, Protocol};
+pub use self::config::*;
+
 use crate::{
     timestamp::{self, Timestamp},
     Network,

@@ -40,8 +40,8 @@ pub struct ConnectionFailed(#[from] reqwest::Error);
 #[error("deserialization error: {0}")]
 pub struct DeserializationFailed(#[from] reqwest::Error);
 
-// Many possibilities, one could consider using the `gasPriceRange` entries to
-// get a lower price.
+// TODO: Use the value that would satisfy
+// comit::expiries::config::ETHEREUM_MINE_WITHIN_N_BLOCKS;
 #[derive(Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct Response {

@@ -7,7 +7,6 @@
         "check": "tsc && prettier --check '**/*.{ts,json,yml}' && tslint --project .",
         "pretest": "tsc",
         "test": "jest --forceExit",
-        "ci": "tsc && jest --forceExit",
         "fix": "tslint --project . --fix && prettier --write '**/*.{ts,js,json,yml}'"
     },
     "engines": {

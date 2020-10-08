@@ -64,6 +64,17 @@ impl Bitcoin {
     }
 }
 
+#[cfg(test)]
+impl crate::StaticStub for Bitcoin {
+    fn static_stub() -> Self {
+        Bitcoin {
+            network: ledger::Bitcoin::Regtest,
+            bitcoind: Bitcoind::new(ledger::Bitcoin::Regtest),
+            fees: BitcoinFees::static_stub(),
+        }
+    }
+}
+
 impl Bitcoind {
     fn new(network: ledger::Bitcoin) -> Self {
         let node_url = match network {
@@ -236,14 +247,17 @@ impl BitcoinFees {
 
         *rate_per_byte * crate::bitcoin::MAX_EXPECTED_TRANSACTION_VBYTE_WEIGHT
     }
-
-    pub fn default_fee() -> bitcoin::Amount {
-        // 35 sat/vbyte is very generous (Looking at https://bitcoinfees.github.io/#1m)
-        bitcoin::Amount::from_sat(35)
-    }
 }
 
-const DEFAULT_BITCOIN_STATIC_FEE_SAT: u64 = 10;
+static DEFAULT_BITCOIN_STATIC_FEE_SAT: Lazy<bitcoin::Amount> =
+    // Low value that would allow inclusion in ~6 blocks:
+    // https://txstats.com/dashboard/db/fee-estimation?orgId=1&panelId=2&fullscreen&from=now-6M&to=now&var-source=blockcypher
+    Lazy::new(|| bitcoin::Amount::from_sat(50));
+
+static DEFAULT_MAX_BITCOIN_FEE_SAT_PER_VBYTE: Lazy<bitcoin::Amount> =
+// Bitcoind's highest estimate in the past year:
+// https://txstats.com/dashboard/db/fee-estimation?orgId=1&panelId=5&fullscreen&from=now-1y&to=now
+    Lazy::new(|| bitcoin::Amount::from_sat(200));
 
 #[cfg(test)]
 impl crate::StaticStub for BitcoinFees {
@@ -258,11 +272,10 @@ impl From<file::BitcoinFees> for BitcoinFees {
     fn from(file: file::BitcoinFees) -> Self {
         file.strategy
             .map_or_else(Default::default, |strategy| match strategy {
-                file::BitcoinFeeStrategy::Static => {
-                    Self::SatsPerByte(file.sat_per_vbyte.unwrap_or_else(|| {
-                        bitcoin::Amount::from_sat(DEFAULT_BITCOIN_STATIC_FEE_SAT)
-                    }))
-                }
+                file::BitcoinFeeStrategy::Static => Self::SatsPerByte(
+                    file.sat_per_vbyte
+                        .unwrap_or(*DEFAULT_BITCOIN_STATIC_FEE_SAT),
+                ),
                 file::BitcoinFeeStrategy::Bitcoind => Self::BitcoindEstimateSmartfee {
                     mode: file.estimate_mode.unwrap_or_else(EstimateMode::default),
                     max_sat_per_vbyte: Default::default(),
@@ -273,7 +286,10 @@ impl From<file::BitcoinFees> for BitcoinFees {
 
 impl Default for BitcoinFees {
     fn default() -> Self {
-        Self::SatsPerByte(bitcoin::Amount::from_sat(DEFAULT_BITCOIN_STATIC_FEE_SAT))
+        Self::BitcoindEstimateSmartfee {
+            mode: EstimateMode::Economical,
+            max_sat_per_vbyte: *DEFAULT_MAX_BITCOIN_FEE_SAT_PER_VBYTE,
+        }
     }
 }
 
@@ -526,7 +542,10 @@ mod tests {
                 bitcoind: Bitcoind {
                     node_url: "http://localhost:8332".parse().unwrap(),
                 },
-                fees: BitcoinFees::SatsPerByte(bitcoin::Amount::from_sat(10)),
+                fees: BitcoinFees::BitcoindEstimateSmartfee {
+                    mode: EstimateMode::Economical,
+                    max_sat_per_vbyte: bitcoin::Amount::from_sat(200),
+                },
             })
     }
 

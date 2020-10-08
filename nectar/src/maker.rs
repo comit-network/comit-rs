@@ -369,7 +369,7 @@ mod tests {
     #[test]
     fn published_sell_order_can_be_taken() {
         let strategy = strategy::AllIn::new(
-            Default::default(),
+            StaticStub::static_stub(),
             None,
             Some(btc(1.0)),
             Spread::static_stub(),
@@ -394,7 +394,7 @@ mod tests {
     #[test]
     fn published_buy_order_can_be_taken() {
         let strategy = strategy::AllIn::new(
-            Default::default(),
+            StaticStub::static_stub(),
             Some(btc(1.0)),
             None,
             Spread::static_stub(),
@@ -419,7 +419,7 @@ mod tests {
     #[test]
     fn new_buy_order_with_max_buy() {
         let strategy = strategy::AllIn::new(
-            Default::default(),
+            StaticStub::static_stub(),
             Some(btc(0.002)),
             None,
             Spread::static_stub(),
@@ -442,7 +442,7 @@ mod tests {
     #[test]
     fn new_buy_order() {
         let strategy = strategy::AllIn::new(
-            Default::default(),
+            StaticStub::static_stub(),
             None,
             None,
             Spread::static_stub(),

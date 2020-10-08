@@ -26,13 +26,13 @@ pub struct AllIn {
 
 impl AllIn {
     pub fn new(
-        bitcoin_fees: config::BitcoinFees,
+        config: config::Bitcoin,
         max_buy_quantity: Option<bitcoin::Amount>,
         max_sell_quantity: Option<bitcoin::Amount>,
         spread: Spread,
         bitcoind_client: bitcoin::Client,
     ) -> Self {
-        let bitcoin_fee = Fee::new(bitcoin_fees, bitcoind_client);
+        let bitcoin_fee = Fee::new(config, bitcoind_client);
         Self {
             bitcoin_fee,
             btc_reserved_funds: Default::default(),
@@ -245,7 +245,7 @@ mod test {
     impl StaticStub for AllIn {
         fn static_stub() -> Self {
             AllIn::new(
-                Default::default(),
+                StaticStub::static_stub(),
                 None,
                 None,
                 StaticStub::static_stub(),
@@ -259,9 +259,12 @@ mod test {
         let rate = Rate::try_from(1.0).unwrap();
         let spread = Spread::new(0).unwrap();
 
-        let bitcoin_fees = config::BitcoinFees::SatsPerByte(btc(0.001));
+        let config = config::Bitcoin {
+            fees: config::BitcoinFees::SatsPerByte(btc(0.001)),
+            ..StaticStub::static_stub()
+        };
 
-        let strategy = AllIn::new(bitcoin_fees, None, None, spread, StaticStub::static_stub());
+        let strategy = AllIn::new(config, None, None, spread, StaticStub::static_stub());
 
         let result = strategy.new_sell(btc(0.07), rate);
         assert!(result.unwrap_err().downcast::<InsufficientFunds>().is_ok());
@@ -310,7 +313,7 @@ mod test {
         let order = strategy.new_sell(btc(10.0), rate).unwrap();
 
         // 35 sat * 1000 fees.
-        assert_eq!(order.quantity.to_inner(), btc(7.9997));
+        assert_eq!(order.quantity.to_inner(), btc(8.0));
 
         let order = strategy.new_buy(dai(10.0), rate).unwrap();
 
@@ -321,7 +324,7 @@ mod test {
     fn given_an_available_balance_and_a_max_quantity_sell_min_of_either() {
         let rate = Rate::try_from(1.0).unwrap();
         let strategy = AllIn::new(
-            Default::default(),
+            StaticStub::static_stub(),
             Some(btc(2.0)),
             Some(btc(2.0)),
             Spread::static_stub(),
@@ -341,7 +344,7 @@ mod test {
     fn given_an_available_balance_and_fees_sell_balance() {
         let rate = Rate::try_from(1.0).unwrap();
         let strategy = AllIn::new(
-            Default::default(),
+            StaticStub::static_stub(),
             None,
             None,
             Spread::static_stub(),
@@ -356,10 +359,13 @@ mod test {
     #[test]
     fn given_balance_is_fees_sell_order_fails() {
         let rate = Rate::try_from(1.0).unwrap();
-        let bitcoin_fees = config::BitcoinFees::SatsPerByte(btc(0.1));
+        let config = config::Bitcoin {
+            fees: config::BitcoinFees::SatsPerByte(btc(0.1)),
+            ..StaticStub::static_stub()
+        };
 
         let strategy = AllIn::new(
-            bitcoin_fees,
+            config,
             None,
             None,
             Spread::static_stub(),
@@ -374,11 +380,13 @@ mod test {
     #[test]
     fn given_balance_is_less_than_fees_sell_order_fails() {
         let rate = Rate::try_from(1.0).unwrap();
-
-        let bitcoin_fees = BitcoinFees::SatsPerByte(bitcoin::Amount::from_sat(10000));
+        let config = config::Bitcoin {
+            fees: BitcoinFees::SatsPerByte(bitcoin::Amount::from_sat(10000)),
+            ..StaticStub::static_stub()
+        };
 
         let strategy = AllIn::new(
-            bitcoin_fees,
+            config,
             None,
             None,
             Spread::static_stub(),
@@ -470,7 +478,7 @@ mod test {
     #[test]
     fn btc_funds_reserved_upon_taking_sell_order() {
         let mut strategy = AllIn::new(
-            BitcoinFees::default(),
+            StaticStub::static_stub(),
             None,
             None,
             Spread::static_stub(),
@@ -484,7 +492,7 @@ mod test {
             .unwrap();
 
         assert_eq!(event, TakeRequestDecision::GoForSwap);
-        assert_eq!(strategy.btc_reserved_funds, btc(1.5003))
+        assert_eq!(strategy.btc_reserved_funds, btc(1.5))
     }
 
     proptest! {
@@ -499,7 +507,7 @@ mod test {
             if let (Ok(dai_balance), Ok(rate), Ok(spread)) = (dai_balance, rate, spread) {
                 let dai_balance = dai::Amount::from_atto(dai_balance);
 
-                let strategy = AllIn::new(Default::default(), None, Some(max_buy_quantity), spread, StaticStub::static_stub(),);
+                let strategy = AllIn::new(StaticStub::static_stub(), None, Some(max_buy_quantity), spread, StaticStub::static_stub(),);
                 let _: anyhow::Result<BtcDaiOrderForm> = strategy.new_buy(dai_balance, rate);
             }
         }
@@ -514,7 +522,7 @@ mod test {
             let spread = Spread::new(spread);
 
             if let (Ok(dai_balance), Ok(rate), Ok(spread)) = (dai_balance, rate, spread) {
-                let strategy = AllIn::new(Default::default(), None, None, spread, StaticStub::static_stub(),);
+                let strategy = AllIn::new(StaticStub::static_stub(), None, None, spread, StaticStub::static_stub(),);
 
                 let dai_balance = dai::Amount::from_atto(dai_balance);
 
@@ -533,7 +541,7 @@ mod test {
             let spread = Spread::new(spread);
 
             if let (Ok(rate), Ok(spread)) = (rate, spread) {
-                let strategy = AllIn::new(Default::default(), Some(max_sell_quantity), None, spread, StaticStub::static_stub());
+                let strategy = AllIn::new(StaticStub::static_stub(), Some(max_sell_quantity), None, spread, StaticStub::static_stub());
 
                 let _: anyhow::Result<BtcDaiOrderForm> = strategy.new_sell(btc_balance, rate);
             }
@@ -549,7 +557,7 @@ mod test {
             let spread = Spread::new(spread);
 
             if let (Ok(rate), Ok(spread)) = (rate, spread) {
-                let strategy = AllIn::new(Default::default(), None, None, spread, StaticStub::static_stub());
+                let strategy = AllIn::new(StaticStub::static_stub(), None, None, spread, StaticStub::static_stub());
 
                 let _: anyhow::Result<BtcDaiOrderForm> = strategy.new_sell(btc_balance, rate);
             }
@@ -558,10 +566,13 @@ mod test {
 
     #[test]
     fn btc_funds_reserved_upon_taking_sell_order_with_fee() {
-        let bitcoin_fees = BitcoinFees::SatsPerByte(bitcoin::Amount::from_sat(1000));
+        let config = config::Bitcoin {
+            fees: BitcoinFees::SatsPerByte(bitcoin::Amount::from_sat(1000)),
+            ..StaticStub::static_stub()
+        };
 
         let mut strategy = AllIn::new(
-            bitcoin_fees,
+            config,
             None,
             None,
             Spread::static_stub(),
@@ -581,7 +592,7 @@ mod test {
     #[test]
     fn dai_funds_reserved_upon_taking_buy_order() {
         let mut strategy = AllIn::new(
-            Default::default(),
+            StaticStub::static_stub(),
             None,
             None,
             Spread::static_stub(),
@@ -601,7 +612,7 @@ mod test {
     #[test]
     fn dai_funds_reserved_upon_taking_buy_order_with_fee() {
         let mut strategy = AllIn::new(
-            Default::default(),
+            StaticStub::static_stub(),
             None,
             None,
             Spread::static_stub(),
@@ -621,7 +632,7 @@ mod test {
     #[test]
     fn not_enough_btc_funds_to_reserve_for_a_sell_order() {
         let mut strategy = AllIn::new(
-            Default::default(),
+            StaticStub::static_stub(),
             None,
             None,
             Spread::static_stub(),
@@ -640,7 +651,7 @@ mod test {
     #[test]
     fn not_enough_btc_funds_to_reserve_for_a_buy_order() {
         let mut strategy = AllIn::new(
-            Default::default(),
+            StaticStub::static_stub(),
             None,
             None,
             Spread::static_stub(),

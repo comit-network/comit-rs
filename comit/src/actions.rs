@@ -65,13 +65,9 @@ pub mod bitcoin {
     where
         C: secp256k1::Signing,
     {
-        let rate = byte_rate.as_sat();
-        // TODO: change this interface to accept an amount instead of a usize and remove
-        // this allow
-        #[allow(clippy::cast_possible_truncation)]
         primed_transaction
-            .sign_with_rate(secp, rate as usize)
-            .map_err(|_| anyhow::anyhow!("failed to sign with {} rate", rate))
+            .sign_with_rate(secp, byte_rate)
+            .map_err(|_| anyhow::anyhow!("failed to sign with {} rate", byte_rate))
     }
 
     #[derive(Debug, Clone, PartialEq)]

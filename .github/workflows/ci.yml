@@ -150,7 +150,7 @@ jobs:
           export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH
           cd tests
           yarn install
-          yarn ci
+          yarn test
 
       - name: Upload bitcoind log
         if: matrix.e2e && failure()
