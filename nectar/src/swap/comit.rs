@@ -1,9 +1,9 @@
 //! Code that could be upstreamed to COMIT lib.
 
 pub mod hbit;
-mod hbit_herc20;
+pub mod hbit_herc20;
 pub mod herc20;
-mod herc20_hbit;
+pub mod herc20_hbit;
 
 pub use comit::{ethereum, *};
 pub use hbit_herc20::{hbit_herc20_alice, hbit_herc20_bob};

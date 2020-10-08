@@ -17,6 +17,10 @@ use tracing_futures::Instrument;
 
 pub use self::comit::{hbit, herc20};
 pub use crate::database::Database;
+use crate::swap::{
+    hbit::{ExecuteFund, ExecuteRefund},
+    herc20::ExecuteRedeem,
+};
 use genawaiter::GeneratorState;
 use time::OffsetDateTime;
 
@@ -663,8 +667,8 @@ async fn execute(
             ..
         }) => {
             let bob = Bob {
-                alpha_wallet: ethereum_wallet,
-                beta_wallet: bitcoin_wallet,
+                alpha_wallet: ethereum_wallet.clone(),
+                beta_wallet: bitcoin_wallet.clone(),
                 db,
                 swap_id,
                 secret_hash,
@@ -680,7 +684,24 @@ async fn execute(
                     .instrument(tracing::error_span!("herc20_hbit_bob", %swap_id))
                     .await
                 {
-                    GeneratorState::Yielded(_) => {}
+                    GeneratorState::Yielded(comit::herc20_hbit::Out::Action(
+                        comit::herc20_hbit::Action::ExecuteHbitFund(params),
+                    )) => {
+                        bitcoin_wallet.execute_fund(&params).await?;
+                    }
+                    GeneratorState::Yielded(comit::herc20_hbit::Out::Action(
+                        comit::herc20_hbit::Action::ExecuteHbitRefund(params, funded),
+                    )) => {
+                        bitcoin_wallet.execute_refund(params, funded).await?;
+                    }
+                    GeneratorState::Yielded(comit::herc20_hbit::Out::Action(
+                        comit::herc20_hbit::Action::ExecuteHerc20Redeem(params, secret, deployed),
+                    )) => {
+                        ethereum_wallet
+                            .execute_redeem(params, secret, deployed, start_of_swap)
+                            .await?;
+                    }
+                    GeneratorState::Yielded(comit::herc20_hbit::Out::Event(_)) => {}
                     GeneratorState::Complete(Err(e)) => return Err(e),
                     GeneratorState::Complete(Ok(())) => {}
                 }
