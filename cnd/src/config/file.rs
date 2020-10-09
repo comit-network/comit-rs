@@ -6,13 +6,13 @@ use crate::{
 use comit::ledger;
 use libp2p::core::Multiaddr;
 use log::LevelFilter;
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsStr,
     net::SocketAddr,
     path::{Path, PathBuf},
 };
-// TODO: Import Url
 
 /// This struct aims to represent the configuration file as it appears on disk.
 ///
@@ -73,7 +73,7 @@ pub struct Static {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CypherBlock {
-    pub blockchain_endpoint_url: url::Url,
+    pub blockchain_endpoint_url: Url,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
