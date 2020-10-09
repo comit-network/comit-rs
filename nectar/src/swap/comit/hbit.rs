@@ -14,17 +14,23 @@ use time::OffsetDateTime;
 
 pub type SharedParams = comit::hbit::Params;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Params {
     pub shared: SharedParams,
     pub transient_sk: SecretKey,
+    pub final_address: bitcoin::Address,
 }
 
 impl Params {
-    pub fn new(shared: SharedParams, transient_sk: SecretKey) -> Self {
+    pub fn new(
+        shared: SharedParams,
+        transient_sk: SecretKey,
+        final_address: bitcoin::Address,
+    ) -> Self {
         Self {
             shared,
             transient_sk,
+            final_address,
         }
     }
 }
@@ -108,6 +114,7 @@ mod arbitrary {
                     secret_hash: crate::arbitrary::secret_hash(g),
                 },
                 transient_sk: secret_key(g),
+                final_address: bitcoin_address(g),
             }
         }
     }
@@ -135,5 +142,13 @@ mod arbitrary {
 
     fn bitcoin_identity<G: Gen>(g: &mut G) -> identity::Bitcoin {
         identity::Bitcoin::from_secret_key(&crate::SECP, &secret_key(g))
+    }
+
+    fn bitcoin_address<G: Gen>(g: &mut G) -> bitcoin::Address {
+        bitcoin::Address::p2wpkh(
+            &identity::Bitcoin::from_secret_key(&crate::SECP, &secret_key(g)).into(),
+            bitcoin_network(g).into(),
+        )
+        .unwrap()
     }
 }

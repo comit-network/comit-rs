@@ -158,7 +158,7 @@ impl Load<hbit::Refunded> for Database {
     }
 }
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Params {
     pub network: ::bitcoin::Network,
     pub asset: Amount,
@@ -167,6 +167,7 @@ pub struct Params {
     pub expiry: Timestamp,
     pub secret_hash: SecretHash,
     pub transient_sk: secp256k1::SecretKey,
+    pub final_address: bitcoin::Address,
 }
 
 impl From<Params> for hbit::Params {
@@ -179,6 +180,7 @@ impl From<Params> for hbit::Params {
             expiry,
             secret_hash,
             transient_sk,
+            final_address,
         } = params;
 
         hbit::Params {
@@ -191,6 +193,7 @@ impl From<Params> for hbit::Params {
                 secret_hash,
             },
             transient_sk,
+            final_address,
         }
     }
 }
@@ -205,6 +208,7 @@ impl From<hbit::Params> for Params {
             expiry: params.shared.expiry,
             secret_hash: params.shared.secret_hash,
             transient_sk: params.transient_sk,
+            final_address: params.final_address,
         }
     }
 }
@@ -231,6 +235,9 @@ impl crate::StaticStub for Params {
                 "01010101010101010001020304050607ffff0000ffff00006363636363636363",
             )
             .unwrap(),
+            final_address: "tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7"
+                .parse()
+                .unwrap(),
         }
     }
 }
