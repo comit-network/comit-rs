@@ -109,6 +109,9 @@ impl crate::StaticStub for SwapParams {
                     "01010101010101010001020304050607ffff0000ffff00006363636363636363",
                 )
                 .unwrap(),
+                final_address: "tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7"
+                    .parse()
+                    .unwrap(),
             },
             herc20_params: herc20::Params {
                 asset: comit::asset::Erc20 {
@@ -444,9 +447,10 @@ mod tests {
             let hbit_params = hbit::Params {
                 shared: hbit_params,
                 transient_sk: hbit_transient_refund_sk,
+                final_address: alice_bitcoin_wallet.inner.new_address().await?,
             };
             let swap = SwapKind::HbitHerc20(SwapParams {
-                hbit_params,
+                hbit_params: hbit_params.clone(),
                 herc20_params: herc20_params.clone(),
                 secret_hash,
                 start_of_swap,
@@ -482,6 +486,7 @@ mod tests {
                 hbit_params: hbit::Params {
                     shared: hbit_params,
                     transient_sk: hbit_transient_redeem_sk,
+                    final_address: bob_bitcoin_wallet.inner.new_address().await?,
                 },
                 herc20_params: herc20_params.clone(),
                 secret_hash,
@@ -492,7 +497,11 @@ mod tests {
 
             bob_db.insert_swap(swap).await.unwrap();
 
-            let hbit_params = hbit::Params::new(hbit_params, hbit_transient_redeem_sk);
+            let hbit_params = hbit::Params::new(
+                hbit_params,
+                hbit_transient_redeem_sk,
+                bob_bitcoin_wallet.inner.new_address().await?,
+            );
             let bob = Bob {
                 alpha_wallet: bob_bitcoin_wallet.clone(),
                 beta_wallet: bob_ethereum_wallet.clone(),

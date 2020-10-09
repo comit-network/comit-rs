@@ -44,8 +44,6 @@ impl hbit::ExecuteRedeem for Wallet {
         fund_event: hbit::Funded,
         secret: Secret,
     ) -> anyhow::Result<hbit::Redeemed> {
-        let redeem_address = self.inner.new_address().await?;
-
         let vbyte_rate = self.fee.vbyte_rate().await?;
 
         let action = params.shared.build_redeem_action(
@@ -53,7 +51,7 @@ impl hbit::ExecuteRedeem for Wallet {
             fund_event.asset,
             fund_event.location,
             params.transient_sk,
-            redeem_address,
+            params.final_address,
             secret,
             vbyte_rate,
         )?;
@@ -86,8 +84,6 @@ impl hbit::ExecuteRefund for Wallet {
             tokio::time::delay_for(Duration::from_secs(1)).await;
         }
 
-        let refund_address = self.inner.new_address().await?;
-
         let vbyte_rate = self.fee.vbyte_rate().await?;
 
         let action = params.shared.build_refund_action(
@@ -95,7 +91,7 @@ impl hbit::ExecuteRefund for Wallet {
             fund_event.asset,
             fund_event.location,
             params.transient_sk,
-            refund_address,
+            params.final_address,
             vbyte_rate,
         )?;
         let transaction = self.spend(action).await?;

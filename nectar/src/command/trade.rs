@@ -267,7 +267,9 @@ fn respawn_swaps(
                 let fund_amount = herc20_params.asset.clone().into();
                 maker.strategy.hbit_herc20_swap_resumed(fund_amount);
             }
-            SwapKind::Herc20Hbit(SwapParams { hbit_params, .. }) => {
+            SwapKind::Herc20Hbit(SwapParams {
+                ref hbit_params, ..
+            }) => {
                 let fund_amount = hbit_params.shared.asset;
                 maker.strategy.herc20_hbit_swap_resumed(fund_amount)?;
             }
