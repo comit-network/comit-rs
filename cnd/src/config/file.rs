@@ -1,5 +1,5 @@
 use crate::{
-    config::{Bitcoind, Data, Geth},
+    config::{settings, Bitcoind, Data, Geth, Settings},
     ethereum,
     ethereum::ChainId,
 };
@@ -200,6 +200,73 @@ pub enum All {
 #[serde(rename_all = "lowercase")]
 pub enum None {
     None,
+}
+
+impl From<Settings> for File {
+    fn from(settings: Settings) -> Self {
+        let Settings {
+            network,
+            http_api: settings::HttpApi { socket, cors },
+            data,
+            logging: settings::Logging { level },
+            bitcoin,
+            ethereum,
+            lightning,
+        } = settings;
+
+        File {
+            network: Some(Network {
+                listen: network.listen,
+                peer_addresses: Some(network.peer_addresses),
+            }),
+            http_api: Some(HttpApi {
+                socket,
+                cors: Some(Cors {
+                    allowed_origins: match cors.allowed_origins {
+                        settings::AllowedOrigins::All => AllowedOrigins::All(All::All),
+                        settings::AllowedOrigins::None => AllowedOrigins::None(None::None),
+                        settings::AllowedOrigins::Some(origins) => AllowedOrigins::Some(origins),
+                    },
+                }),
+            }),
+            data: Some(data),
+            logging: Some(Logging {
+                level: Some(level.into()),
+            }),
+            bitcoin: Some(bitcoin.into()),
+            ethereum: Some(ethereum.into()),
+            lightning: Some(lightning.into()),
+        }
+    }
+}
+
+impl From<settings::Bitcoin> for Bitcoin {
+    fn from(settings: settings::Bitcoin) -> Self {
+        Self {
+            network: settings.network,
+            bitcoind: Some(settings.bitcoind),
+            fees: Some(settings.fees.into()),
+        }
+    }
+}
+
+impl From<settings::BitcoinFees> for BitcoinFees {
+    fn from(settings: settings::BitcoinFees) -> Self {
+        match settings {
+            settings::BitcoinFees::StaticSatPerVbyte(sat_per_vbyte) => Self {
+                strategy: BitcoinFeesStrategy::Static,
+                r#static: Some(Static { sat_per_vbyte }),
+                cypherblock: None,
+            },
+            settings::BitcoinFees::CypherBlock(blockchain_endpoint_url) => Self {
+                strategy: BitcoinFeesStrategy::CypherBlock,
+                r#static: None,
+                cypherblock: Some(CypherBlock {
+                    blockchain_endpoint_url,
+                }),
+            },
+        }
+    }
 }
 
 #[cfg(test)]

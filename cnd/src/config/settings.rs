@@ -25,44 +25,6 @@ pub struct Settings {
     pub lightning: Lightning,
 }
 
-impl From<Settings> for File {
-    fn from(settings: Settings) -> Self {
-        let Settings {
-            network,
-            http_api: HttpApi { socket, cors },
-            data,
-            logging: Logging { level },
-            bitcoin,
-            ethereum,
-            lightning,
-        } = settings;
-
-        File {
-            network: Some(file::Network {
-                listen: network.listen,
-                peer_addresses: Some(network.peer_addresses),
-            }),
-            http_api: Some(file::HttpApi {
-                socket,
-                cors: Some(file::Cors {
-                    allowed_origins: match cors.allowed_origins {
-                        AllowedOrigins::All => file::AllowedOrigins::All(file::All::All),
-                        AllowedOrigins::None => file::AllowedOrigins::None(file::None::None),
-                        AllowedOrigins::Some(origins) => file::AllowedOrigins::Some(origins),
-                    },
-                }),
-            }),
-            data: Some(data),
-            logging: Some(file::Logging {
-                level: Some(level.into()),
-            }),
-            bitcoin: Some(bitcoin.into()),
-            ethereum: Some(ethereum.into()),
-            lightning: Some(lightning.into()),
-        }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct Network {
     pub listen: Vec<Multiaddr>,
@@ -211,16 +173,6 @@ impl Bitcoin {
     }
 }
 
-impl From<Bitcoin> for file::Bitcoin {
-    fn from(settings: Bitcoin) -> Self {
-        Self {
-            network: settings.network,
-            bitcoind: Some(settings.bitcoind),
-            fees: Some(settings.fees.into()),
-        }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum BitcoinFees {
     StaticSatPerVbyte(bitcoin::Amount),
@@ -260,26 +212,6 @@ impl BitcoinFees {
                 }),
             ) => Ok(Self::CypherBlock(blockchain_endpoint_url)),
             (CypherBlock, None, None) => Ok(Self::default_from_network(network)),
-        }
-    }
-}
-
-// TODO: move all this impl under `file.rs` to make things neater
-impl From<BitcoinFees> for file::BitcoinFees {
-    fn from(settings: BitcoinFees) -> Self {
-        match settings {
-            BitcoinFees::StaticSatPerVbyte(sat_per_vbyte) => Self {
-                strategy: file::BitcoinFeesStrategy::Static,
-                r#static: Some(file::Static { sat_per_vbyte }),
-                cypherblock: None,
-            },
-            BitcoinFees::CypherBlock(blockchain_endpoint_url) => Self {
-                strategy: file::BitcoinFeesStrategy::CypherBlock,
-                r#static: None,
-                cypherblock: Some(file::CypherBlock {
-                    blockchain_endpoint_url,
-                }),
-            },
         }
     }
 }
