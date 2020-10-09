@@ -46,6 +46,7 @@ pub mod sats_as_string {
     }
 }
 
+// TODO: rust-bitcoin utils should be used instead.
 pub mod sat_as_unsigned_int {
     use super::*;
 

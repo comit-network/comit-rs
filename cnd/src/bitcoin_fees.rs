@@ -40,8 +40,8 @@ mod block_cypher {
         mine_within_blocks: u8,
     }
 
-    /// https://www.blockcypher.com/dev/bitcoin/#blockchain
     impl Client {
+        /// Blockchain endpoint expected, see: https://www.blockcypher.com/dev/bitcoin/#blockchain
         pub fn new(url: url::Url, network: comit::Network) -> Self {
             let mine_within_blocks = comit::expiries::bitcoin_mine_within_blocks(network);
             Self {
@@ -60,8 +60,6 @@ mod block_cypher {
             }
         }
 
-        /// A rolling average of the fee (in satoshis) paid per kilobyte for
-        /// transactions to be confirmed within 1 to 2 blocks.
         async fn high_fee_per_kb(&self) -> Result<Amount> {
             let response = self.get().await?;
 
@@ -75,8 +73,6 @@ mod block_cypher {
             Ok(fee)
         }
 
-        /// A rolling average of the fee (in satoshis) paid per kilobyte for
-        /// transactions to be confirmed within 3 to 6 blocks.
         async fn medium_fee_per_kb(&self) -> Result<Amount> {
             let response = self.get().await?;
 

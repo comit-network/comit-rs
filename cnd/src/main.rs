@@ -72,6 +72,7 @@ mod btsieve {
 
 use self::{
     actions::*,
+    bitcoin_fees::BitcoinFees,
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
     config::{validate_connection_to_network, Settings},
     connectors::Connectors,
@@ -83,7 +84,6 @@ use self::{
     spawn::*,
     storage::{RootSeed, Sqlite, Storage},
 };
-use crate::bitcoin_fees::BitcoinFees;
 use ::bitcoin::secp256k1::{All, Secp256k1};
 use comit::{
     ledger, lnd::LndConnectorParams, LockProtocol, Never, RelativeTime, Role, Secret, SecretHash,
@@ -224,7 +224,12 @@ fn main() -> anyhow::Result<()> {
         Err(e) => tracing::warn!("failed to republish orders: {:#}", e),
     };
 
-    let bitcoin_fees = BitcoinFees::static_rate(settings.bitcoin.fees.sat_per_vbyte);
+    let bitcoin_fees = match &settings.bitcoin.fees {
+        config::BitcoinFees::StaticSatPerVbyte(fee) => BitcoinFees::static_rate(*fee),
+        config::BitcoinFees::CypherBlock(url) => {
+            BitcoinFees::block_cypher(url.clone(), options.network.unwrap_or_default())
+        }
+    };
 
     runtime.spawn(make_http_api_worker(
         settings,

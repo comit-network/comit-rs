@@ -71,9 +71,25 @@ interface Bitcoind {
     node_url: string;
 }
 
+interface BitcoinFees {
+    strategy: BitcoinFeeStrategy;
+    static?: {
+        sat_per_vbyte: number;
+    };
+    cypherblock?: {
+        blockchain_endpoint_url?: string;
+    };
+}
+
+enum BitcoinFeeStrategy {
+    Static = "static",
+    CypherBlock = "cypherblock",
+}
+
 interface BitcoinConfig {
     network: string;
     bitcoind: Bitcoind;
+    fees?: BitcoinFees;
 }
 
 interface Lnd {

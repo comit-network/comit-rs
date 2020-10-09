@@ -1,5 +1,5 @@
 use crate::{
-    config::{BitcoinFees, Bitcoind, Data, Geth},
+    config::{Bitcoind, Data, Geth},
     ethereum,
     ethereum::ChainId,
 };
@@ -12,6 +12,7 @@ use std::{
     net::SocketAddr,
     path::{Path, PathBuf},
 };
+// TODO: Import Url
 
 /// This struct aims to represent the configuration file as it appears on disk.
 ///
@@ -43,6 +44,36 @@ pub struct Bitcoin {
     pub network: ledger::Bitcoin,
     pub bitcoind: Option<Bitcoind>,
     pub fees: Option<BitcoinFees>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct BitcoinFees {
+    pub strategy: BitcoinFeesStrategy,
+    pub r#static: Option<Static>,
+    pub cypherblock: Option<CypherBlock>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "snake_case")]
+pub enum BitcoinFeesStrategy {
+    Static,
+    #[serde(rename = "cypherblock")]
+    CypherBlock,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Static {
+    #[serde(with = "::bitcoin::util::amount::serde::as_sat")]
+    pub sat_per_vbyte: bitcoin::Amount,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct CypherBlock {
+    pub blockchain_endpoint_url: url::Url,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -292,6 +323,9 @@ network = "regtest"
 node_url = "http://localhost:18443/"
 
 [bitcoin.fees]
+strategy = "static"
+
+[bitcoin.fees.static]
 sat_per_vbyte = 13
 
 [ethereum]
@@ -333,7 +367,11 @@ dir = "/foo/bar"
                     node_url: "http://localhost:18443".parse().unwrap(),
                 }),
                 fees: Some(BitcoinFees {
-                    sat_per_vbyte: bitcoin::Amount::from_sat(13),
+                    strategy: BitcoinFeesStrategy::Static,
+                    r#static: Some(Static {
+                        sat_per_vbyte: bitcoin::Amount::from_sat(13),
+                    }),
+                    cypherblock: None,
                 }),
             }),
             ethereum: Some(Ethereum {
@@ -388,12 +426,18 @@ dir = "/foo/bar"
             [bitcoind]
             node_url = "http://example.com:8332"
             [fees]
+            strategy = "static"
+            [fees.static]
             sat_per_vbyte = 9
             "#,
             r#"
             network = "testnet"
             [bitcoind]
             node_url = "http://example.com:18332"
+            [fees]
+            strategy = "cypherblock"
+            [fees.cypherblock]
+            blockchain_endpoint_url = "http://some.cypher.url:1234"
             "#,
             r#"
             network = "regtest"
@@ -409,7 +453,11 @@ dir = "/foo/bar"
                     node_url: Url::parse("http://example.com:8332").unwrap(),
                 }),
                 fees: Some(BitcoinFees {
-                    sat_per_vbyte: bitcoin::Amount::from_sat(9),
+                    strategy: BitcoinFeesStrategy::Static,
+                    r#static: Some(Static {
+                        sat_per_vbyte: bitcoin::Amount::from_sat(9),
+                    }),
+                    cypherblock: None,
                 }),
             },
             Bitcoin {
@@ -417,7 +465,13 @@ dir = "/foo/bar"
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:18332").unwrap(),
                 }),
-                fees: None,
+                fees: Some(BitcoinFees {
+                    strategy: BitcoinFeesStrategy::CypherBlock,
+                    r#static: None,
+                    cypherblock: Some(CypherBlock {
+                        blockchain_endpoint_url: "http://some.cypher.url:1234".parse().unwrap(),
+                    }),
+                }),
             },
             Bitcoin {
                 network: ledger::Bitcoin::Regtest,
