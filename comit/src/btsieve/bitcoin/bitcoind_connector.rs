@@ -5,7 +5,6 @@ use crate::{
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use bitcoin::{consensus::deserialize, BlockHash};
-use futures::TryFutureExt;
 use reqwest::{Client, Url};
 use serde::Deserialize;
 
@@ -73,15 +72,17 @@ impl BlockByHash for BitcoindConnector {
 
     async fn block_by_hash(&self, block_hash: Self::BlockHash) -> Result<Self::Block> {
         let url = self.raw_block_by_hash_url(&block_hash);
-        let block = self
+        let response = self
             .client
             .get(url.clone())
             .send()
             .await
-            .with_context(|| GetRequestFailed(url))?
+            .with_context(|| GetRequestFailed(url.clone()))?
             .text()
-            .map_ok(decode_response)
-            .await??;
+            .await
+            .with_context(|| format!("failed to read response body for GET {}", url))?;
+
+        let block = decode_response(response)?;
 
         Ok(block)
     }
