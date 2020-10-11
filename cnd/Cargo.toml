@@ -61,7 +61,7 @@ warp = { version = "0.2", default-features = false }
 
 [dev-dependencies]
 bitcoin = { version = "0.25", features = ["rand"] }
-bitcoincore-rpc = "0.11.0"
+bitcoincore-rpc = "0.12.0"
 comit = { path = "../comit", features = ["test"] }
 proptest = "0.10.1"
 regex = "1.3"
