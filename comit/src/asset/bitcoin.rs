@@ -45,24 +45,3 @@ pub mod sats_as_string {
         Ok(amount)
     }
 }
-
-// TODO: rust-bitcoin utils should be used instead.
-pub mod sat_as_unsigned_int {
-    use super::*;
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Bitcoin, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let int = u64::deserialize(deserializer)?;
-        let amount = Bitcoin::from_sat(int);
-        Ok(amount)
-    }
-
-    pub fn serialize<S>(value: &Bitcoin, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_u64(value.as_sat())
-    }
-}
