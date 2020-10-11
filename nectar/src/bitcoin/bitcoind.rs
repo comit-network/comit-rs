@@ -499,7 +499,7 @@ pub struct EstimateSmartFeeResponse {
     #[serde(rename = "feerate")]
     #[serde(with = "btc_as_float")]
     pub kbyte_rate: Amount,
-    pub block: u32,
+    pub blocks: u32,
 }
 
 mod btc_as_float {
@@ -577,6 +577,21 @@ mod test {
             private_keys_enabled: true,
             avoid_reuse: false,
             scanning: ScanProgress::Bool(false)
+        })
+    }
+
+    #[test]
+    fn decode_estimate_smart_fee() {
+        let json = r#"{
+    "feerate": 0.00065295,
+    "blocks": 5
+}"#;
+
+        let res: EstimateSmartFeeResponse = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(res, EstimateSmartFeeResponse {
+            kbyte_rate: ::bitcoin::Amount::from_btc(0.00065295).unwrap(),
+            blocks: 5
         })
     }
 }
