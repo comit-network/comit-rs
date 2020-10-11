@@ -41,7 +41,7 @@ tracing-futures = { version = "0.2" }
 uuid = { version = "0.8", features = ["serde", "v4"] }
 
 [dev-dependencies]
-bitcoincore-rpc = "0.11"
+bitcoincore-rpc = "0.12"
 libp2p = { version = "0.28", default-features = false, features = ["yamux", "noise"] }
 proptest = "0.10"
 spectral = { version = "0.6", default-features = false }
