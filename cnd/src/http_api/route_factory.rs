@@ -1,4 +1,5 @@
 use crate::{
+    bitcoin_fees::BitcoinFees,
     config::{AllowedOrigins, Settings},
     connectors::Connectors,
     http_api,
@@ -21,6 +22,7 @@ pub fn create(
     storage: Storage,
     connectors: Connectors,
     settings: &Settings,
+    bitcoin_fees: BitcoinFees,
     network: comit::Network,
 ) -> BoxedFilter<(impl Reply,)> {
     let swaps = warp::path(http_api::PATH);
@@ -33,6 +35,8 @@ pub fn create(
         move || storage.clone()
     });
     let connectors = warp::any().map(move || connectors.clone());
+    let bitcoin_fees = warp::any().map(move || bitcoin_fees.clone());
+    let preflight_cors_route = warp::options().map(warp::reply);
 
     let cors = warp::cors()
         .allow_methods(vec!["GET", "POST"])
@@ -44,13 +48,6 @@ pub fn create(
             cors.allow_origins::<Vec<&str>>(hosts.iter().map(|host| host.as_str()).collect())
         }
     };
-
-    let settings_for_warp = warp::any().map({
-        let settings = settings.clone();
-        move || settings.clone()
-    });
-
-    let preflight_cors_route = warp::options().map(warp::reply);
 
     let get_info = warp::get()
         .and(warp::path::end())
@@ -107,7 +104,7 @@ pub fn create(
         .and(warp::path::end())
         .and(storage_filter.clone())
         .and(connectors)
-        .and(settings_for_warp.clone())
+        .and(bitcoin_fees.clone())
         .and_then(swaps::get_swap);
 
     let get_swaps = warp::get()
@@ -146,7 +143,7 @@ pub fn create(
         .and(warp::path("redeem"))
         .and(warp::path::end())
         .and(storage_filter.clone())
-        .and(settings_for_warp.clone())
+        .and(bitcoin_fees.clone())
         .and_then(swaps::action_redeem);
 
     let action_refund = swaps
@@ -155,7 +152,7 @@ pub fn create(
         .and(warp::path("refund"))
         .and(warp::path::end())
         .and(storage_filter)
-        .and(settings_for_warp)
+        .and(bitcoin_fees)
         .and_then(swaps::action_refund);
 
     let post_dial_addr = warp::post()

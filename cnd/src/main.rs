@@ -27,6 +27,7 @@ mod spectral_ext;
 #[macro_use]
 mod with_swap_types;
 mod actions;
+mod bitcoin_fees;
 mod cli;
 mod config;
 mod connectors;
@@ -71,6 +72,7 @@ mod btsieve {
 
 use self::{
     actions::*,
+    bitcoin_fees::BitcoinFees,
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
     config::{validate_connection_to_network, Settings},
     connectors::Connectors,
@@ -222,8 +224,16 @@ fn main() -> anyhow::Result<()> {
         Err(e) => tracing::warn!("failed to republish orders: {:#}", e),
     };
 
+    let bitcoin_fees = match &settings.bitcoin.fees {
+        config::BitcoinFees::StaticSatPerVbyte(fee) => BitcoinFees::static_rate(*fee),
+        config::BitcoinFees::CypherBlock(url) => {
+            BitcoinFees::block_cypher(url.clone(), options.network.unwrap_or_default())
+        }
+    };
+
     runtime.spawn(make_http_api_worker(
         settings,
+        bitcoin_fees,
         options.network.unwrap_or_default(),
         swarm.clone(),
         storage,
@@ -263,13 +273,15 @@ async fn bind_http_api_socket(settings: &Settings) -> anyhow::Result<tokio::net:
 /// Construct the worker that is going to process HTTP API requests.
 async fn make_http_api_worker(
     settings: Settings,
+    bitcoin_fees: BitcoinFees,
     network: comit::Network,
     swarm: Swarm,
     storage: Storage,
     connectors: Connectors,
     incoming_requests: tokio::net::TcpListener,
 ) {
-    let routes = http_api::create_routes(swarm, storage, connectors, &settings, network);
+    let routes =
+        http_api::create_routes(swarm, storage, connectors, &settings, bitcoin_fees, network);
 
     match incoming_requests.local_addr() {
         Ok(socket) => {

@@ -4,6 +4,7 @@ mod validation;
 
 use crate::{ethereum, ethereum::ChainId, fs};
 use anyhow::{Context, Result};
+use comit::ledger;
 use conquer_once::Lazy;
 use libp2p::Multiaddr;
 use reqwest::Url;
@@ -12,10 +13,9 @@ use std::{fmt::Debug, path::PathBuf, str::FromStr};
 
 pub use self::{
     file::File,
-    settings::{AllowedOrigins, Settings},
+    settings::{AllowedOrigins, Bitcoin, BitcoinFees, Settings},
     validation::validate_connection_to_network,
 };
-use comit::ledger;
 
 static BITCOIND_RPC_MAINNET: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:8332"));
 static BITCOIND_RPC_TESTNET: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:18332"));
@@ -49,6 +49,18 @@ static COMIT_SOCKET: Lazy<Multiaddr> = Lazy::new(|| parse_unchecked("/ip4/0.0.0.
 // https://txstats.com/dashboard/db/fee-estimation?orgId=1&panelId=2&fullscreen&from=now-6M&to=now&var-source=blockcypher
 static FEERATE_SAT_PER_VBYTE: Lazy<bitcoin::Amount> = Lazy::new(|| bitcoin::Amount::from_sat(50));
 
+static CYPHERBLOCK_MAINNET_URL: Lazy<Url> = Lazy::new(|| {
+    "http://api.blockcypher.com/v1/btc/main"
+        .parse()
+        .expect("valid url")
+});
+
+static CYPHERBLOCK_TESTNET_URL: Lazy<Url> = Lazy::new(|| {
+    "http://api.blockcypher.com/v1/btc/test3"
+        .parse()
+        .expect("valid url")
+});
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Data {
@@ -64,66 +76,9 @@ impl Data {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Bitcoin {
-    pub network: ledger::Bitcoin,
-    pub bitcoind: Bitcoind,
-    pub fees: BitcoinFees,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Bitcoind {
     pub node_url: Url,
-}
-
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct BitcoinFees {
-    /// The static value to use
-    #[serde(default)]
-    #[serde(with = "comit::asset::bitcoin::sat_as_unsigned_int")]
-    pub sat_per_vbyte: bitcoin::Amount,
-}
-
-impl Default for BitcoinFees {
-    fn default() -> Self {
-        Self {
-            sat_per_vbyte: *FEERATE_SAT_PER_VBYTE,
-        }
-    }
-}
-
-impl Bitcoin {
-    fn default_from_network(network: ledger::Bitcoin) -> Self {
-        Self {
-            network,
-            bitcoind: Bitcoind::new(network),
-            fees: Default::default(),
-        }
-    }
-
-    fn from_file(bitcoin: file::Bitcoin, comit_network: Option<comit::Network>) -> Result<Self> {
-        if let Some(comit_network) = comit_network {
-            let inferred = ledger::Bitcoin::from(comit_network);
-            if inferred != bitcoin.network {
-                anyhow::bail!(
-                    "inferred Bitcoin network {} from CLI argument {} but config file says {}",
-                    inferred,
-                    comit_network,
-                    bitcoin.network
-                );
-            }
-        }
-
-        let network = bitcoin.network;
-        let bitcoind = bitcoin.bitcoind.unwrap_or_else(|| Bitcoind::new(network));
-        let fees = bitcoin.fees.unwrap_or_else(Default::default);
-        Ok(Bitcoin {
-            network,
-            bitcoind,
-            fees,
-        })
-    }
 }
 
 impl Bitcoind {
@@ -135,16 +90,6 @@ impl Bitcoind {
         };
 
         Bitcoind { node_url }
-    }
-}
-
-impl From<Bitcoin> for file::Bitcoin {
-    fn from(bitcoin: Bitcoin) -> Self {
-        file::Bitcoin {
-            network: bitcoin.network,
-            bitcoind: Some(bitcoin.bitcoind),
-            fees: Some(bitcoin.fees),
-        }
     }
 }
 
@@ -383,7 +328,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use spectral::prelude::*;
 
     #[test]
     fn lnd_deserializes_correctly() {
@@ -422,49 +366,5 @@ mod tests {
         };
 
         assert_eq!(actual, Ok(expected));
-    }
-
-    #[test]
-    fn given_network_on_cli_when_config_disagrees_then_error() {
-        let comit_network = comit::Network::Main;
-        let config_file = file::Bitcoin {
-            network: ledger::Bitcoin::Testnet,
-            bitcoind: None,
-            fees: None,
-        };
-
-        let result = Bitcoin::from_file(config_file, Some(comit_network));
-
-        assert_that(&result).is_err();
-    }
-
-    #[test]
-    fn given_no_network_on_cli_then_use_config() {
-        let config_file = file::Bitcoin {
-            network: ledger::Bitcoin::Testnet,
-            bitcoind: None,
-            fees: None,
-        };
-
-        let result = Bitcoin::from_file(config_file, None);
-
-        assert_that(&result)
-            .is_ok()
-            .map(|b| &b.network)
-            .is_equal_to(ledger::Bitcoin::Testnet);
-    }
-
-    #[test]
-    fn given_network_on_cli_when_config_specifies_the_same_then_ok() {
-        let comit_network = comit::Network::Main;
-        let config_file = file::Bitcoin {
-            network: ledger::Bitcoin::Mainnet,
-            bitcoind: None,
-            fees: None,
-        };
-
-        let result = Bitcoin::from_file(config_file, Some(comit_network));
-
-        assert_that(&result).is_ok();
     }
 }

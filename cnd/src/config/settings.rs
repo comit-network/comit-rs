@@ -1,4 +1,9 @@
-use crate::config::{file, Bitcoin, Data, Ethereum, File, Lightning, COMIT_SOCKET};
+use crate::config::{
+    file, Bitcoind, Data, Ethereum, File, Lightning, COMIT_SOCKET, CYPHERBLOCK_MAINNET_URL,
+    CYPHERBLOCK_TESTNET_URL, FEERATE_SAT_PER_VBYTE,
+};
+use anyhow::Result;
+use comit::ledger;
 use libp2p::core::Multiaddr;
 use log::LevelFilter;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -18,44 +23,6 @@ pub struct Settings {
     pub bitcoin: Bitcoin,
     pub ethereum: Ethereum,
     pub lightning: Lightning,
-}
-
-impl From<Settings> for File {
-    fn from(settings: Settings) -> Self {
-        let Settings {
-            network,
-            http_api: HttpApi { socket, cors },
-            data,
-            logging: Logging { level },
-            bitcoin,
-            ethereum,
-            lightning,
-        } = settings;
-
-        File {
-            network: Some(file::Network {
-                listen: network.listen,
-                peer_addresses: Some(network.peer_addresses),
-            }),
-            http_api: Some(file::HttpApi {
-                socket,
-                cors: Some(file::Cors {
-                    allowed_origins: match cors.allowed_origins {
-                        AllowedOrigins::All => file::AllowedOrigins::All(file::All::All),
-                        AllowedOrigins::None => file::AllowedOrigins::None(file::None::None),
-                        AllowedOrigins::Some(origins) => file::AllowedOrigins::Some(origins),
-                    },
-                }),
-            }),
-            data: Some(data),
-            logging: Some(file::Logging {
-                level: Some(level.into()),
-            }),
-            bitcoin: Some(bitcoin.into()),
-            ethereum: Some(ethereum.into()),
-            lightning: Some(lightning.into()),
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -159,6 +126,96 @@ impl From<file::Logging> for Logging {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Bitcoin {
+    pub network: ledger::Bitcoin,
+    pub bitcoind: Bitcoind,
+    pub fees: BitcoinFees,
+}
+
+impl Bitcoin {
+    fn default_from_network(network: ledger::Bitcoin) -> Self {
+        Self {
+            network,
+            bitcoind: Bitcoind::new(network),
+            fees: BitcoinFees::default_from_network(network),
+        }
+    }
+
+    pub fn from_file(
+        bitcoin: file::Bitcoin,
+        comit_network: Option<comit::Network>,
+    ) -> Result<Self> {
+        if let Some(comit_network) = comit_network {
+            let inferred = ledger::Bitcoin::from(comit_network);
+            if inferred != bitcoin.network {
+                anyhow::bail!(
+                    "inferred Bitcoin network {} from CLI argument {} but config file says {}",
+                    inferred,
+                    comit_network,
+                    bitcoin.network
+                );
+            }
+        }
+
+        let network = bitcoin.network;
+        let bitcoind = bitcoin.bitcoind.unwrap_or_else(|| Bitcoind::new(network));
+        let fees = bitcoin.fees.map_or_else(
+            || Ok(BitcoinFees::default_from_network(network)),
+            |file| BitcoinFees::from_file(file, network),
+        )?;
+
+        Ok(Bitcoin {
+            network,
+            bitcoind,
+            fees,
+        })
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum BitcoinFees {
+    StaticSatPerVbyte(bitcoin::Amount),
+    CypherBlock(url::Url),
+}
+
+impl BitcoinFees {
+    fn default_from_network(network: ledger::Bitcoin) -> Self {
+        use ledger::Bitcoin::*;
+
+        match network {
+            Mainnet => BitcoinFees::CypherBlock(CYPHERBLOCK_MAINNET_URL.clone()),
+            Testnet => BitcoinFees::CypherBlock(CYPHERBLOCK_TESTNET_URL.clone()),
+            Regtest => BitcoinFees::StaticSatPerVbyte(*FEERATE_SAT_PER_VBYTE),
+        }
+    }
+
+    fn from_file(file: file::BitcoinFees, network: ledger::Bitcoin) -> Result<Self> {
+        use file::BitcoinFeesStrategy::*;
+
+        match (file.strategy, file.r#static, file.cypherblock) {
+            (Static, _, Some(_)) => anyhow::bail!(
+                "bitcoin.fees.cypherblock must not be present if the static strategy is selected."
+            ),
+            (Static, Some(file::Static { sat_per_vbyte }), None) => {
+                Ok(Self::StaticSatPerVbyte(sat_per_vbyte))
+            }
+            (Static, None, None) => Ok(Self::StaticSatPerVbyte(*FEERATE_SAT_PER_VBYTE)),
+            (CypherBlock, Some(_), _) => anyhow::bail!(
+                "bitcoin.fees.static must not be present if the cypherblock strategy is selected."
+            ),
+            (
+                CypherBlock,
+                None,
+                Some(file::CypherBlock {
+                    blockchain_endpoint_url,
+                }),
+            ) => Ok(Self::CypherBlock(blockchain_endpoint_url)),
+            (CypherBlock, None, None) => Ok(Self::default_from_network(network)),
+        }
+    }
+}
+
 impl Settings {
     pub fn from_config_file_and_defaults(
         config_file: File,
@@ -204,7 +261,7 @@ impl Settings {
 mod tests {
     use super::*;
     use crate::{
-        config::{file, BitcoinFees, Bitcoind, Geth, Lnd, Tokens, DAI_MAINNET},
+        config::{file, Bitcoind, Geth, Lnd, Tokens, DAI_MAINNET},
         ethereum::ChainId,
     };
     use comit::ledger;
@@ -300,21 +357,33 @@ mod tests {
                 bitcoind: Bitcoind {
                     node_url: "http://localhost:8332".parse().unwrap(),
                 },
-                fees: BitcoinFees {
-                    sat_per_vbyte: bitcoin::Amount::from_sat(50),
-                },
+                fees: BitcoinFees::CypherBlock(CYPHERBLOCK_MAINNET_URL.clone()),
             })
     }
 
     #[test]
     fn bitcoin_defaults_network_only() {
         let defaults = vec![
-            (ledger::Bitcoin::Mainnet, "http://localhost:8332"),
-            (ledger::Bitcoin::Testnet, "http://localhost:18332"),
-            (ledger::Bitcoin::Regtest, "http://localhost:18443"),
+            (
+                ledger::Bitcoin::Mainnet,
+                "http://localhost:8332",
+                BitcoinFees::CypherBlock("http://api.blockcypher.com/v1/btc/main".parse().unwrap()),
+            ),
+            (
+                ledger::Bitcoin::Testnet,
+                "http://localhost:18332",
+                BitcoinFees::CypherBlock(
+                    "http://api.blockcypher.com/v1/btc/test3".parse().unwrap(),
+                ),
+            ),
+            (
+                ledger::Bitcoin::Regtest,
+                "http://localhost:18443",
+                BitcoinFees::StaticSatPerVbyte(bitcoin::Amount::from_sat(50)),
+            ),
         ];
 
-        for (network, url) in defaults {
+        for (network, url, fees) in defaults {
             let config_file = File {
                 bitcoin: Some(file::Bitcoin {
                     network,
@@ -334,7 +403,7 @@ mod tests {
                     bitcoind: Bitcoind {
                         node_url: url.parse().unwrap(),
                     },
-                    fees: Default::default(),
+                    fees,
                 })
         }
     }
@@ -409,5 +478,79 @@ mod tests {
         let settings = Settings::from_config_file_and_defaults(config_file, None);
 
         assert_that(&settings).is_err();
+    }
+
+    #[test]
+    fn given_network_on_cli_when_config_disagrees_then_error() {
+        let comit_network = comit::Network::Main;
+        let config_file = file::Bitcoin {
+            network: ledger::Bitcoin::Testnet,
+            bitcoind: None,
+            fees: None,
+        };
+
+        let result = Bitcoin::from_file(config_file, Some(comit_network));
+
+        assert_that(&result).is_err();
+    }
+
+    #[test]
+    fn given_no_network_on_cli_then_use_config() {
+        let config_file = file::Bitcoin {
+            network: ledger::Bitcoin::Testnet,
+            bitcoind: None,
+            fees: None,
+        };
+
+        let result = Bitcoin::from_file(config_file, None);
+
+        assert_that(&result)
+            .is_ok()
+            .map(|b| &b.network)
+            .is_equal_to(ledger::Bitcoin::Testnet);
+    }
+
+    #[test]
+    fn given_network_on_cli_when_config_specifies_the_same_then_ok() {
+        let comit_network = comit::Network::Main;
+        let config_file = file::Bitcoin {
+            network: ledger::Bitcoin::Mainnet,
+            bitcoind: None,
+            fees: None,
+        };
+
+        let result = Bitcoin::from_file(config_file, Some(comit_network));
+
+        assert_that(&result).is_ok();
+    }
+
+    #[test]
+    fn given_bitcoin_fees_static_strategy_and_cypherblock_config_present_then_error() {
+        let config_file = file::BitcoinFees {
+            strategy: file::BitcoinFeesStrategy::Static,
+            cypherblock: Some(file::CypherBlock {
+                blockchain_endpoint_url: "http://1.1.1.1:123".parse().unwrap(),
+            }),
+            r#static: None,
+        };
+
+        let result = BitcoinFees::from_file(config_file, ledger::Bitcoin::Mainnet);
+
+        assert_that(&result).is_err();
+    }
+
+    #[test]
+    fn given_bitcoin_fees_cypherblock_strategy_and_cypherblock_config_present_then_error() {
+        let config_file = file::BitcoinFees {
+            strategy: file::BitcoinFeesStrategy::CypherBlock,
+            cypherblock: None,
+            r#static: Some(file::Static {
+                sat_per_vbyte: bitcoin::Amount::from_sat(10),
+            }),
+        };
+
+        let result = BitcoinFees::from_file(config_file, ledger::Bitcoin::Mainnet);
+
+        assert_that(&result).is_err();
     }
 }
