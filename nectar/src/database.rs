@@ -188,6 +188,15 @@ impl Database {
     }
 }
 
+impl Load<SwapKind> for Database {
+    fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<SwapKind>> {
+        let swap = self.get_swap(&swap_id)?;
+        let swap_kind = swap.map(|swap| SwapKind::from((swap, swap_id)));
+
+        Ok(swap_kind)
+    }
+}
+
 /// These methods are used to prevent a peer from having more than one ongoing
 /// swap with nectar An active peer refers to one that has an ongoing swap with
 /// nectar.
