@@ -109,7 +109,7 @@ impl Database {
     pub async fn insert_swap(&self, swap: SwapKind) -> anyhow::Result<()> {
         let swap_id = swap.swap_id();
 
-        let stored_swap = self.get_swap(&swap_id);
+        let stored_swap = self.get_swap_or_bail(&swap_id);
 
         match stored_swap {
             Ok(_) => Err(anyhow!("Swap is already stored")),
@@ -168,15 +168,23 @@ impl Database {
             .context("Could not flush db")
     }
 
-    fn get_swap(&self, swap_id: &SwapId) -> anyhow::Result<Swap> {
-        let key = serialize(swap_id)?;
-
+    fn get_swap_or_bail(&self, swap_id: &SwapId) -> anyhow::Result<Swap> {
         let swap = self
-            .db
-            .get(&key)?
+            .get_swap(swap_id)?
             .ok_or_else(|| anyhow!("Swap does not exists {}", swap_id))?;
 
-        deserialize(&swap).context("Could not deserialize swap")
+        Ok(swap)
+    }
+
+    fn get_swap(&self, swap_id: &SwapId) -> anyhow::Result<Option<Swap>> {
+        let key = serialize(swap_id)?;
+
+        let swap = match self.db.get(&key)? {
+            Some(data) => deserialize(&data).context("Could not deserialize swap")?,
+            None => return Ok(None),
+        };
+
+        Ok(Some(swap))
     }
 }
 
