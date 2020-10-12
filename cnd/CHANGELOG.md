@@ -7,13 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [cnd-0.9.0] - 2020-10-12
+
 ### Added
 
 -   A set of API endpoints that expose the decentralized orderbook functionality.
 -   Ability to configure the Bitcoin fee rate with a static value for the redeem and refund transactions.
 -   Disallow unknown keys in the config file.
-Previously, unknown configuration keys would just be ignored.
-`cnd` will now refuse to startup if the configuration file contains unknown keys.
+    Previously, unknown configuration keys would just be ignored.
+    `cnd` will now refuse to startup if the configuration file contains unknown keys.
 
 ### Changed
 
@@ -21,7 +23,6 @@ Previously, unknown configuration keys would just be ignored.
 -   **Breaking Change** Config directory for MacOS changed from `/Users/<user>/Library/Preferences/comit/` to `/Users/<user>/Library/Application Support/comit/`.
 -   Update the expected network times to calculate the expiries: We expect Bitcoin's transactions to be included within 6 blocks and Ethereum's within 30 blocks.
 -   Use CypherBlock Bitcoin fee estimation service for redeem and refund transactions.
-
 
 ## [0.8.0] - 2020-06-12
 
@@ -151,7 +152,9 @@ Previously, unknown configuration keys would just be ignored.
 -   Move config files to standard location based on platform (OSX, Windows, Linux).
 -   Align implementation with RFC-002 to use the decision header instead of status codes.
 
-[Unreleased]: https://github.com/comit-network/comit-rs/compare/0.8.0...HEAD
+[Unreleased]: https://github.com/comit-network/comit-rs/compare/cnd-0.9.0...HEAD
+
+[cnd-0.9.0]: https://github.com/comit-network/comit-rs/compare/0.8.0...cnd-0.9.0
 
 [0.8.0]: https://github.com/comit-network/comit-rs/compare/0.7.3...0.8.0
 
