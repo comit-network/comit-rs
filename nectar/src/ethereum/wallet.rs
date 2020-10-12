@@ -307,6 +307,32 @@ impl Wallet {
             .await
     }
 
+    pub async fn sign(
+        &self,
+        transaction_fn: impl FnOnce(Uint256) -> clarity::Transaction,
+        chain_id: ChainId,
+    ) -> anyhow::Result<String> {
+        self.assert_chain(chain_id).await?;
+
+        let nonce = self.get_transaction_count().await?;
+        let transaction = transaction_fn(nonce.into());
+
+        let signed_transaction = transaction.sign(
+            &self.private_key,
+            Some(u32::from(self.chain.chain_id()) as u64),
+        );
+        let transaction_hex = format!(
+            "0x{}",
+            hex::encode(
+                signed_transaction
+                    .to_bytes()
+                    .context("failed to serialize signed transaction to bytes")?
+            )
+        );
+
+        Ok(transaction_hex)
+    }
+
     async fn get_transaction_receipt(
         &self,
         transaction_hash: Hash,
@@ -362,32 +388,6 @@ impl Wallet {
 
     async fn gas_limit(&self, request: EstimateGasRequest) -> anyhow::Result<clarity::Uint256> {
         self.geth_client.gas_limit(request).await
-    }
-
-    async fn sign(
-        &self,
-        transaction_fn: impl FnOnce(Uint256) -> clarity::Transaction,
-        chain_id: ChainId,
-    ) -> anyhow::Result<String> {
-        self.assert_chain(chain_id).await?;
-
-        let nonce = self.get_transaction_count().await?;
-        let transaction = transaction_fn(nonce.into());
-
-        let signed_transaction = transaction.sign(
-            &self.private_key,
-            Some(u32::from(self.chain.chain_id()) as u64),
-        );
-        let transaction_hex = format!(
-            "0x{}",
-            hex::encode(
-                signed_transaction
-                    .to_bytes()
-                    .context("failed to serialize signed transaction to bytes")?
-            )
-        );
-
-        Ok(transaction_hex)
     }
 
     #[cfg(test)]
