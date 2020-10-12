@@ -2,11 +2,11 @@ use crate::{
     ethereum::{
         self, dai, ether,
         geth::{Client, EstimateGasRequest},
-        Address, ChainId, Hash, DAI_TRANSFER_GAS_LIMIT,
+        to_clarity_address, Address, ChainId, Hash, DAI_TRANSFER_GAS_LIMIT,
     },
     Seed,
 };
-use anyhow::{Context, Result};
+use anyhow::Context;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
 use clarity::Uint256;
 use comit::{
@@ -607,9 +607,4 @@ mod tests {
             .await
             .unwrap();
     }
-}
-
-fn to_clarity_address(to: Address) -> Result<clarity::Address> {
-    clarity::Address::from_slice(to.as_bytes())
-        .context("failed to create private key from byte slice")
 }
