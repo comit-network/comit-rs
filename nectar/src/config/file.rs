@@ -129,6 +129,7 @@ pub struct Logging {
 }
 
 #[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
 pub enum Level {
     Error,
     Warn,
@@ -217,7 +218,7 @@ listen = ["/ip4/0.0.0.0/tcp/9939"]
 dir = "/tmp/nectar/"
 
 [logging]
-level = "Debug"
+level = "debug"
 
 [bitcoin]
 network = "regtest"
@@ -360,7 +361,7 @@ listen = ["/ip4/0.0.0.0/tcp/9939"]
 dir = "/tmp/nectar/"
 
 [logging]
-level = "Debug"
+level = "debug"
 
 [bitcoin]
 network = "regtest"

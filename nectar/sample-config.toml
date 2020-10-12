@@ -29,8 +29,8 @@ listen = ["/ip4/0.0.0.0/tcp/9939"]
 dir = "/Users/froyer/Library/Application Support/nectar"
 
 [logging]
-# Logging level for nectar: Error, Warn, Info, Debug or Trace.
-level = "Info"
+# Logging level for nectar: error, warn, info, debug or trace.
+level = "info"
 
 [bitcoin]
 # The Bitcoin network nectar is acting on: mainnet, testnet or regtest

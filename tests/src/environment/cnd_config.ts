@@ -25,7 +25,7 @@ export async function newCndConfig(
             listen: [`/ip4/0.0.0.0/tcp/${comitPort}`],
         },
         logging: {
-            level: "Trace",
+            level: "trace",
         },
         ...makeLedgerConfig(env, role),
     };
