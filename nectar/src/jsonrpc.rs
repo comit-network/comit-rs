@@ -1,5 +1,4 @@
 use anyhow::Context;
-use futures::TryFutureExt;
 use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
 
@@ -41,8 +40,8 @@ impl Client {
             .post(url.clone())
             .json(&request)
             .send()
-            .map_err(ConnectionFailed)
-            .await?
+            .await
+            .context("failed to send request")?
             .json::<Response<Res>>()
             .await
             .context("failed to deserialize JSON response as JSON-RPC response")?
@@ -106,10 +105,6 @@ pub struct JsonRpcError {
     code: i64,
     message: String,
 }
-
-#[derive(Debug, thiserror::Error)]
-#[error("connection error: {0}")]
-pub struct ConnectionFailed(#[from] reqwest::Error);
 
 pub fn serialize<T>(t: T) -> anyhow::Result<serde_json::Value>
 where
