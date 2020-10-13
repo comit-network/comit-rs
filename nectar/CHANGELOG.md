@@ -18,10 +18,8 @@ Previously, unknown configuration keys would just be ignored.
 ### Changed
 
 -   Update the expected network times to calculate the expiries: We expect Bitcoin's transactions to be included within 6 blocks and Ethereum's within 30 blocks.
-
-### Changed
-
 -   By default, use bitcoind's `estimatsmartfee` feature to estimate Bitcoin fees.
 For Ethereum, Eth Gas Station API is used.
+-   Change log level configuration format from capitalised (e.g. "Debug") to lowercase (e.g. "debug").
 
 [Unreleased]: https://github.com/comit-network/comit-rs/compare/d5d26e42a2d8dd026ae94f2c8a9e0bd80ab81133...HEAD

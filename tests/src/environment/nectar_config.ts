@@ -16,7 +16,7 @@ export async function newNectarConfig(env: Environment): Promise<NectarConfig> {
             listen: [`/ip4/0.0.0.0/tcp/${comitPort}`],
         },
         logging: {
-            level: "Trace",
+            level: "trace",
         },
         ...makeLedgerConfig(env),
         ...makeMakerConfig(env),
@@ -117,7 +117,7 @@ interface Data {
 }
 
 interface Logging {
-    level?: "Trace" | "Debug" | "Info" | "Warn" | "Error";
+    level?: "trace" | "debug" | "info" | "warn" | "error";
 }
 
 interface Bitcoin {

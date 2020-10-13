@@ -136,6 +136,7 @@ pub struct Logging {
 }
 
 #[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
 pub enum Level {
     Error,
     Warn,
@@ -381,7 +382,7 @@ allowed_origins = "all"
 dir = "/tmp/comit/"
 
 [logging]
-level = "Debug"
+level = "debug"
 
 [bitcoin]
 network = "regtest"
