@@ -7,11 +7,10 @@ use anyhow::{anyhow, Context};
 use comit::{
     asset::Erc20,
     ethereum,
-    ethereum::{Hash, Transaction, U256},
+    ethereum::{Hash, Transaction, UnformattedData, U256},
     identity, Secret, SecretHash, Timestamp,
 };
 use serde::{Deserialize, Serialize};
-use serde_hex::{SerHexSeq, StrictPfx};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Herc20Deployed {
@@ -271,8 +270,7 @@ pub struct EthereumTransaction {
     pub hash: Hash,
     pub to: Option<ethereum::Address>,
     pub value: U256,
-    #[serde(with = "SerHexSeq::<StrictPfx>")]
-    pub input: Vec<u8>,
+    pub input: UnformattedData,
 }
 
 impl From<EthereumTransaction> for ethereum::Transaction {
