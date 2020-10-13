@@ -84,8 +84,12 @@ use self::{
     spawn::*,
     storage::{RootSeed, Sqlite, Storage},
 };
+use crate::{
+    cli::{Command, CreateTransaction},
+    storage::{Load, SwapContext},
+};
 use ::bitcoin::secp256k1::{All, Secp256k1};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use comit::{
     ledger, lnd::LndConnectorParams, LockProtocol, Never, RelativeTime, Role, Secret, SecretHash,
     Side, Timestamp,
@@ -129,10 +133,27 @@ async fn main() -> Result<()> {
     }));
 
     let database = Sqlite::new_in_dir(&settings.data.dir)?;
-
     let seed = RootSeed::from_dir_or_generate(&settings.data.dir, OsRng)?;
+    let storage = Storage::new(database, seed);
 
     let _locked_datadir = &settings.data.dir.try_lock_exclusive()?;
+
+    let bitcoin_fees = match &settings.bitcoin.fees {
+        config::BitcoinFees::StaticSatPerVbyte(fee) => BitcoinFees::static_rate(*fee),
+        config::BitcoinFees::CypherBlock(url) => {
+            BitcoinFees::block_cypher(url.clone(), options.network.unwrap_or_default())
+        }
+    };
+
+    #[allow(clippy::print_stdout)] // The point of these sub-commands is to print to stdout.
+    if let Some(cmd) = options.cmd {
+        let to_print = execute_subcommand(cmd, &storage, &bitcoin_fees)
+            .await
+            .context("failed to execute subcommand")?;
+
+        println!("{}", to_print);
+        return Ok(());
+    }
 
     let bitcoin_connector = {
         let config::Bitcoin {
@@ -186,7 +207,6 @@ async fn main() -> Result<()> {
     .ok();
 
     let connectors = Connectors::new(bitcoin_connector, ethereum_connector, lnd_connector_params);
-    let storage = Storage::new(database, seed);
 
     let swarm = Swarm::new(
         &settings,
@@ -205,13 +225,6 @@ async fn main() -> Result<()> {
     match republish_open_orders(storage.clone(), swarm.clone()).await {
         Ok(()) => {}
         Err(e) => tracing::warn!("failed to republish orders: {:#}", e),
-    };
-
-    let bitcoin_fees = match &settings.bitcoin.fees {
-        config::BitcoinFees::StaticSatPerVbyte(fee) => BitcoinFees::static_rate(*fee),
-        config::BitcoinFees::CypherBlock(url) => {
-            BitcoinFees::block_cypher(url.clone(), options.network.unwrap_or_default())
-        }
     };
 
     tokio::spawn(make_http_api_worker(
@@ -283,4 +296,149 @@ async fn make_network_api_worker(swarm: Swarm) {
     let worker = SwarmWorker { swarm };
 
     worker.await
+}
+
+async fn execute_subcommand(
+    cmd: Command,
+    storage: &Storage,
+    bitcoin_fees: &BitcoinFees,
+) -> Result<String> {
+    match cmd {
+        Command::PrintSecret { swap_id } => {
+            let swap_context: SwapContext = storage
+                .load(swap_id)
+                .await
+                .with_context(|| format!("failed to load swap {} from database", swap_id))?;
+
+            if let Role::Bob = swap_context.role {
+                anyhow::bail!(
+                    "We are Bob for swap {} and Bob doesn't choose the secret",
+                    swap_id
+                )
+            }
+
+            let secret = storage.seed.derive_swap_seed(swap_id).derive_secret();
+
+            Ok(format!("{:x}", secret))
+        }
+        Command::CreateTransaction(CreateTransaction::Redeem {
+            swap_id,
+            secret,
+            outpoint,
+            address,
+        }) => {
+            let swap_context: SwapContext = storage
+                .load(swap_id)
+                .await
+                .with_context(|| format!("failed to load swap {} from database", swap_id))?;
+
+            let secret = match (secret, swap_context.role) {
+                (Some(_), Role::Alice) => anyhow::bail!(
+                    "We are Alice for swap {}, no need to provide a secret on the commandline",
+                    swap_id
+                ),
+                (None, Role::Bob) => anyhow::bail!(
+                    "We are Bob for swap {}, please provide the secret for this swap with --secret",
+                    swap_id
+                ),
+                (Some(secret), Role::Bob) => secret,
+                (None, Role::Alice) => storage.seed.derive_swap_seed(swap_id).derive_secret(),
+            };
+
+            let hbit_params = match swap_context {
+                SwapContext {
+                    alpha: LockProtocol::Hbit,
+                    beta: LockProtocol::Herc20,
+                    role: Role::Bob,
+                    ..
+                } => {
+                    let swap: Swap<hbit::Params, herc20::Params> = storage.load(swap_id).await?;
+
+                    swap.alpha
+                }
+                SwapContext {
+                    alpha: LockProtocol::Herc20,
+                    beta: LockProtocol::Hbit,
+                    role: Role::Alice,
+                    ..
+                } => {
+                    let swap: Swap<herc20::Params, hbit::Params> = storage.load(swap_id).await?;
+
+                    swap.beta
+                }
+                _ => {
+                    anyhow::bail!("Swap {} does either not involve hbit or we are not in the correct role to redeem it")
+                }
+            };
+
+            let transaction = hbit_params.build_redeem_action(
+                &*SECP,
+                hbit_params.asset,
+                outpoint,
+                storage
+                    .seed
+                    .derive_swap_seed(swap_id)
+                    .derive_transient_redeem_identity(),
+                address,
+                secret,
+                bitcoin_fees.get_per_vbyte_rate().await?,
+            )?;
+
+            Ok(hex::encode(::bitcoin::consensus::serialize(
+                &transaction.transaction,
+            )))
+        }
+        Command::CreateTransaction(CreateTransaction::Refund {
+            swap_id,
+            outpoint,
+            address,
+        }) => {
+            let swap_context: SwapContext = storage
+                .load(swap_id)
+                .await
+                .with_context(|| format!("failed to load swap {} from database", swap_id))?;
+
+            let hbit_params = match swap_context {
+                SwapContext {
+                    alpha: LockProtocol::Hbit,
+                    beta: LockProtocol::Herc20,
+                    role: Role::Bob,
+                    ..
+                } => {
+                    let swap: Swap<hbit::Params, herc20::Params> = storage.load(swap_id).await?;
+
+                    swap.alpha
+                }
+                SwapContext {
+                    alpha: LockProtocol::Herc20,
+                    beta: LockProtocol::Hbit,
+                    role: Role::Alice,
+                    ..
+                } => {
+                    let swap: Swap<herc20::Params, hbit::Params> = storage.load(swap_id).await?;
+
+                    swap.beta
+                }
+                _ => {
+                    anyhow::bail!("Swap {} does either not involve hbit or we are not in the correct role to redeem it")
+                }
+            };
+
+            let transaction = hbit_params.build_refund_action(
+                &*SECP,
+                hbit_params.asset,
+                outpoint,
+                storage
+                    .seed
+                    .derive_swap_seed(swap_id)
+                    .derive_transient_redeem_identity(),
+                address,
+                bitcoin_fees.get_per_vbyte_rate().await?,
+            )?;
+
+            Ok(hex::encode(::bitcoin::consensus::serialize(
+                &transaction.transaction,
+            )))
+        }
+    }
 }
