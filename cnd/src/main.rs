@@ -85,6 +85,7 @@ use self::{
     storage::{RootSeed, Sqlite, Storage},
 };
 use ::bitcoin::secp256k1::{All, Secp256k1};
+use anyhow::Result;
 use comit::{
     ledger, lnd::LndConnectorParams, LockProtocol, Never, RelativeTime, Role, Secret, SecretHash,
     Side, Timestamp,
@@ -99,7 +100,7 @@ use tokio::{net::TcpListener, runtime::Handle};
 pub static SECP: Lazy<Secp256k1<All>> = Lazy::new(Secp256k1::new);
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     let options = cli::Options::from_args();
 
     if options.version {
@@ -245,7 +246,7 @@ fn version() {
 /// Fails if we cannot bind to the socket.
 /// We do this ourselves so we can shut down if this fails and don't just panic
 /// some worker thread in tokio.
-async fn bind_http_api_socket(settings: &Settings) -> anyhow::Result<tokio::net::TcpListener> {
+async fn bind_http_api_socket(settings: &Settings) -> Result<tokio::net::TcpListener> {
     let listen_addr = settings.http_api.socket;
     let listener = TcpListener::bind(listen_addr).await?;
 
