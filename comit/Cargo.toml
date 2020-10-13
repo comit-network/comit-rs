@@ -1,5 +1,5 @@
 [package]
-authors = ["CoBloX developers <team@coblox.tech>"]
+authors = ["CoBloX <hello@coblox.tech>"]
 name = "comit"
 version = "0.1.0"
 edition = "2018"
