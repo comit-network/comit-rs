@@ -142,8 +142,7 @@ async fn main() -> anyhow::Result<()> {
         let connector = BitcoindConnector::new(bitcoind.node_url.clone())?;
 
         match validate_connection_to_network(&connector, *network).await {
-            Ok(Err(network_mismatch)) => return Err(network_mismatch.into()),
-            Ok(Ok(())) => {}
+            Ok(inner) => inner?,
             Err(e) => tracing::warn!("Could not validate Bitcoin node config: {}", e),
         }
 
@@ -157,8 +156,7 @@ async fn main() -> anyhow::Result<()> {
         let connector = Web3Connector::new(geth.node_url.clone());
 
         match validate_connection_to_network(&connector, *chain_id).await {
-            Ok(Err(network_mismatch)) => return Err(network_mismatch.into()),
-            Ok(Ok(())) => {}
+            Ok(inner) => inner?,
             Err(e) => tracing::warn!("Could not validate Ethereum node config: {}", e),
         }
 
