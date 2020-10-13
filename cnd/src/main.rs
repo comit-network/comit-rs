@@ -90,14 +90,16 @@ use comit::{
     Side, Timestamp,
 };
 use conquer_once::Lazy;
+use futures::future;
 use rand::rngs::OsRng;
 use std::{env, process};
 use structopt::StructOpt;
-use tokio::{net::TcpListener, runtime};
+use tokio::{net::TcpListener, runtime::Handle};
 
 pub static SECP: Lazy<Secp256k1<All>> = Lazy::new(Secp256k1::new);
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let options = cli::Options::from_args();
 
     if options.version {
@@ -131,11 +133,6 @@ fn main() -> anyhow::Result<()> {
 
     let _locked_datadir = &settings.data.dir.try_lock_exclusive()?;
 
-    let mut runtime = runtime::Builder::new()
-        .enable_all()
-        .threaded_scheduler()
-        .build()?;
-
     let bitcoin_connector = {
         let config::Bitcoin {
             bitcoind,
@@ -144,16 +141,11 @@ fn main() -> anyhow::Result<()> {
         } = &settings.bitcoin;
         let connector = BitcoindConnector::new(bitcoind.node_url.clone())?;
 
-        runtime.block_on(async {
-            match validate_connection_to_network(&connector, *network).await {
-                Ok(Err(network_mismatch)) => Err(network_mismatch),
-                Ok(Ok(())) => Ok(()),
-                Err(e) => {
-                    tracing::warn!("Could not validate Bitcoin node config: {}", e);
-                    Ok(())
-                }
-            }
-        })?;
+        match validate_connection_to_network(&connector, *network).await {
+            Ok(Err(network_mismatch)) => return Err(network_mismatch.into()),
+            Ok(Ok(())) => {}
+            Err(e) => tracing::warn!("Could not validate Bitcoin node config: {}", e),
+        }
 
         const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
 
@@ -164,16 +156,11 @@ fn main() -> anyhow::Result<()> {
         let config::Ethereum { geth, chain_id, .. } = &settings.ethereum;
         let connector = Web3Connector::new(geth.node_url.clone());
 
-        runtime.block_on(async {
-            match validate_connection_to_network(&connector, *chain_id).await {
-                Ok(Err(network_mismatch)) => Err(network_mismatch),
-                Ok(Ok(())) => Ok(()),
-                Err(e) => {
-                    tracing::warn!("Could not validate Ethereum node config: {}", e);
-                    Ok(())
-                }
-            }
-        })?;
+        match validate_connection_to_network(&connector, *chain_id).await {
+            Ok(Err(network_mismatch)) => return Err(network_mismatch.into()),
+            Ok(Ok(())) => {}
+            Err(e) => tracing::warn!("Could not validate Ethereum node config: {}", e),
+        }
 
         const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
         const ETHEREUM_RECEIPT_CACHE_CAPACITY: usize = 720;
@@ -202,24 +189,21 @@ fn main() -> anyhow::Result<()> {
     let connectors = Connectors::new(bitcoin_connector, ethereum_connector, lnd_connector_params);
     let storage = Storage::new(database, seed);
 
-    let swarm = runtime.block_on(Swarm::new(
+    let swarm = Swarm::new(
         &settings,
         seed,
-        runtime.handle().clone(),
+        Handle::current(),
         storage.clone(),
         connectors.clone(),
-    ))?;
+    )
+    .await?;
 
-    let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;
-    match runtime.block_on(respawn(
-        storage.clone(),
-        connectors.clone(),
-        runtime.handle().clone(),
-    )) {
+    let http_api_listener = bind_http_api_socket(&settings).await?;
+    match respawn(storage.clone(), connectors.clone(), Handle::current()).await {
         Ok(()) => {}
         Err(e) => tracing::warn!("failed to respawn swaps: {:#}", e),
     };
-    match runtime.block_on(republish_open_orders(storage.clone(), swarm.clone())) {
+    match republish_open_orders(storage.clone(), swarm.clone()).await {
         Ok(()) => {}
         Err(e) => tracing::warn!("failed to republish orders: {:#}", e),
     };
@@ -231,7 +215,7 @@ fn main() -> anyhow::Result<()> {
         }
     };
 
-    runtime.spawn(make_http_api_worker(
+    tokio::spawn(make_http_api_worker(
         settings,
         bitcoin_fees,
         options.network.unwrap_or_default(),
@@ -240,9 +224,9 @@ fn main() -> anyhow::Result<()> {
         connectors,
         http_api_listener,
     ));
-    runtime.spawn(make_network_api_worker(swarm));
+    tokio::spawn(make_network_api_worker(swarm));
 
-    ::std::thread::park();
+    future::pending::<()>().await;
 
     Ok(())
 }
