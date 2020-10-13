@@ -1,38 +1,14 @@
 use crate::{
-    db,
-    http_api::{
-        routes::rfc003::handlers::{
-            post_swap::UnsupportedSwap, InvalidAction, InvalidActionInvocation,
-        },
-        ActionNotFound,
-    },
+    http_api::ActionNotFound,
+    storage::{NoOrderExists, NoSwapExists, NotOpen},
 };
 use http_api_problem::HttpApiProblem;
+use std::error::Error;
 use warp::{
+    body::BodyDeserializeError,
     http::{self, StatusCode},
     Rejection, Reply,
 };
-
-#[derive(Debug, Clone, Copy, thiserror::Error)]
-#[error("Missing GET parameters for a {} action type. Expected: {:?}", action, parameters.iter().map(|parameter| parameter.name).collect::<Vec<&str>>())]
-pub struct MissingQueryParameters {
-    pub action: &'static str,
-    pub parameters: &'static [MissingQueryParameter],
-}
-
-#[derive(Debug, Clone, Copy, serde::Serialize)]
-pub struct MissingQueryParameter {
-    pub name: &'static str,
-    pub data_type: &'static str,
-    pub description: &'static str,
-}
-
-#[derive(Debug, Clone, Copy, thiserror::Error)]
-#[error("unexpected GET parameters {parameters:?} for a {action} action type, expected: none")]
-pub struct UnexpectedQueryParameters {
-    pub action: &'static str,
-    pub parameters: &'static [&'static str],
-}
 
 #[derive(Debug, Clone, Copy, thiserror::Error)]
 #[error("{ledger:?} is not properly configured, swap involving this ledger are not available.")]
@@ -40,109 +16,84 @@ pub struct LedgerNotConfigured {
     pub ledger: &'static str,
 }
 
-// tracing triggers clippy warning, issue reported: https://github.com/tokio-rs/tracing/issues/553
-#[allow(clippy::cognitive_complexity)]
 pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
+    // first, check if our inner error is already a problem
     let e = match e.downcast::<HttpApiProblem>() {
         Ok(problem) => return problem,
         Err(e) => e,
     };
 
-    if let Some(db::Error::SwapNotFound) = e.downcast_ref::<db::Error>() {
-        tracing::error!("swap was not found");
-        return HttpApiProblem::new("Swap not found.").set_status(StatusCode::NOT_FOUND);
-    }
-
-    if let Some(e) = e.downcast_ref::<UnexpectedQueryParameters>() {
-        tracing::error!("{}", e);
-
-        let mut problem = HttpApiProblem::new("Unexpected query parameter(s).")
-            .set_status(StatusCode::BAD_REQUEST)
-            .set_detail("This action does not take any query parameters.");
-
-        problem
-            .set_value("unexpected_parameters", &e.parameters)
-            .expect("parameters will never fail to serialize");
-
-        return problem;
-    }
-
-    if let Some(e) = e.downcast_ref::<MissingQueryParameters>() {
-        tracing::error!("{}", e);
-
-        let mut problem = HttpApiProblem::new("Missing query parameter(s).")
-            .set_status(StatusCode::BAD_REQUEST)
-            .set_detail("This action requires additional query parameters.");
-
-        problem
-            .set_value("missing_parameters", &e.parameters)
-            .expect("parameters will never fail to serialize");
-
-        return problem;
-    }
-
-    if e.is::<serde_json::Error>() {
-        tracing::error!("deserialization error: {}", e);
-
-        return HttpApiProblem::new("Invalid body.")
-            .set_status(StatusCode::BAD_REQUEST)
-            .set_detail(format!("{:?}", e));
-    }
-
-    if e.is::<InvalidActionInvocation>() {
-        tracing::warn!("{}", e);
-
-        return HttpApiProblem::new("Invalid action invocation")
-            .set_status(http::StatusCode::METHOD_NOT_ALLOWED);
-    }
-
-    if e.is::<InvalidAction>() {
-        tracing::warn!("{}", e);
-
-        return HttpApiProblem::new("Invalid action.")
-            .set_status(StatusCode::CONFLICT)
-            .set_detail("Cannot perform requested action for this swap.");
-    }
-
-    if e.is::<UnsupportedSwap>() {
-        tracing::warn!("{}", e);
-
-        return HttpApiProblem::new("Swap not supported.")
-            .set_status(StatusCode::BAD_REQUEST)
-            .set_detail("The requested combination of ledgers and assets is not supported.");
-    }
-
-    if e.is::<ActionNotFound>() {
-        return HttpApiProblem::new("Action not found.").set_status(StatusCode::NOT_FOUND);
-    }
-
+    // second, check all errors where we need to downcast to
     if let Some(err) = e.downcast_ref::<LedgerNotConfigured>() {
-        tracing::warn!("{}", e);
-
         return HttpApiProblem::new(format!("{} is not configured.", err.ledger))
             .set_status(StatusCode::BAD_REQUEST)
             .set_detail(format!("{} ledger is not properly configured, swap involving this ledger are not available.", err.ledger));
     }
 
-    tracing::error!("internal error occurred: {:#}", e);
+    let known_error = match &e {
+        e if e.is::<NoSwapExists>() => {
+            HttpApiProblem::new("Swap not found.").set_status(StatusCode::NOT_FOUND)
+        }
+        e if e.is::<NoOrderExists>() => {
+            HttpApiProblem::new("Order not found.").set_status(StatusCode::NOT_FOUND)
+        }
+        e if e.is::<NotOpen>() => HttpApiProblem::new("Order can no longer be cancelled.")
+            .set_status(StatusCode::BAD_REQUEST),
+        e if e.is::<ActionNotFound>() => {
+            HttpApiProblem::new("Action not found.").set_status(StatusCode::NOT_FOUND)
+        }
+        // Use if let here once stable: https://github.com/rust-lang/rust/issues/51114
+        e if e.is::<LedgerNotConfigured>() => {
+            let e = e
+                .downcast_ref::<LedgerNotConfigured>()
+                .expect("match arm guard should protect us");
 
-    HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+            HttpApiProblem::new(format!("{} is not configured.", e.ledger))
+                .set_status(StatusCode::BAD_REQUEST)
+                .set_detail(format!("{} ledger is not properly configured, swap involving this ledger are not available.", e.ledger))
+        }
+        e => {
+            tracing::error!("unhandled error: {:#}", e);
+
+            // early return in this branch to avoid double logging the error
+            return HttpApiProblem::with_title_and_type_from_status(
+                StatusCode::INTERNAL_SERVER_ERROR,
+            );
+        }
+    };
+
+    tracing::info!("route failed because {:#}", e);
+
+    known_error
 }
 
 pub async fn unpack_problem(rejection: Rejection) -> Result<impl Reply, Rejection> {
     if let Some(problem) = rejection.find::<HttpApiProblem>() {
-        let code = problem.status.unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+        return Ok(problem_to_reply(problem));
+    }
 
-        let reply = warp::reply::json(problem);
-        let reply = warp::reply::with_status(reply, code);
-        let reply = warp::reply::with_header(
-            reply,
-            http::header::CONTENT_TYPE,
-            http_api_problem::PROBLEM_JSON_MEDIA_TYPE,
-        );
+    if let Some(invalid_body) = rejection.find::<BodyDeserializeError>() {
+        let mut problem = HttpApiProblem::new("Invalid body.").set_status(StatusCode::BAD_REQUEST);
 
-        return Ok(reply);
+        if let Some(source) = invalid_body.source() {
+            problem = problem.set_detail(format!("{}", source));
+        }
+
+        return Ok(problem_to_reply(&problem));
     }
 
     Err(rejection)
+}
+
+fn problem_to_reply(problem: &HttpApiProblem) -> impl Reply {
+    let code = problem.status.unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+
+    let reply = warp::reply::json(problem);
+    let reply = warp::reply::with_status(reply, code);
+
+    warp::reply::with_header(
+        reply,
+        http::header::CONTENT_TYPE,
+        http_api_problem::PROBLEM_JSON_MEDIA_TYPE,
+    )
 }

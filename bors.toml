@@ -1,6 +1,8 @@
 status = [
     "static_analysis",
     "build (ubuntu-latest)",
+    "build (macos-latest)",
+    "build (windows-latest)",
 ]
 pr_status = ["license/cla"]
 block_labels = ["no-mergify"]

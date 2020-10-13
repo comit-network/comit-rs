@@ -1,9 +1,12 @@
 use crate::{
-    config::{Bitcoind, Data, Geth, Network},
+    config::{settings, Bitcoind, Data, Geth, Settings},
+    ethereum,
     ethereum::ChainId,
 };
-use config as config_rs;
+use comit::ledger;
+use libp2p::core::Multiaddr;
 use log::LevelFilter;
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsStr,
@@ -17,6 +20,7 @@ use std::{
 /// represented as `Option`s` here. This allows us to create a dedicated step
 /// for filling in default values for absent configuration options.
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct File {
     pub network: Option<Network>,
     pub http_api: Option<HttpApi>,
@@ -28,25 +32,73 @@ pub struct File {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Bitcoin {
-    #[serde(with = "crate::config::serde_bitcoin_network")]
-    pub network: bitcoin::Network,
-    pub bitcoind: Option<Bitcoind>,
+#[serde(deny_unknown_fields)]
+pub struct Network {
+    pub listen: Vec<Multiaddr>,
+    pub peer_addresses: Option<Vec<Multiaddr>>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Bitcoin {
+    pub network: ledger::Bitcoin,
+    pub bitcoind: Option<Bitcoind>,
+    pub fees: Option<BitcoinFees>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct BitcoinFees {
+    pub strategy: BitcoinFeesStrategy,
+    pub r#static: Option<Static>,
+    pub cypherblock: Option<CypherBlock>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+#[serde(rename_all = "snake_case")]
+pub enum BitcoinFeesStrategy {
+    Static,
+    #[serde(rename = "cypherblock")]
+    CypherBlock,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Static {
+    #[serde(with = "::bitcoin::util::amount::serde::as_sat")]
+    pub sat_per_vbyte: bitcoin::Amount,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct CypherBlock {
+    pub blockchain_endpoint_url: Url,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Ethereum {
     pub chain_id: ChainId,
     pub geth: Option<Geth>,
+    pub tokens: Option<Tokens>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Tokens {
+    pub dai: Option<ethereum::Address>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Lightning {
-    pub network: bitcoin::Network,
+    pub network: ledger::Bitcoin,
     pub lnd: Option<Lnd>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Lnd {
     pub rest_api_url: reqwest::Url,
     pub dir: PathBuf,
@@ -65,19 +117,20 @@ impl File {
         }
     }
 
-    pub fn read<D>(config_file: D) -> Result<Self, config_rs::ConfigError>
+    pub fn read<D>(config_file: D) -> Result<Self, ::config::ConfigError>
     where
         D: AsRef<OsStr>,
     {
         let config_file = Path::new(&config_file);
 
-        let mut config = config_rs::Config::new();
-        config.merge(config_rs::File::from(config_file))?;
+        let mut config = ::config::Config::new();
+        config.merge(::config::File::from(config_file))?;
         config.try_into()
     }
 }
 
 #[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct Logging {
     pub level: Option<Level>,
 }
@@ -117,12 +170,14 @@ impl From<Level> for LevelFilter {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct HttpApi {
     pub socket: SocketAddr,
     pub cors: Option<Cors>,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct Cors {
     pub allowed_origins: AllowedOrigins,
 }
@@ -147,6 +202,73 @@ pub enum None {
     None,
 }
 
+impl From<Settings> for File {
+    fn from(settings: Settings) -> Self {
+        let Settings {
+            network,
+            http_api: settings::HttpApi { socket, cors },
+            data,
+            logging: settings::Logging { level },
+            bitcoin,
+            ethereum,
+            lightning,
+        } = settings;
+
+        File {
+            network: Some(Network {
+                listen: network.listen,
+                peer_addresses: Some(network.peer_addresses),
+            }),
+            http_api: Some(HttpApi {
+                socket,
+                cors: Some(Cors {
+                    allowed_origins: match cors.allowed_origins {
+                        settings::AllowedOrigins::All => AllowedOrigins::All(All::All),
+                        settings::AllowedOrigins::None => AllowedOrigins::None(None::None),
+                        settings::AllowedOrigins::Some(origins) => AllowedOrigins::Some(origins),
+                    },
+                }),
+            }),
+            data: Some(data),
+            logging: Some(Logging {
+                level: Some(level.into()),
+            }),
+            bitcoin: Some(bitcoin.into()),
+            ethereum: Some(ethereum.into()),
+            lightning: Some(lightning.into()),
+        }
+    }
+}
+
+impl From<settings::Bitcoin> for Bitcoin {
+    fn from(settings: settings::Bitcoin) -> Self {
+        Self {
+            network: settings.network,
+            bitcoind: Some(settings.bitcoind),
+            fees: Some(settings.fees.into()),
+        }
+    }
+}
+
+impl From<settings::BitcoinFees> for BitcoinFees {
+    fn from(settings: settings::BitcoinFees) -> Self {
+        match settings {
+            settings::BitcoinFees::StaticSatPerVbyte(sat_per_vbyte) => Self {
+                strategy: BitcoinFeesStrategy::Static,
+                r#static: Some(Static { sat_per_vbyte }),
+                cypherblock: None,
+            },
+            settings::BitcoinFees::CypherBlock(blockchain_endpoint_url) => Self {
+                strategy: BitcoinFeesStrategy::CypherBlock,
+                r#static: None,
+                cypherblock: Some(CypherBlock {
+                    blockchain_endpoint_url,
+                }),
+            },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -161,6 +283,48 @@ mod tests {
     #[derive(serde::Deserialize, PartialEq, Debug)]
     struct LoggingOnlyConfig {
         logging: Logging,
+    }
+
+    #[test]
+    fn network_deserializes_correctly() {
+        let file_contents = vec![
+            r#"
+            listen = ["/ip4/0.0.0.0/tcp/9939"]
+            peer_addresses = [ "/ip4/1.1.1.1/tcp/9939" ]
+            "#,
+            r#"
+            listen = ["/ip4/0.0.0.0/tcp/9939", "/ip4/127.0.0.1/tcp/9939"]
+            peer_addresses = [
+                "/ip4/1.1.1.1/tcp/9939",
+                "/ip4/2.2.2.2/tcp/3456"
+            ]
+            "#,
+        ];
+
+        let expected = vec![
+            Network {
+                listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
+                peer_addresses: Some(vec!["/ip4/1.1.1.1/tcp/9939".parse().unwrap()]),
+            },
+            Network {
+                listen: (vec![
+                    "/ip4/0.0.0.0/tcp/9939".parse().unwrap(),
+                    "/ip4/127.0.0.1/tcp/9939".parse().unwrap(),
+                ]),
+                peer_addresses: Some(vec![
+                    "/ip4/1.1.1.1/tcp/9939".parse().unwrap(),
+                    "/ip4/2.2.2.2/tcp/3456".parse().unwrap(),
+                ]),
+            },
+        ];
+
+        let actual = file_contents
+            .into_iter()
+            .map(toml::from_str)
+            .collect::<Result<Vec<Network>, toml::de::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -225,11 +389,20 @@ network = "regtest"
 [bitcoin.bitcoind]
 node_url = "http://localhost:18443/"
 
+[bitcoin.fees]
+strategy = "static"
+
+[bitcoin.fees.static]
+sat_per_vbyte = 13
+
 [ethereum]
 chain_id = 1337
 
 [ethereum.geth]
 node_url = "http://localhost:8545/"
+
+[ethereum.tokens]
+dai = "0x6b175474e89094c44da98b954eedeac495271d0f"
 
 [lightning]
 network = "regtest"
@@ -241,6 +414,7 @@ dir = "/foo/bar"
         let file = File {
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
+                peer_addresses: None,
             }),
             http_api: Some(HttpApi {
                 socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8000),
@@ -255,19 +429,33 @@ dir = "/foo/bar"
                 level: Some(Level::Debug),
             }),
             bitcoin: Some(Bitcoin {
-                network: bitcoin::Network::Regtest,
+                network: ledger::Bitcoin::Regtest,
                 bitcoind: Some(Bitcoind {
                     node_url: "http://localhost:18443".parse().unwrap(),
                 }),
+                fees: Some(BitcoinFees {
+                    strategy: BitcoinFeesStrategy::Static,
+                    r#static: Some(Static {
+                        sat_per_vbyte: bitcoin::Amount::from_sat(13),
+                    }),
+                    cypherblock: None,
+                }),
             }),
             ethereum: Some(Ethereum {
-                chain_id: ChainId::regtest(),
+                chain_id: ChainId::GETH_DEV,
                 geth: Some(Geth {
                     node_url: "http://localhost:8545".parse().unwrap(),
                 }),
+                tokens: Some(Tokens {
+                    dai: Some(
+                        "0x6b175474e89094c44da98b954eedeac495271d0f"
+                            .parse()
+                            .unwrap(),
+                    ),
+                }),
             }),
             lightning: Some(Lightning {
-                network: bitcoin::Network::Regtest,
+                network: ledger::Bitcoin::Regtest,
                 lnd: Some(Lnd {
                     rest_api_url: "https://localhost:8080".parse().unwrap(),
                     dir: PathBuf::from("/foo/bar"),
@@ -285,7 +473,8 @@ dir = "/foo/bar"
         let default_file = File::default();
 
         // convert to settings, this populates all empty fields with defaults
-        let effective_settings = Settings::from_config_file_and_defaults(default_file).unwrap();
+        let effective_settings =
+            Settings::from_config_file_and_defaults(default_file, None).unwrap();
 
         // write settings back to file
         let file_with_effective_settings = File::from(effective_settings);
@@ -303,11 +492,19 @@ dir = "/foo/bar"
             network = "mainnet"
             [bitcoind]
             node_url = "http://example.com:8332"
+            [fees]
+            strategy = "static"
+            [fees.static]
+            sat_per_vbyte = 9
             "#,
             r#"
             network = "testnet"
             [bitcoind]
             node_url = "http://example.com:18332"
+            [fees]
+            strategy = "cypherblock"
+            [fees.cypherblock]
+            blockchain_endpoint_url = "http://some.cypher.url:1234"
             "#,
             r#"
             network = "regtest"
@@ -318,22 +515,37 @@ dir = "/foo/bar"
 
         let expected = vec![
             Bitcoin {
-                network: bitcoin::Network::Bitcoin,
+                network: ledger::Bitcoin::Mainnet,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:8332").unwrap(),
                 }),
+                fees: Some(BitcoinFees {
+                    strategy: BitcoinFeesStrategy::Static,
+                    r#static: Some(Static {
+                        sat_per_vbyte: bitcoin::Amount::from_sat(9),
+                    }),
+                    cypherblock: None,
+                }),
             },
             Bitcoin {
-                network: bitcoin::Network::Testnet,
+                network: ledger::Bitcoin::Testnet,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:18332").unwrap(),
                 }),
+                fees: Some(BitcoinFees {
+                    strategy: BitcoinFeesStrategy::CypherBlock,
+                    r#static: None,
+                    cypherblock: Some(CypherBlock {
+                        blockchain_endpoint_url: "http://some.cypher.url:1234".parse().unwrap(),
+                    }),
+                }),
             },
             Bitcoin {
-                network: bitcoin::Network::Regtest,
+                network: ledger::Bitcoin::Regtest,
                 bitcoind: Some(Bitcoind {
                     node_url: Url::parse("http://example.com:18443").unwrap(),
                 }),
+                fees: None,
             },
         ];
 
@@ -350,39 +562,66 @@ dir = "/foo/bar"
     fn ethereum_deserializes_correctly() {
         let file_contents = vec![
             r#"
-            chain_id = 1337
+            chain_id = 42
             [geth]
             node_url = "http://example.com:8545"
+            [tokens]
+            dai = "0xc4375b7de8af5a38a93548eb8453a498222c4ff2"
             "#,
             r#"
             chain_id = 3
             [geth]
             node_url = "http://example.com:8545"
+            [tokens]
+            dai = "0xaD6D458402F60fD3Bd25163575031ACDce07538D"
             "#,
             r#"
             chain_id = 1
             [geth]
             node_url = "http://example.com:8545"
+            [tokens]
+            dai = "0x6b175474e89094c44da98b954eedeac495271d0f"
             "#,
         ];
 
         let expected = vec![
             Ethereum {
-                chain_id: ChainId::regtest(),
+                chain_id: ChainId::KOVAN,
                 geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
                 }),
-            },
-            Ethereum {
-                chain_id: ChainId::ropsten(),
-                geth: Some(Geth {
-                    node_url: Url::parse("http://example.com:8545").unwrap(),
+                tokens: Some(Tokens {
+                    dai: Some(
+                        "0xc4375b7de8af5a38a93548eb8453a498222c4ff2"
+                            .parse()
+                            .unwrap(),
+                    ),
                 }),
             },
             Ethereum {
-                chain_id: ChainId::mainnet(),
+                chain_id: ChainId::ROPSTEN,
                 geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
+                }),
+                tokens: Some(Tokens {
+                    dai: Some(
+                        "0xaD6D458402F60fD3Bd25163575031ACDce07538D"
+                            .parse()
+                            .unwrap(),
+                    ),
+                }),
+            },
+            Ethereum {
+                chain_id: ChainId::MAINNET,
+                geth: Some(Geth {
+                    node_url: Url::parse("http://example.com:8545").unwrap(),
+                }),
+                tokens: Some(Tokens {
+                    dai: Some(
+                        "0x6b175474e89094c44da98b954eedeac495271d0f"
+                            .parse()
+                            .unwrap(),
+                    ),
                 }),
             },
         ];

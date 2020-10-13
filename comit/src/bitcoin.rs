@@ -10,6 +10,7 @@ use crate::{
     btsieve::{BlockByHash, LatestBlock},
     Timestamp,
 };
+use anyhow::Result;
 use bitcoin::secp256k1;
 use serde::{
     de::{self, Visitor},
@@ -136,7 +137,7 @@ impl<'de> Deserialize<'de> for PublicKey {
 
 /// Median time in Bitcoin is defined as the median of the blocktimes from the
 /// last 11 blocks.
-pub async fn median_time_past<C>(connector: &C) -> anyhow::Result<Timestamp>
+pub async fn median_time_past<C>(connector: &C) -> Result<Timestamp>
 where
     C: LatestBlock<Block = bitcoin::Block>
         + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>,
@@ -152,7 +153,7 @@ where
         block_times.push(current.header.time);
     }
 
-    block_times.sort();
+    block_times.sort_unstable();
     let median = block_times[5];
 
     Ok(Timestamp::from(median))

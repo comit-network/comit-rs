@@ -1,24 +1,18 @@
 use crate::{
+    actions::{ethereum, lnd},
     asset,
     http_api::{
-        halbit, herc20,
-        protocol::{
-            AlphaAbsoluteExpiry, AlphaEvents, AlphaLedger, AlphaParams, BetaAbsoluteExpiry,
-            BetaEvents, BetaLedger, BetaParams, Halbit, Herc20, Ledger, LedgerEvents,
-        },
-        ActionNotFound, AliceSwap,
+        halbit, herc20, ActionNotFound, AliceSwap, AlphaAbsoluteExpiry, AlphaLedger, AlphaProtocol,
+        BetaAbsoluteExpiry, BetaLedger, BetaProtocol, Events, Ledger, Protocol, SwapEvent,
     },
-    swap_protocols::actions::{ethereum, lnd},
     DeployAction, FundAction, InitAction, RedeemAction, RefundAction, SecretHash, Timestamp,
 };
 
-impl From<AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized>>
-    for Herc20
+impl AlphaProtocol
+    for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized>
 {
-    fn from(
-        from: AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized>,
-    ) -> Self {
-        match from {
+    fn alpha_protocol(&self) -> Protocol {
+        match self {
             AliceSwap::Created {
                 alpha_created: herc20_asset,
                 ..
@@ -30,22 +24,43 @@ impl From<AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Fin
                         ..
                     },
                 ..
-            } => Self {
-                protocol: "herc20".to_owned(),
-                quantity: herc20_asset.quantity.to_wei_dec(),
-                token_contract: herc20_asset.token_contract.to_string(),
-            },
+            } => Protocol::herc20_dai(herc20_asset.quantity.clone()),
         }
     }
 }
 
-impl From<AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized>>
-    for Halbit
+impl Events for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
+    fn events(&self) -> Vec<SwapEvent> {
+        match self {
+            AliceSwap::Created { .. } => Vec::new(),
+            AliceSwap::Finalized {
+                alpha_finalized:
+                    herc20::Finalized {
+                        state: herc20_state,
+                        ..
+                    },
+                beta_finalized:
+                    halbit::Finalized {
+                        state: halbit_state,
+                        ..
+                    },
+                ..
+            } => {
+                let mut events = Vec::new();
+                events.extend(Vec::from(herc20_state));
+                events.extend(Vec::from(halbit_state));
+
+                events
+            }
+        }
+    }
+}
+
+impl BetaProtocol
+    for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized>
 {
-    fn from(
-        from: AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized>,
-    ) -> Self {
-        match from {
+    fn beta_protocol(&self) -> Protocol {
+        match self {
             AliceSwap::Created {
                 beta_created: halbit_asset,
                 ..
@@ -57,56 +72,7 @@ impl From<AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Fin
                         ..
                     },
                 ..
-            } => Self {
-                protocol: "halbit".to_owned(),
-                quantity: halbit_asset.as_sat().to_string(),
-            },
-        }
-    }
-}
-
-impl AlphaParams for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
-    type Output = Herc20;
-    fn alpha_params(&self) -> Self::Output {
-        self.clone().into()
-    }
-}
-
-impl AlphaEvents for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
-    fn alpha_events(&self) -> Option<LedgerEvents> {
-        match self {
-            AliceSwap::Created { .. } => None,
-            AliceSwap::Finalized {
-                alpha_finalized:
-                    herc20::Finalized {
-                        state: herc20_state,
-                        ..
-                    },
-                ..
-            } => Some(herc20_state.clone().into()),
-        }
-    }
-}
-
-impl BetaParams for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
-    type Output = Halbit;
-    fn beta_params(&self) -> Self::Output {
-        self.clone().into()
-    }
-}
-
-impl BetaEvents for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
-    fn beta_events(&self) -> Option<LedgerEvents> {
-        match self {
-            AliceSwap::Created { .. } => None,
-            AliceSwap::Finalized {
-                beta_finalized:
-                    halbit::Finalized {
-                        state: halbit_state,
-                        ..
-                    },
-                ..
-            } => Some(halbit_state.clone().into()),
+            } => Protocol::halbit(*halbit_asset),
         }
     }
 }
@@ -191,9 +157,11 @@ impl FundAction for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
                         state: halbit::State::Opened(_),
                         ..
                     },
+                secret,
                 ..
             } => {
-                let fund_action = herc20.build_fund_action()?;
+                let secret_hash = SecretHash::new(*secret);
+                let fund_action = herc20.build_fund_action(secret_hash)?;
                 Ok(fund_action)
             }
             _ => anyhow::bail!(ActionNotFound),
@@ -206,7 +174,7 @@ impl RedeemAction
 {
     type Output = lnd::SettleInvoice;
 
-    fn redeem_action(&self) -> anyhow::Result<Self::Output> {
+    fn redeem_action(&self, _btc_per_vbyte: bitcoin::Amount) -> anyhow::Result<Self::Output> {
         match self {
             AliceSwap::Finalized {
                 beta_finalized:
@@ -232,7 +200,7 @@ impl RefundAction
 {
     type Output = ethereum::CallContract;
 
-    fn refund_action(&self) -> anyhow::Result<Self::Output> {
+    fn refund_action(&self, _btc_per_vbyte: bitcoin::Amount) -> anyhow::Result<Self::Output> {
         match self {
             AliceSwap::Finalized {
                 alpha_finalized:
@@ -242,9 +210,11 @@ impl RefundAction
                         state: herc20::State::Funded { .. },
                         ..
                     },
+                secret,
                 ..
             } => {
-                let refund_action = herc20.build_refund_action()?;
+                let secret_hash = SecretHash::new(*secret);
+                let refund_action = herc20.build_refund_action(secret_hash)?;
                 Ok(refund_action)
             }
             _ => anyhow::bail!(ActionNotFound),

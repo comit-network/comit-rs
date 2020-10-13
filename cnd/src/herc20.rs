@@ -1,20 +1,19 @@
 use crate::{
     asset,
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
-    ethereum::{Block, Hash},
-    htlc_location, identity,
-    swap_protocols::{state, state::Update},
-    tracing_ext::InstrumentProtocol,
-    transaction, LocalSwapId, Protocol, Role, Secret, Side,
+    ethereum::{Block, ChainId, Hash},
+    htlc_location, identity, state,
+    state::Update,
+    storage::Storage,
+    transaction, LocalSwapId, Role, Secret, Side,
 };
-use chrono::NaiveDateTime;
+use anyhow::Result;
 use futures::TryStreamExt;
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    sync::Arc,
-};
+use std::collections::{hash_map::Entry, HashMap};
+use time::OffsetDateTime;
 use tokio::sync::Mutex;
 
+use crate::btsieve::ConnectedNetwork;
 pub use comit::herc20::*;
 
 /// Creates a new instance of the herc20 protocol, annotated with tracing spans
@@ -22,27 +21,41 @@ pub use comit::herc20::*;
 ///
 /// This wrapper functions allows us to reuse code within `cnd` without having
 /// to give knowledge about tracing or the state hashmaps to the `comit` crate.
+#[tracing::instrument(name = "herc20", level = "error", skip(params, start_of_swap, storage, connector), fields(%id, %role, %side))]
 pub async fn new<C>(
     id: LocalSwapId,
     params: Params,
-    start_of_swap: NaiveDateTime,
+    start_of_swap: OffsetDateTime,
     role: Role,
     side: Side,
-    states: Arc<States>,
-    connector: Arc<C>,
-) where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+    storage: Storage,
+    connector: impl AsRef<C>,
+) -> Result<()>
+where
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash
+        + ConnectedNetwork<Network = ChainId>,
 {
-    let mut events = comit::herc20::new(connector.as_ref(), params, start_of_swap)
-        .instrument_protocol(id, role, side, Protocol::Herc20)
-        .inspect_ok(|event| tracing::info!("yielded event {}", event))
-        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
+    let mut events = comit::herc20::new(connector.as_ref(), params, start_of_swap);
 
-    while let Ok(Some(event)) = events.try_next().await {
-        states.update(&id, event).await;
+    while let Some(event) = events.try_next().await? {
+        tracing::info!("yielded event {}", event);
+        storage.herc20_states.update(&id, event).await;
     }
 
-    tracing::info!("swap finished");
+    tracing::info!("finished");
+
+    Ok(())
+}
+
+/// Data required to create a swap that involves an ERC20 token.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CreatedSwap {
+    pub asset: asset::Erc20,
+    pub identity: identity::Ethereum,
+    pub chain_id: ChainId,
+    pub absolute_expiry: u32,
 }
 
 #[derive(Default, Debug)]

@@ -13,4 +13,8 @@ pub struct Options {
     /// Display the current version
     #[structopt(short = "V", long = "version")]
     pub version: bool,
+
+    /// Which network to connect to
+    #[structopt(short = "n", long = "network")]
+    pub network: Option<comit::Network>,
 }

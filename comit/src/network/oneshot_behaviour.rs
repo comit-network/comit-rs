@@ -8,7 +8,7 @@ use libp2p::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::VecDeque,
     fmt::Debug,
     task::{Context, Poll},
 };
@@ -19,7 +19,6 @@ use tracing::trace;
 pub struct Behaviour<M> {
     /// Events that need to be yielded to the outside when polling.
     events: VecDeque<NetworkBehaviourAction<oneshot_protocol::OutboundConfig<M>, OutEvent<M>>>,
-    address_book: HashMap<PeerId, Vec<Multiaddr>>,
 }
 
 impl<M> Behaviour<M> {
@@ -31,21 +30,12 @@ impl<M> Behaviour<M> {
                 event: oneshot_protocol::OutboundConfig::new(message),
             })
     }
-
-    // If we decide to keep these different network behaviour (and not use a
-    // multi-protocols handler or something) then we should do our own
-    // connection handling in these as-well by extracting the one from the
-    // announce protocol in a reusable-manner.
-    pub fn register_addresses(&mut self, peer_id: PeerId, addresses: Vec<Multiaddr>) {
-        self.address_book.insert(peer_id, addresses);
-    }
 }
 
 impl<M> Default for Behaviour<M> {
     fn default() -> Self {
         Behaviour {
             events: VecDeque::new(),
-            address_book: HashMap::default(),
         }
     }
 }
@@ -74,16 +64,16 @@ where
         Default::default()
     }
 
-    fn addresses_of_peer(&mut self, peer: &PeerId) -> Vec<Multiaddr> {
-        self.address_book.get(peer).cloned().unwrap_or_default()
+    fn addresses_of_peer(&mut self, _: &PeerId) -> Vec<Multiaddr> {
+        Vec::new()
     }
 
     fn inject_connected(&mut self, _: &PeerId) {
-        // Do nothing, announce protocol is going to take care of connections.
+        // We assume a connection has been established.
     }
 
     fn inject_disconnected(&mut self, _: &PeerId) {
-        // Do nothing, announce protocol is going to take care of connections.
+        // We assume a connection has been established.
     }
 
     fn inject_event(

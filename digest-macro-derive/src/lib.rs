@@ -84,19 +84,13 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
             let tuple_variant_idents = data
                 .variants
                 .iter()
-                .filter(|variant| match variant.fields {
-                    Fields::Unnamed(_) => true,
-                    _ => false,
-                })
+                .filter(|variant| matches!(variant.fields, Fields::Unnamed(_)))
                 .map(|variant| &variant.ident);
 
             let tuple_variant_bytes = data
                 .variants
                 .iter()
-                .filter(|variant| match variant.fields {
-                    Fields::Unnamed(_) => true,
-                    _ => false,
-                })
+                .filter(|variant| matches!(variant.fields, Fields::Unnamed(_)))
                 .map(|variant| extract_bytes(&variant.attrs));
 
             let gen = quote! {
@@ -209,6 +203,6 @@ mod tests {
         let bytes = Bytes(vec![0u8, 1u8, 2u8, 3u8]);
 
         let tokens = quote!(#bytes);
-        assert_eq!(tokens.to_string(), "[ 0u8 , 1u8 , 2u8 , 3u8 ]");
+        assert_eq!(tokens.to_string(), "[0u8 , 1u8 , 2u8 , 3u8]");
     }
 }

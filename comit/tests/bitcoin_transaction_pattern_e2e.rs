@@ -1,11 +1,10 @@
-use bitcoin::{Amount, Network};
 use bitcoincore_rpc::RpcApi;
-use chrono::offset::Utc;
 use comit::btsieve::bitcoin::{watch_for_created_outpoint, BitcoindConnector};
 use images::coblox_bitcoincore::BitcoinCore;
 use reqwest::Url;
 use std::time::Duration;
 use testcontainers::*;
+use time::OffsetDateTime;
 
 /// A very basic e2e test that verifies that we glued all our code together
 /// correctly for bitcoin transaction pattern matching.
@@ -23,14 +22,18 @@ async fn bitcoin_transaction_pattern_e2e_test() {
     url.set_port(Some(container.get_host_port(18443).unwrap() as u16))
         .unwrap();
 
-    let connector = BitcoindConnector::new(url, Network::Regtest).unwrap();
+    let connector = BitcoindConnector::new(url).unwrap();
 
     let target_address = client.get_new_address(None, None).unwrap();
-
     // make sure we have money
-    client.generate(101, None).unwrap();
+    client.generate_to_address(101, &target_address).unwrap();
 
-    let start_of_swap = Utc::now().naive_local();
+    // A random address to send further bitcoin to when generating
+    let dummy_address = "bcrt1qnylgnvd94ukm43e4dh9vxefywhlr9zdgz2g86f"
+        .parse()
+        .unwrap();
+
+    let start_of_swap = OffsetDateTime::now_utc();
 
     let send_money_to_address = async {
         tokio::time::delay_for(Duration::from_secs(2)).await;
@@ -40,7 +43,7 @@ async fn bitcoin_transaction_pattern_e2e_test() {
                 let transaction_hash = client
                     .send_to_address(
                         &target_address,
-                        Amount::from_sat(100_000_000),
+                        bitcoincore_rpc::bitcoin::Amount::from_sat(100_000_000),
                         None,
                         None,
                         None,
@@ -49,7 +52,7 @@ async fn bitcoin_transaction_pattern_e2e_test() {
                         None,
                     )
                     .unwrap();
-                client.generate(1, None).unwrap();
+                client.generate_to_address(1, &dummy_address).unwrap();
 
                 transaction_hash
             }
@@ -61,12 +64,18 @@ async fn bitcoin_transaction_pattern_e2e_test() {
         .await
         .expect("failed to send money to address");
 
-    let (funding_transaction, _out_point) =
-        watch_for_created_outpoint(&connector, start_of_swap, target_address)
-            .await
-            .unwrap();
+    let (funding_transaction, _out_point) = watch_for_created_outpoint(
+        &connector,
+        start_of_swap,
+        target_address.to_string().parse().unwrap(),
+    )
+    .await
+    .unwrap();
 
-    assert_eq!(funding_transaction.txid(), actual_transaction.unwrap())
+    assert_eq!(
+        funding_transaction.txid().to_string(),
+        actual_transaction.unwrap().to_string()
+    )
 }
 
 pub fn new_bitcoincore_client<D>(

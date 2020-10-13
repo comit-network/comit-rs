@@ -1,46 +1,60 @@
 use crate::{
     btsieve::{BlockByHash, LatestBlock},
-    swap_protocols::{state, state::Update},
-    tracing_ext::InstrumentProtocol,
+    ledger, state,
+    state::Update,
+    storage::Storage,
     LocalSwapId, Role, Side,
 };
-use bitcoin::{Block, BlockHash};
-use chrono::NaiveDateTime;
-use comit::{asset, htlc_location, transaction, Protocol, Secret};
-pub use comit::{hbit::*, identity};
+use anyhow::Result;
+use bitcoin::{Address, Block, BlockHash};
+use comit::{asset, htlc_location, transaction, Secret};
 use futures::TryStreamExt;
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    sync::Arc,
-};
+use std::collections::{hash_map::Entry, HashMap};
+use time::OffsetDateTime;
 use tokio::sync::Mutex;
+
+use crate::btsieve::ConnectedNetwork;
+pub use comit::{hbit::*, identity};
 
 /// Creates a new instance of the hbit protocol, annotated with tracing spans
 /// and saves all events in the `States` hashmap.
 ///
 /// This wrapper functions allows us to reuse code within `cnd` without having
 /// to give knowledge about tracing or the state hashmaps to the `comit` crate.
+#[tracing::instrument(name = "hbit", level = "error", skip(params, start_of_swap, storage, connector), fields(%id, %role, %side))]
 pub async fn new<C>(
     id: LocalSwapId,
     params: Params,
-    start_of_swap: NaiveDateTime,
+    start_of_swap: OffsetDateTime,
     role: Role,
     side: Side,
-    states: Arc<States>,
-    connector: Arc<C>,
-) where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
+    storage: Storage,
+    connector: impl AsRef<C>,
+) -> Result<()>
+where
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = BlockHash>
+        + ConnectedNetwork<Network = ledger::Bitcoin>,
 {
-    let mut events = comit::hbit::new(connector.as_ref(), params, start_of_swap)
-        .instrument_protocol(id, role, side, Protocol::Hbit)
-        .inspect_ok(|event| tracing::info!("yielded event {}", event))
-        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
+    let mut events = comit::hbit::new(connector.as_ref(), params, start_of_swap);
 
-    while let Ok(Some(event)) = events.try_next().await {
-        states.update(&id, event).await;
+    while let Some(event) = events.try_next().await? {
+        tracing::info!("yielded event {}", event);
+        storage.hbit_states.update(&id, event).await;
     }
 
-    tracing::info!("swap finished");
+    tracing::info!("finished");
+
+    Ok(())
+}
+
+/// Data required to create a swap that involves Bitcoin.
+#[derive(Clone, Debug)]
+pub struct CreatedSwap {
+    pub amount: asset::Bitcoin,
+    pub final_identity: Address,
+    pub network: ledger::Bitcoin,
+    pub absolute_expiry: u32,
 }
 
 #[derive(Default, Debug)]
@@ -171,7 +185,6 @@ impl state::Update<Event> for States {
 
 /// Represents states that an Bitcoin HTLC can be in.
 #[derive(Debug, Clone, strum_macros::Display)]
-#[allow(clippy::large_enum_variant)]
 pub enum State {
     None,
     Funded {

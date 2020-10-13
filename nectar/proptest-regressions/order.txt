@@ -1,0 +1,12 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 51b55d48ae9ca86628bcff631d23bb9d1a76624d065f74150a9de0779b0cd011 # shrinks to dai_balance = "60000000000000000000000000", dai_fees = "500000000", dai_reserved_funds = "0", dai_max_amount = "0", rate = 0.0, spread = 0
+cc 8cdaf059496e8b6c65d7c4878054acf7cb79d22f79446d6c526d8ac18c3a6e6f # shrinks to btc_balance = 0, btc_fees = 13264303946649277520, btc_reserved_funds = 5182440127060274096, btc_max_amount = 0, rate = 0.0, spread = 0
+cc ee10f77e9bd044c8e7a6f821e1af626db2647d8064d10d98ff0b7a94bfa4f3ab # shrinks to btc_balance = 12974373295788183248, btc_fees = 5472370777921368368, btc_reserved_funds = 12974373295788183248, btc_max_amount = 0, rate = 0.0, spread = 0
+cc 5c5208ee00f5cb6a22994f1195f910150ff0d1a060d11533ea7c6e55fceba059 # shrinks to dai_balance = "0", dai_reserved_funds = "0", dai_max_amount = "0", rate = 71012242040445530000.0, spread = 0
+cc da9213dce377eb6c3c4bd41f53f3827b8e91a52d11a8ba5b8bb4d77cb746dc49 # shrinks to btc_balance = 0, btc_fees = 0, btc_reserved_funds = 0, rate = 4404743020651062000000.0, spread = 0
+cc 7d6d4488680c2e7404c506eb289fe738ebc3580e3f1a8955d7187e2c2e783edf # shrinks to dai_balance = "0", dai_reserved_funds = "0", rate = 5723632599189999000000000000.0, spread = 0

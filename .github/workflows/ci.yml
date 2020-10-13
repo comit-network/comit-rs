@@ -23,14 +23,31 @@ jobs:
           profile: minimal
           override: true
 
-      - name: Cache cargo binaries, registry and target directory
+      - name: Install NodeJS 14.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: '14.x'
+
+      - name: Cache cargo registry
         uses: actions/cache@v2
         with:
-          path: |
-            ~/.cargo/bin
-            ~/.cargo/registry
-            target
-          key: ubuntu-rust-${{ steps.toolchain.outputs.rustc-hash }}
+          path: ~/.cargo/registry
+          # The registry cache is useful as long as we need the same dependencies as another job, regardless of the Rust version and operating system.
+          key: cargo-registry-${{ hashFiles('Cargo.lock') }}-v2
+
+      - name: Cache cargo binaries
+        uses: actions/cache@v2
+        with:
+          path: ~/.cargo/bin
+          # The cargo binary cache is useful as long as we use the same Rust version but regardless of our dependencies.
+          key: ubuntu-latest-cargo-binaries-${{ steps.toolchain.outputs.rustc_hash }}-v2
+
+      - name: Cache target directory
+        uses: actions/cache@v2
+        with:
+          path: target
+          # The target directory is only useful with the same Rust version, dependencies and operating system.
+          key: ubuntu-latest-target-${{ steps.toolchain.outputs.rustc_hash }}-${{ hashFiles('Cargo.lock') }}-clippy-v2
 
       - name: Check formatting
         run: make check_format
@@ -45,6 +62,8 @@ jobs:
         include:
           - os: ubuntu-latest
             e2e: true
+          - os: macos-latest
+            e2e: true
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout sources
@@ -57,14 +76,27 @@ jobs:
           profile: minimal
           override: true
 
-      - name: Cache cargo binaries, registry and target directory
+      - name: Cache cargo registry
         uses: actions/cache@v2
         with:
-          path: |
-            ~/.cargo/bin
-            ~/.cargo/registry
-            target
-          key: ubuntu-rust-${{ steps.toolchain.outputs.rustc-hash }}
+          path: ~/.cargo/registry
+          # The registry cache is useful as long as we need the same dependencies as another job, regardless of the Rust version and operating system.
+          key: cargo-registry-${{ hashFiles('Cargo.lock') }}-v3
+
+      - name: Cache cargo binaries
+        uses: actions/cache@v2
+        with:
+          path: ~/.cargo/bin
+          # The cargo binary cache is useful as long as we use the same Rust version and operating system, but regardless of our dependencies.
+          key: ${{ matrix.os }}-cargo-binaries-${{ steps.toolchain.outputs.rustc_hash }}-v2
+
+      - name: Cache target directory
+        uses: actions/cache@v2
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          path: target
+          # The target directory is only useful with the same Rust version, dependencies and operating system.
+          key: ${{ matrix.os }}-target-${{ steps.toolchain.outputs.rustc_hash }}-${{ hashFiles('Cargo.lock') }}-build-v3
 
       - name: Build ${{ matrix.os }} binary
         run: make build
@@ -77,59 +109,73 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: make test
 
+      # We've ran `cargo build --all-targets` earlier, that is different to from just building the binary.
+      # Our e2e tests lazily re-build the binaries, that can timeout our tests so build them here in advance.
+      - name: Build binaries for e2e test
+        if: matrix.e2e
+        run: |
+          cargo build -p cnd
+          cargo build -p nectar
+
       - name: Upload cnd-${{ matrix.os }} archive that contains the cnd binary
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.e2e
         uses: actions/upload-artifact@v1
         with:
           name: cnd-${{ matrix.os }}
           path: target/debug/cnd
 
-      ## Run e2e tests
-      - name: Install NodeJS 12.x
+      - name: Upload nectar-${{ matrix.os }} archive that contains the nectar binary
+        if: matrix.e2e
+        uses: actions/upload-artifact@v1
+        with:
+          name: nectar-${{ matrix.os }}
+          path: target/debug/nectar
+
+      - name: Install NodeJS 14.x
         if: matrix.e2e
         uses: actions/setup-node@v1
         with:
-          node-version: '12.x'
+          node-version: '14.x'
 
       - name: Cache node_modules directory
         if: matrix.e2e
         uses: actions/cache@v2
         with:
-          path: api_tests/node_modules
-          key: ${{ matrix.os }}-node-modules-directory-${{ hashFiles('api_tests/package.json') }}
+          path: tests/node_modules
+          key: ${{ matrix.os }}-node-14-node-modules-directory-${{ hashFiles('tests/package.json') }}
 
       - name: Run e2e tests
         if: matrix.e2e
         run: |
           export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH
-          cd api_tests
+          cd tests
           yarn install
-          yarn ci
+          yarn test
 
       - name: Upload bitcoind log
         if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
-          name: e2e-logs-bitcoind.log
-          path: api_tests/log/bitcoind/regtest/debug.log
+          name: ${{ matrix.os }}-e2e-logs-bitcoind.log
+          path: tests/log/bitcoind/regtest/debug.log
 
       - name: Upload parity log
         if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
-          name: e2e-logs-parity.log
-          path: api_tests/log/parity/parity.log
+          name: ${{ matrix.os }}-e2e-logs-parity.log
+          path: tests/log/parity/parity.log
 
       - name: Upload lnd logs
         if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
-          name: e2e-logs-lnd
-          path: api_tests/log/lnd-*/logs/bitcoin/regtest/lnd.log
+          name: ${{ matrix.os }}-e2e-logs-lnd
+          path: tests/log/lnd-*/logs/bitcoin/regtest/lnd.log
 
       - name: Upload e2e logs
         if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
-          name: e2e-test-logs
-          path: api_tests/log/tests/
+          name: ${{ matrix.os }}-e2e-test-logs
+          path: tests/log/tests/

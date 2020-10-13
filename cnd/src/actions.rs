@@ -34,7 +34,7 @@ pub trait DeployAction {
 pub trait RedeemAction {
     type Output;
 
-    fn redeem_action(&self) -> anyhow::Result<Self::Output>;
+    fn redeem_action(&self, btc_per_vbyte: bitcoin::Amount) -> anyhow::Result<Self::Output>;
 }
 
 /// Describes how to get the `refund` action from the current state.
@@ -43,5 +43,5 @@ pub trait RedeemAction {
 pub trait RefundAction {
     type Output;
 
-    fn refund_action(&self) -> anyhow::Result<Self::Output>;
+    fn refund_action(&self, btc_per_vbyte: bitcoin::Amount) -> anyhow::Result<Self::Output>;
 }

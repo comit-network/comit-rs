@@ -9,6 +9,7 @@ pub struct Message {
     pub swap_id: SharedSwapId,
     /// A Lightning node identifier is a compressed secp256k1 public key,
     /// serialized without a `0x` prefix.
+    // TODO: Replace with #[serde(with = "hex")] on Rust 1.47 and remove serde-hex from dependencies
     #[serde(with = "SerHex::<Strict>")]
     pub pubkey: [u8; 33],
 }

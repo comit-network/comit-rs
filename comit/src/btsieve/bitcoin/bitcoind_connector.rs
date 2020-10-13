@@ -1,16 +1,18 @@
-use crate::btsieve::{BlockByHash, LatestBlock};
-use anyhow::Context;
+use crate::{
+    btsieve::{BlockByHash, ConnectedNetwork, LatestBlock},
+    ledger,
+};
+use anyhow::{Context, Result};
 use async_trait::async_trait;
-use bitcoin::{consensus::deserialize, BlockHash, Network};
-use futures::TryFutureExt;
+use bitcoin::{consensus::deserialize, BlockHash};
 use reqwest::{Client, Url};
-use serde::{de, export::fmt, Deserialize, Deserializer};
+use serde::Deserialize;
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct ChainInfo {
     bestblockhash: BlockHash,
-    #[serde(deserialize_with = "deserialize_bitcoind_values")]
-    pub chain: Network,
+    #[serde(with = "ledger::bitcoin::bitcoind_jsonrpc_network")]
+    pub chain: ledger::Bitcoin,
 }
 
 #[derive(Debug)]
@@ -21,7 +23,7 @@ pub struct BitcoindConnector {
 }
 
 impl BitcoindConnector {
-    pub fn new(base_url: Url, _network: Network) -> anyhow::Result<Self> {
+    pub fn new(base_url: Url) -> Result<Self> {
         Ok(Self {
             chaininfo_url: base_url.join("rest/chaininfo.json")?,
             raw_block_by_hash_url: base_url.join("rest/block/")?,
@@ -35,7 +37,7 @@ impl BitcoindConnector {
             .expect("building url should work")
     }
 
-    pub async fn chain_info(&self) -> anyhow::Result<ChainInfo> {
+    pub async fn chain_info(&self) -> Result<ChainInfo> {
         let url = &self.chaininfo_url;
         let chain_info = self
             .client
@@ -47,8 +49,6 @@ impl BitcoindConnector {
             .await
             .context("failed to deserialize JSON response as chaininfo")?;
 
-        tracing::debug!("Fetched chain info: {:?} from bitcoind", chain_info);
-
         Ok(chain_info)
     }
 }
@@ -57,7 +57,7 @@ impl BitcoindConnector {
 impl LatestBlock for BitcoindConnector {
     type Block = bitcoin::Block;
 
-    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
+    async fn latest_block(&self) -> Result<Self::Block> {
         let chain_info = self.chain_info().await?;
         let block = self.block_by_hash(chain_info.bestblockhash).await?;
 
@@ -70,62 +70,40 @@ impl BlockByHash for BitcoindConnector {
     type Block = bitcoin::Block;
     type BlockHash = bitcoin::BlockHash;
 
-    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> Result<Self::Block> {
         let url = self.raw_block_by_hash_url(&block_hash);
-        let block = self
+        let response = self
             .client
             .get(url.clone())
             .send()
             .await
-            .with_context(|| GetRequestFailed(url))?
+            .with_context(|| GetRequestFailed(url.clone()))?
             .text()
-            .map_ok(decode_response)
-            .await??;
+            .await
+            .with_context(|| format!("failed to read response body for GET {}", url))?;
 
-        tracing::debug!(
-            "Fetched block {} with {} transactions from bitcoind",
-            block_hash,
-            block.txdata.len()
-        );
+        let block = decode_response(response)?;
 
         Ok(block)
     }
 }
 
-pub fn deserialize_bitcoind_values<'de, D>(deserializer: D) -> Result<bitcoin::Network, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    struct Visitor;
+#[async_trait]
+impl ConnectedNetwork for BitcoindConnector {
+    type Network = ledger::Bitcoin;
 
-    impl<'de> de::Visitor<'de> for Visitor {
-        type Value = bitcoin::Network;
+    async fn connected_network(&self) -> anyhow::Result<ledger::Bitcoin> {
+        let chain = self.chain_info().await?.chain;
 
-        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-            formatter.write_str("a bitcoin network")
-        }
-
-        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            match v {
-                "main" => Ok(bitcoin::Network::Bitcoin),
-                "test" => Ok(bitcoin::Network::Testnet),
-                "regtest" => Ok(bitcoin::Network::Regtest),
-                unknown => Err(E::custom(format!("unknown bitcoin network {}", unknown))),
-            }
-        }
+        Ok(chain)
     }
-
-    deserializer.deserialize_str(Visitor)
 }
 
 #[derive(Debug, thiserror::Error)]
 #[error("GET request to {0} failed")]
 pub struct GetRequestFailed(Url);
 
-fn decode_response(response_text: String) -> anyhow::Result<bitcoin::Block> {
+fn decode_response(response_text: String) -> Result<bitcoin::Block> {
     let bytes = hex::decode(response_text.trim()).context("failed to decode hex")?;
     let block = deserialize(bytes.as_slice()).context("failed to deserialize bytes as block")?;
 
@@ -136,6 +114,7 @@ fn decode_response(response_text: String) -> anyhow::Result<bitcoin::Block> {
 mod tests {
 
     use super::*;
+    use crate::ledger::bitcoin::Bitcoin;
     use bitcoin::hashes::sha256d;
     use spectral::prelude::*;
 
@@ -149,7 +128,7 @@ mod tests {
     #[test]
     fn constructor_does_not_fail_for_base_urls() {
         for base_url in base_urls() {
-            let result = BitcoindConnector::new(base_url, Network::Regtest);
+            let result = BitcoindConnector::new(base_url);
 
             assert!(result.is_ok());
         }
@@ -158,7 +137,7 @@ mod tests {
     #[test]
     fn given_different_base_urls_correct_sub_urls_are_built() {
         for base_url in base_urls() {
-            let connector = BitcoindConnector::new(base_url, Network::Regtest).unwrap();
+            let connector = BitcoindConnector::new(base_url).unwrap();
 
             let chaininfo_url = connector.chaininfo_url.clone();
             assert_eq!(
@@ -183,7 +162,7 @@ mod tests {
   }
   "#;
         let info = serde_json::from_str::<ChainInfo>(chain_info).unwrap();
-        assert_eq!(info.chain, Network::Testnet);
+        assert_eq!(info.chain, Bitcoin::Testnet);
 
         let chain_info = r#"{
     "chain": "main",
@@ -191,7 +170,7 @@ mod tests {
   }
   "#;
         let info = serde_json::from_str::<ChainInfo>(chain_info).unwrap();
-        assert_eq!(info.chain, Network::Bitcoin);
+        assert_eq!(info.chain, Bitcoin::Mainnet);
 
         let chain_info = r#"{
     "chain": "regtest",
@@ -199,7 +178,7 @@ mod tests {
   }
   "#;
         let info = serde_json::from_str::<ChainInfo>(chain_info).unwrap();
-        assert_eq!(info.chain, Network::Regtest);
+        assert_eq!(info.chain, Bitcoin::Regtest);
     }
 
     #[test]

@@ -1,11 +1,14 @@
 use crate::{
+    asset,
     asset::ethereum::{Error, FromWei, TryFromWei},
     ethereum::{Address, U256},
+    order::{Price, Quantity},
 };
 use num::{pow::Pow, BigUint, Num, Zero};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-use std::{fmt, str::FromStr};
+use std::{fmt, ops::Mul, str::FromStr};
 
+// TODO make this Copy FFS
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Erc20Quantity(BigUint);
 
@@ -34,6 +37,31 @@ impl Erc20Quantity {
 
     pub fn to_bytes(&self) -> Vec<u8> {
         self.0.to_bytes_le()
+    }
+
+    pub fn checked_mul(self, factor: u64) -> Option<Self> {
+        let result = Self(self.0 * factor);
+
+        if result > Self::max_value() {
+            return None;
+        }
+
+        Some(result)
+    }
+}
+
+impl Mul<Price<asset::Bitcoin, Erc20Quantity>> for Quantity<asset::Bitcoin> {
+    type Output = Erc20Quantity;
+
+    fn mul(self, rhs: Price<asset::Bitcoin, Erc20Quantity>) -> Self::Output {
+        let wei_per_sat = rhs.wei_per_sat().0;
+        let sat = self.sats();
+
+        let value = Erc20Quantity(wei_per_sat * sat);
+
+        debug_assert!(value <= Erc20Quantity::max_value());
+
+        value
     }
 }
 
@@ -106,6 +134,12 @@ impl TryFromWei<BigUint> for Erc20Quantity {
     }
 }
 
+impl From<Erc20Quantity> for BigUint {
+    fn from(quantity: Erc20Quantity) -> Self {
+        quantity.0
+    }
+}
+
 impl<'de> Deserialize<'de> for Erc20Quantity {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where
@@ -143,7 +177,7 @@ impl Serialize for Erc20Quantity {
     }
 }
 
-#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Erc20 {
     pub token_contract: Address,
     pub quantity: Erc20Quantity,

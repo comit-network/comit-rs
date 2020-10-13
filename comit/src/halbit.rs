@@ -1,4 +1,5 @@
-use crate::{asset, identity, ledger, RelativeTime, Secret, SecretHash};
+use crate::{asset, identity, RelativeTime, Secret, SecretHash};
+use anyhow::Result;
 use bitcoin::hashes::core::fmt::Formatter;
 use futures::{future, future::Either, Stream, TryFutureExt};
 use genawaiter::sync::Gen;
@@ -7,10 +8,7 @@ use std::fmt;
 /// Creates a new instance of the halbit protocol.
 ///
 /// Returns a stream of events happening during the execution.
-pub fn new<'a, C>(
-    connector: &'a C,
-    params: Params,
-) -> impl Stream<Item = anyhow::Result<Event>> + 'a
+pub fn new<'a, C>(connector: &'a C, params: Params) -> impl Stream<Item = Result<Event>> + 'a
 where
     C: WaitForOpened + WaitForAccepted + WaitForSettled + WaitForCancelled,
 {
@@ -50,16 +48,6 @@ where
     })
 }
 
-/// Data required to create a swap that involves bitcoin on the lightning
-/// network.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct CreatedSwap {
-    pub asset: asset::Bitcoin,
-    pub identity: identity::Lightning,
-    pub network: ledger::Bitcoin,
-    pub cltv_expiry: u32,
-}
-
 #[derive(Copy, Clone, Debug)]
 pub struct Params {
     pub redeem_identity: identity::Lightning,
@@ -72,22 +60,22 @@ pub struct Params {
 /// Resolves when said event has occured.
 #[async_trait::async_trait]
 pub trait WaitForOpened {
-    async fn wait_for_opened(&self, params: &Params) -> anyhow::Result<Opened>;
+    async fn wait_for_opened(&self, params: &Params) -> Result<Opened>;
 }
 
 #[async_trait::async_trait]
 pub trait WaitForAccepted {
-    async fn wait_for_accepted(&self, params: &Params) -> anyhow::Result<Accepted>;
+    async fn wait_for_accepted(&self, params: &Params) -> Result<Accepted>;
 }
 
 #[async_trait::async_trait]
 pub trait WaitForSettled {
-    async fn wait_for_settled(&self, params: &Params) -> anyhow::Result<Settled>;
+    async fn wait_for_settled(&self, params: &Params) -> Result<Settled>;
 }
 
 #[async_trait::async_trait]
 pub trait WaitForCancelled {
-    async fn wait_for_cancelled(&self, params: &Params) -> anyhow::Result<Cancelled>;
+    async fn wait_for_cancelled(&self, params: &Params) -> Result<Cancelled>;
 }
 
 /// Represents the events in the halbit protocol.

@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc f138d7ee97617587882d468459870deb7905e8276d7a2319b61aa7b13d1d02de # shrinks to swap_protocol = Herc20Hbit { hbit_absolute_expiry: 0, herc20_absolute_expiry: 0 }, role = Alice
+cc 5426d35856554285a892e177de8b5290b007bcf0ac463c77292d4450e09d5a8f # shrinks to swap_protocol = Herc20Hbit { hbit_absolute_expiry: 0, herc20_absolute_expiry: 0 }, position = Buy

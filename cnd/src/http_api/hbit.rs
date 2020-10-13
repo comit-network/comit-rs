@@ -1,10 +1,33 @@
-use bitcoin::secp256k1::SecretKey;
-use comit::{
-    actions::bitcoin::{BroadcastSignedTransaction, SendToAddress, SpendOutput},
-    asset, ledger, Secret, SecretHash, Timestamp,
+use crate::{
+    actions::bitcoin::{BroadcastSignedTransaction, SendToAddress},
+    asset,
+    bitcoin::Address,
+    ledger, Secret, SecretHash, Timestamp,
 };
+use bitcoin::secp256k1::SecretKey;
 
-pub use crate::{actions::bitcoin::sign_with_fixed_rate, hbit::*};
+pub use crate::hbit::*;
+
+/// Data for the hbit protocol.
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct Hbit {
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    pub amount: asset::Bitcoin,
+    pub final_identity: bitcoin::Address,
+    pub network: ledger::Bitcoin,
+    pub absolute_expiry: u32,
+}
+
+impl From<Hbit> for CreatedSwap {
+    fn from(p: Hbit) -> Self {
+        CreatedSwap {
+            amount: p.amount,
+            final_identity: p.final_identity,
+            network: p.network,
+            absolute_expiry: p.absolute_expiry,
+        }
+    }
+}
 
 /// Data known by the party funding the HTLC in the Hbit protocol, after the
 /// swap has been finalized.
@@ -21,7 +44,7 @@ pub struct FinalizedAsFunder {
     pub asset: asset::Bitcoin,
     pub network: ledger::Bitcoin,
     pub transient_redeem_identity: identity::Bitcoin,
-    pub final_refund_identity: comit::bitcoin::Address,
+    pub final_refund_identity: Address,
     pub transient_refund_identity: SecretKey,
     pub expiry: Timestamp,
     pub state: State,
@@ -41,7 +64,7 @@ pub struct FinalizedAsFunder {
 pub struct FinalizedAsRedeemer {
     pub asset: asset::Bitcoin,
     pub network: ledger::Bitcoin,
-    pub final_redeem_identity: comit::bitcoin::Address,
+    pub final_redeem_identity: Address,
     pub transient_redeem_identity: SecretKey,
     pub transient_refund_identity: identity::Bitcoin,
     pub expiry: Timestamp,
@@ -50,67 +73,50 @@ pub struct FinalizedAsRedeemer {
 
 impl FinalizedAsFunder {
     pub fn build_fund_action(&self, secret_hash: SecretHash) -> SendToAddress {
-        let transient_refund_sk = self.transient_refund_identity;
-        let transient_refund_identity =
-            identity::Bitcoin::from_secret_key(&*crate::SECP, &transient_refund_sk);
-        let htlc = build_bitcoin_htlc(
-            self.transient_redeem_identity,
-            transient_refund_identity,
-            self.expiry,
-            secret_hash,
-        );
-        let network = bitcoin::Network::from(self.network);
-        let to = htlc.compute_address(network);
-        let amount = self.asset;
-
-        SendToAddress {
-            to,
-            amount,
-            network,
-        }
+        let params = self.build_params(secret_hash);
+        params.build_fund_action()
     }
 
     pub fn build_refund_action(
         &self,
         secret_hash: SecretHash,
+        vbyte_rate: bitcoin::Amount,
     ) -> anyhow::Result<BroadcastSignedTransaction> {
-        let (htlc_location, fund_transaction) = match &self.state {
+        let (fund_amount, fund_location) = match &self.state {
             State::Funded {
-                htlc_location,
-                fund_transaction,
+                asset: fund_amount,
+                htlc_location: fund_location,
                 ..
-            } => (htlc_location, fund_transaction),
+            } => (fund_amount, fund_location),
             _ => anyhow::bail!("incorrect state"),
         };
 
-        let network = bitcoin::Network::from(self.network);
-        let spend_output = {
-            let transient_refund_sk = self.transient_refund_identity;
-            let transient_refund_identity =
-                identity::Bitcoin::from_secret_key(&*crate::SECP, &transient_refund_sk);
-            let htlc = build_bitcoin_htlc(
-                self.transient_redeem_identity,
-                transient_refund_identity,
-                self.expiry,
-                secret_hash,
-            );
+        let transient_refund_sk = self.transient_refund_identity;
+        let refund_address = self.final_refund_identity.clone().into();
+        let params = self.build_params(secret_hash);
+        params.build_refund_action(
+            &*crate::SECP,
+            *fund_amount,
+            *fund_location,
+            transient_refund_sk,
+            refund_address,
+            vbyte_rate,
+        )
+    }
 
-            let previous_output = htlc_location;
-            let value = bitcoin::Amount::from_sat(
-                fund_transaction.output[htlc_location.vout as usize].value,
-            );
-            let input_parameters = htlc.unlock_after_timeout(&*crate::SECP, transient_refund_sk);
+    fn build_params(&self, secret_hash: SecretHash) -> Params {
+        let transient_refund_sk = self.transient_refund_identity;
+        let transient_refund_identity =
+            identity::Bitcoin::from_secret_key(&*crate::SECP, &transient_refund_sk);
 
-            SpendOutput::new(*previous_output, value, input_parameters, network)
-        };
-
-        let primed_transaction = spend_output.spend_to(self.final_refund_identity.clone().into());
-        let transaction = sign_with_fixed_rate(&*crate::SECP, primed_transaction)?;
-
-        Ok(BroadcastSignedTransaction {
-            transaction,
-            network,
-        })
+        Params {
+            network: self.network,
+            asset: self.asset,
+            redeem_identity: self.transient_redeem_identity,
+            refund_identity: transient_refund_identity,
+            expiry: self.expiry,
+            secret_hash,
+        }
     }
 }
 
@@ -118,47 +124,45 @@ impl FinalizedAsRedeemer {
     pub fn build_redeem_action(
         &self,
         secret: Secret,
+        vbyte_rate: bitcoin::Amount,
     ) -> anyhow::Result<BroadcastSignedTransaction> {
-        let (htlc_location, fund_transaction) = match &self.state {
+        let (fund_amount, fund_location) = match &self.state {
             State::Funded {
-                htlc_location,
-                fund_transaction,
+                asset: fund_amount,
+                htlc_location: fund_location,
                 ..
-            } => (htlc_location, fund_transaction),
+            } => (fund_amount, fund_location),
             _ => anyhow::bail!("incorrect state"),
         };
 
-        let network = bitcoin::Network::from(self.network);
-        let spend_output = {
-            let transient_redeem_sk = self.transient_redeem_identity;
-            let transient_redeem_identity =
-                identity::Bitcoin::from_secret_key(&*crate::SECP, &transient_redeem_sk);
-            let htlc = build_bitcoin_htlc(
-                transient_redeem_identity,
-                self.transient_refund_identity,
-                self.expiry,
-                SecretHash::new(secret),
-            );
+        let transient_redeem_sk = self.transient_redeem_identity;
+        let redeem_address = self.final_redeem_identity.clone().into();
 
-            let previous_output = htlc_location;
-            let value = bitcoin::Amount::from_sat(
-                fund_transaction.output[htlc_location.vout as usize].value,
-            );
-            let input_parameters = htlc.unlock_with_secret(
-                &*crate::SECP,
-                transient_redeem_sk,
-                secret.into_raw_secret(),
-            );
+        let secret_hash = SecretHash::new(secret);
+        let params = self.build_params(secret_hash);
+        params.build_redeem_action(
+            &*crate::SECP,
+            *fund_amount,
+            *fund_location,
+            transient_redeem_sk,
+            redeem_address,
+            secret,
+            vbyte_rate,
+        )
+    }
 
-            SpendOutput::new(*previous_output, value, input_parameters, network)
-        };
+    fn build_params(&self, secret_hash: SecretHash) -> Params {
+        let transient_redeem_sk = self.transient_redeem_identity;
+        let transient_redeem_identity =
+            identity::Bitcoin::from_secret_key(&*crate::SECP, &transient_redeem_sk);
 
-        let primed_transaction = spend_output.spend_to(self.final_redeem_identity.clone().into());
-        let transaction = sign_with_fixed_rate(&*crate::SECP, primed_transaction)?;
-
-        Ok(BroadcastSignedTransaction {
-            transaction,
-            network,
-        })
+        Params {
+            network: self.network,
+            asset: self.asset,
+            redeem_identity: transient_redeem_identity,
+            refund_identity: self.transient_refund_identity,
+            expiry: self.expiry,
+            secret_hash,
+        }
     }
 }

@@ -5,24 +5,37 @@
 //! database which have not been completed yet.
 
 use crate::{
-    protocol_spawner::ProtocolSpawner,
+    connectors::Connectors,
     spawn::spawn,
-    storage::{LoadAll, Storage},
+    storage::{commands, queries::get_active_swap_contexts, Storage},
 };
+use tokio::runtime::Handle;
 
 /// Respawn the protocols for all swaps that are not yet done.
-pub async fn respawn(storage: Storage, spawner: ProtocolSpawner) -> anyhow::Result<()> {
-    let swaps = storage.load_all().await?;
+pub async fn respawn(
+    storage: Storage,
+    connectors: Connectors,
+    handle: Handle,
+) -> anyhow::Result<()> {
+    let swaps = storage
+        .db
+        .do_in_transaction(get_active_swap_contexts)
+        .await?;
 
     for swap in swaps {
         let id = swap.id;
-        match spawn(&spawner, &storage, swap).await {
-            Err(e) => {
-                tracing::warn!("failed to load data for swap {}: {:?}", id, e);
-                continue;
-            }
-            _ => continue,
+        if let Err(e) = spawn(connectors.clone(), storage.clone(), handle.clone(), swap).await {
+            tracing::warn!(swap_id = %id, "failed to spawn swap {:#}", e);
+            continue;
         };
+
+        if let Err(e) = storage
+            .db
+            .do_in_transaction(|conn| commands::update_order_of_swap_to_settling(conn, id))
+            .await
+        {
+            tracing::warn!(swap_id = %id, "failed to update order state for swap {:#}", e);
+        }
     }
 
     Ok(())

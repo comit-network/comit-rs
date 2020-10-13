@@ -6,6 +6,28 @@ use crate::{
 
 pub use crate::halbit::*;
 
+/// Data for the halbit protocol, wrapped where needed to control
+/// serialization/deserialization.
+#[derive(serde::Deserialize, Clone, Copy, Debug)]
+pub struct Halbit {
+    #[serde(with = "asset::bitcoin::sats_as_string")]
+    pub amount: asset::Bitcoin,
+    pub identity: identity::Lightning,
+    pub network: ledger::Bitcoin,
+    pub cltv_expiry: u32,
+}
+
+impl From<Halbit> for CreatedSwap {
+    fn from(p: Halbit) -> Self {
+        CreatedSwap {
+            asset: p.amount,
+            identity: p.identity,
+            network: p.network,
+            cltv_expiry: p.cltv_expiry,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct Finalized {
     pub asset: asset::Bitcoin,
@@ -22,7 +44,7 @@ impl Finalized {
         let expiry = INVOICE_EXPIRY_SECS;
         let cltv_expiry = self.cltv_expiry;
         let chain = Chain::Bitcoin;
-        let network = bitcoin::Network::from(self.network);
+        let network = self.network;
         let self_public_key = self.redeem_identity;
 
         AddHoldInvoice {
@@ -41,7 +63,7 @@ impl Finalized {
         let amount = self.asset;
         let final_cltv_delta = self.cltv_expiry;
         let chain = Chain::Bitcoin;
-        let network = bitcoin::Network::from(self.network);
+        let network = self.network;
         let self_public_key = self.refund_identity;
 
         SendPayment {
@@ -57,7 +79,7 @@ impl Finalized {
 
     pub fn build_redeem_action(&self, secret: Secret) -> SettleInvoice {
         let chain = Chain::Bitcoin;
-        let network = bitcoin::Network::from(self.network);
+        let network = self.network;
         let self_public_key = self.redeem_identity;
 
         SettleInvoice {

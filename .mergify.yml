@@ -1,19 +1,11 @@
 pull_request_rules:
-  - name: comment on broken dependabot PRs, asking for help
-    conditions:
-      - "author=dependabot-preview[bot]"
-      - "status-failure=build (ubuntu-latest)"
-    actions:
-      comment:
-        message: "The build on this dependency update is broken and needs attention."
-      request_reviews:
-        teams:
-          - "@comit-network/rust-devs"
   - name: instruct bors to merge dependabot PRs with passing tests
     conditions:
-      - "author=dependabot-preview[bot]"
+      - "author=dependabot[bot]"
       - "status-success=static_analysis"
       - "status-success=build (ubuntu-latest)"
+      - "status-success=build (windows-latest)"
+      - "status-success=build (macos-latest)"
       - "status-success=license/cla"
       - label!=no-mergify
     actions:
@@ -25,6 +17,8 @@ pull_request_rules:
       - "#changes-requested-reviews-by=0"
       - "status-success=static_analysis"
       - "status-success=build (ubuntu-latest)"
+      - "status-success=build (windows-latest)"
+      - "status-success=build (macos-latest)"
       - "status-success=license/cla"
       - -conflict
       - label!=work-in-progress
@@ -41,3 +35,11 @@ pull_request_rules:
       - head~=^(?!release.*).*$
     actions:
       delete_head_branch:
+        force: false
+  - name: Block regular PRs from merging into master
+    conditions:
+      - base=master
+      - head~=^(?!release.*).*$
+    actions:
+      close:
+        message: This repository is using GitFlow. New features should be merged into `dev` instead of master. Please open a new pull request that targets `dev` instead.

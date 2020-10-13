@@ -1,10 +1,11 @@
 use crate::{
     btsieve::{
         ethereum::{self, Hash, ReceiptByHash},
-        BlockByHash, LatestBlock,
+        BlockByHash, ConnectedNetwork, LatestBlock,
     },
-    ethereum::TransactionReceipt,
+    ethereum::{ChainId, TransactionReceipt},
 };
+use anyhow::Result;
 use async_trait::async_trait;
 use derivative::Derivative;
 use lru::LruCache;
@@ -24,6 +25,8 @@ pub struct Cache<C> {
     pub block_cache: Arc<Mutex<LruCache<Hash, Block>>>,
     #[derivative(Debug = "ignore")]
     pub receipt_cache: Arc<Mutex<LruCache<Hash, TransactionReceipt>>>,
+    #[derivative(Debug = "ignore")]
+    pub connected_network_cache: Arc<Mutex<Option<ChainId>>>,
 }
 
 impl<C> Cache<C> {
@@ -34,10 +37,13 @@ impl<C> Cache<C> {
     ) -> Cache<C> {
         let block_cache = Arc::new(Mutex::new(LruCache::new(block_cache_capacity)));
         let receipt_cache = Arc::new(Mutex::new(LruCache::new(receipt_cache_capacity)));
+        let connected_network_cache = Arc::new(Mutex::new(None));
+
         Cache {
             connector,
             block_cache,
             receipt_cache,
+            connected_network_cache,
         }
     }
 }
@@ -49,7 +55,7 @@ where
 {
     type Block = Block;
 
-    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
+    async fn latest_block(&self) -> Result<Self::Block> {
         let block = self.connector.latest_block().await?;
 
         let mut guard = self.block_cache.lock().await;
@@ -69,14 +75,12 @@ where
     type Block = Block;
     type BlockHash = Hash;
 
-    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> Result<Self::Block> {
         if let Some(block) = self.block_cache.lock().await.get(&block_hash) {
-            tracing::trace!("Found block in cache: {:x}", block_hash);
             return Ok(block.clone());
         }
 
         let block = self.connector.block_by_hash(block_hash).await?;
-        tracing::trace!("Fetched block from connector: {:x}", block_hash);
 
         // We dropped the lock so at this stage the block may have been inserted by
         // another thread, no worries, inserting the same block twice does not hurt.
@@ -92,15 +96,12 @@ impl<C> ReceiptByHash for Cache<C>
 where
     C: ReceiptByHash,
 {
-    async fn receipt_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<TransactionReceipt> {
+    async fn receipt_by_hash(&self, transaction_hash: Hash) -> Result<TransactionReceipt> {
         if let Some(receipt) = self.receipt_cache.lock().await.get(&transaction_hash) {
-            tracing::trace!("Found receipt in cache: {:x}", transaction_hash);
             return Ok(receipt.clone());
         }
 
         let receipt = self.connector.receipt_by_hash(transaction_hash).await?;
-
-        tracing::trace!("Fetched receipt from connector: {:x}", transaction_hash);
 
         // We dropped the lock so at this stage the receipt may have been inserted by
         // another thread, no worries, inserting the same receipt twice does not hurt.
@@ -108,5 +109,24 @@ where
         guard.put(transaction_hash, receipt.clone());
 
         Ok(receipt)
+    }
+}
+
+#[async_trait]
+impl<C> ConnectedNetwork for Cache<C>
+where
+    C: ConnectedNetwork<Network = ChainId>,
+{
+    type Network = ChainId;
+
+    async fn connected_network(&self) -> Result<Self::Network> {
+        if let Some(network) = *self.connected_network_cache.lock().await {
+            return Ok(network);
+        }
+
+        let network = self.connector.connected_network().await?;
+        let _ = self.connected_network_cache.lock().await.replace(network);
+
+        Ok(network)
     }
 }

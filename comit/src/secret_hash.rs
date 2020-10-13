@@ -1,6 +1,6 @@
 use crate::Secret;
+use ::bitcoin::hashes::{sha256, Hash, HashEngine};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-use sha2::{Digest, Sha256};
 use std::{fmt, str::FromStr};
 
 const LENGTH: usize = 32;
@@ -17,7 +17,9 @@ pub struct SecretHash([u8; LENGTH]);
 
 impl SecretHash {
     pub fn new(secret: Secret) -> Self {
-        let hash = Sha256::digest(secret.as_raw_secret()).into();
+        let mut engine = sha256::HashEngine::default();
+        engine.input(secret.as_raw_secret());
+        let hash = sha256::Hash::from_engine(engine).into_inner();
 
         SecretHash(hash)
     }

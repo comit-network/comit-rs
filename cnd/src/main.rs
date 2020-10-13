@@ -12,35 +12,90 @@
     clippy::dbg_macro
 )]
 #![forbid(unsafe_code)]
-use crate::cli::Options;
-use anyhow::Context;
-use cnd::{
-    btsieve::{
-        bitcoin::{self, BitcoindConnector},
-        ethereum::{self, Web3Connector},
-    },
-    config::{self, validation::validate_connection_to_network, Settings},
+
+#[macro_use]
+extern crate diesel;
+#[macro_use]
+extern crate diesel_migrations;
+
+#[macro_use]
+mod network;
+#[cfg(test)]
+mod proptest;
+#[cfg(test)]
+mod spectral_ext;
+#[macro_use]
+mod with_swap_types;
+mod actions;
+mod bitcoin_fees;
+mod cli;
+mod config;
+mod connectors;
+mod file_lock;
+mod fs;
+mod halbit;
+mod hbit;
+mod herc20;
+mod http_api;
+mod local_swap_id;
+mod republish;
+mod respawn;
+mod spawn;
+mod state;
+mod storage;
+mod trace;
+
+mod htlc_location {
+    pub use comit::htlc_location::*;
+}
+mod identity {
+    pub use comit::identity::*;
+}
+mod transaction {
+    pub use comit::transaction::*;
+}
+mod asset {
+    pub use comit::asset::*;
+}
+mod ethereum {
+    pub use comit::ethereum::*;
+}
+mod bitcoin {
+    pub use comit::bitcoin::*;
+}
+mod lightning {
+    pub use comit::lightning::PublicKey;
+}
+mod btsieve {
+    pub use comit::btsieve::*;
+}
+
+use self::{
+    actions::*,
+    bitcoin_fees::BitcoinFees,
+    btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
+    config::{validate_connection_to_network, Settings},
     connectors::Connectors,
-    db::Sqlite,
     file_lock::TryLockExclusive,
-    halbit, hbit, herc20,
-    http_api::route_factory,
-    load_swaps,
+    local_swap_id::LocalSwapId,
     network::{Swarm, SwarmWorker},
-    protocol_spawner::ProtocolSpawner,
+    republish::republish_open_orders,
     respawn::respawn,
-    storage::Storage,
-    swap_protocols::{rfc003, rfc003::SwapCommunicationStates, Rfc003Facade, SwapErrorStates},
-    Facade, RootSeed,
+    spawn::*,
+    storage::{RootSeed, Sqlite, Storage},
 };
-use comit::lnd::LndConnectorParams;
+use ::bitcoin::secp256k1::{All, Secp256k1};
+use comit::{
+    ledger, lnd::LndConnectorParams, LockProtocol, Never, RelativeTime, Role, Secret, SecretHash,
+    Side, Timestamp,
+};
+use conquer_once::Lazy;
 use rand::rngs::OsRng;
-use std::{process, sync::Arc};
+use std::{env, process};
 use structopt::StructOpt;
 use tokio::{net::TcpListener, runtime};
 
-mod cli;
-mod trace;
+pub static SECP: Lazy<Secp256k1<All>> = Lazy::new(Secp256k1::new);
 
 fn main() -> anyhow::Result<()> {
     let options = cli::Options::from_args();
@@ -50,10 +105,11 @@ fn main() -> anyhow::Result<()> {
         process::exit(0);
     }
 
-    let settings = read_config(&options).and_then(Settings::from_config_file_and_defaults)?;
+    let file = fs::read_config(&options)?;
+    let settings = Settings::from_config_file_and_defaults(file, options.network)?;
 
     if options.dump_config {
-        dump_config(settings)?;
+        fs::dump_config(settings)?;
         process::exit(0);
     }
 
@@ -78,12 +134,15 @@ fn main() -> anyhow::Result<()> {
     let mut runtime = runtime::Builder::new()
         .enable_all()
         .threaded_scheduler()
-        .thread_stack_size(1024 * 1024 * 8) // the default is 2MB but that causes a segfault for some reason
         .build()?;
 
     let bitcoin_connector = {
-        let config::Bitcoin { bitcoind, network } = &settings.bitcoin;
-        let connector = BitcoindConnector::new(bitcoind.node_url.clone(), *network)?;
+        let config::Bitcoin {
+            bitcoind,
+            network,
+            fees: _,
+        } = &settings.bitcoin;
+        let connector = BitcoindConnector::new(bitcoind.node_url.clone())?;
 
         runtime.block_on(async {
             match validate_connection_to_network(&connector, *network).await {
@@ -98,11 +157,11 @@ fn main() -> anyhow::Result<()> {
 
         const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
 
-        Arc::new(bitcoin::Cache::new(connector, BITCOIN_BLOCK_CACHE_CAPACITY))
+        btsieve::bitcoin::Cache::new(connector, BITCOIN_BLOCK_CACHE_CAPACITY)
     };
 
     let ethereum_connector = {
-        let config::Ethereum { geth, chain_id } = &settings.ethereum;
+        let config::Ethereum { geth, chain_id, .. } = &settings.ethereum;
         let connector = Web3Connector::new(geth.node_url.clone());
 
         runtime.block_on(async {
@@ -119,11 +178,11 @@ fn main() -> anyhow::Result<()> {
         const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
         const ETHEREUM_RECEIPT_CACHE_CAPACITY: usize = 720;
 
-        Arc::new(ethereum::Cache::new(
+        btsieve::ethereum::Cache::new(
             connector,
             ETHEREUM_BLOCK_CACHE_CAPACITY,
             ETHEREUM_RECEIPT_CACHE_CAPACITY,
-        ))
+        )
     };
 
     let lnd_connector_params = LndConnectorParams::new(
@@ -140,85 +199,45 @@ fn main() -> anyhow::Result<()> {
     })
     .ok();
 
-    let connectors = Connectors {
-        bitcoin: Arc::clone(&bitcoin_connector),
-        ethereum: Arc::clone(&ethereum_connector),
-    };
+    let connectors = Connectors::new(bitcoin_connector, ethereum_connector, lnd_connector_params);
+    let storage = Storage::new(database, seed);
 
-    // RCF003 protocol
-    let rfc003_alpha_ledger_states = Arc::new(rfc003::LedgerStates::default());
-    let rfc003_beta_ledger_states = Arc::new(rfc003::LedgerStates::default());
-    let swap_communication_states = Arc::new(SwapCommunicationStates::default());
-
-    let herc20_states = Arc::new(herc20::States::default());
-    let halbit_states = Arc::new(halbit::States::default());
-    let hbit_states = Arc::new(hbit::States::default());
-
-    let swap_error_states = Arc::new(SwapErrorStates::default());
-
-    let storage = Storage::new(
-        database.clone(),
-        seed,
-        herc20_states.clone(),
-        halbit_states.clone(),
-        hbit_states.clone(),
-    );
-
-    let protocol_spawner = ProtocolSpawner::new(
-        Arc::clone(&ethereum_connector),
-        Arc::clone(&bitcoin_connector),
-        lnd_connector_params,
-        runtime.handle().clone(),
-        Arc::clone(&herc20_states),
-        Arc::clone(&halbit_states),
-        Arc::clone(&hbit_states),
-    );
-
-    let swarm = Swarm::new(
+    let swarm = runtime.block_on(Swarm::new(
         &settings,
         seed,
-        Arc::clone(&bitcoin_connector),
-        Arc::clone(&ethereum_connector),
-        Arc::clone(&swap_communication_states),
-        Arc::clone(&rfc003_alpha_ledger_states),
-        Arc::clone(&rfc003_beta_ledger_states),
-        &database,
         runtime.handle().clone(),
         storage.clone(),
-        protocol_spawner.clone(),
-    )?;
-
-    // RCF003 protocol
-    let rfc003_facade = Rfc003Facade {
-        bitcoin_connector,
-        ethereum_connector: Arc::clone(&ethereum_connector),
-        alpha_ledger_states: Arc::clone(&rfc003_alpha_ledger_states),
-        beta_ledger_states: Arc::clone(&&rfc003_beta_ledger_states),
-        swap_communication_states,
-        swap_error_states,
-        seed,
-        db: database,
-        swarm: swarm.clone(),
-    };
-
-    // split protocols
-    let facade = Facade {
-        swarm: swarm.clone(),
-        storage: storage.clone(),
-        connectors,
-    };
+        connectors.clone(),
+    ))?;
 
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;
-    runtime.block_on(load_swaps::load_swaps_from_database(rfc003_facade.clone()))?;
-    match runtime.block_on(respawn(storage, protocol_spawner)) {
+    match runtime.block_on(respawn(
+        storage.clone(),
+        connectors.clone(),
+        runtime.handle().clone(),
+    )) {
         Ok(()) => {}
-        Err(e) => tracing::warn!("failed to respawn swaps: {:?}", e),
+        Err(e) => tracing::warn!("failed to respawn swaps: {:#}", e),
+    };
+    match runtime.block_on(republish_open_orders(storage.clone(), swarm.clone())) {
+        Ok(()) => {}
+        Err(e) => tracing::warn!("failed to republish orders: {:#}", e),
+    };
+
+    let bitcoin_fees = match &settings.bitcoin.fees {
+        config::BitcoinFees::StaticSatPerVbyte(fee) => BitcoinFees::static_rate(*fee),
+        config::BitcoinFees::CypherBlock(url) => {
+            BitcoinFees::block_cypher(url.clone(), options.network.unwrap_or_default())
+        }
     };
 
     runtime.spawn(make_http_api_worker(
         settings,
-        rfc003_facade,
-        facade,
+        bitcoin_fees,
+        options.network.unwrap_or_default(),
+        swarm.clone(),
+        storage,
+        connectors,
         http_api_listener,
     ));
     runtime.spawn(make_network_api_worker(swarm));
@@ -254,15 +273,15 @@ async fn bind_http_api_socket(settings: &Settings) -> anyhow::Result<tokio::net:
 /// Construct the worker that is going to process HTTP API requests.
 async fn make_http_api_worker(
     settings: Settings,
-    rfc003_facade: Rfc003Facade,
-    facade: Facade,
+    bitcoin_fees: BitcoinFees,
+    network: comit::Network,
+    swarm: Swarm,
+    storage: Storage,
+    connectors: Connectors,
     incoming_requests: tokio::net::TcpListener,
 ) {
-    let routes = route_factory::create(
-        rfc003_facade,
-        facade,
-        &settings.http_api.cors.allowed_origins,
-    );
+    let routes =
+        http_api::create_routes(swarm, storage, connectors, &settings, bitcoin_fees, network);
 
     match incoming_requests.local_addr() {
         Ok(socket) => {
@@ -281,38 +300,4 @@ async fn make_network_api_worker(swarm: Swarm) {
     let worker = SwarmWorker { swarm };
 
     worker.await
-}
-
-#[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
-fn read_config(options: &Options) -> anyhow::Result<config::File> {
-    // if the user specifies a config path, use it
-    if let Some(path) = &options.config_file {
-        eprintln!("Using config file {}", path.display());
-
-        return config::File::read(&path)
-            .with_context(|| format!("failed to read config file {}", path.display()));
-    }
-
-    // try to load default config
-    let default_path = cnd::default_config_path()?;
-
-    if !default_path.exists() {
-        return Ok(config::File::default());
-    }
-
-    eprintln!(
-        "Using config file at default path: {}",
-        default_path.display()
-    );
-
-    config::File::read(&default_path)
-        .with_context(|| format!("failed to read config file {}", default_path.display()))
-}
-
-#[allow(clippy::print_stdout)] // Don't use the logger so its easier to cut'n'paste
-fn dump_config(settings: Settings) -> anyhow::Result<()> {
-    let file = config::File::from(settings);
-    let serialized = toml::to_string(&file)?;
-    println!("{}", serialized);
-    Ok(())
 }

@@ -7,8 +7,7 @@
 //! `crate::proptest::identity::bitcoin()`.
 
 use crate::{ethereum::ChainId, LocalSwapId, Role, Side};
-use chrono::NaiveDateTime;
-use proptest::prelude::*;
+pub use proptest::prelude::*;
 use uuid::Uuid;
 
 pub fn role() -> impl Strategy<Value = Role> {
@@ -22,8 +21,8 @@ pub fn side() -> impl Strategy<Value = Side> {
 prop_compose! {
     pub fn timestamp()(
         secs in any::<u32>(),
-    ) -> NaiveDateTime {
-        NaiveDateTime::from_timestamp(secs as i64, 0)
+    ) -> time::OffsetDateTime {
+        time::OffsetDateTime::from_unix_timestamp(secs as i64)
     }
 }
 
@@ -110,7 +109,7 @@ pub mod bitcoin {
             public_key in identity::bitcoin(),
             network in ledger::bitcoin(),
         ) -> ::bitcoin::Address {
-            ::bitcoin::Address::p2wpkh(&public_key.into(), network.into())
+            ::bitcoin::Address::p2wpkh(&public_key.into(), network.into()).expect("our public keys are always compressed")
         }
     }
 }
@@ -148,7 +147,7 @@ pub mod asset {
 
 pub mod herc20 {
     use super::*;
-    use comit::herc20;
+    use crate::herc20;
 
     prop_compose! {
         pub fn created_swap()(
@@ -169,7 +168,7 @@ pub mod herc20 {
 
 pub mod halbit {
     use super::*;
-    use comit::halbit;
+    use crate::halbit;
 
     prop_compose! {
         pub fn created_swap()(
@@ -190,7 +189,7 @@ pub mod halbit {
 
 pub mod hbit {
     use super::*;
-    use comit::hbit;
+    use crate::hbit;
 
     prop_compose! {
         pub fn created_swap()(
@@ -204,68 +203,6 @@ pub mod hbit {
                 final_identity,
                 network,
                 absolute_expiry
-            }
-        }
-    }
-}
-
-pub mod db {
-    use super::*;
-    use crate::db;
-    use std::fmt::Debug;
-
-    pub fn created_swap<A, B>(
-        alpha: impl Strategy<Value = A>,
-        beta: impl Strategy<Value = B>,
-    ) -> impl Strategy<Value = db::CreatedSwap<A, B>>
-    where
-        A: Debug,
-        B: Debug,
-    {
-        (
-            local_swap_id(),
-            alpha,
-            beta,
-            libp2p::peer_id(),
-            role(),
-            timestamp(),
-        )
-            .prop_map(|(swap_id, alpha, beta, peer, role, start_of_swap)| {
-                db::CreatedSwap {
-                    swap_id,
-                    alpha,
-                    beta,
-                    peer,
-                    address_hint: None,
-                    role,
-                    start_of_swap,
-                }
-            })
-    }
-
-    pub mod tables {
-        use super::*;
-        use db::{tables, tables::IntoInsertable};
-
-        prop_compose! {
-            pub fn insertable_swap()(
-                local_swap_id in local_swap_id(),
-                role in role(),
-                peer in libp2p::peer_id(),
-                start_of_swap in timestamp(),
-            ) -> tables::InsertableSwap {
-                tables::InsertableSwap::new(local_swap_id, peer, role, start_of_swap)
-            }
-        }
-
-        prop_compose! {
-            pub fn insertable_halbit()(
-                created in halbit::created_swap(),
-                swap_id in any::<i32>(),
-                role in role(),
-                side in side(),
-            ) -> tables::InsertableHalbit {
-                created.into_insertable(swap_id, role, side)
             }
         }
     }

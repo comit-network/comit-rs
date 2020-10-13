@@ -1,8 +1,25 @@
+#![warn(
+    unused_extern_crates,
+    missing_debug_implementations,
+    missing_copy_implementations,
+    rust_2018_idioms,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::fallible_impl_from,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_wrap,
+    clippy::print_stdout,
+    clippy::dbg_macro
+)]
+#![forbid(unsafe_code)]
+#![type_length_limit = "1049479"] // Regressed with Rust 1.46.0 :(
+
 pub mod actions;
 pub mod asset;
 pub mod bitcoin;
 pub mod btsieve;
 pub mod ethereum;
+pub mod expiries;
 pub mod halbit;
 pub mod hbit;
 pub mod herc20;
@@ -12,21 +29,50 @@ pub mod ledger;
 pub mod lightning;
 pub mod lnd;
 pub mod network;
+pub mod order;
+pub mod orderpool;
+#[cfg(test)]
+pub mod proptest;
 mod secret;
 mod secret_hash;
-mod swap_id;
 mod timestamp;
 pub mod transaction;
 
+/// A module for exporting dependencies that appear in the public API of our
+/// crate.
+///
+/// Ideally, all dependencies of the `comit` crate would be an implementation
+/// detail and the consumer doesn't need to worry about their versions for
+/// interoperability. However, some types of our dependencies appear in public
+/// APIs of the `comit` crate and hence force consumers to use a
+/// semver-compatible version of the crate in their application.
+///
+/// This module allows those consumers to access said dependencies without
+/// having to declare a dependency themselves whose version would need to be
+/// kept in sync with the one `comit` is depending on.
+///
+/// Additions to this module should be considered carefully. Removing types
+/// defined in dependencies from a public API is almost always preferable over
+/// re-exporting the dependency through this module.
+pub mod export {
+    pub use ::bitcoin;
+}
+
 pub use self::{
-    network::DialInformation,
+    network::SharedSwapId,
+    order::{BtcDaiOrder, OrderId, Position, Price, Quantity},
     secret::Secret,
     secret_hash::SecretHash,
-    swap_id::{LocalSwapId, SharedSwapId},
     timestamp::{RelativeTime, Timestamp},
 };
-use digest::ToDigestInput;
 
+use serde::{Deserialize, Serialize};
+
+/// Defines the set of locking protocol available in COMIT.
+///
+/// A locking protocol represents a particular way of locking an asset on a
+/// certain ledger. Hence, a locking protocol does not only imply the ledger but
+/// also the asset that can be locked.
 #[derive(
     Debug,
     Clone,
@@ -39,13 +85,25 @@ use digest::ToDigestInput;
     strum_macros::EnumIter,
 )]
 #[strum(serialize_all = "lowercase")]
-pub enum Protocol {
+pub enum LockProtocol {
+    /// The [`hbit`](crate::hbit) locking protocol.
     Hbit,
+    /// The [`halbit`](crate::halbit) locking protocol.
     Halbit,
+    /// The [`herc20`](crate::herc20) locking protocol.
     Herc20,
 }
 
-#[derive(Clone, Copy, Debug, strum_macros::Display, strum_macros::EnumString, PartialEq)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    strum_macros::Display,
+    strum_macros::EnumString,
+    PartialEq,
+    Serialize,
+    Deserialize,
+)]
 pub enum Role {
     Alice,
     Bob,
@@ -72,46 +130,67 @@ pub enum Role {
 /// for both parties. Only the _combination_ of a party's role and the side of a
 /// ledger makes it possible to unambiguously reason about the protocol in
 /// action.
-#[derive(Clone, Copy, Debug, strum_macros::Display, strum_macros::EnumString, PartialEq)]
+#[derive(Clone, Copy, Debug, strum_macros::Display, strum_macros::EnumString, PartialEq, Eq)]
 pub enum Side {
     Alpha,
     Beta,
 }
 
+/// The various networks within COMIT.
+#[derive(Debug, Clone, Copy, strum_macros::Display, strum_macros::EnumString, PartialEq, Eq)]
+#[strum(serialize_all = "lowercase")]
+pub enum Network {
+    Main,
+    Test,
+    Dev,
+}
+
+impl Default for Network {
+    fn default() -> Self {
+        Network::Main
+    }
+}
+
+impl From<Network> for ledger::Bitcoin {
+    fn from(network: Network) -> Self {
+        match network {
+            Network::Main => ledger::Bitcoin::Mainnet,
+            Network::Test => ledger::Bitcoin::Testnet,
+            Network::Dev => ledger::Bitcoin::Regtest,
+        }
+    }
+}
+
+impl From<Network> for ethereum::ChainId {
+    fn from(network: Network) -> Self {
+        match network {
+            Network::Main => ethereum::ChainId::MAINNET,
+            Network::Test => ethereum::ChainId::ROPSTEN,
+            Network::Dev => ethereum::ChainId::GETH_DEV,
+        }
+    }
+}
+
+impl From<ledger::Bitcoin> for Network {
+    fn from(network: ledger::Bitcoin) -> Self {
+        match network {
+            ledger::Bitcoin::Mainnet => Network::Main,
+            ledger::Bitcoin::Testnet => Network::Test,
+            ledger::Bitcoin::Regtest => Network::Dev,
+        }
+    }
+}
+
+impl From<ethereum::ChainId> for Network {
+    fn from(chain_id: ethereum::ChainId) -> Self {
+        match chain_id {
+            ethereum::ChainId::MAINNET => Network::Main,
+            ethereum::ChainId::ROPSTEN => Network::Test,
+            ethereum::ChainId::KOVAN => Network::Test,
+            ethereum::ChainId::GETH_DEV => Network::Dev,
+            _ => Network::Dev,
+        }
+    }
+}
+
 pub type Never = std::convert::Infallible;
-
-impl ToDigestInput for Timestamp {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.clone().to_bytes().to_vec()
-    }
-}
-
-impl ToDigestInput for RelativeTime {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.to_bytes().to_vec()
-    }
-}
-
-impl ToDigestInput for ethereum::Address {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.clone().as_bytes().to_vec()
-    }
-}
-
-impl ToDigestInput for asset::Bitcoin {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.to_le_bytes().to_vec()
-    }
-}
-
-impl ToDigestInput for asset::Ether {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.to_bytes()
-    }
-}
-
-impl ToDigestInput for asset::Erc20Quantity {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.to_bytes()
-    }
-}

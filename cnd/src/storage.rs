@@ -1,17 +1,19 @@
+mod db;
 mod http_api;
+mod seed;
 
 use crate::{
-    asset,
-    db::{self, *},
-    halbit, hbit, herc20, identity,
+    asset, halbit, hbit, herc20, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
-    spawn, LocalSwapId, Protocol, Role, RootSeed, SecretHash, Side,
+    spawn,
+    storage::db::queries::get_swap_context_by_id,
+    LocalSwapId, Role, Side,
 };
-use anyhow::Context;
 use async_trait::async_trait;
-use bitcoin::Network;
-use diesel::{BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 use std::sync::Arc;
+
+pub use db::*;
+pub use seed::*;
 
 /// Load data for a particular swap from the storage layer.
 #[async_trait]
@@ -19,16 +21,10 @@ pub trait Load<T>: Send + Sync + 'static {
     async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<T>;
 }
 
-/// Load all data of type T from the storage layer.
-#[async_trait]
-pub trait LoadAll<T>: Send + Sync + 'static {
-    async fn load_all(&self) -> anyhow::Result<Vec<T>>;
-}
-
-/// Save data to the database.
+/// Save data to the storage layer.
 #[async_trait]
 pub trait Save<T>: Send + Sync + 'static {
-    async fn save(&self, swap: T) -> anyhow::Result<()>;
+    async fn save(&self, entity: T) -> anyhow::Result<()>;
 }
 
 /// Convenience struct to use with `Save` for saving some data T that relates to
@@ -39,32 +35,28 @@ pub struct ForSwap<T> {
     pub data: T,
 }
 
+/// A facade for the storage layer.
 #[derive(Debug, Clone)]
 pub struct Storage {
-    db: Sqlite,
-    seed: RootSeed,
-    herc20_states: Arc<herc20::States>,
-    halbit_states: Arc<halbit::States>,
-    hbit_states: Arc<hbit::States>,
+    pub db: Sqlite,
+    pub seed: RootSeed,
+    pub herc20_states: Arc<herc20::States>,
+    pub halbit_states: Arc<halbit::States>,
+    pub hbit_states: Arc<hbit::States>,
 }
 
 impl Storage {
-    pub fn new(
-        db: Sqlite,
-        seed: RootSeed,
-        herc20_states: Arc<herc20::States>,
-        halbit_states: Arc<halbit::States>,
-        hbit_states: Arc<hbit::States>,
-    ) -> Self {
+    pub fn new(db: Sqlite, seed: RootSeed) -> Self {
         Self {
             db,
             seed,
-            herc20_states,
-            halbit_states,
-            hbit_states,
+            herc20_states: Arc::new(herc20::States::default()),
+            halbit_states: Arc::new(halbit::States::default()),
+            hbit_states: Arc::new(hbit::States::default()),
         }
     }
 
+    /// Transient identity used by the hbit HTLC.
     pub fn derive_transient_identity(
         &self,
         swap_id: LocalSwapId,
@@ -91,9 +83,6 @@ impl Storage {
         Self::new(
             Sqlite::test(),
             RootSeed::new_random(&mut rand::thread_rng()).unwrap(),
-            Arc::new(herc20::States::default()),
-            Arc::new(halbit::States::default()),
-            Arc::new(hbit::States::default()),
         )
     }
 }
@@ -101,15 +90,15 @@ impl Storage {
 #[async_trait::async_trait]
 impl<A, B, TParamsA, TParamsB> Load<spawn::Swap<TParamsA, TParamsB>> for Storage
 where
-    Storage: LoadTables<A, B>,
+    Sqlite: LoadTables<A, B>,
     TParamsA: IntoParams<ProtocolTable = A> + 'static,
     TParamsB: IntoParams<ProtocolTable = B> + 'static,
     A: 'static,
     B: 'static,
 {
     async fn load(&self, id: LocalSwapId) -> anyhow::Result<spawn::Swap<TParamsA, TParamsB>> {
-        let tab = self.load_tables(id).await?;
-        let role = tab.swap.role.0;
+        let tab = self.db.load_tables(id).await?;
+        let role = tab.swap.role;
         let secret_hash = derive_or_unwrap_secret_hash(id, self.seed, role, tab.secret_hash)?;
 
         let alpha = TParamsA::into_params(tab.alpha, id, self.seed, role, secret_hash)?;
@@ -124,12 +113,6 @@ where
     }
 }
 
-/// Load data from tables, A and B are protocol tables.
-#[async_trait::async_trait]
-pub trait LoadTables<A, B> {
-    async fn load_tables(&self, id: LocalSwapId) -> anyhow::Result<Tables<A, B>>;
-}
-
 /// Convert a protocol table, with associated data, into a swap params object.
 pub trait IntoParams: Sized {
     type ProtocolTable;
@@ -139,69 +122,8 @@ pub trait IntoParams: Sized {
         _: LocalSwapId,
         _: RootSeed,
         _: Role,
-        _: SecretHash,
+        _: comit::SecretHash,
     ) -> anyhow::Result<Self>;
-}
-
-/// Data required to load in order to construct spawnable swaps (`spawn::Swap`).
-#[derive(Debug)]
-pub struct Tables<A, B> {
-    pub swap: db::Swap,
-    pub alpha: A, // E.g, Herc20
-    pub beta: B,  // E.g, Hbit
-    pub secret_hash: Option<db::SecretHash>,
-}
-
-macro_rules! impl_load_tables {
-    ($alpha:tt, $beta:tt) => {
-        #[async_trait::async_trait]
-        impl LoadTables<$alpha, $beta> for Storage {
-            async fn load_tables(&self, id: LocalSwapId) -> anyhow::Result<Tables<$alpha, $beta>> {
-                use crate::db::schema::swaps;
-
-                let (swap, alpha, beta, secret_hash) = self
-                    .db
-                    .do_in_transaction::<_, _, anyhow::Error>(move |conn| {
-                        let key = Text(id);
-
-                        let swap: Swap = swaps::table
-                            .filter(swaps::local_swap_id.eq(key))
-                            .first(conn)?;
-
-                        let alpha = $alpha::belonging_to(&swap).first::<$alpha>(conn)?;
-                        let beta = $beta::belonging_to(&swap).first::<$beta>(conn)?;
-
-                        let secret_hash = db::SecretHash::belonging_to(&swap)
-                            .first::<db::SecretHash>(conn)
-                            .optional()?;
-
-                        Ok((swap, alpha, beta, secret_hash))
-                    })
-                    .await
-                    .context(db::Error::SwapNotFound)?;
-
-                alpha.assert_side(Side::Alpha)?;
-                beta.assert_side(Side::Beta)?;
-
-                Ok(Tables {
-                    swap,
-                    secret_hash,
-                    alpha,
-                    beta,
-                })
-            }
-        }
-    };
-}
-
-impl_load_tables!(Herc20, Halbit);
-impl_load_tables!(Halbit, Herc20);
-impl_load_tables!(Herc20, Hbit);
-impl_load_tables!(Hbit, Herc20);
-
-/// Assert that a loaded data from a protocol table is for the correct side.
-pub trait AssertSide {
-    fn assert_side(&self, expected: Side) -> anyhow::Result<()>;
 }
 
 impl IntoParams for herc20::Params {
@@ -212,25 +134,24 @@ impl IntoParams for herc20::Params {
         id: LocalSwapId,
         _: RootSeed,
         _: Role,
-        secret_hash: SecretHash,
+        secret_hash: comit::SecretHash,
     ) -> anyhow::Result<herc20::Params> {
         Ok(herc20::Params {
             asset: asset::Erc20 {
                 quantity: herc20.amount.0.into(),
-                token_contract: herc20.token_contract.0.into(),
+                token_contract: herc20.token_contract.0,
             },
             redeem_identity: herc20
                 .redeem_identity
                 .ok_or_else(|| NoHerc20RedeemIdentity(id))?
-                .0
-                .into(),
+                .0,
             refund_identity: herc20
                 .refund_identity
                 .ok_or_else(|| NoHerc20RefundIdentity(id))?
-                .0
-                .into(),
+                .0,
             expiry: herc20.expiry.0.into(),
             secret_hash,
+            chain_id: herc20.chain_id.0.into(),
         })
     }
 }
@@ -243,7 +164,7 @@ impl IntoParams for halbit::Params {
         id: LocalSwapId,
         _: RootSeed,
         _: Role,
-        secret_hash: SecretHash,
+        secret_hash: comit::SecretHash,
     ) -> anyhow::Result<halbit::Params> {
         Ok(halbit::Params {
             redeem_identity: halbit
@@ -269,7 +190,7 @@ impl IntoParams for hbit::Params {
         id: LocalSwapId,
         seed: RootSeed,
         role: Role,
-        secret_hash: SecretHash,
+        secret_hash: comit::SecretHash,
     ) -> anyhow::Result<hbit::Params> {
         let (redeem, refund) = match (hbit.side.0, role) {
             (Side::Alpha, Role::Bob) | (Side::Beta, Role::Alice) => {
@@ -293,7 +214,7 @@ impl IntoParams for hbit::Params {
         };
 
         Ok(hbit::Params {
-            network: Network::Regtest,
+            network: hbit.network.0,
             asset: hbit.amount.0.into(),
             redeem_identity: redeem,
             refund_identity: refund,
@@ -303,36 +224,13 @@ impl IntoParams for hbit::Params {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct SwapContext {
-    pub id: LocalSwapId,
-    pub role: Role,
-    pub alpha: Protocol,
-    pub beta: Protocol,
-}
-
-impl From<SwapContextRow> for SwapContext {
-    fn from(row: SwapContextRow) -> Self {
-        SwapContext {
-            id: row.id.0,
-            role: row.role.0,
-            alpha: row.alpha.0,
-            beta: row.beta.0,
-        }
-    }
-}
-
 #[async_trait::async_trait]
 impl Load<SwapContext> for Storage {
     async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<SwapContext> {
         let context = self
             .db
-            .swap_contexts()
-            .await?
-            .into_iter()
-            .find(|context| context.id.0 == swap_id)
-            .map(|context| context.into())
-            .ok_or(db::Error::SwapNotFound)?;
+            .do_in_transaction(|connection| get_swap_context_by_id(connection, swap_id))
+            .await?;
 
         Ok(context)
     }
@@ -344,12 +242,12 @@ fn derive_or_unwrap_secret_hash(
     id: LocalSwapId,
     seed: RootSeed,
     role: Role,
-    secret_hash: Option<db::SecretHash>,
-) -> anyhow::Result<SecretHash> {
+    secret_hash: Option<SecretHash>,
+) -> anyhow::Result<comit::SecretHash> {
     let secret_hash = match role {
         Role::Alice => {
             let swap_seed = seed.derive_swap_seed(id);
-            SecretHash::new(swap_seed.derive_secret())
+            comit::SecretHash::new(swap_seed.derive_secret())
         }
         Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
     };
@@ -357,22 +255,7 @@ fn derive_or_unwrap_secret_hash(
 }
 
 #[async_trait::async_trait]
-impl LoadAll<SwapContext> for Storage {
-    async fn load_all(&self) -> anyhow::Result<Vec<SwapContext>> {
-        let contexts = self
-            .db
-            .swap_contexts()
-            .await?
-            .into_iter()
-            .map(|context| context.into())
-            .collect();
-
-        Ok(contexts)
-    }
-}
-
-#[async_trait::async_trait]
-impl<TCreatedA, TCreatedB, TInsertableA, TInsertableB> Save<db::CreatedSwap<TCreatedA, TCreatedB>>
+impl<TCreatedA, TCreatedB, TInsertableA, TInsertableB> Save<CreatedSwap<TCreatedA, TCreatedB>>
     for Storage
 where
     TCreatedA: IntoInsertable<Insertable = TInsertableA> + Clone + Send + 'static,
@@ -383,7 +266,7 @@ where
 {
     async fn save(
         &self,
-        db::CreatedSwap {
+        CreatedSwap {
             swap_id,
             role,
             peer,
@@ -391,17 +274,14 @@ where
             beta,
             start_of_swap,
             ..
-        }: db::CreatedSwap<TCreatedA, TCreatedB>,
+        }: CreatedSwap<TCreatedA, TCreatedB>,
     ) -> anyhow::Result<()> {
         self.db
-            .do_in_transaction::<_, _, anyhow::Error>(move |conn| {
-                let swap_id = self.db.save_swap(
-                    conn,
-                    &InsertableSwap::new(swap_id, peer, role, start_of_swap),
-                )?;
-
-                let insertable_alpha = alpha.into_insertable(swap_id, role, Side::Alpha);
-                let insertable_beta = beta.into_insertable(swap_id, role, Side::Beta);
+            .do_in_transaction::<_, _>(move |conn| {
+                let swap_fk =
+                    InsertableSwap::new(swap_id, peer, role, start_of_swap).insert(conn)?;
+                let insertable_alpha = alpha.into_insertable(swap_fk, role, Side::Alpha);
+                let insertable_beta = beta.into_insertable(swap_fk, role, Side::Beta);
 
                 self.db.insert(conn, &insertable_alpha)?;
                 self.db.insert(conn, &insertable_beta)?;
