@@ -51,7 +51,7 @@ impl From<hbit::Funded> for HbitFunded {
 #[async_trait::async_trait]
 impl Save<hbit::Funded> for Database {
     async fn save(&self, event: hbit::Funded, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get_swap(&swap_id)?;
+        let stored_swap = self.get_swap_or_bail(&swap_id)?;
 
         match stored_swap.hbit_funded {
             Some(_) => Err(anyhow!("Hbit Funded event is already stored")),
@@ -82,7 +82,7 @@ impl Save<hbit::Funded> for Database {
 
 impl Load<hbit::Funded> for Database {
     fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<hbit::Funded>> {
-        let swap = self.get_swap(&swap_id)?;
+        let swap = self.get_swap_or_bail(&swap_id)?;
 
         Ok(swap.hbit_funded.map(Into::into))
     }
@@ -115,7 +115,7 @@ impl From<hbit::Redeemed> for HbitRedeemed {
 #[async_trait::async_trait]
 impl Save<hbit::Redeemed> for Database {
     async fn save(&self, event: hbit::Redeemed, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get_swap(&swap_id)?;
+        let stored_swap = self.get_swap_or_bail(&swap_id)?;
 
         match stored_swap.hbit_redeemed {
             Some(_) => Err(anyhow!("Hbit Redeemed event is already stored")),
@@ -146,7 +146,7 @@ impl Save<hbit::Redeemed> for Database {
 
 impl Load<hbit::Redeemed> for Database {
     fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<hbit::Redeemed>> {
-        let swap = self.get_swap(&swap_id)?;
+        let swap = self.get_swap_or_bail(&swap_id)?;
 
         Ok(swap.hbit_redeemed.map(Into::into))
     }
@@ -176,7 +176,7 @@ impl From<hbit::Refunded> for HbitRefunded {
 #[async_trait::async_trait]
 impl Save<hbit::Refunded> for Database {
     async fn save(&self, event: hbit::Refunded, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get_swap(&swap_id)?;
+        let stored_swap = self.get_swap_or_bail(&swap_id)?;
         match stored_swap.hbit_refunded {
             Some(_) => Err(anyhow!("Hbit Refunded event is already stored")),
             None => {
@@ -206,7 +206,7 @@ impl Save<hbit::Refunded> for Database {
 
 impl Load<hbit::Refunded> for Database {
     fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<hbit::Refunded>> {
-        let swap = self.get_swap(&swap_id)?;
+        let swap = self.get_swap_or_bail(&swap_id)?;
 
         Ok(swap.hbit_refunded.map(Into::into))
     }

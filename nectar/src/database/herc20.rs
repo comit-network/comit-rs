@@ -40,7 +40,7 @@ impl From<herc20::Deployed> for Herc20Deployed {
 #[async_trait::async_trait]
 impl Save<herc20::Deployed> for Database {
     async fn save(&self, event: herc20::Deployed, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get_swap(&swap_id)?;
+        let stored_swap = self.get_swap_or_bail(&swap_id)?;
 
         match stored_swap.herc20_deployed {
             Some(_) => Err(anyhow!("Herc20 Deployed event is already stored")),
@@ -71,7 +71,7 @@ impl Save<herc20::Deployed> for Database {
 
 impl Load<herc20::Deployed> for Database {
     fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Deployed>> {
-        let swap = self.get_swap(&swap_id)?;
+        let swap = self.get_swap_or_bail(&swap_id)?;
 
         Ok(swap.herc20_deployed.map(Into::into))
     }
@@ -104,7 +104,7 @@ impl From<herc20::Funded> for Herc20Funded {
 #[async_trait::async_trait]
 impl Save<herc20::Funded> for Database {
     async fn save(&self, event: herc20::Funded, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get_swap(&swap_id)?;
+        let stored_swap = self.get_swap_or_bail(&swap_id)?;
 
         match stored_swap.herc20_funded {
             Some(_) => Err(anyhow!("Herc20 Funded event is already stored")),
@@ -135,7 +135,7 @@ impl Save<herc20::Funded> for Database {
 
 impl Load<herc20::Funded> for Database {
     fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Funded>> {
-        let swap = self.get_swap(&swap_id)?;
+        let swap = self.get_swap_or_bail(&swap_id)?;
 
         Ok(swap.herc20_funded.map(Into::into))
     }
@@ -168,7 +168,7 @@ impl From<herc20::Redeemed> for Herc20Redeemed {
 #[async_trait::async_trait]
 impl Save<herc20::Redeemed> for Database {
     async fn save(&self, event: herc20::Redeemed, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get_swap(&swap_id)?;
+        let stored_swap = self.get_swap_or_bail(&swap_id)?;
 
         match stored_swap.herc20_redeemed {
             Some(_) => Err(anyhow!("Herc20 Redeemed event is already stored")),
@@ -199,7 +199,7 @@ impl Save<herc20::Redeemed> for Database {
 
 impl Load<herc20::Redeemed> for Database {
     fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Redeemed>> {
-        let swap = self.get_swap(&swap_id)?;
+        let swap = self.get_swap_or_bail(&swap_id)?;
 
         Ok(swap.herc20_redeemed.map(Into::into))
     }
@@ -229,7 +229,7 @@ impl From<herc20::Refunded> for Herc20Refunded {
 #[async_trait::async_trait]
 impl Save<herc20::Refunded> for Database {
     async fn save(&self, event: herc20::Refunded, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get_swap(&swap_id)?;
+        let stored_swap = self.get_swap_or_bail(&swap_id)?;
 
         match stored_swap.herc20_refunded {
             Some(_) => Err(anyhow!("Herc20 Refunded event is already stored")),
@@ -260,7 +260,7 @@ impl Save<herc20::Refunded> for Database {
 
 impl Load<herc20::Refunded> for Database {
     fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<herc20::Refunded>> {
-        let swap = self.get_swap(&swap_id)?;
+        let swap = self.get_swap_or_bail(&swap_id)?;
 
         Ok(swap.herc20_refunded.map(Into::into))
     }

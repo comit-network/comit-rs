@@ -11,6 +11,8 @@ pub use wallet::Wallet;
 pub const STANDARD_ETH_TRANSFER_GAS_LIMIT: u64 = 21_000;
 pub const DAI_TRANSFER_GAS_LIMIT: u64 = 100_000;
 
+use anyhow::{Context, Result};
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Chain {
     Mainnet,
@@ -63,6 +65,11 @@ impl Chain {
             Local { chain_id, .. } => ChainId::from(*chain_id),
         }
     }
+}
+
+pub fn to_clarity_address(to: Address) -> Result<clarity::Address> {
+    clarity::Address::from_slice(to.as_bytes())
+        .context("failed to create private key from byte slice")
 }
 
 #[cfg(test)]
