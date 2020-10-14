@@ -27,7 +27,7 @@ where
             // creates a contract.
 
             let is_contract_creation = transaction.to.is_none();
-            let is_expected_contract = transaction.input.as_slice() == expected_bytecode;
+            let is_expected_contract = transaction.input.0.as_slice() == expected_bytecode;
 
             if !is_contract_creation {
                 tracing::trace!("rejected because transaction doesn't create a contract");
@@ -38,7 +38,7 @@ where
 
                 // only compute levenshtein distance if we are on trace level, converting to hex is expensive at this scale
                 if tracing::level_enabled!(tracing::level_filters::LevelFilter::TRACE) {
-                    let actual = hex::encode(&transaction.input);
+                    let actual = hex::encode(&transaction.input.0);
                     let expected = hex::encode(expected_bytecode);
 
                     let distance = levenshtein::levenshtein(&actual, &expected);

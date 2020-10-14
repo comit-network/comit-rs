@@ -8,7 +8,7 @@ use crate::{
     ethereum::ChainId,
     identity, transaction, RelativeTime, Secret, SecretHash, Timestamp,
 };
-use comit::ledger;
+use comit::{ethereum::UnformattedData, ledger};
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
@@ -27,7 +27,7 @@ pub enum ActionResponseBody {
         min_median_block_time: Option<Timestamp>,
     },
     EthereumDeployContract {
-        data: EthereumData,
+        data: crate::ethereum::UnformattedData,
         amount: asset::Ether,
         gas_limit: crate::ethereum::U256,
         chain_id: ChainId,
@@ -35,7 +35,7 @@ pub enum ActionResponseBody {
     EthereumCallContract {
         contract_address: identity::Ethereum,
         #[serde(skip_serializing_if = "Option::is_none")]
-        data: Option<EthereumData>,
+        data: Option<crate::ethereum::UnformattedData>,
         gas_limit: crate::ethereum::U256,
         chain_id: ChainId,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -67,23 +67,6 @@ pub enum ActionResponseBody {
         network: ledger::Bitcoin,
         self_public_key: identity::Lightning,
     },
-}
-
-/// A wrapper type for serializing bytes to hex with a `0x` prefix.
-///
-/// In the Ethereum ecosystem (i.e. Web3-based clients), the `data` field of a
-/// transaction is serialized to hex with a `0x` prefix when represented as a
-/// string.
-/// We want our API to be easily interoperable with such clients, hence we
-/// serialize this data already in that format so consumers of our API can
-/// simply pass it along to a Web3-based client.
-#[derive(Clone, Debug, Serialize)]
-pub struct EthereumData(#[serde(with = "serde_hex::SerHexSeq::<serde_hex::StrictPfx>")] Vec<u8>);
-
-impl<T: Into<Vec<u8>>> From<T> for EthereumData {
-    fn from(data: T) -> Self {
-        EthereumData(data.into())
-    }
 }
 
 impl ActionResponseBody {
@@ -168,7 +151,7 @@ impl From<ethereum::DeployContract> for ActionResponseBody {
         } = action;
 
         ActionResponseBody::EthereumDeployContract {
-            data: EthereumData(data),
+            data: UnformattedData(data),
             amount,
             gas_limit: gas_limit.into(),
             chain_id,
@@ -230,7 +213,7 @@ impl From<ethereum::CallContract> for ActionResponseBody {
 
         ActionResponseBody::EthereumCallContract {
             contract_address: to,
-            data: data.map(EthereumData),
+            data: data.map(UnformattedData),
             gas_limit: gas_limit.into(),
             chain_id,
             min_block_timestamp,
@@ -250,6 +233,7 @@ mod test {
     use crate::{
         asset::ethereum::FromWei, bitcoin::Address as BitcoinAddress, ethereum::U256, identity,
     };
+    use comit::ethereum::UnformattedData;
     use std::str::FromStr;
 
     #[test]
@@ -274,7 +258,7 @@ mod test {
     #[test]
     fn deploy_contract_serializes_correctly_to_json() {
         let response_body = ActionResponseBody::EthereumDeployContract {
-            data: EthereumData::from(vec![0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0x10]),
+            data: UnformattedData(vec![0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0x10]),
             amount: asset::Ether::from_wei(10000u32),
             gas_limit: U256::from(1),
             chain_id: ChainId::from(3),

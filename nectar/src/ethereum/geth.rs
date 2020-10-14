@@ -7,11 +7,10 @@ use asset::Erc20Quantity;
 use clarity::Uint256;
 use comit::{
     asset::{self, ethereum::TryFromWei},
-    ethereum::{ChainId, Hash, Transaction, TransactionReceipt},
+    ethereum::{ChainId, Hash, Transaction, TransactionReceipt, UnformattedData},
 };
 use ethereum_types::U256;
 use num::{BigUint, Num};
-use serde_hex::{SerHexSeq, StrictPfx};
 
 pub const JSONRPC_VERSION: &str = "2.0";
 
@@ -114,13 +113,12 @@ impl Client {
         #[derive(Debug, serde::Serialize)]
         struct CallRequest {
             to: Address,
-            #[serde(with = "SerHexSeq::<StrictPfx>")]
-            data: Vec<u8>,
+            data: UnformattedData,
         }
 
         let call_request = CallRequest {
             to: token_contract,
-            data: balance_of_fn(account)?,
+            data: UnformattedData(balance_of_fn(account)?),
         };
 
         let quantity: String = self

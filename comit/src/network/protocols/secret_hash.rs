@@ -1,6 +1,5 @@
 use crate::{network::oneshot_protocol, SecretHash, SharedSwapId};
 use serde::{Deserialize, Serialize};
-use serde_hex::{SerHex, Strict};
 use serdebug::SerDebug;
 
 /// The message for the secret hash sharing protocol.
@@ -8,7 +7,7 @@ use serdebug::SerDebug;
 pub struct Message {
     pub swap_id: SharedSwapId,
     /// A SHA-256 hash, serialized as hex without a `0x` prefix.
-    #[serde(with = "SerHex::<Strict>")]
+    #[serde(with = "hex")]
     pub secret_hash: [u8; 32],
 }
 
