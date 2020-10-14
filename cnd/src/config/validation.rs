@@ -10,10 +10,6 @@ pub struct NetworkMismatch<T: Debug> {
     specified_network: T,
 }
 
-#[derive(Error, Debug, Copy, Clone)]
-#[error("connection failure")]
-pub struct ConnectionFailure;
-
 /// Validate that the connector is connected to the network.
 ///
 /// This function returns a double-result to differentiate between arbitrary
@@ -29,7 +25,7 @@ where
     let actual = connector
         .connected_network()
         .await
-        .context(ConnectionFailure)?;
+        .context("failed to determine the connected network")?;
 
     if actual != specified {
         return Ok(Err(NetworkMismatch {

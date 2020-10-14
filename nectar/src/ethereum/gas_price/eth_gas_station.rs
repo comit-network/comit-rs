@@ -1,4 +1,5 @@
 use crate::{ethereum::ether::Amount, Result};
+use anyhow::Context;
 use num::BigUint;
 use serde::{de::Error, Deserialize, Deserializer};
 use std::convert::TryFrom;
@@ -17,10 +18,10 @@ impl Client {
     pub async fn gas_price(&self) -> Result<Amount> {
         let response: Response = reqwest::get(self.url.clone())
             .await
-            .map_err(ConnectionFailed)?
+            .with_context(|| format!("failed to send GET request to {}", self.url))?
             .json()
             .await
-            .map_err(DeserializationFailed)?;
+            .context("failed to deserialize response as JSON into struct")?;
 
         tracing::info!(
             "Eth Gas Station estimate a wait of {:?} for {} gwei gas price",
@@ -31,14 +32,6 @@ impl Client {
         Ok(response.safe_low)
     }
 }
-
-#[derive(Debug, thiserror::Error)]
-#[error("connection error: {0}")]
-pub struct ConnectionFailed(#[from] reqwest::Error);
-
-#[derive(Debug, thiserror::Error)]
-#[error("deserialization error: {0}")]
-pub struct DeserializationFailed(#[from] reqwest::Error);
 
 // TODO: Use the value that would satisfy
 // comit::expiries::config::ETHEREUM_MINE_WITHIN_N_BLOCKS;
