@@ -84,20 +84,27 @@ use self::{
     spawn::*,
     storage::{RootSeed, Sqlite, Storage},
 };
+use crate::{
+    cli::{Command, CreateTransaction},
+    storage::{Load, SwapContext},
+};
 use ::bitcoin::secp256k1::{All, Secp256k1};
+use anyhow::{Context, Result};
 use comit::{
     ledger, lnd::LndConnectorParams, LockProtocol, Never, RelativeTime, Role, Secret, SecretHash,
     Side, Timestamp,
 };
 use conquer_once::Lazy;
+use futures::future;
 use rand::rngs::OsRng;
 use std::{env, process};
 use structopt::StructOpt;
-use tokio::{net::TcpListener, runtime};
+use tokio::{net::TcpListener, runtime::Handle};
 
 pub static SECP: Lazy<Secp256k1<All>> = Lazy::new(Secp256k1::new);
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let options = cli::Options::from_args();
 
     if options.version {
@@ -126,15 +133,27 @@ fn main() -> anyhow::Result<()> {
     }));
 
     let database = Sqlite::new_in_dir(&settings.data.dir)?;
-
     let seed = RootSeed::from_dir_or_generate(&settings.data.dir, OsRng)?;
+    let storage = Storage::new(database, seed);
 
     let _locked_datadir = &settings.data.dir.try_lock_exclusive()?;
 
-    let mut runtime = runtime::Builder::new()
-        .enable_all()
-        .threaded_scheduler()
-        .build()?;
+    let bitcoin_fees = match &settings.bitcoin.fees {
+        config::BitcoinFees::StaticSatPerVbyte(fee) => BitcoinFees::static_rate(*fee),
+        config::BitcoinFees::CypherBlock(url) => {
+            BitcoinFees::block_cypher(url.clone(), options.network.unwrap_or_default())
+        }
+    };
+
+    #[allow(clippy::print_stdout)] // The point of these sub-commands is to print to stdout.
+    if let Some(cmd) = options.cmd {
+        let to_print = execute_subcommand(cmd, &storage, &bitcoin_fees)
+            .await
+            .context("failed to execute subcommand")?;
+
+        println!("{}", to_print);
+        return Ok(());
+    }
 
     let bitcoin_connector = {
         let config::Bitcoin {
@@ -144,16 +163,10 @@ fn main() -> anyhow::Result<()> {
         } = &settings.bitcoin;
         let connector = BitcoindConnector::new(bitcoind.node_url.clone())?;
 
-        runtime.block_on(async {
-            match validate_connection_to_network(&connector, *network).await {
-                Ok(Err(network_mismatch)) => Err(network_mismatch),
-                Ok(Ok(())) => Ok(()),
-                Err(e) => {
-                    tracing::warn!("Could not validate Bitcoin node config: {}", e);
-                    Ok(())
-                }
-            }
-        })?;
+        match validate_connection_to_network(&connector, *network).await {
+            Ok(inner) => inner?,
+            Err(e) => tracing::warn!("Could not validate Bitcoin node config: {}", e),
+        }
 
         const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
 
@@ -164,16 +177,10 @@ fn main() -> anyhow::Result<()> {
         let config::Ethereum { geth, chain_id, .. } = &settings.ethereum;
         let connector = Web3Connector::new(geth.node_url.clone());
 
-        runtime.block_on(async {
-            match validate_connection_to_network(&connector, *chain_id).await {
-                Ok(Err(network_mismatch)) => Err(network_mismatch),
-                Ok(Ok(())) => Ok(()),
-                Err(e) => {
-                    tracing::warn!("Could not validate Ethereum node config: {}", e);
-                    Ok(())
-                }
-            }
-        })?;
+        match validate_connection_to_network(&connector, *chain_id).await {
+            Ok(inner) => inner?,
+            Err(e) => tracing::warn!("Could not validate Ethereum node config: {}", e),
+        }
 
         const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
         const ETHEREUM_RECEIPT_CACHE_CAPACITY: usize = 720;
@@ -200,38 +207,27 @@ fn main() -> anyhow::Result<()> {
     .ok();
 
     let connectors = Connectors::new(bitcoin_connector, ethereum_connector, lnd_connector_params);
-    let storage = Storage::new(database, seed);
 
-    let swarm = runtime.block_on(Swarm::new(
+    let swarm = Swarm::new(
         &settings,
         seed,
-        runtime.handle().clone(),
+        Handle::current(),
         storage.clone(),
         connectors.clone(),
-    ))?;
+    )
+    .await?;
 
-    let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;
-    match runtime.block_on(respawn(
-        storage.clone(),
-        connectors.clone(),
-        runtime.handle().clone(),
-    )) {
+    let http_api_listener = bind_http_api_socket(&settings).await?;
+    match respawn(storage.clone(), connectors.clone(), Handle::current()).await {
         Ok(()) => {}
         Err(e) => tracing::warn!("failed to respawn swaps: {:#}", e),
     };
-    match runtime.block_on(republish_open_orders(storage.clone(), swarm.clone())) {
+    match republish_open_orders(storage.clone(), swarm.clone()).await {
         Ok(()) => {}
         Err(e) => tracing::warn!("failed to republish orders: {:#}", e),
     };
 
-    let bitcoin_fees = match &settings.bitcoin.fees {
-        config::BitcoinFees::StaticSatPerVbyte(fee) => BitcoinFees::static_rate(*fee),
-        config::BitcoinFees::CypherBlock(url) => {
-            BitcoinFees::block_cypher(url.clone(), options.network.unwrap_or_default())
-        }
-    };
-
-    runtime.spawn(make_http_api_worker(
+    tokio::spawn(make_http_api_worker(
         settings,
         bitcoin_fees,
         options.network.unwrap_or_default(),
@@ -240,9 +236,9 @@ fn main() -> anyhow::Result<()> {
         connectors,
         http_api_listener,
     ));
-    runtime.spawn(make_network_api_worker(swarm));
+    tokio::spawn(make_network_api_worker(swarm));
 
-    ::std::thread::park();
+    future::pending::<()>().await;
 
     Ok(())
 }
@@ -263,7 +259,7 @@ fn version() {
 /// Fails if we cannot bind to the socket.
 /// We do this ourselves so we can shut down if this fails and don't just panic
 /// some worker thread in tokio.
-async fn bind_http_api_socket(settings: &Settings) -> anyhow::Result<tokio::net::TcpListener> {
+async fn bind_http_api_socket(settings: &Settings) -> Result<tokio::net::TcpListener> {
     let listen_addr = settings.http_api.socket;
     let listener = TcpListener::bind(listen_addr).await?;
 
@@ -300,4 +296,149 @@ async fn make_network_api_worker(swarm: Swarm) {
     let worker = SwarmWorker { swarm };
 
     worker.await
+}
+
+async fn execute_subcommand(
+    cmd: Command,
+    storage: &Storage,
+    bitcoin_fees: &BitcoinFees,
+) -> Result<String> {
+    match cmd {
+        Command::PrintSecret { swap_id } => {
+            let swap_context: SwapContext = storage
+                .load(swap_id)
+                .await
+                .with_context(|| format!("failed to load swap {} from database", swap_id))?;
+
+            if let Role::Bob = swap_context.role {
+                anyhow::bail!(
+                    "We are Bob for swap {} and Bob doesn't choose the secret",
+                    swap_id
+                )
+            }
+
+            let secret = storage.seed.derive_swap_seed(swap_id).derive_secret();
+
+            Ok(format!("{:x}", secret))
+        }
+        Command::CreateTransaction(CreateTransaction::Redeem {
+            swap_id,
+            secret,
+            outpoint,
+            address,
+        }) => {
+            let swap_context: SwapContext = storage
+                .load(swap_id)
+                .await
+                .with_context(|| format!("failed to load swap {} from database", swap_id))?;
+
+            let secret = match (secret, swap_context.role) {
+                (Some(_), Role::Alice) => anyhow::bail!(
+                    "We are Alice for swap {}, no need to provide a secret on the commandline",
+                    swap_id
+                ),
+                (None, Role::Bob) => anyhow::bail!(
+                    "We are Bob for swap {}, please provide the secret for this swap with --secret",
+                    swap_id
+                ),
+                (Some(secret), Role::Bob) => secret,
+                (None, Role::Alice) => storage.seed.derive_swap_seed(swap_id).derive_secret(),
+            };
+
+            let hbit_params = match swap_context {
+                SwapContext {
+                    alpha: LockProtocol::Hbit,
+                    beta: LockProtocol::Herc20,
+                    role: Role::Bob,
+                    ..
+                } => {
+                    let swap: Swap<hbit::Params, herc20::Params> = storage.load(swap_id).await?;
+
+                    swap.alpha
+                }
+                SwapContext {
+                    alpha: LockProtocol::Herc20,
+                    beta: LockProtocol::Hbit,
+                    role: Role::Alice,
+                    ..
+                } => {
+                    let swap: Swap<herc20::Params, hbit::Params> = storage.load(swap_id).await?;
+
+                    swap.beta
+                }
+                _ => {
+                    anyhow::bail!("Swap {} does either not involve hbit or we are not in the correct role to redeem it")
+                }
+            };
+
+            let transaction = hbit_params.build_redeem_action(
+                &*SECP,
+                hbit_params.asset,
+                outpoint,
+                storage
+                    .seed
+                    .derive_swap_seed(swap_id)
+                    .derive_transient_redeem_identity(),
+                address,
+                secret,
+                bitcoin_fees.get_per_vbyte_rate().await?,
+            )?;
+
+            Ok(hex::encode(::bitcoin::consensus::serialize(
+                &transaction.transaction,
+            )))
+        }
+        Command::CreateTransaction(CreateTransaction::Refund {
+            swap_id,
+            outpoint,
+            address,
+        }) => {
+            let swap_context: SwapContext = storage
+                .load(swap_id)
+                .await
+                .with_context(|| format!("failed to load swap {} from database", swap_id))?;
+
+            let hbit_params = match swap_context {
+                SwapContext {
+                    alpha: LockProtocol::Hbit,
+                    beta: LockProtocol::Herc20,
+                    role: Role::Bob,
+                    ..
+                } => {
+                    let swap: Swap<hbit::Params, herc20::Params> = storage.load(swap_id).await?;
+
+                    swap.alpha
+                }
+                SwapContext {
+                    alpha: LockProtocol::Herc20,
+                    beta: LockProtocol::Hbit,
+                    role: Role::Alice,
+                    ..
+                } => {
+                    let swap: Swap<herc20::Params, hbit::Params> = storage.load(swap_id).await?;
+
+                    swap.beta
+                }
+                _ => {
+                    anyhow::bail!("Swap {} does either not involve hbit or we are not in the correct role to redeem it")
+                }
+            };
+
+            let transaction = hbit_params.build_refund_action(
+                &*SECP,
+                hbit_params.asset,
+                outpoint,
+                storage
+                    .seed
+                    .derive_swap_seed(swap_id)
+                    .derive_transient_redeem_identity(),
+                address,
+                bitcoin_fees.get_per_vbyte_rate().await?,
+            )?;
+
+            Ok(hex::encode(::bitcoin::consensus::serialize(
+                &transaction.transaction,
+            )))
+        }
+    }
 }
