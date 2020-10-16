@@ -23,6 +23,7 @@ pub struct File {
     pub logging: Option<Logging>,
     pub bitcoin: Option<Bitcoin>,
     pub ethereum: Option<Ethereum>,
+    pub sentry: Option<Sentry>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -118,6 +119,7 @@ impl Default for File {
             logging: None,
             bitcoin: None,
             ethereum: None,
+            sentry: None,
         }
     }
 }
@@ -169,6 +171,13 @@ pub enum AllowedOrigins {
     All(All),
     None(None),
     Some(Vec<String>),
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Sentry {
+    /// The url to the sentry project
+    pub url: url::Url,
 }
 
 #[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
@@ -238,6 +247,9 @@ local_dai_contract_address = "0x6A9865aDE2B6207dAAC49f8bCba9705dEB0B0e6D"
 [ethereum.gas_price]
 service = "eth_gas_station"
 url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
+
+[sentry]
+url = "https://public_key@account.ingest.sentry.io/project_id"
 "#;
         let expected = File {
             maker: Some(Maker {
@@ -283,6 +295,11 @@ url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
                         .parse()
                         .unwrap(),
                 }),
+            }),
+            sentry: Some(Sentry {
+                url: "https://public_key@account.ingest.sentry.io/project_id"
+                    .parse()
+                    .unwrap(),
             }),
         };
 
@@ -344,6 +361,11 @@ url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
                         .unwrap(),
                 }),
             }),
+            sentry: Some(Sentry {
+                url: "https://public_key@account.ingest.sentry.io/project_id"
+                    .parse()
+                    .unwrap(),
+            }),
         };
 
         let expected = r#"[maker]
@@ -382,6 +404,9 @@ local_dai_contract_address = "0x6a9865ade2b6207daac49f8bcba9705deb0b0e6d"
 [ethereum.gas_price]
 service = "eth_gas_station"
 url = "https://ethgasstation.info/api/ethgasAPI.json?api-key=XXAPI_Key_HereXXX"
+
+[sentry]
+url = "https://public_key@account.ingest.sentry.io/project_id"
 "#;
 
         let serialized = toml::to_string(&file);

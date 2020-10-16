@@ -19,6 +19,7 @@ pub struct Settings {
     pub logging: Logging,
     pub bitcoin: Bitcoin,
     pub ethereum: Ethereum,
+    pub sentry: Option<Sentry>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -380,6 +381,10 @@ impl Default for Maker {
         }
     }
 }
+#[derive(Clone, Debug, PartialEq)]
+pub struct Sentry {
+    pub url: Url,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, derivative::Derivative)]
 #[derivative(Default)]
@@ -397,6 +402,7 @@ impl From<Settings> for File {
             logging: Logging { level },
             bitcoin,
             ethereum,
+            sentry,
         } = settings;
 
         File {
@@ -408,6 +414,10 @@ impl From<Settings> for File {
             }),
             bitcoin: Some(bitcoin.into()),
             ethereum: Some(ethereum.into()),
+            sentry: match sentry {
+                None => None,
+                Some(sentry) => Some(file::Sentry { url: sentry.url }),
+            },
         }
     }
 }
@@ -440,6 +450,7 @@ impl Settings {
             logging,
             bitcoin,
             ethereum,
+            sentry,
         } = config_file;
 
         Ok(Self {
@@ -483,6 +494,10 @@ impl Settings {
                 || Ethereum::default_from_chain_id(comit_network.unwrap_or_default().into()),
                 |file| Ethereum::from_file(file, comit_network),
             )?,
+            sentry: match sentry {
+                None => None,
+                Some(sentry) => Some(Sentry { url: sentry.url }),
+            },
         })
     }
 }

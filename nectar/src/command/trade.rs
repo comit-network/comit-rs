@@ -330,6 +330,7 @@ mod tests {
                 ),
                 gas_price: Default::default(),
             },
+            sentry: None,
         };
 
         let bitcoin_wallet = bitcoin::Wallet::new(

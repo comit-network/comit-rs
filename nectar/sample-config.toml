@@ -62,3 +62,8 @@ node_url = "http://localhost:8545/"
 [ethereum.gas_price]
 service = "geth"
 url = "http://some.geth.url:8545/"
+
+# Logging service for Sentry, if you specify a URL here certain events will be automatically logged to Sentry.
+[sentry]
+# The DSN URL as specified by your Sentry project. The DSN tells the  Sentry SDK where to send the events to.
+url = "https://public_key@account.ingest.sentry.io/project_id"

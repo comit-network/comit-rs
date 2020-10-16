@@ -233,6 +233,11 @@ impl EventLoop {
                     .await
                     .with_context(|| format!("Could not insert swap {}", swap_id))?;
 
+                sentry::capture_message(
+                    format!("starting {} swap with swap-id {}", swap_kind, swap_id).as_str(),
+                    sentry::Level::Info,
+                );
+
                 self.swap_executor.execute(swap_kind);
             }
             setup_swap::BehaviourOutEvent::AlreadyHaveRoleParams { peer, .. } => {
