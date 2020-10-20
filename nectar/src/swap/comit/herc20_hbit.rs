@@ -1,8 +1,5 @@
 use crate::swap::{
-    comit::{
-        EstimateBitcoinFee, EstimateEthereumGasPrice, SwapFailedNoRefund, SwapFailedShouldRefund,
-        Timestamp,
-    },
+    comit::{EstimateBitcoinFee, EstimateEthereumGasPrice, SwapFailedShouldRefund, Timestamp},
     hbit, herc20,
 };
 use anyhow::{Context, Result};
@@ -78,8 +75,7 @@ where
         let swap_result: Result<()> = async {
             let herc20_deployed = world
                 .watch_for_deployed(herc20_params.clone(), utc_start_of_swap)
-                .await
-                .context(SwapFailedNoRefund)?;
+                .await?;
 
             tracing::info!("alice deployed the herc20 htlc");
             co.yield_(Out::Event(Event::Herc20Deployed(herc20_deployed.clone())))
@@ -91,8 +87,7 @@ where
                 herc20_deployed.clone(),
                 utc_start_of_swap,
             )
-            .await
-            .context(SwapFailedNoRefund)?;
+            .await?;
 
             tracing::info!("alice funded the herc20 htlc");
             co.yield_(Out::Event(Event::Herc20Funded(herc20_funded.clone())))
@@ -107,8 +102,7 @@ where
 
             let hbit_funded =
                 hbit::WatchForFunded::watch_for_funded(&world, &hbit_params, utc_start_of_swap)
-                    .await
-                    .context(SwapFailedNoRefund)?;
+                    .await?;
 
             tracing::info!("we funded the hbit htlc");
             co.yield_(Out::Event(Event::HbitFunded(hbit_funded))).await;

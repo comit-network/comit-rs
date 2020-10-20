@@ -1,7 +1,4 @@
-use crate::swap::{
-    comit::{SwapFailedNoRefund, SwapFailedShouldRefund},
-    hbit, herc20,
-};
+use crate::swap::{comit::SwapFailedShouldRefund, hbit, herc20};
 use anyhow::{Context, Result};
 use comit::Secret;
 use time::OffsetDateTime;
@@ -23,10 +20,7 @@ where
         + herc20::WatchForFunded,
 {
     let swap_result = async {
-        let hbit_funded = alice
-            .execute_fund(&hbit_params)
-            .await
-            .context(SwapFailedNoRefund)?;
+        let hbit_funded = alice.execute_fund(&hbit_params).await?;
 
         let herc20_deployed = alice
             .watch_for_deployed(herc20_params.clone(), utc_start_of_swap)
@@ -74,15 +68,11 @@ where
     let swap_result = async {
         let hbit_funded = bob
             .watch_for_funded(&hbit_params, utc_start_of_swap)
-            .await
-            .context(SwapFailedNoRefund)?;
+            .await?;
 
         tracing::info!("alice funded the hbit htlc");
 
-        let herc20_deployed = bob
-            .execute_deploy(herc20_params.clone())
-            .await
-            .context(SwapFailedNoRefund)?;
+        let herc20_deployed = bob.execute_deploy(herc20_params.clone()).await?;
 
         tracing::info!("we deployed the herc20 htlc");
 
@@ -92,8 +82,7 @@ where
                 herc20_deployed.clone(),
                 utc_start_of_swap,
             )
-            .await
-            .context(SwapFailedNoRefund)?;
+            .await?;
 
         tracing::info!("we funded the herc20 htlc");
 
@@ -106,8 +95,7 @@ where
 
         let _hbit_redeem = bob
             .execute_redeem(hbit_params, hbit_funded, herc20_redeemed.secret)
-            .await
-            .context(SwapFailedNoRefund)?;
+            .await?;
 
         tracing::info!("we redeemed the hbit htlc");
 

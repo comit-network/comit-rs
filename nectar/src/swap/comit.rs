@@ -21,11 +21,6 @@ use thiserror::Error;
 #[error("swap execution failed")]
 pub struct SwapFailedShouldRefund<E: Debug>(pub E);
 
-/// Indicates that a swap failed but we don't have to refund.
-#[derive(Clone, Copy, Debug, Error)]
-#[error("swap execution failed")]
-pub struct SwapFailedNoRefund;
-
 #[async_trait]
 pub trait EstimateBitcoinFee {
     // TODO: Encode in the type signature that is this sats/vKB
