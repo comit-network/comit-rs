@@ -5,7 +5,7 @@ RUSTUP = rustup
 TOOLCHAIN = $(shell cat rust-toolchain)
 CARGO = $(RUSTUP) run --install $(TOOLCHAIN) cargo --color always
 
-NIGHTLY_TOOLCHAIN = nightly-2020-09-15
+NIGHTLY_TOOLCHAIN = nightly-2020-10-08
 CARGO_NIGHTLY = $(RUSTUP) run --install $(NIGHTLY_TOOLCHAIN) cargo --color always
 
 GIT_HOOKS_PATH = ".githooks"

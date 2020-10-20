@@ -185,30 +185,19 @@ impl Seed {
 mod transport {
     use libp2p::{
         core::{
-            either::EitherError,
             muxing::StreamMuxerBox,
-            transport::{boxed::Boxed, timeout::TransportTimeoutError, Transport},
+            transport::{Boxed, Transport},
             upgrade::{SelectUpgrade, Version},
-            UpgradeError,
         },
-        dns::{DnsConfig, DnsErr},
+        dns::DnsConfig,
         mplex::MplexConfig,
         noise,
         noise::{NoiseConfig, X25519Spec},
         tcp::TokioTcpConfig,
         yamux, PeerId,
     };
-    use std::time::Duration;
 
-    pub type NectarTransport = Boxed<
-        (PeerId, StreamMuxerBox),
-        TransportTimeoutError<
-            EitherError<
-                EitherError<DnsErr<std::io::Error>, UpgradeError<noise::NoiseError>>,
-                UpgradeError<EitherError<std::io::Error, std::io::Error>>,
-            >,
-        >,
-    >;
+    pub type NectarTransport = Boxed<(PeerId, StreamMuxerBox)>;
 
     /// Builds a libp2p transport with the following features:
     /// - TcpConnection
@@ -230,7 +219,6 @@ mod transport {
                 MplexConfig::new(),
             ))
             .map(|(peer, muxer), _| (peer, StreamMuxerBox::new(muxer)))
-            .timeout(Duration::from_secs(20))
             .boxed();
 
         Ok(transport)
