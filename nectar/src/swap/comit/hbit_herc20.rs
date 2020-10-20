@@ -24,8 +24,7 @@ where
 
         let herc20_deployed = alice
             .watch_for_deployed(herc20_params.clone(), utc_start_of_swap)
-            .await
-            .context(SwapFailedShouldRefund(hbit_funded))?;
+            .await;
 
         let _herc20_funded = alice
             .watch_for_funded(

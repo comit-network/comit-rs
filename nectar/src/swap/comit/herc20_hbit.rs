@@ -4,8 +4,9 @@ use crate::swap::{
 };
 use anyhow::{Context, Result};
 use clarity::Uint256;
-use comit::{ethereum::ChainId, ledger};
+use comit::{ethereum::ChainId, expiries::AliceState, ledger};
 use genawaiter::sync::{Gen, GenBoxed};
+use std::convert::TryInto;
 use time::OffsetDateTime;
 
 pub enum Action {
@@ -72,10 +73,28 @@ where
     Gen::new_boxed(|co| async move {
         tracing::info!("starting swap");
 
+        let expiries = comit::expiries::Expiries::new_herc20_hbit(
+            comit::Network::Main,
+            Timestamp::from(utc_start_of_swap.timestamp() as u32), /* TODO: delete `timestamp`
+                                                                    * module */
+            unimplemented!("get alpha connector from world"),
+            unimplemented!("get beta connector from world"),
+        );
+
         let swap_result: Result<()> = async {
-            let herc20_deployed = world
-                .watch_for_deployed(herc20_params.clone(), utc_start_of_swap)
-                .await?;
+            let alice_timeout = expiries.alice_should_act_within(AliceState::None).await;
+
+            let herc20_deployed = tokio::time::timeout(
+                alice_timeout.try_into()?,
+                world.watch_for_deployed(herc20_params.clone(), utc_start_of_swap),
+            )
+            .await
+            .with_context(|| {
+                format!(
+                    "alice did not deploy the herc20 htlc within {}s",
+                    alice_timeout.whole_seconds()
+                )
+            })?;
 
             tracing::info!("alice deployed the herc20 htlc");
             co.yield_(Out::Event(Event::Herc20Deployed(herc20_deployed.clone())))

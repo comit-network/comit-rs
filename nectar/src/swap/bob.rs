@@ -104,13 +104,19 @@ where
         &self,
         params: herc20::Params,
         utc_start_of_swap: OffsetDateTime,
-    ) -> anyhow::Result<herc20::Deployed> {
-        herc20::watch_for_deployed(
-            self.alpha_wallet.connector.as_ref(),
-            params,
-            utc_start_of_swap,
-        )
-        .await
+    ) -> herc20::Deployed {
+        loop {
+            match herc20::watch_for_deployed(
+                self.alpha_wallet.connector.as_ref(),
+                params.clone(),
+                utc_start_of_swap,
+            )
+            .await
+            {
+                Ok(deployed) => return deployed,
+                Err(e) => tracing::debug!("failed to watch for deployed event, retrying. {:#}", e),
+            }
+        }
     }
 }
 

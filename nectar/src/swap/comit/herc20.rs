@@ -23,7 +23,7 @@ pub trait WatchForDeployed {
         &self,
         params: Params,
         utc_start_of_swap: OffsetDateTime,
-    ) -> Result<Deployed>;
+    ) -> Deployed;
 }
 
 #[async_trait::async_trait]
