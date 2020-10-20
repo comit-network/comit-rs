@@ -31,7 +31,7 @@ impl BitcoinFees {
 
 mod block_cypher {
     use ::bitcoin::Amount;
-    use anyhow::Result;
+    use anyhow::{Context, Result};
     use serde::Deserialize;
 
     #[derive(Debug, Clone)]
@@ -101,20 +101,12 @@ mod block_cypher {
         async fn get(&self) -> Result<Response> {
             Ok(reqwest::get(self.url.clone())
                 .await
-                .map_err(ConnectionFailed)?
+                .with_context(|| format!("failed to perform GET request to {}", self.url))?
                 .json()
                 .await
-                .map_err(DeserializationFailed)?)
+                .context("failed to deserialize response as JSON into struct")?)
         }
     }
-
-    #[derive(Debug, thiserror::Error)]
-    #[error("connection error: {0}")]
-    pub struct ConnectionFailed(#[from] reqwest::Error);
-
-    #[derive(Debug, thiserror::Error)]
-    #[error("deserialization error: {0}")]
-    pub struct DeserializationFailed(#[from] reqwest::Error);
 
     #[derive(Debug, Deserialize, Eq, PartialEq)]
     struct Response {
