@@ -8,20 +8,26 @@ mod bob;
 mod comit;
 pub mod ethereum;
 
-use crate::{command::FinishedSwap, network::ActivePeer, swap::bob::Bob, SwapId};
+use crate::{
+    command::FinishedSwap,
+    network::ActivePeer,
+    swap::{
+        bob::Bob,
+        comit::{EstimateBitcoinFee, EstimateEthereumGasPrice},
+    },
+    SwapId,
+};
 use ::comit::btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use anyhow::{Context, Result};
 use futures::{channel::mpsc, SinkExt};
+use genawaiter::GeneratorState;
 use num::Zero;
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
+use time::OffsetDateTime;
 use tracing_futures::Instrument;
 
 pub use self::comit::{hbit, herc20};
 pub use crate::database::Database;
-use crate::swap::comit::{EstimateBitcoinFee, EstimateEthereumGasPrice};
-use genawaiter::GeneratorState;
-use std::time::Duration;
-use time::OffsetDateTime;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SwapKind {
