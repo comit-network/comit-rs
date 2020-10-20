@@ -95,7 +95,11 @@ where
             co.yield_(Out::Action(Action::BitcoinSendFromWallet {
                 to: hbit_params.shared.compute_address(),
                 amount: hbit_params.shared.asset,
-                sats_per_kbyte: world.estimate_bitcoin_fee().await,
+                sats_per_kbyte: world
+                    .estimate_bitcoin_fee(comit::expiries::bitcoin_mine_within_blocks(
+                        comit::Network::Main, // TODO: Make this available from the config
+                    ))
+                    .await,
                 network: hbit_params.shared.network,
             }))
             .await;
@@ -123,7 +127,11 @@ where
             let call_contract =
                 herc20_params.build_redeem_action(herc20_deployed.location, hbit_redeemed.secret);
             co.yield_(Out::Action(Action::EthereumSendFromWallet {
-                gas_price: world.estimate_ethereum_gas_price().await,
+                gas_price: world
+                    .estimate_ethereum_gas_price(comit::expiries::ethereum_mine_within_blocks(
+                        comit::Network::Main, // TODO: Make this available from the config
+                    ))
+                    .await,
                 gas_limit: call_contract.gas_limit.into(),
                 to: clarity::Address::from_slice(call_contract.to.as_bytes())
                     .context("failed to create private key from byte slice")?,
@@ -160,7 +168,12 @@ where
                             error.0.location,
                             hbit_params.transient_sk,
                             hbit_params.final_address,
-                            world.estimate_bitcoin_fee().await,
+                            world
+                                .estimate_bitcoin_fee(comit::expiries::bitcoin_mine_within_blocks(
+                                    comit::Network::Main, /* TODO: Make this available from the
+                                                           * config */
+                                ))
+                                .await,
                         )?
                         .transaction,
                     at: hbit_params.shared.expiry,

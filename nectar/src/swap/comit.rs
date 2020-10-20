@@ -24,10 +24,10 @@ pub struct SwapFailedShouldRefund<E: Debug>(pub E);
 #[async_trait]
 pub trait EstimateBitcoinFee {
     // TODO: Encode in the type signature that is this sats/vKB
-    async fn estimate_bitcoin_fee(&self) -> ::bitcoin::Amount;
+    async fn estimate_bitcoin_fee(&self, block_target: u8) -> ::bitcoin::Amount;
 }
 
 #[async_trait]
 pub trait EstimateEthereumGasPrice {
-    async fn estimate_ethereum_gas_price(&self) -> Uint256;
+    async fn estimate_ethereum_gas_price(&self, block_target: u8) -> Uint256;
 }

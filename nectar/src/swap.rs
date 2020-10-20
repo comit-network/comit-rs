@@ -720,20 +720,23 @@ impl herc20::WatchForRedeemed for World {
 
 #[async_trait::async_trait]
 impl EstimateBitcoinFee for World {
-    async fn estimate_bitcoin_fee(&self) -> bitcoin::Amount {
-        self.bitcoin_fee.kvbyte_rate().await.unwrap_or_else(|_| {
-            // TODO: provide a static fallback fee here
-            bitcoin::Amount::ZERO
-        })
+    async fn estimate_bitcoin_fee(&self, block_target: u8) -> bitcoin::Amount {
+        self.bitcoin_fee
+            .kvbyte_rate(block_target)
+            .await
+            .unwrap_or_else(|_| {
+                // TODO: provide a static fallback fee here
+                bitcoin::Amount::ZERO
+            })
     }
 }
 
 #[async_trait::async_trait]
 impl EstimateEthereumGasPrice for World {
-    async fn estimate_ethereum_gas_price(&self) -> clarity::Uint256 {
+    async fn estimate_ethereum_gas_price(&self, block_target: u8) -> clarity::Uint256 {
         let amount = self
             .gas_price
-            .gas_price()
+            .gas_price(block_target)
             .await
             .map(|p| p.into())
             .unwrap_or_else(|_| {

@@ -522,7 +522,7 @@ mod tests {
         assert_eq!(balance, dai::Amount::from_atto(initial_deposit.into()));
 
         let gas_price = GasPrice::geth_url(blockchain.node_url.clone())
-            .gas_price()
+            .gas_price(0)
             .await
             .unwrap();
 
@@ -590,7 +590,7 @@ mod tests {
         };
 
         let gas_price = GasPrice::geth_url(blockchain.node_url.clone())
-            .gas_price()
+            .gas_price(0)
             .await
             .unwrap();
 

@@ -92,11 +92,15 @@ pub enum Withdraw {
         #[structopt(parse(try_from_str = parse_dai))]
         amount: dai::Amount,
         to_address: ethereum::Address,
+        #[structopt(long)]
+        block_target: u8,
     },
     Eth {
         #[structopt(parse(try_from_str = parse_ether))]
         amount: ether::Amount,
         to_address: ethereum::Address,
+        #[structopt(long)]
+        block_target: u8,
     },
 }
 
@@ -117,6 +121,10 @@ pub enum CreateTransaction {
         /// required for swaps where nectar sells BTC/DAI.
         #[structopt(long)]
         address: Option<ethereum::Address>,
+        /// The target block we should aim to get into as in, how many blocks
+        /// from now. This is used for fee estimation.
+        #[structopt(long)]
+        block_target: u8,
     },
     /// Create the transaction for the `refund` action.
     Refund {
@@ -130,6 +138,10 @@ pub enum CreateTransaction {
         /// required for swaps where nectar buys BTC/DAI.
         #[structopt(long)]
         address: Option<ethereum::Address>,
+        /// The target block we should aim to get into as in, how many blocks
+        /// from now. This is used for fee estimation.
+        #[structopt(long)]
+        block_target: u8,
     },
 }
 

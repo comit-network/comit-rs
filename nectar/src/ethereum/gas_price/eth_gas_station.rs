@@ -15,7 +15,8 @@ impl Client {
         Self { url }
     }
 
-    pub async fn gas_price(&self) -> Result<Amount> {
+    // TODO: use block-target to make prediction
+    pub async fn gas_price(&self, _block_target: u8) -> Result<Amount> {
         let response: Response = reqwest::get(self.url.clone())
             .await
             .with_context(|| format!("failed to send GET request to {}", self.url))?

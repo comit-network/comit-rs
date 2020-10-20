@@ -18,8 +18,12 @@ pub async fn withdraw(
                 amount, to_address, tx_id
             ))
         }
-        Withdraw::Dai { amount, to_address } => {
-            let gas_price = ethereum_gas_price.gas_price().await?;
+        Withdraw::Dai {
+            amount,
+            to_address,
+            block_target,
+        } => {
+            let gas_price = ethereum_gas_price.gas_price(block_target).await?;
             let tx_id = ethereum_wallet
                 .transfer_dai(
                     to_address,
@@ -33,8 +37,12 @@ pub async fn withdraw(
                 amount, to_address, tx_id
             ))
         }
-        Withdraw::Eth { amount, to_address } => {
-            let gas_price = ethereum_gas_price.gas_price().await?;
+        Withdraw::Eth {
+            amount,
+            to_address,
+            block_target,
+        } => {
+            let gas_price = ethereum_gas_price.gas_price(block_target).await?;
             let tx_id = ethereum_wallet
                 .send_transaction(
                     to_address,
@@ -145,6 +153,7 @@ mod tests {
         let ether_withdraw = Withdraw::Eth {
             amount: ether::Amount::from_ether_str("2.4").unwrap(),
             to_address: ethereum::Address::random(),
+            block_target: 0,
         };
         let stdout = withdraw(
             ethereum_wallet.clone(),
@@ -159,6 +168,7 @@ mod tests {
         let dai_withdraw = Withdraw::Dai {
             amount: dai::Amount::from_dai_trunc(3.2).unwrap(),
             to_address: ethereum::Address::random(),
+            block_target: 0,
         };
         let stdout = withdraw(
             ethereum_wallet,

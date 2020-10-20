@@ -1,6 +1,5 @@
 use crate::{bitcoin, bitcoin::Amount, config, Result};
 use anyhow::Context;
-use comit::expiries::bitcoin_mine_within_blocks;
 
 #[derive(Clone, Debug)]
 pub struct Fee {
@@ -15,18 +14,17 @@ impl Fee {
         Self { config, client }
     }
 
-    pub async fn kvbyte_rate(&self) -> Result<Amount> {
-        let rate = self.vbyte_rate().await?;
+    pub async fn kvbyte_rate(&self, block_target: u8) -> Result<Amount> {
+        let rate = self.vbyte_rate(block_target).await?;
         rate.checked_mul(1000).context("Could not mul byte rate")
     }
 
-    pub async fn vbyte_rate(&self) -> Result<Amount> {
+    pub async fn vbyte_rate(&self, block_target: u8) -> Result<Amount> {
         use crate::config::BitcoinFees::*;
         match self.config.fees {
             SatsPerByte(fee) => Ok(fee),
             BitcoindEstimateSmartfee { mode, .. } => {
-                let network = self.config.network.into();
-                let mine_within_blocks = bitcoin_mine_within_blocks(network) as u32;
+                let mine_within_blocks = block_target as u32;
 
                 let kvbyte_rate = self
                     .client

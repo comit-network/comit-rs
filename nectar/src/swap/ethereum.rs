@@ -22,7 +22,10 @@ pub struct Wallet {
 impl herc20::ExecuteDeploy for Wallet {
     async fn execute_deploy(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {
         let action = params.build_deploy_action();
-        let gas_price = self.gas_price.gas_price().await?;
+        let gas_price = self
+            .gas_price
+            .gas_price(0) // Note on `0`: this impl-block is going away
+            .await?;
         let deployed_contract = self.inner.deploy_contract(action, gas_price).await?;
 
         Ok(deployed_contract.into())
@@ -38,7 +41,10 @@ impl herc20::ExecuteFund for Wallet {
         utc_start_of_swap: OffsetDateTime,
     ) -> anyhow::Result<herc20::Funded> {
         let action = params.build_fund_action(deploy_event.location);
-        let gas_price = self.gas_price.gas_price().await?;
+        let gas_price = self
+            .gas_price
+            .gas_price(0) // Note on `0`: this impl-block is going away
+            .await?;
         let _data = self.inner.call_contract(action, gas_price).await?;
 
         let event = herc20::watch_for_funded(
@@ -63,7 +69,10 @@ impl herc20::ExecuteRedeem for Wallet {
         utc_start_of_swap: OffsetDateTime,
     ) -> anyhow::Result<herc20::Redeemed> {
         let action = params.build_redeem_action(deploy_event.location, secret);
-        let gas_price = self.gas_price.gas_price().await?;
+        let gas_price = self
+            .gas_price
+            .gas_price(0) // Note on `0`: this impl-block is going away
+            .await?;
         let _data = self.inner.call_contract(action, gas_price).await?;
 
         let event =
@@ -94,7 +103,10 @@ impl herc20::ExecuteRefund for Wallet {
         }
 
         let action = params.build_refund_action(deploy_event.location);
-        let gas_price = self.gas_price.gas_price().await?;
+        let gas_price = self
+            .gas_price
+            .gas_price(0) // Note on `0`: this impl-block is going away
+            .await?;
         let _data = self.inner.call_contract(action, gas_price).await?;
 
         let event =

@@ -25,11 +25,14 @@ pub async fn create_transaction(
         (
             SwapKind::HbitHerc20(params),
             CreateTransaction::Redeem {
-                secret, outpoint, ..
+                secret,
+                outpoint,
+                block_target,
+                ..
             },
         ) => {
             let redeem_address = bitcoin_wallet.new_address().await?;
-            let vbyte_rate = bitcoin_fee.vbyte_rate().await?;
+            let vbyte_rate = bitcoin_fee.vbyte_rate(block_target).await?;
 
             let action = params.hbit_params.shared.build_redeem_action(
                 &crate::SECP,
@@ -46,11 +49,18 @@ pub async fn create_transaction(
 
             hex::encode(::bitcoin::consensus::serialize(&action.transaction))
         }
-        (SwapKind::HbitHerc20(params), CreateTransaction::Refund { address, .. }) => {
+        (
+            SwapKind::HbitHerc20(params),
+            CreateTransaction::Refund {
+                address,
+                block_target,
+                ..
+            },
+        ) => {
             let action = params.herc20_params.build_refund_action(address.context(
                 "HTLC address required but not provided, please provide with --address",
             )?);
-            let gas_price = gas_price.gas_price().await?;
+            let gas_price = gas_price.gas_price(block_target).await?;
             let to = to_clarity_address(action.to)?;
             let chain_id = action.chain_id;
 
@@ -73,7 +83,10 @@ pub async fn create_transaction(
         (
             SwapKind::Herc20Hbit(params),
             CreateTransaction::Redeem {
-                secret, address, ..
+                secret,
+                address,
+                block_target,
+                ..
             },
         ) => {
             let action = params.herc20_params.build_redeem_action(
@@ -83,7 +96,7 @@ pub async fn create_transaction(
                 secret,
             );
 
-            let gas_price = gas_price.gas_price().await?;
+            let gas_price = gas_price.gas_price(block_target).await?;
             let to = to_clarity_address(action.to)?;
             let chain_id = action.chain_id;
 
@@ -102,9 +115,16 @@ pub async fn create_transaction(
                 )
                 .await?
         }
-        (SwapKind::Herc20Hbit(params), CreateTransaction::Refund { outpoint, .. }) => {
+        (
+            SwapKind::Herc20Hbit(params),
+            CreateTransaction::Refund {
+                outpoint,
+                block_target,
+                ..
+            },
+        ) => {
             let redeem_address = bitcoin_wallet.new_address().await?;
-            let vbyte_rate = bitcoin_fee.vbyte_rate().await?;
+            let vbyte_rate = bitcoin_fee.vbyte_rate(block_target).await?;
 
             let action = params.hbit_params.shared.build_refund_action(
                 &crate::SECP,

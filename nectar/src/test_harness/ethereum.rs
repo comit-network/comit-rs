@@ -133,7 +133,7 @@ impl<'c> Blockchain<'c> {
         ether: ether::Amount,
         chain_id: ChainId,
     ) -> anyhow::Result<()> {
-        let gas_price = self.gas_price.gas_price().await?;
+        let gas_price = self.gas_price.gas_price(0).await?;
 
         let _ = self
             .dev_account_wallet
@@ -150,7 +150,7 @@ impl<'c> Blockchain<'c> {
         chain_id: ChainId,
     ) -> anyhow::Result<()> {
         let transfer = self.transfer_fn(to, asset.quantity)?;
-        let gas_price = self.gas_price.gas_price().await?;
+        let gas_price = self.gas_price.gas_price(0).await?;
 
         let _ = self
             .dev_account_wallet
@@ -182,7 +182,7 @@ impl<'c> Blockchain<'c> {
     async fn deploy_token_contract(&mut self) -> anyhow::Result<()> {
         let contract = TOKEN_CONTRACT[2..].trim(); // remove the 0x in the front and any whitespace
         let contract = hex::decode(contract).context("token contract should be valid hex")?;
-        let gas_price = self.gas_price.gas_price().await?;
+        let gas_price = self.gas_price.gas_price(0).await?;
 
         self.dev_account_wallet
             .deploy_dai_token_contract(

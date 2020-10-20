@@ -24,7 +24,10 @@ impl hbit::ExecuteFund for Wallet {
     async fn execute_fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::Funded> {
         let action = params.shared.build_fund_action();
 
-        let kbyte_fee_rate = self.fee.kvbyte_rate().await?;
+        let kbyte_fee_rate = self
+            .fee
+            .kvbyte_rate(0) // Note on `0`: this impl-block is going away
+            .await?;
 
         let location = self
             .inner
@@ -44,7 +47,10 @@ impl hbit::ExecuteRedeem for Wallet {
         fund_event: hbit::Funded,
         secret: Secret,
     ) -> anyhow::Result<hbit::Redeemed> {
-        let vbyte_rate = self.fee.vbyte_rate().await?;
+        let vbyte_rate = self
+            .fee
+            .vbyte_rate(0) // Note on `0`: this impl-block is going away
+            .await?;
 
         let action = params.shared.build_redeem_action(
             &crate::SECP,
@@ -84,7 +90,10 @@ impl hbit::ExecuteRefund for Wallet {
             tokio::time::delay_for(Duration::from_secs(1)).await;
         }
 
-        let vbyte_rate = self.fee.vbyte_rate().await?;
+        let vbyte_rate = self
+            .fee
+            .vbyte_rate(0) // Note on `0`: this impl-block is going away
+            .await?;
 
         let action = params.shared.build_refund_action(
             &crate::SECP,

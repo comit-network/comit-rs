@@ -43,10 +43,10 @@ impl GasPrice {
         }
     }
 
-    pub async fn gas_price(&self) -> Result<ether::Amount> {
+    pub async fn gas_price(&self, block_target: u8) -> Result<ether::Amount> {
         match &self.service {
             Service::Geth(client) => client.gas_price().await,
-            Service::EthGasStation(client) => client.gas_price().await,
+            Service::EthGasStation(client) => client.gas_price(block_target).await,
         }
     }
 }
@@ -65,7 +65,7 @@ mod tests {
 
         let gas_price = GasPrice::geth_url(blockchain.node_url.clone());
 
-        let gas_price = gas_price.gas_price().await.unwrap();
+        let gas_price = gas_price.gas_price(0).await.unwrap();
 
         println!("Gas price: {}", gas_price)
     }
