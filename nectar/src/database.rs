@@ -3,7 +3,7 @@ use self::{
     herc20::{Herc20Deployed, Herc20Funded, Herc20Redeemed, Herc20Refunded},
 };
 use crate::{network, network::ActivePeer, swap, swap::SwapKind, SwapId};
-use anyhow::{anyhow, Context};
+use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
@@ -15,12 +15,12 @@ mod hbit;
 mod herc20;
 
 pub trait Load<T>: Send + Sync + 'static {
-    fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<T>>;
+    fn load(&self, swap_id: SwapId) -> Result<Option<T>>;
 }
 
 #[async_trait::async_trait]
 pub trait Save<T>: Send + Sync + 'static {
-    async fn save(&self, elem: T, swap_id: SwapId) -> anyhow::Result<()>;
+    async fn save(&self, elem: T, swap_id: SwapId) -> Result<()>;
 }
 
 #[derive(Debug)]
@@ -35,7 +35,7 @@ impl Database {
     const BITCOIN_TRANSIENT_KEYS_INDEX_KEY: &'static str = "bitcoin_transient_key_index";
 
     #[cfg(not(test))]
-    pub fn new(path: &std::path::Path) -> anyhow::Result<Self> {
+    pub fn new(path: &std::path::Path) -> Result<Self> {
         let path = path
             .to_str()
             .ok_or_else(|| anyhow!("The path is not utf-8 valid: {:?}", path))?;
@@ -56,7 +56,7 @@ impl Database {
     }
 
     #[cfg(test)]
-    pub fn new_test() -> anyhow::Result<Self> {
+    pub fn new_test() -> Result<Self> {
         let tmp_dir = tempfile::TempDir::new().unwrap();
         let db = sled::open(tmp_dir.path())
             .with_context(|| format!("Could not open the DB at {}", tmp_dir.path().display()))?;
@@ -71,7 +71,7 @@ impl Database {
         Ok(Database { db, tmp_dir })
     }
 
-    pub async fn fetch_inc_bitcoin_transient_key_index(&self) -> anyhow::Result<u32> {
+    pub async fn fetch_inc_bitcoin_transient_key_index(&self) -> Result<u32> {
         let old_value = self.db.fetch_and_update(
             serialize(&Self::BITCOIN_TRANSIENT_KEYS_INDEX_KEY)?,
             |old| match old {
@@ -106,7 +106,7 @@ impl Database {
 /// Swap related functions
 impl Database {
     // TODO: Add versioning to the data
-    pub async fn insert_swap(&self, swap: SwapKind) -> anyhow::Result<()> {
+    pub async fn insert_swap(&self, swap: SwapKind) -> Result<()> {
         let swap_id = swap.swap_id();
 
         let stored_swap = self.get_swap_or_bail(&swap_id);
@@ -133,7 +133,7 @@ impl Database {
         }
     }
 
-    pub fn all_swaps(&self) -> anyhow::Result<Vec<SwapKind>> {
+    pub fn all_swaps(&self) -> Result<Vec<SwapKind>> {
         self.db
             .iter()
             .filter_map(|item| match item {
@@ -153,7 +153,7 @@ impl Database {
             .collect()
     }
 
-    pub async fn remove_swap(&self, swap_id: &SwapId) -> anyhow::Result<()> {
+    pub async fn remove_swap(&self, swap_id: &SwapId) -> Result<()> {
         let key = serialize(swap_id)?;
 
         self.db
@@ -168,7 +168,7 @@ impl Database {
             .context("Could not flush db")
     }
 
-    fn get_swap_or_bail(&self, swap_id: &SwapId) -> anyhow::Result<Swap> {
+    fn get_swap_or_bail(&self, swap_id: &SwapId) -> Result<Swap> {
         let swap = self
             .get_swap(swap_id)?
             .ok_or_else(|| anyhow!("Swap does not exists {}", swap_id))?;
@@ -176,7 +176,7 @@ impl Database {
         Ok(swap)
     }
 
-    fn get_swap(&self, swap_id: &SwapId) -> anyhow::Result<Option<Swap>> {
+    fn get_swap(&self, swap_id: &SwapId) -> Result<Option<Swap>> {
         let key = serialize(swap_id)?;
 
         let swap = match self.db.get(&key)? {
@@ -189,7 +189,7 @@ impl Database {
 }
 
 impl Load<SwapKind> for Database {
-    fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<SwapKind>> {
+    fn load(&self, swap_id: SwapId) -> Result<Option<SwapKind>> {
         let swap = self.get_swap(&swap_id)?;
         let swap_kind = swap.map(|swap| SwapKind::from((swap, swap_id)));
 
@@ -201,7 +201,7 @@ impl Load<SwapKind> for Database {
 /// swap with nectar An active peer refers to one that has an ongoing swap with
 /// nectar.
 impl Database {
-    pub async fn insert_active_peer(&self, peer: ActivePeer) -> anyhow::Result<()> {
+    pub async fn insert_active_peer(&self, peer: ActivePeer) -> Result<()> {
         self.modify_peers_with(|peers: &mut HashSet<ActivePeer>| peers.insert(peer.clone()))?;
 
         self.db
@@ -211,7 +211,7 @@ impl Database {
             .context("Could not flush db")
     }
 
-    pub async fn remove_active_peer(&self, peer: &ActivePeer) -> anyhow::Result<()> {
+    pub async fn remove_active_peer(&self, peer: &ActivePeer) -> Result<()> {
         self.modify_peers_with(|peers: &mut HashSet<ActivePeer>| peers.remove(peer))?;
         self.db
             .flush_async()
@@ -220,7 +220,7 @@ impl Database {
             .context("Could not flush db")
     }
 
-    pub fn contains_active_peer(&self, peer: &ActivePeer) -> anyhow::Result<bool> {
+    pub fn contains_active_peer(&self, peer: &ActivePeer) -> Result<bool> {
         let peers = self.peers()?;
 
         Ok(peers.contains(&peer))
@@ -229,7 +229,7 @@ impl Database {
     fn modify_peers_with(
         &self,
         operation_fn: impl Fn(&mut HashSet<ActivePeer>) -> bool,
-    ) -> anyhow::Result<()> {
+    ) -> Result<()> {
         let mut peers = self.peers()?;
 
         operation_fn(&mut peers);
@@ -243,7 +243,7 @@ impl Database {
         Ok(())
     }
 
-    fn peers(&self) -> anyhow::Result<HashSet<ActivePeer>> {
+    fn peers(&self) -> Result<HashSet<ActivePeer>> {
         let peers = self
             .db
             .get(serialize(&Self::ACTIVE_PEER_KEY)?)?
@@ -255,14 +255,14 @@ impl Database {
     }
 }
 
-pub fn serialize<T>(t: &T) -> anyhow::Result<Vec<u8>>
+pub fn serialize<T>(t: &T) -> Result<Vec<u8>>
 where
     T: Serialize,
 {
     Ok(serde_cbor::to_vec(t)?)
 }
 
-pub fn deserialize<'a, T>(v: &'a [u8]) -> anyhow::Result<T>
+pub fn deserialize<'a, T>(v: &'a [u8]) -> Result<T>
 where
     T: Deserialize<'a>,
 {
