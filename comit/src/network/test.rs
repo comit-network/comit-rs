@@ -68,7 +68,6 @@ pub fn new_swarm<B: NetworkBehaviour, F: Fn(PeerId, identity::Keypair) -> B>(beh
         .authenticate(noise)
         .multiplex(Config::default())
         .map(|(peer, muxer), _| (peer, StreamMuxerBox::new(muxer)))
-        .timeout(Duration::from_secs(5))
         .boxed();
 
     let mut swarm: Swarm<B> = SwarmBuilder::new(

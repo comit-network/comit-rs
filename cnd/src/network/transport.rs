@@ -1,21 +1,20 @@
 use libp2p::{
     core::{
-        either::EitherError,
         identity,
         muxing::StreamMuxerBox,
-        transport::{boxed::Boxed, timeout::TransportTimeoutError},
+        transport::Boxed,
         upgrade::{SelectUpgrade, Version},
-        Transport, UpgradeError,
+        Transport,
     },
-    dns::{DnsConfig, DnsErr},
+    dns::DnsConfig,
     mplex::MplexConfig,
     multiaddr::Protocol,
-    noise::{self, NoiseConfig, NoiseError, X25519Spec},
+    noise::{self, NoiseConfig, X25519Spec},
     tcp::TokioTcpConfig,
     yamux, Multiaddr, PeerId,
 };
 use libp2p_tokio_socks5::Socks5TokioTcpConfig;
-use std::{collections::HashMap, io, time::Duration};
+use std::collections::HashMap;
 
 const PORT: u16 = 9939;
 
@@ -51,7 +50,6 @@ pub fn build_comit_transport(id_keys: identity::Keypair) -> anyhow::Result<Comit
             MplexConfig::new(),
         ))
         .map(|(peer, muxer), _| (peer, StreamMuxerBox::new(muxer)))
-        .timeout(Duration::from_secs(20))
         .boxed();
 
     Ok(transport)
@@ -83,21 +81,12 @@ fn build_tor_transport(
             MplexConfig::new(),
         ))
         .map(|(peer, muxer), _| (peer, StreamMuxerBox::new(muxer)))
-        .timeout(Duration::from_secs(20))
         .boxed();
 
     Ok(transport)
 }
 
-pub type ComitTransport = Boxed<
-    (PeerId, StreamMuxerBox),
-    TransportTimeoutError<
-        EitherError<
-            EitherError<DnsErr<io::Error>, UpgradeError<NoiseError>>,
-            UpgradeError<EitherError<io::Error, io::Error>>,
-        >,
-    >,
->;
+pub type ComitTransport = Boxed<(PeerId, StreamMuxerBox)>;
 
 // True if `addr` is a Tor onion address v2 or v3.
 fn is_onion(mut addr: Multiaddr) -> bool {
