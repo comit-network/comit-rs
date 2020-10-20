@@ -12,6 +12,7 @@ use crate::{command::FinishedSwap, network::ActivePeer, swap::bob::Bob, SwapId};
 use ::comit::btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use anyhow::{Context, Result};
 use futures::{channel::mpsc, SinkExt};
+use num::Zero;
 use std::sync::Arc;
 use tracing_futures::Instrument;
 
@@ -713,18 +714,28 @@ impl herc20::WatchForRedeemed for World {
 
 #[async_trait::async_trait]
 impl EstimateBitcoinFee for World {
-    async fn estimate_bitcoin_fee(&self) -> Result<bitcoin::Amount> {
-        self.bitcoin_fee.kvbyte_rate().await // TODO: Encode in the type
-                                             // signature that is this sats/vKB
+    async fn estimate_bitcoin_fee(&self) -> bitcoin::Amount {
+        self.bitcoin_fee.kvbyte_rate().await.unwrap_or_else(|_| {
+            // TODO: provide a static fallback fee here
+            bitcoin::Amount::ZERO
+        })
     }
 }
 
 #[async_trait::async_trait]
 impl EstimateEthereumGasPrice for World {
-    async fn estimate_ethereum_gas_price(&self) -> Result<clarity::Uint256> {
-        let amount = self.gas_price.gas_price().await?;
+    async fn estimate_ethereum_gas_price(&self) -> clarity::Uint256 {
+        let amount = self
+            .gas_price
+            .gas_price()
+            .await
+            .map(|p| p.into())
+            .unwrap_or_else(|_| {
+                // TODO: provide a static fallback price here
+                clarity::Uint256::zero()
+            });
 
-        Ok(amount.into())
+        amount
     }
 }
 

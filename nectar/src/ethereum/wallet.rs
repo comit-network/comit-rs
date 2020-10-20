@@ -209,13 +209,10 @@ impl Wallet {
         let to = to_clarity_address(to)?;
         let dai_contract_addr = to_clarity_address(self.chain.dai_contract_address())?;
 
-        let data = clarity::abi::encode_call(
-            "transfer(address,uint256)",
-            &[
-                clarity::abi::Token::Address(to),
-                clarity::abi::Token::Uint(Uint256::from_bytes_le(value.to_bytes().as_slice())),
-            ],
-        )?;
+        let data = clarity::abi::encode_call("transfer(address,uint256)", &[
+            clarity::abi::Token::Address(to),
+            clarity::abi::Token::Uint(Uint256::from_bytes_le(value.to_bytes().as_slice())),
+        ])?;
 
         let hash = self
             .sign_and_send(

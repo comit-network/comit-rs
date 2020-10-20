@@ -9,7 +9,6 @@ pub use comit::{ethereum, *};
 pub use hbit_herc20::{hbit_herc20_alice, hbit_herc20_bob};
 pub use herc20_hbit::herc20_hbit_bob;
 
-use anyhow::Result;
 use async_trait::async_trait;
 use clarity::Uint256;
 use std::fmt::Debug;
@@ -29,10 +28,11 @@ pub struct SwapFailedNoRefund;
 
 #[async_trait]
 pub trait EstimateBitcoinFee {
-    async fn estimate_bitcoin_fee(&self) -> Result<::bitcoin::Amount>;
+    // TODO: Encode in the type signature that is this sats/vKB
+    async fn estimate_bitcoin_fee(&self) -> ::bitcoin::Amount;
 }
 
 #[async_trait]
 pub trait EstimateEthereumGasPrice {
-    async fn estimate_ethereum_gas_price(&self) -> Result<Uint256>;
+    async fn estimate_ethereum_gas_price(&self) -> Uint256;
 }
