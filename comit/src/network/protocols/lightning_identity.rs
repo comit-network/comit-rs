@@ -1,6 +1,5 @@
 use crate::{identity, network::oneshot_protocol, SharedSwapId};
 use serde::{Deserialize, Serialize};
-use serde_hex::{SerHex, Strict};
 use serdebug::SerDebug;
 
 /// The message for the Lightning identity sharing protocol.
@@ -9,8 +8,7 @@ pub struct Message {
     pub swap_id: SharedSwapId,
     /// A Lightning node identifier is a compressed secp256k1 public key,
     /// serialized without a `0x` prefix.
-    // TODO: Replace with #[serde(with = "hex")] on Rust 1.47 and remove serde-hex from dependencies
-    #[serde(with = "SerHex::<Strict>")]
+    #[serde(with = "hex")]
     pub pubkey: [u8; 33],
 }
 

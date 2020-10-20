@@ -41,7 +41,8 @@ mod arbitrary;
 
 use crate::{
     command::{
-        balance, deposit, dump_config, resume_only, trade, wallet_info, withdraw, Command, Options,
+        balance, create_transaction, deposit, dump_config, resume_only, trade, wallet_info,
+        withdraw, Command, Options,
     },
     config::{read_config, Settings},
     fs::default_config_path,
@@ -56,6 +57,7 @@ pub use rate::{Rate, Spread};
 pub use seed::Seed;
 pub use swap_id::SwapId;
 
+use crate::database::Database;
 #[cfg(test)]
 pub use test_harness::StaticStub;
 
@@ -162,6 +164,28 @@ async fn main() -> Result<()> {
             )
             .await
             .expect("Wrapping up")
+        }
+        Command::CreateTransaction(input) => {
+            let bitcoind_client = bitcoin::Client::new(settings.bitcoin.bitcoind.node_url.clone());
+            let bitcoin_fee = bitcoin::Fee::new(settings.bitcoin.clone(), bitcoind_client);
+            let ethereum_gas_price = ethereum::GasPrice::new(settings.ethereum.gas_price.clone());
+            #[cfg(not(test))]
+            let db = Database::new(&settings.data.dir.join("database"))?;
+            #[cfg(test)]
+            let db = Database::new_test()?;
+
+            let hex = create_transaction(
+                input,
+                db,
+                bitcoin_wallet.context("could not initialize bitcoin wallet")?,
+                bitcoin_fee,
+                ethereum_wallet.context("could not initialize ethereum wallet")?,
+                ethereum_gas_price,
+            )
+            .await
+            .context("failed to create transaction")?;
+
+            println!("{}", hex);
         }
     };
 

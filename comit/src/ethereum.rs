@@ -158,8 +158,7 @@ pub struct Transaction {
     /// Transfered value
     pub value: U256,
     /// Input data
-    #[serde(with = "serde_hex_data")]
-    pub input: Vec<u8>,
+    pub input: crate::ethereum::UnformattedData,
 }
 
 /// A log produced by a transaction.
@@ -170,8 +169,7 @@ pub struct Log {
     /// Topics
     pub topics: Vec<Hash>,
     /// Data
-    #[serde(with = "serde_hex_data")]
-    pub data: Vec<u8>,
+    pub data: crate::ethereum::UnformattedData,
 }
 
 /// The block returned from RPC calls.
@@ -192,6 +190,9 @@ pub struct Block {
     /// Transactions
     pub transactions: Vec<Transaction>,
 }
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UnformattedData(#[serde(with = "serde_hex_data")] pub Vec<u8>);
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct ChainId(u32);

@@ -210,7 +210,7 @@ where
 
     let expected_asset = &params.asset;
 
-    let quantity = Erc20Quantity::from_wei(U256::from_big_endian(&log.data));
+    let quantity = Erc20Quantity::from_wei(U256::from_big_endian(&log.data.0));
     let asset = Erc20::new(log.address, quantity);
 
     let event = match expected_asset.cmp(&asset) {
@@ -244,7 +244,7 @@ where
         .await?;
 
     let secret =
-        Secret::from_vec(&log.data).expect("Must be able to construct secret from log data");
+        Secret::from_vec(&log.data.0).expect("Must be able to construct secret from log data");
 
     Ok(Redeemed {
         transaction,

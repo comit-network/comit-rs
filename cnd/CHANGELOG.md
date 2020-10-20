@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+-   `create-transaction` sub-command: Create a signed transactions for redeeming or refunding `hbit` protocols.
+-   `print-secret` sub-command: Prints the secret of a swap IF the node acts in the role of Alice for this swap.
+
+### Changed
+
+-   Change log level configuration format from capitalised (e.g. "Debug") to lowercase (e.g. "debug").
+
 ## [cnd-0.9.0] - 2020-10-12
 
 ### Added

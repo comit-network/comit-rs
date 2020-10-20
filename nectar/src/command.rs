@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 mod balance;
+mod create_transaction;
 mod deposit;
 mod resume_only;
 mod trade;
@@ -15,11 +16,14 @@ use crate::{
     history,
     network::ActivePeer,
     swap::SwapKind,
+    SwapId,
 };
 use num::BigUint;
 use std::str::FromStr;
 
 pub use balance::balance;
+use comit::Secret;
+pub use create_transaction::create_transaction;
 pub use deposit::deposit;
 pub use resume_only::resume_only;
 use time::OffsetDateTime;
@@ -64,6 +68,8 @@ pub enum Command {
     Withdraw(Withdraw),
     /// Only resume ongoing swaps, do not publish or accept new orders
     ResumeOnly,
+    /// Manually create and sign a transaction for a specific swap.
+    CreateTransaction(CreateTransaction),
 }
 
 pub fn dump_config(settings: Settings) -> anyhow::Result<()> {
@@ -94,6 +100,48 @@ pub enum Withdraw {
     },
 }
 
+#[derive(StructOpt, Debug, Clone)]
+pub enum CreateTransaction {
+    /// Create the transaction for the `redeem` action.
+    Redeem {
+        /// The ID of the swap.
+        swap_id: SwapId,
+        /// The hex-encoded, 32-byte secret needed to unlock the coins.
+        #[structopt(long, parse(try_from_str = parse_secret))]
+        secret: Secret,
+        /// The Bitcoin outpoint where the `hbit` HTLC is located in the form of
+        /// `<txid>:<vout>`. Only required for swaps where nectar buys BTC/DAI.
+        #[structopt(long)]
+        outpoint: Option<::bitcoin::OutPoint>,
+        /// The Ethereum address where the `herc20` HTLC is located. Only
+        /// required for swaps where nectar sells BTC/DAI.
+        #[structopt(long)]
+        address: Option<ethereum::Address>,
+    },
+    /// Create the transaction for the `refund` action.
+    Refund {
+        /// The ID of the swap.
+        swap_id: SwapId,
+        /// The Bitcoin outpoint where the `hbit` HTLC is located in the form of
+        /// `<txid>:<vout>`. Only required for swaps where nectar sells BTC/DAI.
+        #[structopt(long)]
+        outpoint: Option<::bitcoin::OutPoint>,
+        /// The Ethereum address where the `herc20` HTLC is located. Only
+        /// required for swaps where nectar buys BTC/DAI.
+        #[structopt(long)]
+        address: Option<ethereum::Address>,
+    },
+}
+
+impl CreateTransaction {
+    pub fn swap_id(&self) -> SwapId {
+        match self {
+            CreateTransaction::Redeem { swap_id, .. } => *swap_id,
+            CreateTransaction::Refund { swap_id, .. } => *swap_id,
+        }
+    }
+}
+
 fn parse_bitcoin(str: &str) -> anyhow::Result<bitcoin::Amount> {
     // TODO: In addition to providing an interface to withdraw satoshi, we could use
     // string instead of float here
@@ -112,6 +160,13 @@ fn parse_dai(str: &str) -> anyhow::Result<dai::Amount> {
 
 fn parse_ether(str: &str) -> anyhow::Result<ether::Amount> {
     ether::Amount::from_ether_str(str)
+}
+
+fn parse_secret(str: &str) -> anyhow::Result<Secret> {
+    let mut secret = [0u8; 32];
+    hex::decode_to_slice(str, &mut secret)?;
+
+    Ok(Secret::from(secret))
 }
 
 pub fn into_history_trade(
