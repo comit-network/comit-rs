@@ -2,12 +2,11 @@ use self::{
     hbit::{HbitFunded, HbitRedeemed, HbitRefunded},
     herc20::{Herc20Deployed, Herc20Funded, Herc20Redeemed, Herc20Refunded},
 };
+#[cfg(test)]
+use crate::StaticStub;
 use crate::{network, network::ActivePeer, swap, swap::SwapKind, SwapId};
 use anyhow::{anyhow, Context};
 use serde::{Deserialize, Serialize};
-
-#[cfg(test)]
-use crate::StaticStub;
 use std::{collections::HashSet, iter::FromIterator};
 use time::OffsetDateTime;
 
@@ -27,18 +26,30 @@ pub trait Save<T>: Send + Sync + 'static {
 pub struct Database {
     db: sled::Db,
     #[cfg(test)]
-    tmp_dir: tempfile::TempDir,
+    tmp_dir: Option<tempfile::TempDir>,
 }
 
 impl Database {
     const ACTIVE_PEER_KEY: &'static str = "active_peer";
     const BITCOIN_TRANSIENT_KEYS_INDEX_KEY: &'static str = "bitcoin_transient_key_index";
 
-    #[cfg(not(test))]
     pub fn new(path: &std::path::Path) -> anyhow::Result<Self> {
         let path = path
             .to_str()
             .ok_or_else(|| anyhow!("The path is not utf-8 valid: {:?}", path))?;
+
+        let db = Self::new_sled(path)?;
+
+        dbg!("was recovered: {}", db.was_recovered());
+
+        Ok(Database {
+            db,
+            #[cfg(test)]
+            tmp_dir: None,
+        })
+    }
+
+    fn new_sled(path: &str) -> anyhow::Result<sled::Db> {
         let db = sled::open(path).with_context(|| format!("Could not open the DB at {}", path))?;
 
         if !db.contains_key(Self::ACTIVE_PEER_KEY)? {
@@ -52,7 +63,7 @@ impl Database {
             let _ = db.insert(serialize(&Self::BITCOIN_TRANSIENT_KEYS_INDEX_KEY)?, index)?;
         }
 
-        Ok(Database { db })
+        Ok(db)
     }
 
     #[cfg(test)]
@@ -68,7 +79,10 @@ impl Database {
         let index = serialize(&0u32)?;
         let _ = db.insert(serialize(&Self::BITCOIN_TRANSIENT_KEYS_INDEX_KEY)?, index)?;
 
-        Ok(Database { db, tmp_dir })
+        Ok(Database {
+            db,
+            tmp_dir: Some(tmp_dir),
+        })
     }
 
     pub async fn fetch_inc_bitcoin_transient_key_index(&self) -> anyhow::Result<u32> {
@@ -459,5 +473,58 @@ mod tests {
 
         assert_eq!(db.fetch_inc_bitcoin_transient_key_index().await.unwrap(), 0);
         assert_eq!(db.fetch_inc_bitcoin_transient_key_index().await.unwrap(), 1);
+    }
+}
+
+#[cfg(test)]
+mod db_upgrade_tests {
+    use super::*;
+    use quickcheck::{Arbitrary, StdThreadGen};
+    use tempfile::TempDir;
+
+    const SNAPSHOT_SAMPLE_SIZE: usize = 10;
+
+    #[tokio::test]
+    async fn snapshot() {
+        let tmp_dir = TempDir::new().unwrap();
+        let path = tmp_dir.path();
+
+        {
+            // Open DB on filesystem
+            let db = Database::new(path).unwrap();
+
+            let mut gen = StdThreadGen::new(SNAPSHOT_SAMPLE_SIZE);
+            let mut swaps = Vec::with_capacity(SNAPSHOT_SAMPLE_SIZE);
+            let mut active_peers = Vec::with_capacity(SNAPSHOT_SAMPLE_SIZE);
+
+            for _ in 0..SNAPSHOT_SAMPLE_SIZE {
+                let swap = SwapKind::arbitrary(&mut gen);
+                swaps.push(swap);
+                let peer = ActivePeer::arbitrary(&mut gen);
+                active_peers.push(peer)
+            }
+
+            // Write data in DB, this includes awaiting async flush
+            for swap in swaps.iter() {
+                db.insert_swap(swap.clone()).await.unwrap();
+            }
+
+            for peer in active_peers.iter() {
+                db.insert_active_peer(peer.clone()).await.unwrap();
+            }
+        } // Drop the db struct
+
+        {
+            // Re open DB at same path
+            let db = Database::new(path).unwrap();
+
+            // Get data from DB
+            let stored_swaps = db.all_swaps().unwrap();
+            let active_peers = db.peers().unwrap();
+
+            // Very data is present
+            assert_eq!(stored_swaps.len(), SNAPSHOT_SAMPLE_SIZE);
+            assert_eq!(active_peers.len(), SNAPSHOT_SAMPLE_SIZE);
+        }
     }
 }
