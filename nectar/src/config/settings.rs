@@ -386,6 +386,18 @@ pub struct Sentry {
     pub url: Url,
 }
 
+impl Sentry {
+    fn from_file(sentry: file::Sentry) -> Self {
+        Sentry { url: sentry.url }
+    }
+}
+
+impl From<Sentry> for file::Sentry {
+    fn from(sentry: Sentry) -> Self {
+        file::Sentry { url: sentry.url }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, derivative::Derivative)]
 #[derivative(Default)]
 pub struct Logging {
@@ -414,10 +426,7 @@ impl From<Settings> for File {
             }),
             bitcoin: Some(bitcoin.into()),
             ethereum: Some(ethereum.into()),
-            sentry: match sentry {
-                None => None,
-                Some(sentry) => Some(file::Sentry { url: sentry.url }),
-            },
+            sentry: sentry.map(|sentry| sentry.into()),
         }
     }
 }
@@ -494,10 +503,7 @@ impl Settings {
                 || Ethereum::default_from_chain_id(comit_network.unwrap_or_default().into()),
                 |file| Ethereum::from_file(file, comit_network),
             )?,
-            sentry: match sentry {
-                None => None,
-                Some(sentry) => Some(Sentry { url: sentry.url }),
-            },
+            sentry: sentry.map(Sentry::from_file),
         })
     }
 }
