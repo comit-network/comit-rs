@@ -38,8 +38,8 @@ impl Database {
     pub fn new(path: &std::path::Path) -> Result<Self> {
         let path = path
             .to_str()
-            .ok_or_else(|| anyhow!("The path is not utf-8 valid: {:?}", path))?;
-        let db = sled::open(path).with_context(|| format!("Could not open the DB at {}", path))?;
+            .ok_or_else(|| anyhow!("failed to convert path to utf-8 string: {:?}", path))?;
+        let db = sled::open(path).with_context(|| format!("failed to open DB at {}", path))?;
 
         if !db.contains_key(Self::ACTIVE_PEER_KEY)? {
             let peers = Vec::<ActivePeer>::new();
@@ -59,7 +59,7 @@ impl Database {
     pub fn new_test() -> Result<Self> {
         let tmp_dir = tempfile::TempDir::new().unwrap();
         let db = sled::open(tmp_dir.path())
-            .with_context(|| format!("Could not open the DB at {}", tmp_dir.path().display()))?;
+            .with_context(|| format!("failed to open DB at {}", tmp_dir.path().display()))?;
 
         let peers = Vec::<ActivePeer>::new();
         let peers = serialize(&peers)?;
@@ -78,12 +78,12 @@ impl Database {
                 Some(bytes) => deserialize::<u32>(bytes)
                     .map_err(|err| {
                         tracing::error!(
-                            "Bitcoin transient keys index is corrupted in the db: {:?}, {:#}",
+                            "failed to deserialize Bitcoin transient keys index from DB: {:?}, {:#}",
                             bytes,
                             err
                         )
                     })
-                    .map(|index| serialize(&(index + 1)).expect("Can always serialized a u32"))
+                    .map(|index| serialize(&(index + 1)).expect("can always serialized a u32"))
                     .ok(),
                 None => None,
             },
@@ -112,23 +112,23 @@ impl Database {
         let stored_swap = self.get_swap_or_bail(&swap_id);
 
         match stored_swap {
-            Ok(_) => Err(anyhow!("Swap is already stored")),
+            Ok(_) => Err(anyhow!("swap is already stored")),
             Err(_) => {
                 let key = serialize(&swap_id)?;
 
                 let swap: Swap = swap.into();
-                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
+                let new_value = serialize(&swap).context("failed to serialize new swap value")?;
 
                 self.db
                     .compare_and_swap(key, Option::<Vec<u8>>::None, Some(new_value))
-                    .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")?;
+                    .context("failed to write in the DB")?
+                    .context("failed to save int the Db, stored swap somehow changed")?;
 
                 self.db
                     .flush_async()
                     .await
                     .map(|_| ())
-                    .context("Could not flush db")
+                    .context("failed to flush db")
             }
         }
     }
@@ -139,7 +139,7 @@ impl Database {
             .filter_map(|item| match item {
                 Ok((key, value)) => {
                     let swap_id = deserialize::<SwapId>(&key);
-                    let swap = deserialize::<Swap>(&value).context("Could not deserialize swap");
+                    let swap = deserialize::<Swap>(&value).context("failed to deserialize swap");
 
                     match (swap_id, swap) {
                         (Ok(swap_id), Ok(swap)) => Some(Ok(SwapKind::from((swap, swap_id)))),
@@ -148,7 +148,7 @@ impl Database {
                         (..) => None, // This is not a swap item
                     }
                 }
-                Err(err) => Some(Err(err).context("Could not retrieve data")),
+                Err(err) => Some(Err(err).context("failed to retrieve swaps from DB")),
             })
             .collect()
     }
@@ -158,20 +158,20 @@ impl Database {
 
         self.db
             .remove(key)
-            .with_context(|| format!("Could not delete swap {}", swap_id))
+            .with_context(|| format!("failed to delete swap {}", swap_id))
             .map(|_| ())?;
 
         self.db
             .flush_async()
             .await
             .map(|_| ())
-            .context("Could not flush db")
+            .context("failed to flush db")
     }
 
     fn get_swap_or_bail(&self, swap_id: &SwapId) -> Result<Swap> {
         let swap = self
             .get_swap(swap_id)?
-            .ok_or_else(|| anyhow!("Swap does not exists {}", swap_id))?;
+            .ok_or_else(|| anyhow!("swap does not exists {}", swap_id))?;
 
         Ok(swap)
     }
@@ -180,7 +180,7 @@ impl Database {
         let key = serialize(swap_id)?;
 
         let swap = match self.db.get(&key)? {
-            Some(data) => deserialize(&data).context("Could not deserialize swap")?,
+            Some(data) => deserialize(&data).context("failed to deserialize swap")?,
             None => return Ok(None),
         };
 
@@ -208,7 +208,7 @@ impl Database {
             .flush_async()
             .await
             .map(|_| ())
-            .context("Could not flush db")
+            .context("failed to flush db")
     }
 
     pub async fn remove_active_peer(&self, peer: &ActivePeer) -> Result<()> {
@@ -217,7 +217,7 @@ impl Database {
             .flush_async()
             .await
             .map(|_| ())
-            .context("Could not flush db")
+            .context("failed to flush db")
     }
 
     pub fn contains_active_peer(&self, peer: &ActivePeer) -> Result<bool> {
