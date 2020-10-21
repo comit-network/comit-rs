@@ -34,7 +34,7 @@ pub async fn resume_only(
         Arc::new(Web3Connector::new(settings.ethereum.node_url)),
     );
 
-    for swap in db.all_swaps()? {
+    for swap in db.all_active_swaps()? {
         executor.execute(swap);
     }
 
