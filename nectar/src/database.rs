@@ -142,7 +142,7 @@ impl Database {
                     let swap = deserialize::<Swap>(&value).context("failed to deserialize swap");
 
                     match (swap_id, swap) {
-                        (Ok(swap_id), Ok(swap)) => Some(Ok(SwapKind::from((swap, swap_id)))),
+                        (Ok(swap_id), Ok(swap)) => Some(Ok((swap, swap_id))),
                         (Ok(_), Err(err)) => Some(Err(err)), // If the swap id deserialize, then
                         // it should be a swap
                         (..) => None, // This is not a swap item
@@ -150,6 +150,7 @@ impl Database {
                 }
                 Err(err) => Some(Err(err).context("failed to retrieve swaps from DB")),
             })
+            .map(|res| res.map(|(swap, swap_id)| SwapKind::from((swap, swap_id))))
             .collect()
     }
 
