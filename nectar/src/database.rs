@@ -411,9 +411,7 @@ mod tests {
 
         let stored_swaps = db.all_swaps().unwrap();
 
-        assert_eq!(stored_swaps, vec![swap_2]);
-
-        true
+        stored_swaps == vec![swap_2]
     }
 
     #[quickcheck_async::tokio]
