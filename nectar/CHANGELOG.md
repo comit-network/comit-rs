@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**This release includes changes to the DB schema, we recommend to backup your data directory before upgrading.**
+
+### Added
+
+-   New command to archive swaps: `nectar archive-swap <swap id>`.
+    The command should only be used while nectar is stopped as it updates the database.
+    Archiving a swap stops nectar to resume its automated execution, `create-transaction` command can then be used to recover funds.
+
 ## [nectar-0.1.0] - 2020-10-20
 
 ### Added
@@ -20,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 -   Update the expected network times to calculate the expiries: We expect Bitcoin's transactions to be included within 6 blocks and Ethereum's within 30 blocks.
--   By default, use bitcoind's `estimatsmartfee` feature to estimate Bitcoin fees.
+-   By default, use bitcoind's `estimatesmartfee` feature to estimate Bitcoin fees.
     For Ethereum, Eth Gas Station API is used.
 -   Change log level configuration format from capitalised (e.g. "Debug") to lowercase (e.g. "debug").
 

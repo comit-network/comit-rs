@@ -187,6 +187,16 @@ async fn main() -> Result<()> {
 
             println!("{}", hex);
         }
+        Command::ArchiveSwap { id } => {
+            #[cfg(not(test))]
+            let db = Database::new(&settings.data.dir.join("database"))?;
+            #[cfg(test)]
+            let db = Database::new_test()?;
+
+            db.archive_swap(&id)
+                .await
+                .context("failed to archive swap")?;
+        }
     };
 
     Ok(())

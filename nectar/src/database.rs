@@ -30,6 +30,9 @@ pub struct Database {
     tmp_dir: tempfile::TempDir,
 }
 
+// TODO: We should not need to manually flush as sled automatically tries to
+// sync all data to disk several times per second already. https://github.com/spacejam/sled#interaction-with-async
+// We should just try to flush on critical saves.
 impl Database {
     const ACTIVE_PEER_KEY: &'static str = "active_peer";
     const BITCOIN_TRANSIENT_KEYS_INDEX_KEY: &'static str = "bitcoin_transient_key_index";
@@ -102,10 +105,41 @@ impl Database {
             )),
         }
     }
+
+    /// Mark a swap as archived and remove its peer from the "active peers"
+    pub async fn archive_swap(&self, swap_id: &SwapId) -> Result<()> {
+        let stored_swap = self.get_swap_or_bail(&swap_id)?;
+
+        if let Some(true) = stored_swap.archived {
+            anyhow::bail!("swap is already archived");
+        }
+
+        let mut new_swap = stored_swap.clone();
+        new_swap.archived = Some(true);
+
+        let key = serialize(&swap_id).context("failed to serialize swap id for db storage")?;
+        let old_value = serialize(&stored_swap)
+            .context("failed to serialize stored swap value for db update")?;
+        let new_value =
+            serialize(&new_swap).context("failed to serialize new swap value for db storage")?;
+
+        self.db
+            .compare_and_swap(key, Some(old_value), Some(new_value))
+            .context("failed to write in the DB")?
+            .context("failed to save in the DB, stored swap somehow changed")?;
+
+        let peer = stored_swap.active_peer;
+
+        // DB flush is done as part of this call
+        self.remove_active_peer(&peer).await.context(format!(
+            "failed to remove active peer {:?} after archiving swap",
+            peer,
+        ))
+    }
 }
+
 /// Swap related functions
 impl Database {
-    // TODO: Add versioning to the data
     pub async fn insert_swap(&self, swap: SwapKind) -> Result<()> {
         let swap_id = swap.swap_id();
 
@@ -133,7 +167,7 @@ impl Database {
         }
     }
 
-    pub fn all_swaps(&self) -> Result<Vec<SwapKind>> {
+    pub fn all_active_swaps(&self) -> Result<Vec<SwapKind>> {
         self.db
             .iter()
             .filter_map(|item| match item {
@@ -149,6 +183,15 @@ impl Database {
                     }
                 }
                 Err(err) => Some(Err(err).context("failed to retrieve swaps from DB")),
+            })
+            .filter(|res| {
+                !matches!(res, Ok((
+                    Swap {
+                        archived: Some(true),
+                        ..
+                    },
+                    _,
+                )))
             })
             .map(|res| res.map(|(swap, swap_id)| SwapKind::from((swap, swap_id))))
             .collect()
@@ -285,6 +328,7 @@ struct Swap {
     pub herc20_funded: Option<Herc20Funded>,
     pub herc20_redeemed: Option<Herc20Redeemed>,
     pub herc20_refunded: Option<Herc20Refunded>,
+    pub archived: Option<bool>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -317,6 +361,7 @@ impl StaticStub for Swap {
             herc20_funded: None,
             herc20_redeemed: None,
             herc20_refunded: None,
+            archived: None,
         }
     }
 }
@@ -372,6 +417,7 @@ impl From<SwapKind> for Swap {
             herc20_funded: None,
             herc20_redeemed: None,
             herc20_refunded: None,
+            archived: None,
         }
     }
 }
@@ -382,17 +428,22 @@ mod tests {
     use quickcheck::{Arbitrary, StdThreadGen};
 
     #[quickcheck_async::tokio]
-    async fn save_and_retrieve_swaps(swap_1: SwapKind, swap_2: SwapKind) -> bool {
+    async fn save_and_retrieve_swaps(swap_1: SwapKind, swap_2: SwapKind, swap_3: SwapKind) -> bool {
         let db = Database::new_test().unwrap();
+
+        let swap_id_2 = swap_2.swap_id();
 
         db.insert_swap(swap_1.clone()).await.unwrap();
         db.insert_swap(swap_2.clone()).await.unwrap();
+        db.insert_swap(swap_3.clone()).await.unwrap();
 
-        let stored_swaps = db.all_swaps().unwrap();
+        db.archive_swap(&swap_id_2).await.unwrap();
+
+        let stored_swaps = db.all_active_swaps().unwrap();
 
         assert_eq!(stored_swaps.len(), 2);
         assert!(stored_swaps.contains(&swap_1));
-        assert!(stored_swaps.contains(&swap_2));
+        assert!(stored_swaps.contains(&swap_3));
 
         true
     }
@@ -409,7 +460,7 @@ mod tests {
 
         db.remove_swap(&swap_id_1).await.unwrap();
 
-        let stored_swaps = db.all_swaps().unwrap();
+        let stored_swaps = db.all_active_swaps().unwrap();
 
         stored_swaps == vec![swap_2]
     }
@@ -445,7 +496,7 @@ mod tests {
             db.insert_swap(swap.clone()).await.unwrap();
         }
 
-        let stored_swaps = db.all_swaps().unwrap();
+        let stored_swaps = db.all_active_swaps().unwrap();
 
         for swap in swaps.iter() {
             assert!(stored_swaps.contains(&swap))
@@ -458,5 +509,32 @@ mod tests {
 
         assert_eq!(db.fetch_inc_bitcoin_transient_key_index().await.unwrap(), 0);
         assert_eq!(db.fetch_inc_bitcoin_transient_key_index().await.unwrap(), 1);
+    }
+
+    #[quickcheck_async::tokio]
+    async fn archive_swap_twice(swap: SwapKind) -> bool {
+        let db = Database::new_test().unwrap();
+        let swap_id = swap.swap_id();
+        db.insert_swap(swap).await.unwrap();
+
+        db.archive_swap(&swap_id).await.unwrap();
+
+        // Archiving an already archived swap must fail
+        db.archive_swap(&swap_id).await.is_err()
+    }
+
+    #[quickcheck_async::tokio]
+    async fn peer_is_not_active_for_archived_swap(swap: SwapKind) -> bool {
+        let db = Database::new_test().unwrap();
+        let swap_id = swap.swap_id();
+        let peer = swap.params().taker;
+
+        db.insert_swap(swap.clone()).await.unwrap();
+        db.insert_active_peer(peer.clone()).await.unwrap();
+        assert!(db.contains_active_peer(&peer).unwrap());
+
+        db.archive_swap(&swap_id).await.unwrap();
+
+        !db.contains_active_peer(&peer).unwrap()
     }
 }

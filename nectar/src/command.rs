@@ -70,6 +70,8 @@ pub enum Command {
     ResumeOnly,
     /// Manually create and sign a transaction for a specific swap.
     CreateTransaction(CreateTransaction),
+    /// Archive a swap, all automated actions will be paused.
+    ArchiveSwap { id: SwapId },
 }
 
 pub fn dump_config(settings: Settings) -> anyhow::Result<()> {

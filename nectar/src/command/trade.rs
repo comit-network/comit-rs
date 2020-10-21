@@ -258,7 +258,7 @@ fn respawn_swaps(
     maker: &mut Maker,
     swap_executor: SwapExecutor,
 ) -> anyhow::Result<()> {
-    for swap in db.all_swaps()?.into_iter() {
+    for swap in db.all_active_swaps()?.into_iter() {
         // Reserve funds
         match swap {
             SwapKind::HbitHerc20(SwapParams {
