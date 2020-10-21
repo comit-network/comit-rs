@@ -627,7 +627,8 @@ impl SwapExecutor {
 
         tokio::spawn(async move {
             if let Err(e) = execution.await {
-                let err = e.context(format!("swap {} execution failed", swap.swap_id()));
+                let err = e.context(format!("failed execution for swap {}", swap.swap_id()));
+
                 sentry::integrations::anyhow::capture_anyhow(&err);
                 tracing::warn!("{:#}", err);
             }
@@ -719,7 +720,7 @@ async fn execute(
     tracing::info!("swap {} finished successfully", swap_id);
 
     sentry::capture_message(
-        format!("swap with swap-id {} finished successfully", swap_id).as_str(),
+        format!("successful execution for swap {}", swap_id).as_str(),
         sentry::Level::Info,
     );
 
