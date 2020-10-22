@@ -1,6 +1,10 @@
 use crate::{
     btsieve,
-    btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector, ConnectedNetwork, LatestBlock},
+    btsieve::{
+        bitcoin::BitcoindConnector,
+        ethereum::{GetLogs, TransactionByHash, Web3Connector},
+        ConnectedNetwork, LatestBlock,
+    },
     ethereum,
     http_api::LedgerNotConfigured,
 };
@@ -57,7 +61,9 @@ impl Connectors {
         impl LatestBlock<Block = ethereum::Block>
             + BlockByHash<Block = ethereum::Block, BlockHash = ethereum::Hash>
             + ReceiptByHash
-            + ConnectedNetwork<Network = ethereum::ChainId>,
+            + TransactionByHash
+            + ConnectedNetwork<Network = ethereum::ChainId>
+            + GetLogs,
     > {
         self.ethereum.clone()
     }

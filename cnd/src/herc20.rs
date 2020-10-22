@@ -13,7 +13,10 @@ use std::collections::{hash_map::Entry, HashMap};
 use time::OffsetDateTime;
 use tokio::sync::Mutex;
 
-use crate::btsieve::ConnectedNetwork;
+use crate::btsieve::{
+    ethereum::{GetLogs, TransactionByHash},
+    ConnectedNetwork,
+};
 pub use comit::herc20::*;
 
 /// Creates a new instance of the herc20 protocol, annotated with tracing spans
@@ -35,7 +38,9 @@ where
     C: LatestBlock<Block = Block>
         + BlockByHash<Block = Block, BlockHash = Hash>
         + ReceiptByHash
-        + ConnectedNetwork<Network = ChainId>,
+        + TransactionByHash
+        + ConnectedNetwork<Network = ChainId>
+        + GetLogs,
 {
     let mut events = comit::herc20::new(connector.as_ref(), params, start_of_swap);
 

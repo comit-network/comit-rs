@@ -1,9 +1,9 @@
 use crate::{
     btsieve::{
-        ethereum::{self, Hash, ReceiptByHash},
+        ethereum::{self, Event, GetLogs, Hash, ReceiptByHash, TransactionByHash},
         BlockByHash, ConnectedNetwork, LatestBlock,
     },
-    ethereum::{ChainId, TransactionReceipt},
+    ethereum::{ChainId, Log, Transaction, TransactionReceipt},
 };
 use anyhow::Result;
 use async_trait::async_trait;
@@ -128,5 +128,25 @@ where
         let _ = self.connected_network_cache.lock().await.replace(network);
 
         Ok(network)
+    }
+}
+
+#[async_trait]
+impl<C> GetLogs for Cache<C>
+where
+    C: GetLogs,
+{
+    async fn get_logs(&self, event: Event) -> anyhow::Result<Vec<Log>> {
+        self.connector.get_logs(event).await
+    }
+}
+
+#[async_trait]
+impl<C> TransactionByHash for Cache<C>
+where
+    C: TransactionByHash,
+{
+    async fn transaction_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<Transaction> {
+        self.connector.transaction_by_hash(transaction_hash).await
     }
 }
