@@ -215,7 +215,7 @@ impl Database {
                     _,
                 )))
             })
-            .map(|res| res.map(|(swap, swap_id)| SwapKind::from((swap, swap_id))))
+            .map(|res| res.map(SwapKind::from))
             .collect()
     }
 
