@@ -426,7 +426,7 @@ impl From<Settings> for File {
             }),
             bitcoin: Some(bitcoin.into()),
             ethereum: Some(ethereum.into()),
-            sentry: sentry.map(|sentry| sentry.into()),
+            sentry: sentry.map(file::Sentry::from),
         }
     }
 }

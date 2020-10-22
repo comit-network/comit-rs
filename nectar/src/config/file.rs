@@ -176,7 +176,6 @@ pub enum AllowedOrigins {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Sentry {
-    /// The url to the sentry project
     pub url: url::Url,
 }
 
