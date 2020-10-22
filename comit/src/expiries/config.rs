@@ -34,16 +34,20 @@ use time::Duration;
 // to turn off lints.
 
 mod main {
-    pub const BITCOIN_BLOCK_TIME_SECS: u16 = 600; // 10 minutes, average Bitcoin block time.
-    pub const ETHEREUM_BLOCK_TIME_SECS: u16 = 20; // Conservative Ethereum block
-                                                  // time.
+    // 10 minutes, average Bitcoin block time.
+    pub const BITCOIN_BLOCK_TIME_SECS: u16 = 600;
+    // Conservative Ethereum block time.
+    pub const ETHEREUM_BLOCK_TIME_SECS: u16 = 20;
 
-    pub const BITCOIN_CONFIRMATIONS: u8 = 6; // Standard in the Bitcoin ecosystem.
-    pub const ETHEREUM_CONFIRMATIONS: u8 = 30; // Value used by Kraken.
+    // Standard in the Bitcoin ecosystem.
+    pub const BITCOIN_CONFIRMATIONS: u8 = 6;
+    // Value used by Kraken.
+    pub const ETHEREUM_CONFIRMATIONS: u8 = 30;
 
-    pub const ACT_IN_SOFTWARE_SECS: u32 = 15 * 60; // Value arbitrarily chosen.
-    pub const ACT_WITH_USER_INTERACTION_SECS: u32 = 60 * 60; // Value arbitrarily
-                                                             // chosen.
+    // Value arbitrarily chosen.
+    pub const ACT_IN_SOFTWARE_SECS: u32 = 15 * 60;
+    // Value arbitrarily chosen.
+    pub const ACT_WITH_USER_INTERACTION_SECS: u32 = 60 * 60;
 
     // Considering current market, less than 6 blocks is very expensive.
     pub const BITCOIN_MINE_WITHIN_N_BLOCKS: u8 = 6;
