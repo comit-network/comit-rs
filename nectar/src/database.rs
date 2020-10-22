@@ -309,6 +309,30 @@ impl Database {
             .context("failed to flush db")
     }
 
+    async fn update_swap<U>(&self, swap_id: &SwapId, update_fn: U) -> anyhow::Result<()>
+    where
+        U: FnOnce(Swap) -> anyhow::Result<Swap>,
+    {
+        let stored_swap = self.get_swap_or_bail(&swap_id)?;
+        let old_value = serialize(&stored_swap).context("Could not serialize old swap value")?;
+
+        let new_swap = update_fn(stored_swap)?;
+
+        let key = serialize(&swap_id)?;
+        let new_value = serialize(&new_swap).context("Could not serialize new swap value")?;
+
+        self.db
+            .compare_and_swap(key, Some(old_value), Some(new_value))
+            .context("Could not write in the DB")?
+            .context("Stored swap somehow changed, aborting saving")?;
+
+        self.db
+            .flush_async()
+            .await
+            .map(|_| ())
+            .context("Could not flush db")
+    }
+
     fn get_swap_or_bail(&self, swap_id: &SwapId) -> anyhow::Result<Swap> {
         let swap = self
             .get_swap(swap_id)?

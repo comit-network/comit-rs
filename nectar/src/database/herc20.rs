@@ -1,9 +1,8 @@
 use crate::{
-    database::{serialize, Database, Load, Save},
+    database::{Database, Load, Save},
     swap::herc20,
     SwapId,
 };
-use anyhow::{anyhow, Context};
 use comit::{
     asset::Erc20,
     ethereum,
@@ -39,32 +38,14 @@ impl From<herc20::Deployed> for Herc20Deployed {
 #[async_trait::async_trait]
 impl Save<herc20::Deployed> for Database {
     async fn save(&self, event: herc20::Deployed, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get_swap_or_bail(&swap_id)?;
-
-        match stored_swap.herc20_deployed {
-            Some(_) => Err(anyhow!("Herc20 Deployed event is already stored")),
+        self.update_swap(&swap_id, |mut old_swap| match &old_swap.herc20_deployed {
+            Some(_) => anyhow::bail!("Herc20 Deployed event is already stored"),
             None => {
-                let key = serialize(&swap_id)?;
-
-                let mut swap = stored_swap.clone();
-                swap.herc20_deployed = Some(event.into());
-
-                let old_value =
-                    serialize(&stored_swap).context("Could not serialize old swap value")?;
-                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
-
-                self.db
-                    .compare_and_swap(key, Some(old_value), Some(new_value))
-                    .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")?;
-
-                self.db
-                    .flush_async()
-                    .await
-                    .map(|_| ())
-                    .context("Could not flush db")
+                old_swap.herc20_deployed = Some(event.into());
+                Ok(old_swap)
             }
-        }
+        })
+        .await
     }
 }
 
@@ -103,32 +84,14 @@ impl From<herc20::Funded> for Herc20Funded {
 #[async_trait::async_trait]
 impl Save<herc20::Funded> for Database {
     async fn save(&self, event: herc20::Funded, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get_swap_or_bail(&swap_id)?;
-
-        match stored_swap.herc20_funded {
-            Some(_) => Err(anyhow!("Herc20 Funded event is already stored")),
+        self.update_swap(&swap_id, |mut old_swap| match &old_swap.herc20_funded {
+            Some(_) => anyhow::bail!("Herc20 Funded event is already stored"),
             None => {
-                let key = serialize(&swap_id)?;
-
-                let mut swap = stored_swap.clone();
-                swap.herc20_funded = Some(event.into());
-
-                let old_value =
-                    serialize(&stored_swap).context("Could not serialize old swap value")?;
-                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
-
-                self.db
-                    .compare_and_swap(key, Some(old_value), Some(new_value))
-                    .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")?;
-
-                self.db
-                    .flush_async()
-                    .await
-                    .map(|_| ())
-                    .context("Could not flush db")
+                old_swap.herc20_funded = Some(event.into());
+                Ok(old_swap)
             }
-        }
+        })
+        .await
     }
 }
 
@@ -167,32 +130,14 @@ impl From<herc20::Redeemed> for Herc20Redeemed {
 #[async_trait::async_trait]
 impl Save<herc20::Redeemed> for Database {
     async fn save(&self, event: herc20::Redeemed, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get_swap_or_bail(&swap_id)?;
-
-        match stored_swap.herc20_redeemed {
-            Some(_) => Err(anyhow!("Herc20 Redeemed event is already stored")),
+        self.update_swap(&swap_id, |mut old_swap| match &old_swap.herc20_redeemed {
+            Some(_) => anyhow::bail!("Herc20 Redeem event is already stored"),
             None => {
-                let key = serialize(&swap_id)?;
-
-                let mut swap = stored_swap.clone();
-                swap.herc20_redeemed = Some(event.into());
-
-                let old_value =
-                    serialize(&stored_swap).context("Could not serialize old swap value")?;
-                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
-
-                self.db
-                    .compare_and_swap(key, Some(old_value), Some(new_value))
-                    .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")?;
-
-                self.db
-                    .flush_async()
-                    .await
-                    .map(|_| ())
-                    .context("Could not flush db")
+                old_swap.herc20_redeemed = Some(event.into());
+                Ok(old_swap)
             }
-        }
+        })
+        .await
     }
 }
 
@@ -228,32 +173,14 @@ impl From<herc20::Refunded> for Herc20Refunded {
 #[async_trait::async_trait]
 impl Save<herc20::Refunded> for Database {
     async fn save(&self, event: herc20::Refunded, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get_swap_or_bail(&swap_id)?;
-
-        match stored_swap.herc20_refunded {
-            Some(_) => Err(anyhow!("Herc20 Refunded event is already stored")),
+        self.update_swap(&swap_id, |mut old_swap| match &old_swap.herc20_refunded {
+            Some(_) => anyhow::bail!("Herc20 Refunded event is already stored"),
             None => {
-                let key = serialize(&swap_id)?;
-
-                let mut swap = stored_swap.clone();
-                swap.herc20_refunded = Some(event.into());
-
-                let old_value =
-                    serialize(&stored_swap).context("Could not serialize old swap value")?;
-                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
-
-                self.db
-                    .compare_and_swap(key, Some(old_value), Some(new_value))
-                    .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")?;
-
-                self.db
-                    .flush_async()
-                    .await
-                    .map(|_| ())
-                    .context("Could not flush db")
+                old_swap.herc20_refunded = Some(event.into());
+                Ok(old_swap)
             }
-        }
+        })
+        .await
     }
 }
 

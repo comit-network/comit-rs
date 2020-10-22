@@ -1,10 +1,9 @@
 use crate::{
-    database::{serialize, Database, Load, Save},
+    database::{Database, Load, Save},
     swap::hbit,
     SwapId,
 };
 use ::bitcoin::secp256k1;
-use anyhow::{anyhow, Context};
 use comit::{identity, Secret, SecretHash, Timestamp};
 use serde::{Deserialize, Serialize};
 
@@ -51,32 +50,14 @@ impl From<hbit::Funded> for HbitFunded {
 #[async_trait::async_trait]
 impl Save<hbit::Funded> for Database {
     async fn save(&self, event: hbit::Funded, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get_swap_or_bail(&swap_id)?;
-
-        match stored_swap.hbit_funded {
-            Some(_) => Err(anyhow!("Hbit Funded event is already stored")),
+        self.update_swap(&swap_id, |mut old_swap| match &old_swap.hbit_funded {
+            Some(_) => anyhow::bail!("Hbit Funded event is already stored"),
             None => {
-                let key = serialize(&swap_id)?;
-
-                let mut swap = stored_swap.clone();
-                swap.hbit_funded = Some(event.into());
-
-                let old_value =
-                    serialize(&stored_swap).context("Could not serialize old swap value")?;
-                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
-
-                self.db
-                    .compare_and_swap(key, Some(old_value), Some(new_value))
-                    .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")?;
-
-                self.db
-                    .flush_async()
-                    .await
-                    .map(|_| ())
-                    .context("Could not flush db")
+                old_swap.hbit_funded = Some(event.into());
+                Ok(old_swap)
             }
-        }
+        })
+        .await
     }
 }
 
@@ -115,32 +96,14 @@ impl From<hbit::Redeemed> for HbitRedeemed {
 #[async_trait::async_trait]
 impl Save<hbit::Redeemed> for Database {
     async fn save(&self, event: hbit::Redeemed, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get_swap_or_bail(&swap_id)?;
-
-        match stored_swap.hbit_redeemed {
-            Some(_) => Err(anyhow!("Hbit Redeemed event is already stored")),
+        self.update_swap(&swap_id, |mut old_swap| match &old_swap.hbit_redeemed {
+            Some(_) => anyhow::bail!("Hbit Redeemed event is already stored"),
             None => {
-                let key = serialize(&swap_id)?;
-
-                let mut swap = stored_swap.clone();
-                swap.hbit_redeemed = Some(event.into());
-
-                let old_value =
-                    serialize(&stored_swap).context("Could not serialize old swap value")?;
-                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
-
-                self.db
-                    .compare_and_swap(key, Some(old_value), Some(new_value))
-                    .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")?;
-
-                self.db
-                    .flush_async()
-                    .await
-                    .map(|_| ())
-                    .context("Could not flush db")
+                old_swap.hbit_redeemed = Some(event.into());
+                Ok(old_swap)
             }
-        }
+        })
+        .await
     }
 }
 
@@ -176,31 +139,14 @@ impl From<hbit::Refunded> for HbitRefunded {
 #[async_trait::async_trait]
 impl Save<hbit::Refunded> for Database {
     async fn save(&self, event: hbit::Refunded, swap_id: SwapId) -> anyhow::Result<()> {
-        let stored_swap = self.get_swap_or_bail(&swap_id)?;
-        match stored_swap.hbit_refunded {
-            Some(_) => Err(anyhow!("Hbit Refunded event is already stored")),
+        self.update_swap(&swap_id, |mut old_swap| match &old_swap.hbit_refunded {
+            Some(_) => anyhow::bail!("Hbit Refunded event is already stored"),
             None => {
-                let key = serialize(&swap_id)?;
-
-                let mut swap = stored_swap.clone();
-                swap.hbit_refunded = Some(event.into());
-
-                let old_value =
-                    serialize(&stored_swap).context("Could not serialize old swap value")?;
-                let new_value = serialize(&swap).context("Could not serialize new swap value")?;
-
-                self.db
-                    .compare_and_swap(key, Some(old_value), Some(new_value))
-                    .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")?;
-
-                self.db
-                    .flush_async()
-                    .await
-                    .map(|_| ())
-                    .context("Could not flush db")
+                old_swap.hbit_refunded = Some(event.into());
+                Ok(old_swap)
             }
-        }
+        })
+        .await
     }
 }
 
