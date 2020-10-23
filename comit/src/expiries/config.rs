@@ -46,8 +46,9 @@ mod main {
     // Value used by Kraken.
     pub const ETHEREUM_CONFIRMATIONS: u8 = 30;
 
-    // Value arbitrarily chosen.
-    pub const ACT_IN_SOFTWARE: Duration = Duration::minutes(15);
+    // Allows someone running this as a software to react to any failure within 24
+    // hours.
+    pub const ACT_IN_SOFTWARE: Duration = Duration::hours(24);
     // Value arbitrarily chosen.
     pub const ACT_WITH_USER_INTERACTION: Duration = Duration::minutes(60);
 
