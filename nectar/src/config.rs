@@ -186,6 +186,11 @@ mod tests {
                     url: "http://some.geth.url:8545/".parse().unwrap(),
                 }),
             }),
+            sentry: Some(file::Sentry {
+                url: "https://public_key@account.ingest.sentry.io/project_id"
+                    .parse()
+                    .unwrap(),
+            }),
         };
 
         let config = read_config(
@@ -227,6 +232,7 @@ mod tests {
             logging: None,
             bitcoin: None,
             ethereum: None,
+            sentry: None,
         },)
     }
 

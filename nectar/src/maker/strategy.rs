@@ -83,6 +83,12 @@ impl AllIn {
         {
             Some(added) => {
                 if base_balance <= added {
+                    // TODO: ensure that this is not triggered due to the balance being zero because
+                    // it is unconfirmed
+                    sentry::capture_message(
+                        "BTC balance too low to create order",
+                        sentry::Level::Warning,
+                    );
                     anyhow::bail!(InsufficientFunds(Symbol::Btc))
                 }
             }
@@ -116,6 +122,10 @@ impl AllIn {
         mid_market_rate: Rate,
     ) -> Result<BtcDaiOrderForm> {
         if quote_balance <= self.dai_reserved_funds {
+            sentry::capture_message(
+                "DAI balance too low to create order",
+                sentry::Level::Warning,
+            );
             anyhow::bail!(InsufficientFunds(Symbol::Dai))
         }
 
@@ -160,6 +170,7 @@ impl AllIn {
                 let updated_dai_reserved_funds =
                     self.dai_reserved_funds.clone() + dai::Amount::from(order.quote());
                 if updated_dai_reserved_funds > *dai_balance {
+                    // TODO: Daniel - should this be sent to Sentry as well?
                     return Ok(TakeRequestDecision::InsufficientFunds);
                 }
 
@@ -170,6 +181,7 @@ impl AllIn {
                     + order.quantity.to_inner()
                     + self.bitcoin_fee.max_tx_fee();
                 if updated_btc_reserved_funds > *btc_balance {
+                    // TODO: Daniel - should this be sent to Sentry as well?
                     return Ok(TakeRequestDecision::InsufficientFunds);
                 }
 

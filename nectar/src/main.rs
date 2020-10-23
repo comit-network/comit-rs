@@ -79,6 +79,11 @@ async fn main() -> Result<()> {
 
     trace::init_tracing(settings.logging.level).expect("initialize tracing");
 
+    let _guard = settings.sentry.as_ref().map(|sentry| {
+        tracing::info!("Initializing sentry with URL {}", sentry.url.as_str());
+        sentry::init(sentry.url.as_str())
+    });
+
     let seed = config::Seed::from_file_or_generate(&settings.data.dir)
         .expect("Could not retrieve/initialize seed")
         .into();

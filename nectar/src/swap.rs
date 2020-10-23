@@ -19,7 +19,7 @@ pub use self::comit::{hbit, herc20};
 pub use crate::database::Database;
 use time::OffsetDateTime;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, strum_macros::Display)]
 pub enum SwapKind {
     HbitHerc20(SwapParams),
     Herc20Hbit(SwapParams),
@@ -608,7 +608,7 @@ impl SwapExecutor {
 impl SwapExecutor {
     pub fn execute(&self, swap: SwapKind) {
         let execution = execute(
-            swap,
+            swap.clone(),
             bitcoin::Wallet {
                 inner: self.bitcoin_wallet.clone(),
                 connector: self.bitcoin_connector.clone(),
@@ -627,7 +627,10 @@ impl SwapExecutor {
 
         tokio::spawn(async move {
             if let Err(e) = execution.await {
-                tracing::warn!("swap execution failed: {:#}", e);
+                let err = e.context(format!("failed execution for swap {}", swap.swap_id()));
+
+                sentry::integrations::anyhow::capture_anyhow(&err);
+                tracing::warn!("{:#}", err);
             }
         });
     }
@@ -715,6 +718,11 @@ async fn execute(
         .context("failed to notify about finished swap")?;
 
     tracing::info!("swap {} finished successfully", swap_id);
+
+    sentry::capture_message(
+        format!("successful execution for swap {}", swap_id).as_str(),
+        sentry::Level::Info,
+    );
 
     Ok(())
 }
