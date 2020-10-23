@@ -104,10 +104,17 @@ jobs:
       - name: Build docs
         run: make doc
 
-      # Ignore tests on macos due to missing docker
-      - name: Run unit tests
+      - name: Run unit tests (with docker)
         if: matrix.os == 'ubuntu-latest'
         run: make test
+
+      - name: Run unit tests (no docker)
+        if: matrix.os != 'ubuntu-latest'
+        shell: bash
+        run: |
+          (cd ./comit; cargo test --no-default-features)
+          (cd ./cnd; cargo test --no-default-features)
+          (cd ./nectar; cargo test --no-default-features)
 
       # We've ran `cargo build --all-targets` earlier, that is different to from just building the binary.
       # Our e2e tests lazily re-build the binaries, that can timeout our tests so build them here in advance.

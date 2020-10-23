@@ -48,5 +48,10 @@ testcontainers = "0.10"
 tokio = { version = "0.2", features = ["macros"] }
 
 [features]
-default = []
+default = ["test-docker"]
 test = ["libp2p/yamux", "libp2p/noise"]
+
+# "test-docker" feature is related to test code
+# if it's enabled then tests needing docker will be ran
+test-docker = []
+
