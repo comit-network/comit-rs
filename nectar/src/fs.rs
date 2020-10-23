@@ -1,12 +1,12 @@
 use anyhow::Context;
+use directories_next::ProjectDirs;
 use std::path::{Path, PathBuf};
 
 /// This is to store the configuration and seed files
 // Linux: /home/<user>/.config/nectar/
 // OSX: /Users/<user>/Library/Preferences/nectar/
 fn config_dir() -> Option<PathBuf> {
-    directories::ProjectDirs::from("", "", "nectar")
-        .map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
+    ProjectDirs::from("", "", "nectar").map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
 }
 
 pub fn default_config_path() -> anyhow::Result<PathBuf> {
@@ -19,8 +19,7 @@ pub fn default_config_path() -> anyhow::Result<PathBuf> {
 // Linux: /home/<user>/.local/share/nectar/
 // OSX: /Users/<user>/Library/Application Support/nectar/
 pub fn data_dir() -> Option<std::path::PathBuf> {
-    directories::ProjectDirs::from("", "", "nectar")
-        .map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
+    ProjectDirs::from("", "", "nectar").map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
 }
 
 pub fn ensure_directory_exists(file: &Path) -> Result<(), std::io::Error> {
