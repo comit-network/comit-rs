@@ -17,7 +17,7 @@ pub async fn deposit(
     ))
 }
 
-#[cfg(all(test, feature = "test-docker"))]
+#[cfg(all(test, feature = "testcontainers"))]
 mod tests {
     use super::*;
     use crate::{test_harness, Seed};

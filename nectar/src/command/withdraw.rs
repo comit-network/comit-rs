@@ -53,7 +53,7 @@ pub async fn withdraw(
     }
 }
 
-#[cfg(all(test, feature = "test-docker"))]
+#[cfg(all(test, feature = "testcontainers"))]
 mod tests {
     use super::*;
     use crate::{

@@ -253,7 +253,7 @@ impl Wallet {
         Ok(txid)
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "testcontainers"))]
     pub async fn dump(&self, filename: &std::path::Path) -> anyhow::Result<()> {
         self.bitcoind_client.dump_wallet(&self.name, filename).await
     }
@@ -283,7 +283,7 @@ impl Wallet {
     }
 }
 
-#[cfg(all(test, feature = "test-docker"))]
+#[cfg(all(test, feature = "testcontainers"))]
 mod docker_tests {
     use super::*;
     use crate::test_harness::bitcoin;

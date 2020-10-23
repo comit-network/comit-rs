@@ -78,8 +78,13 @@ clippy: install_clippy
 	$(CARGO) clippy --all-targets -- -D warnings
 
 test:
-
 	$(CARGO) test --workspace
+
+test_docker:
+	(cd ./comit; $(CARGO) test --features testcontainers)
+	(cd ./cnd; $(CARGO) test)
+	(cd ./nectar; $(CARGO) test --features testcontainers)
+
 doc:
 	$(CARGO) doc
 

@@ -214,7 +214,7 @@ pub struct EstimateGasRequest {
     pub data: Option<Vec<u8>>,
 }
 
-#[cfg(all(test, feature = "test-docker"))]
+#[cfg(all(test, feature = "testcontainers"))]
 mod test {
     use super::*;
     use crate::test_harness::ethereum;
