@@ -62,8 +62,13 @@ jobs:
         include:
           - os: ubuntu-latest
             e2e: true
+            bin-suffix: ""
           - os: macos-latest
             e2e: true
+            bin-suffix: ""
+          - os: windows-latest
+            e2e: true
+            bin-suffix: .exe
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout sources
@@ -129,14 +134,14 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: cnd-${{ matrix.os }}
-          path: target/debug/cnd
+          path: target/debug/cnd${{ matrix.bin-suffix }}
 
       - name: Upload nectar-${{ matrix.os }} archive that contains the nectar binary
         if: matrix.e2e
         uses: actions/upload-artifact@v1
         with:
           name: nectar-${{ matrix.os }}
-          path: target/debug/nectar
+          path: target/debug/nectar${{ matrix.bin-suffix }}
 
       - name: Install NodeJS 14.x
         if: matrix.e2e
@@ -153,6 +158,7 @@ jobs:
 
       - name: Run e2e tests
         if: matrix.e2e
+        shell: bash
         run: |
           export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH
           cd tests
