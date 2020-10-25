@@ -49,14 +49,12 @@ impl Save<herc20::Deployed> for Database {
                 let mut swap = stored_swap.clone();
                 swap.herc20_deployed = Some(event.into());
 
-                let old_value =
-                    serialize(&stored_swap).context("Could not serialize old swap value")?;
                 let new_value = serialize(&swap).context("Could not serialize new swap value")?;
 
-                self.db
-                    .compare_and_swap(key, Some(old_value), Some(new_value))
-                    .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")?;
+                let _ = self
+                    .db
+                    .insert(key, new_value)
+                    .context("Could not write in the DB")?;
 
                 self.db
                     .flush_async()
@@ -113,14 +111,12 @@ impl Save<herc20::Funded> for Database {
                 let mut swap = stored_swap.clone();
                 swap.herc20_funded = Some(event.into());
 
-                let old_value =
-                    serialize(&stored_swap).context("Could not serialize old swap value")?;
                 let new_value = serialize(&swap).context("Could not serialize new swap value")?;
 
-                self.db
-                    .compare_and_swap(key, Some(old_value), Some(new_value))
-                    .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")?;
+                let _ = self
+                    .db
+                    .insert(key, new_value)
+                    .context("Could not write in the DB")?;
 
                 self.db
                     .flush_async()
@@ -177,14 +173,12 @@ impl Save<herc20::Redeemed> for Database {
                 let mut swap = stored_swap.clone();
                 swap.herc20_redeemed = Some(event.into());
 
-                let old_value =
-                    serialize(&stored_swap).context("Could not serialize old swap value")?;
                 let new_value = serialize(&swap).context("Could not serialize new swap value")?;
 
-                self.db
-                    .compare_and_swap(key, Some(old_value), Some(new_value))
-                    .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")?;
+                let _ = self
+                    .db
+                    .insert(key, new_value)
+                    .context("Could not write in the DB")?;
 
                 self.db
                     .flush_async()
@@ -238,14 +232,12 @@ impl Save<herc20::Refunded> for Database {
                 let mut swap = stored_swap.clone();
                 swap.herc20_refunded = Some(event.into());
 
-                let old_value =
-                    serialize(&stored_swap).context("Could not serialize old swap value")?;
                 let new_value = serialize(&swap).context("Could not serialize new swap value")?;
 
-                self.db
-                    .compare_and_swap(key, Some(old_value), Some(new_value))
-                    .context("Could not write in the DB")?
-                    .context("Stored swap somehow changed, aborting saving")?;
+                let _ = self
+                    .db
+                    .insert(key, new_value)
+                    .context("Could not write in the DB")?;
 
                 self.db
                     .flush_async()

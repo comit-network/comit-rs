@@ -118,15 +118,13 @@ impl Database {
         new_swap.archived = Some(true);
 
         let key = serialize(&swap_id).context("failed to serialize swap id for db storage")?;
-        let old_value = serialize(&stored_swap)
-            .context("failed to serialize stored swap value for db update")?;
         let new_value =
             serialize(&new_swap).context("failed to serialize new swap value for db storage")?;
 
-        self.db
-            .compare_and_swap(key, Some(old_value), Some(new_value))
-            .context("failed to write in the DB")?
-            .context("failed to save in the DB, stored swap somehow changed")?;
+        let _ = self
+            .db
+            .insert(key, new_value)
+            .context("failed to write in the DB")?;
 
         let peer = stored_swap.active_peer;
 
@@ -536,5 +534,22 @@ mod tests {
         db.archive_swap(&swap_id).await.unwrap();
 
         !db.contains_active_peer(&peer).unwrap()
+    }
+
+    #[derive(Clone, Debug, Serialize, Deserialize)]
+    struct Swap0_1_0 {
+        pub kind: Kind,
+        pub hbit_params: hbit::Params,
+        pub herc20_params: herc20::Params,
+        pub secret_hash: comit::SecretHash,
+        pub utc_start_of_swap: OffsetDateTime,
+        pub active_peer: network::ActivePeer,
+        pub hbit_funded: Option<HbitFunded>,
+        pub hbit_redeemed: Option<HbitRedeemed>,
+        pub hbit_refunded: Option<HbitRefunded>,
+        pub herc20_deployed: Option<Herc20Deployed>,
+        pub herc20_funded: Option<Herc20Funded>,
+        pub herc20_redeemed: Option<Herc20Redeemed>,
+        pub herc20_refunded: Option<Herc20Refunded>,
     }
 }
