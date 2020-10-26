@@ -54,7 +54,7 @@ pub async fn create_transaction(
             let to = to_clarity_address(action.to)?;
             let chain_id = action.chain_id;
 
-            let signed_transaction = ethereum_wallet
+            let (signed_transaction, _) = ethereum_wallet
                 .sign(
                     |nonce| clarity::Transaction {
                         nonce,
@@ -96,7 +96,7 @@ pub async fn create_transaction(
             let to = to_clarity_address(action.to)?;
             let chain_id = action.chain_id;
 
-            let signed_transaction = ethereum_wallet
+            let (signed_transaction, _) = ethereum_wallet
                 .sign(
                     |nonce| clarity::Transaction {
                         nonce,

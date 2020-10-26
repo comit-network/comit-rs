@@ -266,7 +266,7 @@ impl Wallet {
         gas_price: Uint256,
         chain_id: ChainId,
     ) -> anyhow::Result<Hash> {
-        let signed_transaction = self
+        let (signed_transaction, _) = self
             .sign(
                 |nonce| clarity::Transaction {
                     nonce,
@@ -320,18 +320,18 @@ impl Wallet {
         &self,
         transaction_fn: impl FnOnce(Uint256) -> clarity::Transaction,
         chain_id: ChainId,
-    ) -> anyhow::Result<clarity::Transaction> {
+    ) -> anyhow::Result<(clarity::Transaction, Uint256)> {
         self.assert_chain(chain_id).await?;
 
-        let nonce = self.get_transaction_count().await?;
-        let transaction = transaction_fn(nonce.into());
+        let nonce: Uint256 = self.get_transaction_count().await?.into();
+        let transaction = transaction_fn(nonce.clone());
 
         let signed_transaction = transaction.sign(
             &self.private_key,
             Some(u32::from(self.chain.chain_id()) as u64),
         );
 
-        Ok(signed_transaction)
+        Ok((signed_transaction, nonce))
     }
 
     async fn get_transaction_receipt(
