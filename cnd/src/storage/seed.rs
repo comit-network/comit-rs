@@ -141,7 +141,12 @@ impl RootSeed {
 
         let pem_string = encode(&pem);
 
-        let mut file = File::create(path)?;
+        let mut file = if cfg!(windows) {
+            fs::OpenOptions::new().create(true).write(true).open(path)?
+        } else {
+            File::create(path)?
+        };
+
         file.write_all(pem_string.as_bytes())?;
 
         Ok(())

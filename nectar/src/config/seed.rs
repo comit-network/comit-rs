@@ -70,7 +70,15 @@ impl Seed {
 
         let pem_string = encode(&pem);
 
-        let mut file = File::create(seed_file)?;
+        let mut file = if cfg!(windows) {
+            fs::OpenOptions::new()
+                .create(true)
+                .write(true)
+                .open(seed_file)?
+        } else {
+            File::create(seed_file)?
+        };
+
         file.write_all(pem_string.as_bytes())?;
 
         Ok(())
