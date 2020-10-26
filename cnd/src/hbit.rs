@@ -7,7 +7,7 @@ use crate::{
 };
 use anyhow::Result;
 use bitcoin::{Block, BlockHash};
-use comit::{asset, htlc_location, transaction, Secret};
+use comit::{asset, htlc_location, Secret};
 use futures::TryStreamExt;
 use std::collections::{hash_map::Entry, HashMap};
 use time::OffsetDateTime;
@@ -55,25 +55,15 @@ impl State {
     pub fn transition_to_funded(&mut self, funded: Funded) {
         match std::mem::replace(self, State::None) {
             State::None => match funded {
-                Funded::Correctly {
-                    asset,
-                    transaction,
-                    location,
-                } => {
+                Funded::Correctly { asset, location } => {
                     *self = State::Funded {
                         htlc_location: location,
-                        fund_transaction: transaction,
                         asset,
                     }
                 }
-                Funded::Incorrectly {
-                    asset,
-                    transaction,
-                    location,
-                } => {
+                Funded::Incorrectly { asset, location } => {
                     *self = State::IncorrectlyFunded {
                         htlc_location: location,
-                        fund_transaction: transaction,
                         asset,
                     }
                 }
@@ -92,11 +82,9 @@ impl State {
             State::Funded {
                 htlc_location,
                 asset,
-                fund_transaction,
             } => {
                 *self = State::Redeemed {
                     htlc_location,
-                    fund_transaction,
                     redeem_transaction: transaction,
                     asset,
                     secret,
@@ -113,16 +101,13 @@ impl State {
             State::Funded {
                 htlc_location,
                 asset,
-                fund_transaction,
             }
             | State::IncorrectlyFunded {
                 htlc_location,
                 asset,
-                fund_transaction,
             } => {
                 *self = State::Refunded {
                     htlc_location,
-                    fund_transaction,
                     refund_transaction: transaction,
                     asset,
                 }
@@ -175,30 +160,26 @@ impl state::Update<Event> for States {
 }
 
 /// Represents states that an Bitcoin HTLC can be in.
-#[derive(Debug, Clone, strum_macros::Display)]
+#[derive(Debug, Clone, Copy, strum_macros::Display)]
 pub enum State {
     None,
     Funded {
         htlc_location: htlc_location::Bitcoin,
-        fund_transaction: transaction::Bitcoin,
         asset: asset::Bitcoin,
     },
     IncorrectlyFunded {
         htlc_location: htlc_location::Bitcoin,
-        fund_transaction: transaction::Bitcoin,
         asset: asset::Bitcoin,
     },
     Redeemed {
         htlc_location: htlc_location::Bitcoin,
-        fund_transaction: transaction::Bitcoin,
-        redeem_transaction: transaction::Bitcoin,
+        redeem_transaction: bitcoin::Txid,
         asset: asset::Bitcoin,
         secret: Secret,
     },
     Refunded {
         htlc_location: htlc_location::Bitcoin,
-        fund_transaction: transaction::Bitcoin,
-        refund_transaction: transaction::Bitcoin,
+        refund_transaction: bitcoin::Txid,
         asset: asset::Bitcoin,
     },
 }

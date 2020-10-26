@@ -3,24 +3,19 @@ use crate::{
     swap::herc20,
     SwapId,
 };
-use comit::{
-    asset::Erc20,
-    ethereum,
-    ethereum::{Hash, Transaction, UnformattedData, U256},
-    identity, Secret, SecretHash, Timestamp,
-};
+use comit::{asset::Erc20, ethereum, identity, Secret, SecretHash, Timestamp};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Herc20Deployed {
-    pub transaction: EthereumTransaction,
+    pub transaction: ethereum::Hash,
     pub location: comit::htlc_location::Ethereum,
 }
 
 impl From<Herc20Deployed> for herc20::Deployed {
     fn from(event: Herc20Deployed) -> Self {
         herc20::Deployed {
-            transaction: event.transaction.into(),
+            transaction: event.transaction,
             location: event.location,
         }
     }
@@ -29,7 +24,7 @@ impl From<Herc20Deployed> for herc20::Deployed {
 impl From<herc20::Deployed> for Herc20Deployed {
     fn from(event: herc20::Deployed) -> Self {
         Herc20Deployed {
-            transaction: event.transaction.into(),
+            transaction: event.transaction,
             location: event.location,
         }
     }
@@ -59,14 +54,14 @@ impl Load<herc20::Deployed> for Database {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Herc20Funded {
-    pub transaction: EthereumTransaction,
+    pub transaction: ethereum::Hash,
     pub asset: Erc20Asset,
 }
 
 impl From<Herc20Funded> for herc20::Funded {
     fn from(event: Herc20Funded) -> Self {
         herc20::Funded {
-            transaction: event.transaction.into(),
+            transaction: event.transaction,
             asset: event.asset.into(),
         }
     }
@@ -75,7 +70,7 @@ impl From<Herc20Funded> for herc20::Funded {
 impl From<herc20::Funded> for Herc20Funded {
     fn from(event: herc20::Funded) -> Self {
         Herc20Funded {
-            transaction: event.transaction.into(),
+            transaction: event.transaction,
             asset: event.asset.into(),
         }
     }
@@ -103,16 +98,16 @@ impl Load<herc20::Funded> for Database {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Herc20Redeemed {
-    pub transaction: EthereumTransaction,
+    pub transaction: ethereum::Hash,
     pub secret: Secret,
 }
 
 impl From<Herc20Redeemed> for herc20::Redeemed {
     fn from(event: Herc20Redeemed) -> Self {
         herc20::Redeemed {
-            transaction: event.transaction.into(),
+            transaction: event.transaction,
             secret: event.secret,
         }
     }
@@ -121,7 +116,7 @@ impl From<Herc20Redeemed> for herc20::Redeemed {
 impl From<herc20::Redeemed> for Herc20Redeemed {
     fn from(event: herc20::Redeemed) -> Self {
         Herc20Redeemed {
-            transaction: event.transaction.into(),
+            transaction: event.transaction,
             secret: event.secret,
         }
     }
@@ -149,15 +144,15 @@ impl Load<herc20::Redeemed> for Database {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Herc20Refunded {
-    pub transaction: EthereumTransaction,
+    pub transaction: ethereum::Hash,
 }
 
 impl From<Herc20Refunded> for herc20::Refunded {
     fn from(event: Herc20Refunded) -> Self {
         herc20::Refunded {
-            transaction: event.transaction.into(),
+            transaction: event.transaction,
         }
     }
 }
@@ -165,7 +160,7 @@ impl From<Herc20Refunded> for herc20::Refunded {
 impl From<herc20::Refunded> for Herc20Refunded {
     fn from(event: herc20::Refunded) -> Self {
         Herc20Refunded {
-            transaction: event.transaction.into(),
+            transaction: event.transaction,
         }
     }
 }
@@ -189,36 +184,6 @@ impl Load<herc20::Refunded> for Database {
         let swap = self.get_swap_or_bail(&swap_id)?;
 
         Ok(swap.herc20_refunded.map(Into::into))
-    }
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Deserialize, Serialize)]
-pub struct EthereumTransaction {
-    pub hash: Hash,
-    pub to: Option<ethereum::Address>,
-    pub value: U256,
-    pub input: UnformattedData,
-}
-
-impl From<EthereumTransaction> for ethereum::Transaction {
-    fn from(transaction: EthereumTransaction) -> Self {
-        ethereum::Transaction {
-            hash: transaction.hash,
-            to: transaction.to,
-            value: transaction.value,
-            input: transaction.input,
-        }
-    }
-}
-
-impl From<ethereum::Transaction> for EthereumTransaction {
-    fn from(transaction: Transaction) -> Self {
-        EthereumTransaction {
-            hash: transaction.hash,
-            to: transaction.to,
-            value: transaction.value,
-            input: transaction.input,
-        }
     }
 }
 
@@ -321,7 +286,7 @@ mod tests {
         let db = Database::new_test().unwrap();
         let swap = Swap::static_stub();
         let swap_id = SwapId::default();
-        let transaction = comit::transaction::Ethereum::default();
+        let transaction = comit::transaction::Ethereum::default().hash;
         let location = comit::htlc_location::Ethereum::random();
 
         let swap_kind = SwapKind::from((swap, swap_id));
@@ -329,7 +294,7 @@ mod tests {
         db.insert_swap(swap_kind).await.unwrap();
 
         let event = herc20::Deployed {
-            transaction: transaction.clone(),
+            transaction,
             location,
         };
         db.save(event, swap_id).await.unwrap();
@@ -348,7 +313,7 @@ mod tests {
         let db = Database::new_test().unwrap();
         let swap = Swap::static_stub();
         let swap_id = SwapId::default();
-        let transaction = comit::transaction::Ethereum::default();
+        let transaction = comit::transaction::Ethereum::default().hash;
         let asset = comit::asset::Erc20::new(
             ethereum::Address::random(),
             comit::asset::Erc20Quantity::from_wei_dec_str("123456789012345678").unwrap(),
@@ -359,7 +324,7 @@ mod tests {
         db.insert_swap(swap_kind).await.unwrap();
 
         let event = herc20::Funded {
-            transaction: transaction.clone(),
+            transaction,
             asset: asset.clone(),
         };
         db.save(event, swap_id).await.unwrap();
@@ -378,7 +343,7 @@ mod tests {
         let db = Database::new_test().unwrap();
         let swap = Swap::static_stub();
         let swap_id = SwapId::default();
-        let transaction = comit::transaction::Ethereum::default();
+        let transaction = comit::transaction::Ethereum::default().hash;
         let secret = Secret::from_vec(b"are those thirty-two bytes? Hum.").unwrap();
 
         let swap_kind = SwapKind::from((swap, swap_id));
@@ -386,7 +351,7 @@ mod tests {
         db.insert_swap(swap_kind).await.unwrap();
 
         let event = herc20::Redeemed {
-            transaction: transaction.clone(),
+            transaction,
             secret,
         };
         db.save(event, swap_id).await.unwrap();
@@ -405,15 +370,13 @@ mod tests {
         let db = Database::new_test().unwrap();
         let swap = Swap::static_stub();
         let swap_id = SwapId::default();
-        let transaction = comit::transaction::Ethereum::default();
+        let transaction = comit::transaction::Ethereum::default().hash;
 
         let swap_kind = SwapKind::from((swap, swap_id));
 
         db.insert_swap(swap_kind).await.unwrap();
 
-        let event = herc20::Refunded {
-            transaction: transaction.clone(),
-        };
+        let event = herc20::Refunded { transaction };
         db.save(event, swap_id).await.unwrap();
 
         let stored_event: herc20::Refunded = db

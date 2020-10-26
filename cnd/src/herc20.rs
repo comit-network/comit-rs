@@ -1,22 +1,22 @@
 use crate::{
     asset,
-    btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
+    btsieve::{
+        ethereum::{GetLogs, ReceiptByHash, TransactionByHash},
+        BlockByHash, ConnectedNetwork, LatestBlock,
+    },
     ethereum::{Block, ChainId, Hash},
     htlc_location, identity, state,
     state::Update,
     storage::Storage,
-    transaction, LocalSwapId, Role, Secret, Side,
+    LocalSwapId, Role, Secret, Side,
 };
 use anyhow::Result;
+use comit::ethereum;
 use futures::TryStreamExt;
 use std::collections::{hash_map::Entry, HashMap};
 use time::OffsetDateTime;
 use tokio::sync::Mutex;
 
-use crate::btsieve::{
-    ethereum::{GetLogs, TransactionByHash},
-    ConnectedNetwork,
-};
 pub use comit::herc20::*;
 
 /// Creates a new instance of the herc20 protocol, annotated with tracing spans
@@ -209,33 +209,33 @@ pub enum State {
     None,
     Deployed {
         htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
+        deploy_transaction: ethereum::Hash,
     },
     Funded {
         htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-        fund_transaction: transaction::Ethereum,
+        deploy_transaction: ethereum::Hash,
+        fund_transaction: ethereum::Hash,
         asset: asset::Erc20,
     },
     IncorrectlyFunded {
         htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-        fund_transaction: transaction::Ethereum,
+        deploy_transaction: ethereum::Hash,
+        fund_transaction: ethereum::Hash,
         asset: asset::Erc20,
     },
     Redeemed {
         htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-        fund_transaction: transaction::Ethereum,
-        redeem_transaction: transaction::Ethereum,
+        deploy_transaction: ethereum::Hash,
+        fund_transaction: ethereum::Hash,
+        redeem_transaction: ethereum::Hash,
         asset: asset::Erc20,
         secret: Secret,
     },
     Refunded {
         htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-        fund_transaction: transaction::Ethereum,
-        refund_transaction: transaction::Ethereum,
+        deploy_transaction: ethereum::Hash,
+        fund_transaction: ethereum::Hash,
+        refund_transaction: ethereum::Hash,
         asset: asset::Erc20,
     },
 }

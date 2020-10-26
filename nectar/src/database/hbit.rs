@@ -69,9 +69,9 @@ impl Load<hbit::Funded> for Database {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Copy, Serialize, Deserialize)]
 pub struct HbitRedeemed {
-    pub transaction: comit::transaction::Bitcoin,
+    pub transaction: bitcoin::Txid,
     pub secret: Secret,
 }
 
@@ -115,9 +115,9 @@ impl Load<hbit::Redeemed> for Database {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct HbitRefunded {
-    pub transaction: comit::transaction::Bitcoin,
+    pub transaction: bitcoin::Txid,
 }
 
 impl From<HbitRefunded> for hbit::Refunded {
@@ -297,7 +297,7 @@ mod tests {
     #[tokio::test]
     async fn save_and_load_hbit_redeemed() {
         let db = Database::new_test().unwrap();
-        let transaction = bitcoin_transaction();
+        let transaction = bitcoin_transaction().txid();
         let secret = Secret::from_vec(b"are those thirty-two bytes? Hum.").unwrap();
         let swap = Swap::static_stub();
         let swap_id = SwapId::default();
@@ -307,7 +307,7 @@ mod tests {
         db.insert_swap(swap_kind).await.unwrap();
 
         let event = hbit::Redeemed {
-            transaction: transaction.clone(),
+            transaction,
             secret,
         };
         db.save(event, swap_id).await.unwrap();
@@ -324,7 +324,7 @@ mod tests {
     #[tokio::test]
     async fn save_and_load_hbit_refunded() {
         let db = Database::new_test().unwrap();
-        let transaction = bitcoin_transaction();
+        let transaction = bitcoin_transaction().txid();
         let swap = Swap::static_stub();
         let swap_id = SwapId::default();
 
@@ -332,9 +332,7 @@ mod tests {
 
         db.insert_swap(swap_kind).await.unwrap();
 
-        let event = hbit::Refunded {
-            transaction: transaction.clone(),
-        };
+        let event = hbit::Refunded { transaction };
         db.save(event, swap_id).await.unwrap();
 
         let stored_event: hbit::Refunded = db

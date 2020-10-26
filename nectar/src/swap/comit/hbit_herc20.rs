@@ -53,7 +53,7 @@ where
             ethereum_connector,
             herc20_params.clone(),
             utc_start_of_swap,
-            herc20_deployed.clone(),
+            herc20_deployed,
         )
         .await
         .context(SwapFailedShouldRefund(hbit_funded))?;
@@ -109,23 +109,16 @@ where
         tracing::info!("we deployed the herc20 htlc");
 
         let _herc20_funded = bob
-            .execute_fund(
-                herc20_params.clone(),
-                herc20_deployed.clone(),
-                utc_start_of_swap,
-            )
+            .execute_fund(herc20_params.clone(), herc20_deployed, utc_start_of_swap)
             .await
             .context(SwapFailedNoRefund)?;
 
         tracing::info!("we funded the herc20 htlc");
 
-        let herc20_redeemed = herc20::watch_for_redeemed(
-            ethereum_connector,
-            utc_start_of_swap,
-            herc20_deployed.clone(),
-        )
-        .await
-        .context(SwapFailedShouldRefund(herc20_deployed.clone()))?;
+        let herc20_redeemed =
+            herc20::watch_for_redeemed(ethereum_connector, utc_start_of_swap, herc20_deployed)
+                .await
+                .context(SwapFailedShouldRefund(herc20_deployed))?;
 
         tracing::info!("alice redeemed the herc20 htlc");
 

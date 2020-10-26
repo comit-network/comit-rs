@@ -9,7 +9,7 @@ use crate::{
     },
     htlc_location, identity, ledger,
     timestamp::Timestamp,
-    transaction, Secret, SecretHash,
+    Secret, SecretHash,
 };
 use anyhow::Result;
 use bitcoin::{
@@ -28,7 +28,7 @@ use time::OffsetDateTime;
 use tracing_futures::Instrument;
 
 /// Represents the events in the hbit protocol.
-#[derive(Debug, Clone, PartialEq, strum_macros::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, strum_macros::Display)]
 pub enum Event {
     /// The protocol was started.
     Started,
@@ -45,29 +45,27 @@ pub enum Event {
     Refunded(Refunded),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Funded {
     Correctly {
         asset: asset::Bitcoin,
-        transaction: transaction::Bitcoin,
         location: htlc_location::Bitcoin,
     },
     Incorrectly {
         asset: asset::Bitcoin,
-        transaction: transaction::Bitcoin,
         location: htlc_location::Bitcoin,
     },
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Redeemed {
-    pub transaction: transaction::Bitcoin,
+    pub transaction: bitcoin::Txid,
     pub secret: Secret,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Refunded {
-    pub transaction: transaction::Bitcoin,
+    pub transaction: bitcoin::Txid,
 }
 
 /// Creates a new instance of the hbit protocol.
@@ -115,7 +113,7 @@ where
     co.yield_(Ok(Event::Started)).await;
 
     let funded = watch_for_funded(connector, &params, start_of_swap).await?;
-    co.yield_(Ok(Event::Funded(funded.clone()))).await;
+    co.yield_(Ok(Event::Funded(funded))).await;
 
     let location = match funded {
         Funded::Correctly { location, .. } => location,
@@ -130,10 +128,10 @@ where
 
     match future::try_select(redeemed, refunded).await {
         Ok(Either::Left((redeemed, _))) => {
-            co.yield_(Ok(Event::Redeemed(redeemed.clone()))).await;
+            co.yield_(Ok(Event::Redeemed(redeemed))).await;
         }
         Ok(Either::Right((refunded, _))) => {
-            co.yield_(Ok(Event::Refunded(refunded.clone()))).await;
+            co.yield_(Ok(Event::Refunded(refunded))).await;
         }
         Err(either) => {
             let (error, _other_future) = either.factor_first();
@@ -164,16 +162,8 @@ where
     let asset = asset::Bitcoin::from_sat(transaction.output[location.vout as usize].value);
 
     let event = match expected_asset.cmp(&asset) {
-        Ordering::Equal => Funded::Correctly {
-            asset,
-            transaction,
-            location,
-        },
-        _ => Funded::Incorrectly {
-            asset,
-            transaction,
-            location,
-        },
+        Ordering::Equal => Funded::Correctly { asset, location },
+        _ => Funded::Incorrectly { asset, location },
     };
 
     Ok(event)
@@ -199,7 +189,7 @@ where
         .expect("Redeem transaction must contain secret");
 
     Ok(Redeemed {
-        transaction,
+        transaction: transaction.txid(),
         secret,
     })
 }
@@ -220,7 +210,9 @@ where
             .instrument(tracing::info_span!("", action = "refund"))
             .await?;
 
-    Ok(Refunded { transaction })
+    Ok(Refunded {
+        transaction: transaction.txid(),
+    })
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

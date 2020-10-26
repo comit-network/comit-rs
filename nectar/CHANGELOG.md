@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-**This release includes changes to the DB schema, we recommend to backup your data directory before upgrading.**
+**This release includes breaking changes to the DB schema. You will need to delete your database before upgrading.**
 
 ### Fixed
 
@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   New command to migrate the database to a new format;
     Use `nectar migrate-db status` to check if migration is needed;
     If so, backup your data and then execute `nectar migrate-db run` to proceed with the migration.
+
+### Changed
+
+-   Only store transaction IDs instead of full transactions in the database.
+    This is a breaking change.
 
 ## [nectar-0.1.0] - 2020-10-20
 

@@ -239,7 +239,7 @@ impl From<&herc20::State> for Vec<SwapEvent> {
             herc20::State::Deployed {
                 deploy_transaction, ..
             } => vec![SwapEvent::Herc20Deployed {
-                tx: deploy_transaction.hash,
+                tx: *deploy_transaction,
             }],
             herc20::State::Funded {
                 deploy_transaction,
@@ -247,10 +247,10 @@ impl From<&herc20::State> for Vec<SwapEvent> {
                 ..
             } => vec![
                 SwapEvent::Herc20Deployed {
-                    tx: deploy_transaction.hash,
+                    tx: *deploy_transaction,
                 },
                 SwapEvent::Herc20Funded {
-                    tx: fund_transaction.hash,
+                    tx: *fund_transaction,
                 },
             ],
             herc20::State::IncorrectlyFunded {
@@ -259,10 +259,10 @@ impl From<&herc20::State> for Vec<SwapEvent> {
                 ..
             } => vec![
                 SwapEvent::Herc20Deployed {
-                    tx: deploy_transaction.hash,
+                    tx: *deploy_transaction,
                 },
                 SwapEvent::Herc20IncorrectlyFunded {
-                    tx: fund_transaction.hash,
+                    tx: *fund_transaction,
                 },
             ],
             herc20::State::Redeemed {
@@ -272,13 +272,13 @@ impl From<&herc20::State> for Vec<SwapEvent> {
                 ..
             } => vec![
                 SwapEvent::Herc20Deployed {
-                    tx: deploy_transaction.hash,
+                    tx: *deploy_transaction,
                 },
                 SwapEvent::Herc20Funded {
-                    tx: fund_transaction.hash,
+                    tx: *fund_transaction,
                 },
                 SwapEvent::Herc20Redeemed {
-                    tx: redeem_transaction.hash,
+                    tx: *redeem_transaction,
                 },
             ],
             herc20::State::Refunded {
@@ -288,13 +288,13 @@ impl From<&herc20::State> for Vec<SwapEvent> {
                 ..
             } => vec![
                 SwapEvent::Herc20Deployed {
-                    tx: deploy_transaction.hash,
+                    tx: *deploy_transaction,
                 },
                 SwapEvent::Herc20Funded {
-                    tx: fund_transaction.hash,
+                    tx: *fund_transaction,
                 },
                 SwapEvent::Herc20Refunded {
-                    tx: refund_transaction.hash,
+                    tx: *refund_transaction,
                 },
             ],
         }
@@ -305,43 +305,39 @@ impl From<&hbit::State> for Vec<SwapEvent> {
     fn from(state: &hbit::State) -> Self {
         match state {
             hbit::State::None => vec![],
-            hbit::State::Funded {
-                fund_transaction, ..
-            } => vec![SwapEvent::HbitFunded {
-                tx: fund_transaction.txid(),
+            hbit::State::Funded { htlc_location, .. } => vec![SwapEvent::HbitFunded {
+                tx: htlc_location.txid,
             }],
-            hbit::State::IncorrectlyFunded {
-                fund_transaction, ..
-            } => vec![
+            hbit::State::IncorrectlyFunded { htlc_location, .. } => vec![
                 SwapEvent::HbitFunded {
-                    tx: fund_transaction.txid(),
+                    tx: htlc_location.txid,
                 },
                 SwapEvent::HbitIncorrectlyFunded {
-                    tx: fund_transaction.txid(),
+                    tx: htlc_location.txid,
                 },
             ],
             hbit::State::Redeemed {
-                fund_transaction,
+                htlc_location,
                 redeem_transaction,
                 ..
             } => vec![
                 SwapEvent::HbitFunded {
-                    tx: fund_transaction.txid(),
+                    tx: htlc_location.txid,
                 },
                 SwapEvent::HbitRedeemed {
-                    tx: redeem_transaction.txid(),
+                    tx: *redeem_transaction,
                 },
             ],
             hbit::State::Refunded {
-                fund_transaction,
+                htlc_location,
                 refund_transaction,
                 ..
             } => vec![
                 SwapEvent::HbitFunded {
-                    tx: fund_transaction.txid(),
+                    tx: htlc_location.txid,
                 },
                 SwapEvent::HbitRefunded {
-                    tx: refund_transaction.txid(),
+                    tx: *refund_transaction,
                 },
             ],
         }

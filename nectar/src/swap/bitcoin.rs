@@ -58,7 +58,7 @@ impl hbit::ExecuteRedeem for Wallet {
         let transaction = self.spend(action).await?;
 
         Ok(hbit::Redeemed {
-            transaction,
+            transaction: transaction.txid(),
             secret,
         })
     }
@@ -96,7 +96,9 @@ impl hbit::ExecuteRefund for Wallet {
         )?;
         let transaction = self.spend(action).await?;
 
-        Ok(hbit::Refunded { transaction })
+        Ok(hbit::Refunded {
+            transaction: transaction.txid(),
+        })
     }
 }
 

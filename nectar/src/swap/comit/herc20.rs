@@ -1,10 +1,6 @@
 use crate::swap::comit::SwapFailedShouldRefund;
 use anyhow::Result;
 
-use comit::btsieve::{
-    ethereum::{GetLogs, TransactionByHash},
-    ConnectedNetwork,
-};
 pub use comit::{
     actions::ethereum::*,
     asset,
@@ -12,6 +8,13 @@ pub use comit::{
     ethereum::{Block, ChainId, Hash},
     herc20::*,
     identity, transaction, Secret, SecretHash, Timestamp,
+};
+use comit::{
+    btsieve::{
+        ethereum::{GetLogs, TransactionByHash},
+        ConnectedNetwork,
+    },
+    ethereum,
 };
 use time::OffsetDateTime;
 
@@ -53,7 +56,7 @@ pub trait ExecuteRefund {
 
 #[derive(Debug, Clone)]
 pub struct Funded {
-    pub transaction: transaction::Ethereum,
+    pub transaction: ethereum::Hash,
     pub asset: asset::Erc20,
 }
 
@@ -94,7 +97,7 @@ where
     if let Err(e) = swap_result {
         if let Some(swap_failed) = e.downcast_ref::<SwapFailedShouldRefund<Deployed>>() {
             actor
-                .execute_refund(herc20, swap_failed.0.clone(), utc_start_of_swap)
+                .execute_refund(herc20, swap_failed.0, utc_start_of_swap)
                 .await?;
         }
 

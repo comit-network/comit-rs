@@ -9,10 +9,11 @@ use crate::{
         },
         BlockByHash, ConnectedNetwork, LatestBlock,
     },
+    ethereum,
     ethereum::{Block, ChainId, Hash, U256},
     htlc_location, identity,
     timestamp::Timestamp,
-    transaction, Secret, SecretHash,
+    Secret, SecretHash,
 };
 use anyhow::Result;
 use blockchain_contracts::ethereum::herc20::Htlc;
@@ -64,33 +65,33 @@ pub enum Event {
 }
 
 /// Represents the data available at said state.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Deployed {
-    pub transaction: transaction::Ethereum,
+    pub transaction: ethereum::Hash,
     pub location: htlc_location::Ethereum,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Funded {
     Correctly {
-        transaction: transaction::Ethereum,
+        transaction: ethereum::Hash,
         asset: asset::Erc20,
     },
     Incorrectly {
-        transaction: transaction::Ethereum,
+        transaction: ethereum::Hash,
         asset: asset::Erc20,
     },
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Redeemed {
-    pub transaction: transaction::Ethereum,
+    pub transaction: ethereum::Hash,
     pub secret: Secret,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Refunded {
-    pub transaction: transaction::Ethereum,
+    pub transaction: ethereum::Hash,
 }
 
 /// Creates a new instance of the herc20 protocol.
@@ -135,13 +136,12 @@ where
     co.yield_(Ok(Event::Started)).await;
 
     let deployed = watch_for_deployed(connector, params.clone(), start_of_swap).await?;
-    co.yield_(Ok(Event::Deployed(deployed.clone()))).await;
+    co.yield_(Ok(Event::Deployed(deployed))).await;
 
-    let funded =
-        watch_for_funded(connector, params.clone(), start_of_swap, deployed.clone()).await?;
+    let funded = watch_for_funded(connector, params.clone(), start_of_swap, deployed).await?;
     co.yield_(Ok(Event::Funded(funded))).await;
 
-    let redeemed = watch_for_redeemed(connector, start_of_swap, deployed.clone());
+    let redeemed = watch_for_redeemed(connector, start_of_swap, deployed);
     let refunded = watch_for_refunded(connector, start_of_swap, deployed);
 
     futures::pin_mut!(redeemed);
@@ -182,7 +182,7 @@ where
             .await?;
 
     Ok(Deployed {
-        transaction,
+        transaction: transaction.hash,
         location,
     })
 }
@@ -222,8 +222,14 @@ where
     let asset = Erc20::new(log.address, quantity);
 
     let event = match expected_asset.cmp(&asset) {
-        Ordering::Equal => Funded::Correctly { transaction, asset },
-        _ => Funded::Incorrectly { transaction, asset },
+        Ordering::Equal => Funded::Correctly {
+            transaction: transaction.hash,
+            asset,
+        },
+        _ => Funded::Incorrectly {
+            transaction: transaction.hash,
+            asset,
+        },
     };
 
     Ok(event)
@@ -257,7 +263,7 @@ where
         Secret::from_vec(&log.data.0).expect("Must be able to construct secret from log data");
 
     Ok(Redeemed {
-        transaction,
+        transaction: transaction.hash,
         secret,
     })
 }
@@ -286,7 +292,9 @@ where
         .instrument(tracing::info_span!("", action = "refund"))
         .await?;
 
-    Ok(Refunded { transaction })
+    Ok(Refunded {
+        transaction: transaction.hash,
+    })
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -12,7 +12,7 @@ use clarity::Uint256;
 use comit::{
     actions::ethereum::{CallContract, DeployContract},
     asset::Erc20,
-    ethereum::{Transaction, TransactionReceipt},
+    ethereum::TransactionReceipt,
 };
 use conquer_once::Lazy;
 use num::BigUint;
@@ -153,10 +153,8 @@ impl Wallet {
             } => anyhow::bail!("No contract address in deployment transaction receipt"),
         };
 
-        let transaction = self.get_transaction_by_hash(hash).await?;
-
         Ok(DeployedContract {
-            transaction,
+            transaction: hash,
             contract_address,
         })
     }
@@ -343,12 +341,6 @@ impl Wallet {
             .await
     }
 
-    async fn get_transaction_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<Transaction> {
-        self.geth_client
-            .get_transaction_by_hash(transaction_hash)
-            .await
-    }
-
     async fn wait_until_transaction_receipt(
         &self,
         transaction_hash: Hash,
@@ -407,9 +399,9 @@ impl Wallet {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct DeployedContract {
-    pub transaction: Transaction,
+    pub transaction: ethereum::Hash,
     pub contract_address: Address,
 }
 

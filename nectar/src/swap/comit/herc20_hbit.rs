@@ -38,18 +38,14 @@ where
             .context(SwapFailedNoRefund)?;
 
         let _herc20_funded = alice
-            .execute_fund(
-                herc20_params.clone(),
-                herc20_deployed.clone(),
-                utc_start_of_swap,
-            )
+            .execute_fund(herc20_params.clone(), herc20_deployed, utc_start_of_swap)
             .await
             .context(SwapFailedNoRefund)?;
 
         let hbit_funded =
             hbit::watch_for_funded(bitcoin_connector, &hbit_params.shared, utc_start_of_swap)
                 .await
-                .context(SwapFailedShouldRefund(herc20_deployed.clone()))?;
+                .context(SwapFailedShouldRefund(herc20_deployed))?;
 
         let _hbit_redeemed = alice
             .execute_redeem(hbit_params, hbit_funded, secret)
@@ -101,7 +97,7 @@ where
             ethereum_connector,
             herc20_params.clone(),
             utc_start_of_swap,
-            herc20_deployed.clone(),
+            herc20_deployed,
         )
         .await
         .context(SwapFailedNoRefund)?;
@@ -130,7 +126,7 @@ where
             .execute_redeem(
                 herc20_params,
                 hbit_redeemed.secret,
-                herc20_deployed.clone(),
+                herc20_deployed,
                 utc_start_of_swap,
             )
             .await
