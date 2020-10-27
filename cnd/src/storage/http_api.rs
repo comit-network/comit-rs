@@ -9,6 +9,7 @@ use crate::{
     },
     LocalSwapId, Storage,
 };
+use anyhow::Result;
 use async_trait::async_trait;
 
 /// Convert data from a protocol table, along with its associated state, into a
@@ -17,7 +18,7 @@ trait IntoFinalized {
     type Finalized;
     type State;
 
-    fn into_finalized(self, state: Self::State) -> anyhow::Result<Self::Finalized>;
+    fn into_finalized(self, state: Self::State) -> Result<Self::Finalized>;
 }
 
 /// Convert data from the hbit protocol table, along with its associated state,
@@ -28,7 +29,7 @@ trait IntoFinalizedAsRedeemer {
         swap_id: LocalSwapId,
         seed: RootSeed,
         state: hbit::State,
-    ) -> anyhow::Result<hbit::FinalizedAsRedeemer>;
+    ) -> Result<hbit::FinalizedAsRedeemer>;
 }
 
 /// Convert data from the hbit protocol table, along with its associated state,
@@ -39,7 +40,7 @@ trait IntoFinalizedAsFunder {
         swap_id: LocalSwapId,
         seed: RootSeed,
         state: hbit::State,
-    ) -> anyhow::Result<hbit::FinalizedAsFunder>;
+    ) -> Result<hbit::FinalizedAsFunder>;
 }
 
 #[async_trait]
@@ -49,9 +50,8 @@ impl Load<AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::Final
     async fn load(
         &self,
         swap_id: LocalSwapId,
-    ) -> anyhow::Result<
-        AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::FinalizedAsRedeemer>,
-    > {
+    ) -> Result<AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::FinalizedAsRedeemer>>
+    {
         let alpha_state = self.herc20_states.get(&swap_id).await?;
         let beta_state = self.hbit_states.get(&swap_id).await?;
 
@@ -89,9 +89,8 @@ impl Load<AliceSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsFunder, herc2
     async fn load(
         &self,
         swap_id: LocalSwapId,
-    ) -> anyhow::Result<
-        AliceSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsFunder, herc20::Finalized>,
-    > {
+    ) -> Result<AliceSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsFunder, herc20::Finalized>>
+    {
         let alpha_state = self.hbit_states.get(&swap_id).await?;
         let beta_state = self.herc20_states.get(&swap_id).await?;
 
@@ -129,9 +128,8 @@ impl Load<BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::Finaliz
     async fn load(
         &self,
         swap_id: LocalSwapId,
-    ) -> anyhow::Result<
-        BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::FinalizedAsFunder>,
-    > {
+    ) -> Result<BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::FinalizedAsFunder>>
+    {
         let alpha_state = self.herc20_states.get(&swap_id).await?;
         let beta_state = self.hbit_states.get(&swap_id).await?;
 
@@ -169,9 +167,8 @@ impl Load<BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc2
     async fn load(
         &self,
         swap_id: LocalSwapId,
-    ) -> anyhow::Result<
-        BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc20::Finalized>,
-    > {
+    ) -> Result<BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc20::Finalized>>
+    {
         let alpha_state = self.hbit_states.get(&swap_id).await?;
         let beta_state = self.herc20_states.get(&swap_id).await?;
 
@@ -206,7 +203,7 @@ impl IntoFinalized for Herc20 {
     type Finalized = herc20::Finalized;
     type State = herc20::State;
 
-    fn into_finalized(self, state: Self::State) -> anyhow::Result<Self::Finalized> {
+    fn into_finalized(self, state: Self::State) -> Result<Self::Finalized> {
         let asset = asset::Erc20 {
             quantity: self.amount.0.into(),
             token_contract: self.token_contract.0,
@@ -229,7 +226,7 @@ impl IntoFinalizedAsFunder for Hbit {
         swap_id: LocalSwapId,
         seed: RootSeed,
         state: hbit::State,
-    ) -> anyhow::Result<hbit::FinalizedAsFunder> {
+    ) -> Result<hbit::FinalizedAsFunder> {
         let finalized = hbit::FinalizedAsFunder {
             asset: self.amount.0.into(),
             network: self.network.0,
@@ -252,7 +249,7 @@ impl IntoFinalizedAsRedeemer for Hbit {
         swap_id: LocalSwapId,
         seed: RootSeed,
         state: hbit::State,
-    ) -> anyhow::Result<hbit::FinalizedAsRedeemer> {
+    ) -> Result<hbit::FinalizedAsRedeemer> {
         let finalized = hbit::FinalizedAsRedeemer {
             asset: self.amount.0.into(),
             network: self.network.0,
