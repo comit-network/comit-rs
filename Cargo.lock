@@ -247,9 +247,9 @@ checksum = "5f0dc55f2d8a1a85650ac47858bb001b4c0dd73d79e3c455a842925e68d29cd3"
 
 [[package]]
 name = "bitcoin"
-version = "0.25.1"
+version = "0.25.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "302fba01c5210a0321cc459dbe7f6b4fc21dffe77241c1690bce129814fa11fc"
+checksum = "aefc9be9f17185f4ebccae6575d342063f775924d57df0000edb1880c0fb7095"
 dependencies = [
  "bech32",
  "bitcoin_hashes",
