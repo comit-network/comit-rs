@@ -184,7 +184,7 @@ impl From<Params> for hbit::Params {
         } = params;
 
         hbit::Params {
-            shared: hbit::SharedParams {
+            shared: comit::hbit::Params {
                 network: network.into(),
                 asset: asset.into(),
                 redeem_identity,

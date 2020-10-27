@@ -1,11 +1,17 @@
-pub use crate::swap::comit::hbit::*;
+pub use comit::{
+    hbit::*,
+    swap::hbit::{Funded, IncorrectlyFunded, Params},
+};
 
 use crate::{
     database::{Load, Save},
     swap::{bitcoin::Wallet, Database},
     SwapId,
 };
-use comit::ledger;
+use comit::{
+    ledger,
+    swap::hbit::{WatchForFunded, WatchForRedeemed},
+};
 use std::sync::Arc;
 use time::OffsetDateTime;
 

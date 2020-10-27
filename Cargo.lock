@@ -664,6 +664,7 @@ dependencies = [
  "num 0.3.0",
  "primitive-types",
  "proptest",
+ "quickcheck",
  "rand 0.7.3",
  "reqwest",
  "serde",

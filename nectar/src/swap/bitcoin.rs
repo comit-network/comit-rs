@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 pub use crate::bitcoin::Amount;
 pub use ::bitcoin::{secp256k1::SecretKey, Address, Block, BlockHash, OutPoint, Transaction};
+use comit::actions::bitcoin::BroadcastSignedTransaction;
 
 #[derive(Debug, Clone)]
 pub struct Wallet {
@@ -66,7 +67,7 @@ impl Wallet {
 
     pub async fn spend(
         &self,
-        action: hbit::BroadcastSignedTransaction,
+        action: BroadcastSignedTransaction,
     ) -> anyhow::Result<bitcoin::Transaction> {
         let _txid = self
             .inner

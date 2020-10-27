@@ -31,6 +31,7 @@ pub mod orderpool;
 pub mod proptest;
 mod secret;
 mod secret_hash;
+pub mod swap;
 mod timestamp;
 pub mod transaction;
 

@@ -1,14 +1,12 @@
-use crate::swap::{
-    comit::{Action, Error},
-    hbit, herc20,
+use crate::{
+    swap::{hbit, herc20, Action, Error},
+    Secret,
 };
-use comit::Secret;
 use futures::Stream;
 use genawaiter::sync::Gen;
 use time::OffsetDateTime;
 
 /// Execute a Hbit<->Herc20 swap for Alice.
-#[allow(dead_code)] // This is library code
 pub fn hbit_herc20_alice<A, B>(
     hbit: A,
     herc20: B,

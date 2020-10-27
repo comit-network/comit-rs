@@ -36,9 +36,6 @@ mod trace;
 #[cfg(test)]
 mod test_harness;
 
-#[cfg(test)]
-mod arbitrary;
-
 use crate::{
     command::{
         balance, create_transaction, deposit, dump_config, migrate_db, resume_only, trade,

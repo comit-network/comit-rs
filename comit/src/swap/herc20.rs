@@ -1,19 +1,9 @@
+pub use crate::herc20::{Deployed, Params, Redeemed};
+
+use crate::{asset, ethereum};
 use anyhow::Result;
-use comit::ethereum;
 use thiserror::Error;
 use time::OffsetDateTime;
-
-pub use comit::{
-    actions::ethereum::*,
-    asset,
-    btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
-    ethereum::{Block, ChainId, Hash},
-    herc20::{
-        watch_for_deployed, watch_for_funded, watch_for_redeemed, watch_for_refunded, Deployed,
-        Params, Redeemed, Refunded,
-    },
-    identity, transaction, Secret, SecretHash, Timestamp,
-};
 
 #[derive(Debug, Clone, Error)]
 #[error("herc20 HTLC was incorrectly funded, expected {expected} but got {got}")]
@@ -55,26 +45,4 @@ pub trait WatchForRedeemed {
 pub struct Funded {
     pub transaction: ethereum::Hash,
     pub asset: asset::Erc20,
-}
-
-#[cfg(all(test, feature = "testcontainers"))]
-pub fn params(
-    secret_hash: SecretHash,
-    chain_id: crate::swap::ethereum::ChainId,
-    redeem_identity: identity::Ethereum,
-    refund_identity: identity::Ethereum,
-    token_contract: crate::swap::ethereum::Address,
-    expiry: Timestamp,
-) -> Params {
-    let quantity = asset::ethereum::FromWei::from_wei(1_000_000_000u64);
-    let asset = asset::Erc20::new(token_contract, quantity);
-
-    Params {
-        asset,
-        redeem_identity,
-        refund_identity,
-        expiry,
-        chain_id,
-        secret_hash,
-    }
 }

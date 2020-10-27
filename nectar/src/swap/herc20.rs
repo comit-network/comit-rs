@@ -1,13 +1,21 @@
+pub use comit::{
+    herc20::{Deployed, Params, Redeemed, Refunded},
+    swap::herc20::{Funded, IncorrectlyFunded},
+};
+
 use crate::{
     database::{Load, Save},
     swap::{ethereum::Wallet, Database},
     SwapId,
 };
-use comit::ethereum;
+use comit::{
+    ethereum,
+    ethereum::ChainId,
+    herc20::{watch_for_deployed, watch_for_funded, watch_for_redeemed},
+    swap::herc20::{WatchForDeployed, WatchForFunded, WatchForRedeemed},
+};
 use std::sync::Arc;
 use time::OffsetDateTime;
-
-pub use crate::swap::comit::herc20::*;
 
 pub struct Facade {
     pub wallet: Wallet,
@@ -158,5 +166,27 @@ impl WatchForRedeemed for Facade {
                 }
             },
         }
+    }
+}
+
+#[cfg(all(test, feature = "testcontainers"))]
+pub fn params(
+    secret_hash: comit::SecretHash,
+    chain_id: comit::ethereum::ChainId,
+    redeem_identity: comit::identity::Ethereum,
+    refund_identity: comit::identity::Ethereum,
+    token_contract: comit::ethereum::Address,
+    expiry: comit::Timestamp,
+) -> Params {
+    let quantity = comit::asset::ethereum::FromWei::from_wei(1_000_000_000u64);
+    let asset = comit::asset::Erc20::new(token_contract, quantity);
+
+    Params {
+        asset,
+        redeem_identity,
+        refund_identity,
+        expiry,
+        chain_id,
+        secret_hash,
     }
 }

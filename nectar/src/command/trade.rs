@@ -286,10 +286,14 @@ mod tests {
     use super::*;
     use crate::{
         config::{settings, Data, Logging, Network},
-        swap::herc20::asset::ethereum::FromWei,
         test_harness, Seed, StaticStub,
     };
-    use comit::{asset, asset::Erc20Quantity, ethereum::ChainId, ledger};
+    use comit::{
+        asset,
+        asset::{ethereum::FromWei, Erc20Quantity},
+        ethereum::ChainId,
+        ledger,
+    };
     use ethereum::ether;
     use log::LevelFilter;
 

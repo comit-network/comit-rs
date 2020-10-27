@@ -1,7 +1,6 @@
 //! Execute a swap.
 
 pub mod bitcoin;
-mod comit;
 pub mod ethereum;
 pub mod hbit;
 pub mod herc20;
@@ -10,11 +9,11 @@ use crate::{
     command::FinishedSwap,
     database::{Load, Save},
     network::ActivePeer,
-    swap::comit::Action,
     SwapId,
 };
 use ::comit::btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use anyhow::Result;
+use comit::swap::Action;
 use futures::{channel::mpsc, SinkExt, Stream, TryStreamExt};
 use std::{future::Future, sync::Arc};
 use time::OffsetDateTime;
@@ -53,16 +52,16 @@ pub struct SwapParams {
 #[cfg(test)]
 impl crate::StaticStub for SwapParams {
     fn static_stub() -> Self {
-        use crate::swap::hbit::SecretHash;
         use ::bitcoin::secp256k1;
+        use comit::SecretHash;
         use std::str::FromStr;
 
         let secret_hash =
             SecretHash::new(comit::Secret::from(*b"hello world, you are beautiful!!"));
 
         SwapParams {
-            hbit_params: hbit::Params {
-                shared: hbit::SharedParams {
+            hbit_params: comit::swap::hbit::Params {
+                shared: comit::hbit::Params {
                     network: comit::ledger::Bitcoin::Regtest,
                     asset: comit::asset::Bitcoin::from_sat(12_345_678),
                     redeem_identity: comit::bitcoin::PublicKey::from_str(
@@ -109,12 +108,10 @@ impl crate::StaticStub for SwapParams {
 #[cfg(test)]
 mod arbitrary {
     use super::*;
-    use crate::{
-        arbitrary::*,
-        swap::comit::{
-            asset::{ethereum::TryFromWei, Erc20, Erc20Quantity},
-            ethereum::ChainId,
-        },
+    use comit::{
+        asset::{ethereum::TryFromWei, Erc20, Erc20Quantity},
+        ethereum::ChainId,
+        SecretHash, Timestamp,
     };
     use quickcheck::{Arbitrary, Gen};
 
@@ -134,15 +131,15 @@ mod arbitrary {
                 asset: erc20(g),
                 redeem_identity: ethereum_address(g),
                 refund_identity: ethereum_address(g),
-                expiry: timestamp(g),
-                secret_hash: secret_hash(g),
+                expiry: Timestamp::arbitrary(g),
+                secret_hash: SecretHash::arbitrary(g),
                 chain_id: ChainId::from(u32::arbitrary(g)),
             };
 
             SwapParams {
                 hbit_params: hbit::Params::arbitrary(g),
                 herc20_params,
-                secret_hash: secret_hash(g),
+                secret_hash: SecretHash::arbitrary(g),
                 start_of_swap: OffsetDateTime::from_unix_timestamp(u32::arbitrary(g) as i64),
                 swap_id: SwapId::arbitrary(g),
                 taker: ActivePeer::arbitrary(g),
@@ -175,30 +172,24 @@ mod arbitrary {
 #[cfg(all(test, feature = "testcontainers"))]
 mod tests {
     use super::*;
-    use crate::{
-        swap::{
-            bitcoin,
-            comit::{
-                asset::{
-                    self,
-                    ethereum::{Erc20Quantity, FromWei},
-                },
-                btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
-                ethereum::ChainId,
-                identity, Secret, SecretHash, Timestamp,
-            },
-        },
-        test_harness, Seed, StaticStub, SwapId,
-    };
+    use crate::{swap::bitcoin, test_harness, Seed, StaticStub, SwapId};
     use ::bitcoin::secp256k1;
-    use ::comit::ledger;
+    use comit::{
+        asset::{
+            self,
+            ethereum::{Erc20Quantity, FromWei},
+        },
+        btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
+        ethereum::ChainId,
+        identity, ledger, Secret, SecretHash, Timestamp,
+    };
     use std::{str::FromStr, sync::Arc};
     use testcontainers::clients;
 
     fn hbit_params(
         secret_hash: SecretHash,
         network: comit::ledger::Bitcoin,
-    ) -> (hbit::SharedParams, bitcoin::SecretKey, bitcoin::SecretKey) {
+    ) -> (comit::hbit::Params, bitcoin::SecretKey, bitcoin::SecretKey) {
         let asset = asset::Bitcoin::from_sat(100_000_000);
         let expiry = Timestamp::now().plus(60 * 60);
 
@@ -224,7 +215,7 @@ mod tests {
             (transient_redeem_sk, transient_redeem_pk)
         };
 
-        let shared_params = hbit::SharedParams {
+        let shared_params = comit::hbit::Params {
             network,
             asset,
             redeem_identity: transient_redeem_pk,
@@ -431,7 +422,7 @@ mod tests {
             alice_db.insert_swap(swap).await.unwrap();
 
             drive(
-                comit::hbit_herc20_alice(
+                comit::swap::hbit_herc20_alice(
                     hbit::Facade {
                         swap_id,
                         db: alice_db.clone(),
@@ -458,7 +449,7 @@ mod tests {
             let swap_id = SwapId::default();
 
             let swap = SwapKind::HbitHerc20(SwapParams {
-                hbit_params: hbit::Params {
+                hbit_params: comit::swap::hbit::Params {
                     shared: hbit_params,
                     transient_sk: hbit_transient_redeem_sk,
                     final_address: bob_bitcoin_wallet.inner.new_address().await?,
@@ -479,7 +470,7 @@ mod tests {
             );
 
             drive(
-                comit::hbit_herc20_bob(
+                comit::swap::hbit_herc20_bob(
                     hbit::Facade {
                         swap_id,
                         db: bob_db.clone(),
@@ -643,7 +634,7 @@ async fn execute(
             swap_id,
             ..
         }) => {
-            let swap = comit::hbit_herc20_bob(
+            let swap = comit::swap::hbit_herc20_bob(
                 hbit::Facade {
                     swap_id,
                     db: db.clone(),
@@ -669,7 +660,7 @@ async fn execute(
             swap_id,
             ..
         }) => {
-            let swap = comit::herc20_hbit_bob(
+            let swap = comit::swap::herc20_hbit_bob(
                 herc20::Facade {
                     swap_id,
                     db: db.clone(),

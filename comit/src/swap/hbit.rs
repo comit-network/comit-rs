@@ -1,28 +1,19 @@
+use crate::{asset, hbit::Redeemed, htlc_location};
 use anyhow::Result;
 use bitcoin::secp256k1::SecretKey;
-use comit::asset;
 use thiserror::Error;
 use time::OffsetDateTime;
 
-pub use comit::{
-    actions::bitcoin::{BroadcastSignedTransaction, SendToAddress},
-    btsieve::{BlockByHash, LatestBlock},
-    hbit::{watch_for_funded, watch_for_redeemed, Redeemed, Refunded},
-    htlc_location, transaction, Secret, SecretHash, Timestamp,
-};
-
-pub type SharedParams = comit::hbit::Params;
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Params {
-    pub shared: SharedParams,
+    pub shared: crate::hbit::Params,
     pub transient_sk: SecretKey,
     pub final_address: bitcoin::Address,
 }
 
 impl Params {
     pub fn new(
-        shared: SharedParams,
+        shared: crate::hbit::Params,
         transient_sk: SecretKey,
         final_address: bitcoin::Address,
     ) -> Self {
@@ -66,23 +57,22 @@ pub struct Funded {
     pub location: htlc_location::Bitcoin,
 }
 
-#[cfg(test)]
+#[cfg(feature = "quickcheck")]
 mod arbitrary {
-    use crate::swap::hbit::{Params, SharedParams};
+    use crate::{asset, identity, ledger, swap::hbit::Params, SecretHash, Timestamp};
     use ::bitcoin::secp256k1::SecretKey;
-    use comit::{asset, identity, ledger};
     use quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for Params {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Params {
-                shared: SharedParams {
+                shared: crate::hbit::Params {
                     network: bitcoin_network(g),
                     asset: bitcoin_asset(g),
                     redeem_identity: bitcoin_identity(g),
                     refund_identity: bitcoin_identity(g),
-                    expiry: crate::arbitrary::timestamp(g),
-                    secret_hash: crate::arbitrary::secret_hash(g),
+                    expiry: Timestamp::arbitrary(g),
+                    secret_hash: SecretHash::arbitrary(g),
                 },
                 transient_sk: secret_key(g),
                 final_address: bitcoin_address(g),
@@ -112,14 +102,13 @@ mod arbitrary {
     }
 
     fn bitcoin_identity<G: Gen>(g: &mut G) -> identity::Bitcoin {
-        identity::Bitcoin::from_secret_key(&crate::SECP, &secret_key(g))
+        identity::Bitcoin::from_secret_key(
+            &bitcoin::secp256k1::Secp256k1::signing_only(),
+            &secret_key(g),
+        )
     }
 
     fn bitcoin_address<G: Gen>(g: &mut G) -> bitcoin::Address {
-        bitcoin::Address::p2wpkh(
-            &identity::Bitcoin::from_secret_key(&crate::SECP, &secret_key(g)).into(),
-            bitcoin_network(g).into(),
-        )
-        .unwrap()
+        bitcoin::Address::p2wpkh(&bitcoin_identity(g).into(), bitcoin_network(g).into()).unwrap()
     }
 }
