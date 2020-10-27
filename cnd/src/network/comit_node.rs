@@ -173,11 +173,8 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<setup_swap::BehaviourOutEvent<S
                                 let order = Order::by_order_id(conn, order_id)?;
                                 InsertableOrderSwap::new(swap_pk, order.id).insert(conn)?;
                                 let order_hbit_params = OrderHbitParams::by_order(conn, &order)?;
-                                insertable_hbit(
-                                    swap_pk,
-                                    order_hbit_params.our_final_address.into(),
-                                )
-                                .insert(conn)?;
+                                insertable_hbit(swap_pk, order_hbit_params.our_final_address)
+                                    .insert(conn)?;
 
                                 Ok(())
                             })

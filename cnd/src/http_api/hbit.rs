@@ -1,10 +1,8 @@
 use crate::{
     actions::bitcoin::{BroadcastSignedTransaction, SendToAddress},
-    asset,
-    bitcoin::Address,
-    ledger, Secret, SecretHash, Timestamp,
+    asset, ledger, Secret, SecretHash, Timestamp,
 };
-use bitcoin::secp256k1::SecretKey;
+use bitcoin::{secp256k1::SecretKey, Address};
 
 pub use crate::hbit::*;
 
@@ -71,7 +69,7 @@ impl FinalizedAsFunder {
         };
 
         let transient_refund_sk = self.transient_refund_identity;
-        let refund_address = self.final_refund_identity.clone().into();
+        let refund_address = self.final_refund_identity.clone();
         let params = self.build_params(secret_hash);
         params.build_refund_action(
             &*crate::SECP,
@@ -115,7 +113,7 @@ impl FinalizedAsRedeemer {
         };
 
         let transient_redeem_sk = self.transient_redeem_identity;
-        let redeem_address = self.final_redeem_identity.clone().into();
+        let redeem_address = self.final_redeem_identity.clone();
 
         let secret_hash = SecretHash::new(secret);
         let params = self.build_params(secret_hash);

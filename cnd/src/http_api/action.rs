@@ -186,17 +186,17 @@ mod test {
 
         let input = &[
             ActionResponseBody::from(SendToAddress {
-                to: to.clone().into(),
+                to: to.clone(),
                 amount,
                 network: ledger::Bitcoin::Mainnet,
             }),
             ActionResponseBody::from(SendToAddress {
-                to: to.clone().into(),
+                to: to.clone(),
                 amount,
                 network: ledger::Bitcoin::Testnet,
             }),
             ActionResponseBody::from(SendToAddress {
-                to: to.into(),
+                to,
                 amount,
                 network: ledger::Bitcoin::Regtest,
             }),

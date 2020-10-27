@@ -6,6 +6,8 @@
 //!       libraries
 //!     - Common functionality that is not (yet) available upstream
 
+pub use ::bitcoin::Address;
+
 use crate::{
     btsieve::{BlockByHash, LatestBlock},
     Timestamp,
@@ -20,9 +22,6 @@ use std::{fmt, str::FromStr};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PublicKey(bitcoin::PublicKey);
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Address(bitcoin::Address);
 
 impl PublicKey {
     pub fn from_secret_key<C>(
@@ -45,12 +44,6 @@ impl fmt::Display for PublicKey {
     }
 }
 
-impl fmt::Display for Address {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
 impl From<secp256k1::PublicKey> for PublicKey {
     fn from(key: secp256k1::PublicKey) -> Self {
         Self(bitcoin::PublicKey {
@@ -66,21 +59,9 @@ impl From<PublicKey> for bitcoin::PublicKey {
     }
 }
 
-impl From<Address> for bitcoin::Address {
-    fn from(address: Address) -> bitcoin::Address {
-        address.0
-    }
-}
-
 impl From<bitcoin::util::key::PublicKey> for PublicKey {
     fn from(key: bitcoin::util::key::PublicKey) -> Self {
         Self(key)
-    }
-}
-
-impl From<bitcoin::util::address::Address> for Address {
-    fn from(address: bitcoin::util::address::Address) -> Self {
-        Self(address)
     }
 }
 
@@ -89,14 +70,6 @@ impl FromStr for PublicKey {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(bitcoin::PublicKey::from_str(s)?.into())
-    }
-}
-
-impl FromStr for Address {
-    type Err = bitcoin::util::address::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(bitcoin::Address::from_str(s)?.into())
     }
 }
 
