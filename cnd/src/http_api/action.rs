@@ -7,7 +7,8 @@ use crate::{
     ethereum::ChainId,
     identity, transaction, Timestamp,
 };
-use comit::{ethereum::UnformattedData, ledger};
+use anyhow::Result;
+use comit::{ethereum::UnformattedData, ledger, swap::Action};
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
@@ -131,6 +132,33 @@ impl From<ethereum::CallContract> for ActionResponseBody {
 impl From<comit::Never> for ActionResponseBody {
     fn from(_: comit::Never) -> Self {
         unreachable!("impl should be removed once ! type is stabilised")
+    }
+}
+
+impl ActionResponseBody {
+    pub fn from_action(action: comit::swap::Action, vbyte_rate: asset::Bitcoin) -> Result<Self> {
+        Ok(match action {
+            Action::Herc20Deploy(params) => params.build_deploy_action().into(),
+            Action::Herc20Fund(params, deployed) => {
+                params.build_fund_action(deployed.location).into()
+            }
+            Action::Herc20Redeem(params, deployed, secret) => {
+                params.build_redeem_action(deployed.location, secret).into()
+            }
+            Action::HbitFund(params) => params.shared.build_fund_action().into(),
+            Action::HbitRedeem(params, funded, secret) => params
+                .shared
+                .build_redeem_action(
+                    &crate::SECP,
+                    funded.asset,
+                    funded.location,
+                    params.transient_sk,
+                    params.final_address,
+                    secret,
+                    vbyte_rate,
+                )?
+                .into(),
+        })
     }
 }
 

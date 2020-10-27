@@ -140,3 +140,4 @@ joinable!(order_herc20_params -> orders (order_id));
 joinable!(order_swaps -> orders (order_id));
 joinable!(order_swaps -> swaps (swap_id));
 joinable!(completed_swaps -> swaps (swap_id));
+joinable!(hbits -> swaps (swap_id));

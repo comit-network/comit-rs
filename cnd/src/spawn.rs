@@ -1,11 +1,12 @@
 use crate::{
     connectors::Connectors,
-    hbit, herc20,
+    herc20,
     local_swap_id::LocalSwapId,
     storage::{commands, Load, SwapContext},
     Role, Side, Storage,
 };
-use anyhow::{Context, Result};
+use anyhow::Result;
+use comit::swap::{hbit, Action};
 use diesel::SqliteConnection;
 use futures::prelude::*;
 use time::OffsetDateTime;
@@ -78,91 +79,121 @@ async fn handle_swap_result(swap_result: Result<()>, storage: Storage, swap_id: 
     }
 }
 
-macro_rules! impl_execute {
-    ($alpha:ident, $beta:ident) => {
-        impl Swap<$alpha::Params, $beta::Params> {
-            async fn execute(
-                self,
-                id: LocalSwapId,
-                connectors: Connectors,
-                storage: Storage,
-            ) -> Result<()> {
-                let alpha = $alpha(
-                    MetaData {
-                        id,
-                        side: Side::Alpha,
-                        role: self.role,
-                        start: self.start_of_swap,
-                    },
-                    self.alpha,
-                    connectors.clone(),
-                    storage.clone(),
-                );
-                let beta = $beta(
-                    MetaData {
-                        id,
-                        side: Side::Beta,
-                        role: self.role,
-                        start: self.start_of_swap,
-                    },
-                    self.beta,
-                    connectors.clone(),
-                    storage.clone(),
-                );
+impl Swap<hbit::Params, herc20::Params> {
+    async fn execute(
+        self,
+        id: LocalSwapId,
+        connectors: Connectors,
+        storage: Storage,
+    ) -> Result<()> {
+        let hbit_facade = crate::hbit::Facade {
+            connector: connectors.bitcoin(),
+            swap_id: id,
+            storage: storage.clone(),
+        };
+        let herc20_facade = crate::herc20::Facade {
+            connector: connectors.ethereum(),
+            swap_id: id,
+            storage: storage.clone(),
+        };
 
-                future::try_join(alpha, beta).await.map(|_| ())
+        match self.role {
+            Role::Alice => {
+                drive(
+                    comit::swap::hbit_herc20_alice(
+                        hbit_facade,
+                        herc20_facade,
+                        self.alpha,
+                        self.beta,
+                        storage.seed.derive_swap_seed(id).derive_secret(),
+                        self.start_of_swap,
+                    ),
+                    storage,
+                    id,
+                )
+                .await
+            }
+            Role::Bob => {
+                drive(
+                    comit::swap::hbit_herc20_bob(
+                        hbit_facade,
+                        herc20_facade,
+                        self.alpha,
+                        self.beta,
+                        self.start_of_swap,
+                    ),
+                    storage,
+                    id,
+                )
+                .await
             }
         }
-    };
+    }
 }
 
-impl_execute!(herc20, hbit);
-impl_execute!(hbit, herc20);
+impl Swap<herc20::Params, hbit::Params> {
+    async fn execute(
+        self,
+        id: LocalSwapId,
+        connectors: Connectors,
+        storage: Storage,
+    ) -> Result<()> {
+        let hbit_facade = crate::hbit::Facade {
+            connector: connectors.bitcoin(),
+            swap_id: id,
+            storage: storage.clone(),
+        };
+        let herc20_facade = crate::herc20::Facade {
+            connector: connectors.ethereum(),
+            swap_id: id,
+            storage: storage.clone(),
+        };
 
-async fn herc20(
-    metadata: MetaData,
-    params: herc20::Params,
-    connectors: Connectors,
-    storage: Storage,
-) -> Result<()> {
-    herc20::new(
-        metadata.id,
-        params,
-        metadata.start,
-        metadata.role,
-        metadata.side,
-        storage.clone(),
-        connectors.ethereum(),
-    )
-    .await
-    .with_context(|| {
-        format!(
-            "failed to complete herc20 as {} ledger protocol",
-            metadata.side
-        )
-    })
+        match self.role {
+            Role::Alice => {
+                drive(
+                    comit::swap::herc20_hbit_alice(
+                        herc20_facade,
+                        hbit_facade,
+                        self.alpha,
+                        self.beta,
+                        storage.seed.derive_swap_seed(id).derive_secret(),
+                        self.start_of_swap,
+                    ),
+                    storage,
+                    id,
+                )
+                .await
+            }
+            Role::Bob => {
+                drive(
+                    comit::swap::herc20_hbit_bob(
+                        herc20_facade,
+                        hbit_facade,
+                        self.alpha,
+                        self.beta,
+                        self.start_of_swap,
+                    ),
+                    storage,
+                    id,
+                )
+                .await
+            }
+        }
+    }
 }
 
-async fn hbit(
-    metadata: MetaData,
-    params: hbit::Params,
-    connectors: Connectors,
+async fn drive<E>(
+    mut swap: impl Stream<Item = Result<Action, E>> + Unpin,
     storage: Storage,
-) -> Result<()> {
-    hbit::new(
-        metadata.id,
-        params,
-        metadata.start,
-        metadata.role,
-        metadata.side,
-        storage.clone(),
-        connectors.bitcoin(),
-    )
-    .await
-    .with_context(|| {
-        format!(
-            "failed to complete hbit as {} ledger protocol",
-            metadata.side
-        )
-    })
+    swap_id: LocalSwapId,
+) -> Result<()>
+where
+    E: std::error::Error + Send + Sync + 'static,
+{
+    while let Some(action) = swap.try_next().await? {
+        storage.next_action.lock().await.insert(swap_id, action);
+    }
+
+    Ok(())
 }

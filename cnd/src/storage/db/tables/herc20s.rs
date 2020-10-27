@@ -16,7 +16,8 @@ use diesel::{prelude::*, SqliteConnection};
 pub struct Herc20 {
     id: i32,
     swap_id: i32,
-    pub amount: Text<Erc20Amount>,
+    #[diesel(deserialize_as = "Text<Erc20Amount>")]
+    pub amount: asset::Erc20Quantity,
     pub chain_id: U32,
     pub expiry: U32,
     pub token_contract: Text<ethereum::Address>,
@@ -74,7 +75,7 @@ impl InsertableHerc20 {
 impl From<Herc20> for asset::Erc20 {
     fn from(herc20: Herc20) -> asset::Erc20 {
         asset::Erc20 {
-            quantity: herc20.amount.0.into(),
+            quantity: herc20.amount,
             token_contract: herc20.token_contract.0,
         }
     }

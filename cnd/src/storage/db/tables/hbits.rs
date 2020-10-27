@@ -22,7 +22,8 @@ pub struct Hbit {
     pub amount: Text<Satoshis>,
     pub network: Text<ledger::Bitcoin>,
     pub expiry: U32,
-    pub final_identity: Text<bitcoin::Address>,
+    #[diesel(deserialize_as = "Text<bitcoin::Address>")]
+    pub final_identity: bitcoin::Address,
     pub transient_identity: Option<Text<bitcoin::PublicKey>>,
     pub side: Text<Side>,
 }

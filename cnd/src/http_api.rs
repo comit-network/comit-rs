@@ -1,9 +1,5 @@
 mod action;
 mod dial_addr;
-pub mod hbit;
-mod hbit_herc20;
-pub mod herc20;
-mod herc20_hbit;
 mod info;
 mod markets;
 mod orders;
@@ -14,7 +10,7 @@ mod serde_peer_id;
 mod swaps;
 mod tokens;
 
-pub use self::{problem::*, route_factory::create as create_routes};
+pub use self::{problem::*, route_factory::create as create_routes, swaps::SwapResource};
 
 pub const PATH: &str = "swaps";
 
@@ -23,10 +19,9 @@ use crate::{
     asset::Erc20Quantity,
     ethereum,
     storage::{BtcDaiOrder, Order},
-    Role, Secret, SecretHash, Timestamp,
 };
 use anyhow::Result;
-use comit::{OrderId, Position, Price, Quantity};
+use comit::{swap::Action, OrderId, Position, Price, Quantity};
 use serde::Serialize;
 use warp::http::Method;
 
@@ -172,214 +167,28 @@ pub enum ActionName {
     Deploy,
     Fund,
     Redeem,
-    Refund,
 }
 
-pub trait Events {
-    fn events(&self) -> Vec<SwapEvent>;
-}
-
-/// Get the underlying ledger used by the alpha protocol.
-pub trait AlphaLedger {
-    fn alpha_ledger(&self) -> Ledger;
-}
-
-/// Get the underlying ledger used by the beta protocol.
-pub trait BetaLedger {
-    fn beta_ledger(&self) -> Ledger;
-}
-
-/// Get the absolute expiry time for the alpha protocol.
-pub trait AlphaAbsoluteExpiry {
-    fn alpha_absolute_expiry(&self) -> Option<Timestamp>;
-}
-
-/// Get the absolute expiry time for the beta protocol.
-pub trait BetaAbsoluteExpiry {
-    fn beta_absolute_expiry(&self) -> Option<Timestamp>;
-}
-
-/// Ledgers we currently support swaps on top of.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Ledger {
-    Bitcoin,
-    Ethereum,
-}
-
-pub trait GetRole {
-    fn get_role(&self) -> Role;
-}
-
-pub trait AlphaProtocol {
-    fn alpha_protocol(&self) -> Protocol;
-}
-
-pub trait BetaProtocol {
-    fn beta_protocol(&self) -> Protocol;
+impl From<Action> for ActionName {
+    fn from(action: Action) -> Self {
+        match action {
+            Action::Herc20Deploy(_) => ActionName::Deploy,
+            Action::Herc20Fund(..) => ActionName::Fund,
+            Action::Herc20Redeem(..) => ActionName::Redeem,
+            Action::HbitFund(_) => ActionName::Fund,
+            Action::HbitRedeem(..) => ActionName::Redeem,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(tag = "name", rename_all = "snake_case")]
 pub enum SwapEvent {
     HbitFunded { tx: bitcoin::Txid },
-    HbitIncorrectlyFunded { tx: bitcoin::Txid },
     HbitRedeemed { tx: bitcoin::Txid },
-    HbitRefunded { tx: bitcoin::Txid },
     Herc20Deployed { tx: ethereum::Hash },
     Herc20Funded { tx: ethereum::Hash },
-    Herc20IncorrectlyFunded { tx: ethereum::Hash },
     Herc20Redeemed { tx: ethereum::Hash },
-    Herc20Refunded { tx: ethereum::Hash },
-}
-
-impl From<&herc20::State> for Vec<SwapEvent> {
-    fn from(state: &herc20::State) -> Self {
-        match state {
-            herc20::State::None => vec![],
-            herc20::State::Deployed {
-                deploy_transaction, ..
-            } => vec![SwapEvent::Herc20Deployed {
-                tx: *deploy_transaction,
-            }],
-            herc20::State::Funded {
-                deploy_transaction,
-                fund_transaction,
-                ..
-            } => vec![
-                SwapEvent::Herc20Deployed {
-                    tx: *deploy_transaction,
-                },
-                SwapEvent::Herc20Funded {
-                    tx: *fund_transaction,
-                },
-            ],
-            herc20::State::IncorrectlyFunded {
-                deploy_transaction,
-                fund_transaction,
-                ..
-            } => vec![
-                SwapEvent::Herc20Deployed {
-                    tx: *deploy_transaction,
-                },
-                SwapEvent::Herc20IncorrectlyFunded {
-                    tx: *fund_transaction,
-                },
-            ],
-            herc20::State::Redeemed {
-                deploy_transaction,
-                fund_transaction,
-                redeem_transaction,
-                ..
-            } => vec![
-                SwapEvent::Herc20Deployed {
-                    tx: *deploy_transaction,
-                },
-                SwapEvent::Herc20Funded {
-                    tx: *fund_transaction,
-                },
-                SwapEvent::Herc20Redeemed {
-                    tx: *redeem_transaction,
-                },
-            ],
-            herc20::State::Refunded {
-                deploy_transaction,
-                fund_transaction,
-                refund_transaction,
-                ..
-            } => vec![
-                SwapEvent::Herc20Deployed {
-                    tx: *deploy_transaction,
-                },
-                SwapEvent::Herc20Funded {
-                    tx: *fund_transaction,
-                },
-                SwapEvent::Herc20Refunded {
-                    tx: *refund_transaction,
-                },
-            ],
-        }
-    }
-}
-
-impl From<&hbit::State> for Vec<SwapEvent> {
-    fn from(state: &hbit::State) -> Self {
-        match state {
-            hbit::State::None => vec![],
-            hbit::State::Funded { htlc_location, .. } => vec![SwapEvent::HbitFunded {
-                tx: htlc_location.txid,
-            }],
-            hbit::State::IncorrectlyFunded { htlc_location, .. } => vec![
-                SwapEvent::HbitFunded {
-                    tx: htlc_location.txid,
-                },
-                SwapEvent::HbitIncorrectlyFunded {
-                    tx: htlc_location.txid,
-                },
-            ],
-            hbit::State::Redeemed {
-                htlc_location,
-                redeem_transaction,
-                ..
-            } => vec![
-                SwapEvent::HbitFunded {
-                    tx: htlc_location.txid,
-                },
-                SwapEvent::HbitRedeemed {
-                    tx: *redeem_transaction,
-                },
-            ],
-            hbit::State::Refunded {
-                htlc_location,
-                refund_transaction,
-                ..
-            } => vec![
-                SwapEvent::HbitFunded {
-                    tx: htlc_location.txid,
-                },
-                SwapEvent::HbitRefunded {
-                    tx: *refund_transaction,
-                },
-            ],
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum AliceSwap<AC, BC, AF, BF> {
-    Created {
-        alpha_created: AC,
-        beta_created: BC,
-    },
-    Finalized {
-        alpha_finalized: AF,
-        beta_finalized: BF,
-        secret: Secret,
-    },
-}
-
-#[derive(Clone, Debug)]
-pub enum BobSwap<AC, BC, AF, BF> {
-    Created {
-        alpha_created: AC,
-        beta_created: BC,
-    },
-    Finalized {
-        alpha_finalized: AF,
-        beta_finalized: BF,
-        secret_hash: SecretHash,
-    },
-}
-
-impl<AC, BC, AF, BF> GetRole for AliceSwap<AC, BC, AF, BF> {
-    fn get_role(&self) -> Role {
-        Role::Alice
-    }
-}
-
-impl<AC, BC, AF, BF> GetRole for BobSwap<AC, BC, AF, BF> {
-    fn get_role(&self) -> Role {
-        Role::Bob
-    }
 }
 
 #[derive(Debug, Clone, Copy, thiserror::Error)]

@@ -7,8 +7,10 @@ use crate::{
     LocalSwapId, Role, Side,
 };
 use async_trait::async_trait;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
+use tokio::sync::Mutex;
 
+use comit::swap::Action;
 pub use db::*;
 pub use seed::*;
 
@@ -23,8 +25,10 @@ pub trait Load<T>: Send + Sync + 'static {
 pub struct Storage {
     pub db: Sqlite,
     pub seed: RootSeed,
-    pub herc20_states: Arc<herc20::States>,
-    pub hbit_states: Arc<hbit::States>,
+
+    pub next_action: Arc<Mutex<HashMap<LocalSwapId, Action>>>,
+    pub hbit_events: Arc<Mutex<HashMap<LocalSwapId, hbit::Events>>>,
+    pub herc20_events: Arc<Mutex<HashMap<LocalSwapId, herc20::Events>>>,
 }
 
 impl Storage {
@@ -32,8 +36,9 @@ impl Storage {
         Self {
             db,
             seed,
-            herc20_states: Arc::new(herc20::States::default()),
-            hbit_states: Arc::new(hbit::States::default()),
+            next_action: Arc::new(Default::default()),
+            hbit_events: Arc::new(Default::default()),
+            herc20_events: Arc::new(Default::default()),
         }
     }
 
@@ -120,7 +125,7 @@ impl IntoParams for herc20::Params {
     ) -> anyhow::Result<herc20::Params> {
         Ok(herc20::Params {
             asset: asset::Erc20 {
-                quantity: herc20.amount.0.into(),
+                quantity: herc20.amount,
                 token_contract: herc20.token_contract.0,
             },
             redeem_identity: herc20
@@ -138,7 +143,7 @@ impl IntoParams for herc20::Params {
     }
 }
 
-impl IntoParams for hbit::Params {
+impl IntoParams for comit::swap::hbit::Params {
     type ProtocolTable = Hbit;
 
     fn into_params(
@@ -147,35 +152,39 @@ impl IntoParams for hbit::Params {
         seed: RootSeed,
         role: Role,
         secret_hash: comit::SecretHash,
-    ) -> anyhow::Result<hbit::Params> {
-        let (redeem, refund) = match (hbit.side.0, role) {
+    ) -> anyhow::Result<comit::swap::hbit::Params> {
+        let (secret_key, redeem, refund) = match (hbit.side.0, role) {
             (Side::Alpha, Role::Bob) | (Side::Beta, Role::Alice) => {
-                let redeem = identity::Bitcoin::from_secret_key(
-                    &*crate::SECP,
-                    &seed.derive_swap_seed(id).derive_transient_redeem_identity(),
-                );
+                let redeem_secret_key =
+                    seed.derive_swap_seed(id).derive_transient_redeem_identity();
+
+                let redeem = identity::Bitcoin::from_secret_key(&*crate::SECP, &redeem_secret_key);
                 let refund = hbit.transient_identity.ok_or(NoHbitRefundIdentity(id))?.0;
 
-                (redeem, refund)
+                (redeem_secret_key, redeem, refund)
             }
             (Side::Alpha, Role::Alice) | (Side::Beta, Role::Bob) => {
                 let redeem = hbit.transient_identity.ok_or(NoHbitRedeemIdentity(id))?.0;
-                let refund = identity::Bitcoin::from_secret_key(
-                    &*crate::SECP,
-                    &seed.derive_swap_seed(id).derive_transient_refund_identity(),
-                );
 
-                (redeem, refund)
+                let refund_secret_key =
+                    seed.derive_swap_seed(id).derive_transient_refund_identity();
+                let refund = identity::Bitcoin::from_secret_key(&*crate::SECP, &refund_secret_key);
+
+                (refund_secret_key, redeem, refund)
             }
         };
 
-        Ok(hbit::Params {
-            network: hbit.network.0,
-            asset: hbit.amount.0.into(),
-            redeem_identity: redeem,
-            refund_identity: refund,
-            expiry: hbit.expiry.0.into(),
-            secret_hash,
+        Ok(comit::swap::hbit::Params {
+            shared: hbit::Params {
+                network: hbit.network.0,
+                asset: hbit.amount.0.into(),
+                redeem_identity: redeem,
+                refund_identity: refund,
+                expiry: hbit.expiry.0.into(),
+                secret_hash,
+            },
+            transient_sk: secret_key,
+            final_address: hbit.final_identity,
         })
     }
 }

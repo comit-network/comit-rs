@@ -10,7 +10,7 @@ pub use herc20_hbit::{herc20_hbit_alice, herc20_hbit_bob};
 use std::error::Error as StdError;
 use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Action {
     Herc20Deploy(herc20::Params),
     Herc20Fund(herc20::Params, herc20::Deployed),

@@ -18,11 +18,6 @@ use crate::{
 use anyhow::Result;
 use blockchain_contracts::ethereum::herc20::Htlc;
 use conquer_once::Lazy;
-use futures::{
-    future::{self, Either},
-    Stream,
-};
-use genawaiter::sync::{Co, Gen};
 use std::cmp::Ordering;
 use time::OffsetDateTime;
 use tracing_futures::Instrument;
@@ -42,27 +37,6 @@ static TRANSFER_LOG_MSG: Lazy<Hash> = Lazy::new(|| {
         .parse()
         .expect("to be valid hex")
 });
-
-/// Represents the events in the herc20 protocol.
-#[derive(Debug, Clone, PartialEq, strum_macros::Display)]
-pub enum Event {
-    /// The protocol was started.
-    Started,
-
-    /// The HTLC was deployed and is pending funding.
-    Deployed(Deployed),
-
-    /// The HTLC has been funded with ERC20 tokens.
-    Funded(Funded),
-
-    /// The HTLC has been destroyed via the redeem path, token have been sent to
-    /// the redeemer.
-    Redeemed(Redeemed),
-
-    /// The HTLC has been destroyed via the refund path, token has been sent
-    /// back to funder.
-    Refunded(Refunded),
-}
 
 /// Represents the data available at said state.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -92,75 +66,6 @@ pub struct Redeemed {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Refunded {
     pub transaction: ethereum::Hash,
-}
-
-/// Creates a new instance of the herc20 protocol.
-///
-/// Returns a stream of events happening during the execution.
-pub fn new<'a, C>(
-    connector: &'a C,
-    params: Params,
-    start_of_swap: OffsetDateTime,
-) -> impl Stream<Item = Result<Event>> + 'a
-where
-    C: LatestBlock<Block = Block>
-        + BlockByHash<Block = Block, BlockHash = Hash>
-        + ReceiptByHash
-        + TransactionByHash
-        + ConnectedNetwork<Network = ChainId>
-        + GetLogs,
-{
-    Gen::new({
-        |co| async move {
-            if let Err(error) = watch_ledger(connector, params, start_of_swap, &co).await {
-                co.yield_(Err(error)).await;
-            }
-        }
-    })
-}
-
-async fn watch_ledger<C, R>(
-    connector: &C,
-    params: Params,
-    start_of_swap: OffsetDateTime,
-    co: &Co<Result<Event>, R>,
-) -> Result<()>
-where
-    C: LatestBlock<Block = Block>
-        + BlockByHash<Block = Block, BlockHash = Hash>
-        + ReceiptByHash
-        + TransactionByHash
-        + ConnectedNetwork<Network = ChainId>
-        + GetLogs,
-{
-    co.yield_(Ok(Event::Started)).await;
-
-    let deployed = watch_for_deployed(connector, params.clone(), start_of_swap).await?;
-    co.yield_(Ok(Event::Deployed(deployed))).await;
-
-    let funded = watch_for_funded(connector, params.clone(), start_of_swap, deployed).await?;
-    co.yield_(Ok(Event::Funded(funded))).await;
-
-    let redeemed = watch_for_redeemed(connector, start_of_swap, deployed);
-    let refunded = watch_for_refunded(connector, start_of_swap, deployed);
-
-    futures::pin_mut!(redeemed);
-    futures::pin_mut!(refunded);
-
-    match future::try_select(redeemed, refunded).await {
-        Ok(Either::Left((redeemed, _))) => {
-            co.yield_(Ok(Event::Redeemed(redeemed))).await;
-        }
-        Ok(Either::Right((refunded, _))) => {
-            co.yield_(Ok(Event::Refunded(refunded))).await;
-        }
-        Err(either) => {
-            let (error, _other_future) = either.factor_first();
-            return Err(error);
-        }
-    }
-
-    Ok(())
 }
 
 pub async fn watch_for_deployed<C>(

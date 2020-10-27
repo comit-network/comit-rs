@@ -1,7 +1,6 @@
 use crate::{
     bitcoin_fees::BitcoinFees,
     config::{AllowedOrigins, Settings},
-    connectors::Connectors,
     http_api,
     http_api::{dial_addr, info, markets, orders, peers, swaps, tokens},
     network::Swarm,
@@ -17,7 +16,6 @@ pub fn swap_path(id: LocalSwapId) -> String {
 pub fn create(
     swarm: Swarm,
     storage: Storage,
-    connectors: Connectors,
     settings: &Settings,
     bitcoin_fees: BitcoinFees,
     network: comit::Network,
@@ -31,7 +29,6 @@ pub fn create(
         let storage = storage.clone();
         move || storage.clone()
     });
-    let connectors = warp::any().map(move || connectors.clone());
     let bitcoin_fees = warp::any().map(move || bitcoin_fees.clone());
     let preflight_cors_route = warp::options().map(warp::reply);
 
@@ -68,8 +65,6 @@ pub fn create(
         .and(warp::path::param())
         .and(warp::path::end())
         .and(storage_filter.clone())
-        .and(connectors)
-        .and(bitcoin_fees.clone())
         .and_then(swaps::get_swap);
 
     let get_swaps = warp::get()
@@ -78,39 +73,19 @@ pub fn create(
         .and(storage_filter.clone())
         .and_then(swaps::get_swaps);
 
-    let action_fund = swaps
-        .and(warp::get())
-        .and(warp::path::param::<LocalSwapId>())
-        .and(warp::path("fund"))
-        .and(warp::path::end())
-        .and(storage_filter.clone())
-        .and_then(swaps::action_fund);
-
-    let action_deploy = swaps
-        .and(warp::get())
-        .and(warp::path::param::<LocalSwapId>())
-        .and(warp::path("deploy"))
-        .and(warp::path::end())
-        .and(storage_filter.clone())
-        .and_then(swaps::action_deploy);
-
-    let action_redeem = swaps
-        .and(warp::get())
-        .and(warp::path::param::<LocalSwapId>())
-        .and(warp::path("redeem"))
-        .and(warp::path::end())
-        .and(storage_filter.clone())
-        .and(bitcoin_fees.clone())
-        .and_then(swaps::action_redeem);
-
-    let action_refund = swaps
-        .and(warp::get())
-        .and(warp::path::param::<LocalSwapId>())
-        .and(warp::path("refund"))
+    let action = warp::get()
+        .and(swaps)
+        .and(warp::path::param())
+        .and(
+            warp::path("fund")
+                .or(warp::path("deploy"))
+                .or(warp::path("redeem"))
+                .or(warp::path("refund")),
+        )
         .and(warp::path::end())
         .and(storage_filter)
         .and(bitcoin_fees)
-        .and_then(swaps::action_refund);
+        .and_then(swaps::action);
 
     let post_dial_addr = warp::post()
         .and(warp::path!("dial"))
@@ -125,10 +100,7 @@ pub fn create(
         .or(get_info)
         .or(get_swap)
         .or(get_swaps)
-        .or(action_fund)
-        .or(action_deploy)
-        .or(action_redeem)
-        .or(action_refund)
+        .or(action)
         .or(orders::make_btc_dai(
             storage.clone(),
             swarm.clone(),

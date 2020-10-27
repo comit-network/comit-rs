@@ -6,9 +6,9 @@
 use crate::{
     identity,
     storage::db::wrapper_types::{Erc20Amount, Ether, Satoshis},
-    LockProtocol, SecretHash,
+    LockProtocol,
 };
-use comit::{ledger, Position};
+use comit::{ledger, Position, SecretHash};
 use std::{fmt, str::FromStr};
 
 #[test]

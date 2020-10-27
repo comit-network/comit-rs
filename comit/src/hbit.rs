@@ -18,32 +18,9 @@ use bitcoin::{
     Address, Block, BlockHash, Transaction,
 };
 use blockchain_contracts::bitcoin::{hbit::Htlc, witness::UnlockParameters};
-use futures::{
-    future::{self, Either},
-    Stream,
-};
-use genawaiter::sync::{Co, Gen};
 use std::cmp::Ordering;
 use time::OffsetDateTime;
 use tracing_futures::Instrument;
-
-/// Represents the events in the hbit protocol.
-#[derive(Debug, Clone, Copy, PartialEq, strum_macros::Display)]
-pub enum Event {
-    /// The protocol was started.
-    Started,
-
-    /// The HTLC has been funded with bitcoin.
-    Funded(Funded),
-
-    /// The HTLC has been destroyed via the redeem path, bitcoin have been sent
-    /// to the redeemer.
-    Redeemed(Redeemed),
-
-    /// The HTLC has been destroyed via the refund path, bitcoin has been sent
-    /// back to funder.
-    Refunded(Refunded),
-}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Funded {
@@ -66,80 +43,6 @@ pub struct Redeemed {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Refunded {
     pub transaction: bitcoin::Txid,
-}
-
-/// Creates a new instance of the hbit protocol.
-///
-/// Returns a stream of events happening during the execution.
-///
-/// The current implementation is naive in the sense that it does not take into
-/// account situations where it is clear that no more events will happen even
-/// though in theory, there could. For example:
-/// - funded
-/// - refunded
-///
-/// It is highly unlikely for Bob to fund the HTLC now, yet the current
-/// implementation is still waiting for that.
-pub fn new<'a, C>(
-    connector: &'a C,
-    params: Params,
-    start_of_swap: OffsetDateTime,
-) -> impl Stream<Item = Result<Event>> + 'a
-where
-    C: LatestBlock<Block = Block>
-        + BlockByHash<Block = Block, BlockHash = BlockHash>
-        + ConnectedNetwork<Network = ledger::Bitcoin>,
-{
-    Gen::new({
-        |co| async move {
-            if let Err(error) = watch_ledger(connector, params, start_of_swap, &co).await {
-                co.yield_(Err(error)).await;
-            }
-        }
-    })
-}
-
-async fn watch_ledger<C, R>(
-    connector: &C,
-    params: Params,
-    start_of_swap: OffsetDateTime,
-    co: &Co<Result<Event>, R>,
-) -> Result<()>
-where
-    C: LatestBlock<Block = Block>
-        + BlockByHash<Block = Block, BlockHash = BlockHash>
-        + ConnectedNetwork<Network = ledger::Bitcoin>,
-{
-    co.yield_(Ok(Event::Started)).await;
-
-    let funded = watch_for_funded(connector, &params, start_of_swap).await?;
-    co.yield_(Ok(Event::Funded(funded))).await;
-
-    let location = match funded {
-        Funded::Correctly { location, .. } => location,
-        Funded::Incorrectly { location, .. } => location,
-    };
-
-    let redeemed = watch_for_redeemed(connector, &params, location, start_of_swap);
-    let refunded = watch_for_refunded(connector, &params, location, start_of_swap);
-
-    futures::pin_mut!(redeemed);
-    futures::pin_mut!(refunded);
-
-    match future::try_select(redeemed, refunded).await {
-        Ok(Either::Left((redeemed, _))) => {
-            co.yield_(Ok(Event::Redeemed(redeemed))).await;
-        }
-        Ok(Either::Right((refunded, _))) => {
-            co.yield_(Ok(Event::Refunded(refunded))).await;
-        }
-        Err(either) => {
-            let (error, _other_future) = either.factor_first();
-            return Err(error);
-        }
-    }
-
-    Ok(())
 }
 
 pub async fn watch_for_funded<C>(
