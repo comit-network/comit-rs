@@ -29,6 +29,18 @@ jobs:
         id: build
         run: cargo build --release --package cnd
 
+      - name: Setup cross-compilation environment
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          rustup target add armv7-unknown-linux-gnueabihf
+          sudo apt-get update
+          sudo apt-get install gcc-arm-linux-gnueabihf
+          echo -e "[target.armv7-unknown-linux-gnueabihf]\nlinker = \"arm-linux-gnueabihf-gcc\"" >> ~/.cargo/config
+
+      - name: Build cnd ARM binary
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo build --target=armv7-unknown-linux-gnueabihf -p cnd
+
       - name: Extract version from tag name
         id: extract-version
         uses: ./.github/actions/trim-front
@@ -48,6 +60,15 @@ jobs:
           binary: cnd
           version: ${{ steps.extract-version.outputs.trimmed }}
 
+      - name: Create ARM release archive
+        if: matrix.os == 'ubuntu-latest'
+        id: create-arm-archive
+        uses: ./.github/actions/create-release-archive
+        with:
+          binary: cnd
+          version: ${{ steps.extract-version.outputs.trimmed }}
+          machine: armv7
+
       - name: Upload ${{ matrix.os }} release binary
         uses: actions/upload-release-asset@v1
         env:
@@ -56,6 +77,17 @@ jobs:
           upload_url: ${{ github.event.release.upload_url }}
           asset_path: ./${{ steps.create-archive.outputs.archive }}
           asset_name: ${{ steps.create-archive.outputs.archive }}
+          asset_content_type: application/gzip
+
+      - name: Upload ARM ${{ matrix.os }} release binary
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOTTY_GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./${{ steps.create-arm-archive.outputs.archive }}
+          asset_name: ${{ steps.create-arm-archive.outputs.archive }}
           asset_content_type: application/gzip
 
       - name: Login to docker

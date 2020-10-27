@@ -7,6 +7,9 @@ inputs:
   binary:
     description: 'The name of the binary to pack into the archive'
     required: true
+  machine:
+    description: 'The architecture of the binary to pack into the archive, defaults to the current system'
+    required: false
 outputs:
   archive:
     description: 'The name of the archive'
@@ -20,7 +23,12 @@ runs:
         import platform
         os_info = platform.uname()
 
-        archive_name=f'${{ inputs.binary }}_${{ inputs.version }}_{os_info.system}_{os_info.machine}'
+        machine = os_info.machine
+
+        if ${{ inputs.machine }}:
+          machine = ${{ inputs.machine }}
+
+        archive_name=f'${{ inputs.binary }}_${{ inputs.version }}_{os_info.system}_{machine}'
 
         print(f'::set-output name=archive::{archive_name}')
 
