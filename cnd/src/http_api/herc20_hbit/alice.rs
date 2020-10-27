@@ -4,9 +4,9 @@ use crate::{
         hbit, herc20, ActionNotFound, AliceSwap, AlphaAbsoluteExpiry, AlphaLedger, AlphaProtocol,
         BetaAbsoluteExpiry, BetaLedger, BetaProtocol, Events, Ledger, Protocol, SwapEvent,
     },
-    DeployAction, FundAction, InitAction, RedeemAction, RefundAction, Timestamp,
+    DeployAction, FundAction, RedeemAction, RefundAction, Timestamp,
 };
-use comit::{actions::ethereum, asset, Never, SecretHash};
+use comit::{actions::ethereum, asset, SecretHash};
 
 impl DeployAction
     for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::FinalizedAsRedeemer>
@@ -193,15 +193,6 @@ impl BetaProtocol
                 ..
             } => Protocol::hbit(*bitcoin_asset),
         }
-    }
-}
-
-impl InitAction
-    for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::FinalizedAsRedeemer>
-{
-    type Output = Never;
-    fn init_action(&self) -> anyhow::Result<Self::Output> {
-        anyhow::bail!(ActionNotFound)
     }
 }
 

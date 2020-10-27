@@ -8,11 +8,7 @@ use libp2p::core::Multiaddr;
 use log::LevelFilter;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use std::{
-    ffi::OsStr,
-    net::SocketAddr,
-    path::{Path, PathBuf},
-};
+use std::{ffi::OsStr, net::SocketAddr, path::Path};
 
 /// This struct aims to represent the configuration file as it appears on disk.
 ///
@@ -28,7 +24,6 @@ pub struct File {
     pub logging: Option<Logging>,
     pub bitcoin: Option<Bitcoin>,
     pub ethereum: Option<Ethereum>,
-    pub lightning: Option<Lightning>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -90,20 +85,6 @@ pub struct Tokens {
     pub dai: Option<ethereum::Address>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct Lightning {
-    pub network: ledger::Bitcoin,
-    pub lnd: Option<Lnd>,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct Lnd {
-    pub rest_api_url: reqwest::Url,
-    pub dir: PathBuf,
-}
-
 impl File {
     pub fn default() -> Self {
         File {
@@ -113,7 +94,6 @@ impl File {
             logging: Option::None,
             bitcoin: Option::None,
             ethereum: Option::None,
-            lightning: Option::None,
         }
     }
 
@@ -212,7 +192,6 @@ impl From<Settings> for File {
             logging: settings::Logging { level },
             bitcoin,
             ethereum,
-            lightning,
         } = settings;
 
         File {
@@ -236,7 +215,6 @@ impl From<Settings> for File {
             }),
             bitcoin: Some(bitcoin.into()),
             ethereum: Some(ethereum.into()),
-            lightning: Some(lightning.into()),
         }
     }
 }
@@ -404,13 +382,6 @@ node_url = "http://localhost:8545/"
 
 [ethereum.tokens]
 dai = "0x6b175474e89094c44da98b954eedeac495271d0f"
-
-[lightning]
-network = "regtest"
-
-[lightning.lnd]
-rest_api_url = "https://localhost:8080"
-dir = "/foo/bar"
 "#;
         let file = File {
             network: Some(Network {
@@ -453,13 +424,6 @@ dir = "/foo/bar"
                             .parse()
                             .unwrap(),
                     ),
-                }),
-            }),
-            lightning: Some(Lightning {
-                network: ledger::Bitcoin::Regtest,
-                lnd: Some(Lnd {
-                    rest_api_url: "https://localhost:8080".parse().unwrap(),
-                    dir: PathBuf::from("/foo/bar"),
                 }),
             }),
         };

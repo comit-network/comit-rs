@@ -1,10 +1,7 @@
 use crate::{cli::Options, config, config::Settings};
 use anyhow::Context;
-use directories_next::{ProjectDirs, UserDirs};
-use std::{
-    env,
-    path::{Path, PathBuf},
-};
+use directories_next::ProjectDirs;
+use std::path::{Path, PathBuf};
 
 #[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
 pub fn read_config(options: &Options) -> anyhow::Result<config::File> {
@@ -58,25 +55,4 @@ fn config_dir() -> Option<PathBuf> {
 // OSX: /Users/<user>/Library/Application Support/comit/
 pub fn data_dir() -> Option<PathBuf> {
     ProjectDirs::from("", "", "comit").map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
-}
-
-/// Returns `/Users/[username]/Library/Application Support/Lnd/` for macos.
-/// Returns `%LOCALAPPDATA%/Lnd for windows.
-/// Returns `~/.lnd` if $HOME exists for linux.
-pub fn lnd_default_dir() -> Option<PathBuf> {
-    if cfg!(target_os = "macos") || cfg!(target_os = "windows") {
-        ProjectDirs::from("", "", "Lnd").map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
-    } else if cfg!(target_os = "linux") {
-        UserDirs::new().map(|d| d.home_dir().to_path_buf().join(".lnd"))
-    } else {
-        None
-    }
-}
-
-/// Returns the directory used by lnd.
-pub fn lnd_dir() -> Option<PathBuf> {
-    if let Ok(dir) = env::var("LND_DIR") {
-        return Some(PathBuf::from(dir));
-    }
-    lnd_default_dir()
 }

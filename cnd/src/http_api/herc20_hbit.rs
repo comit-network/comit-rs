@@ -33,7 +33,6 @@ pub async fn post_swap(
     let identities = Identities {
         ethereum_identity: Some(body.alpha.identity),
         bitcoin_identity: Some(transient_key),
-        lightning_identity: None,
     };
     let digest = swap_digest::herc20_hbit(body.clone());
     let (peer, address_hint) = body.peer.into_peer_with_address_hint();

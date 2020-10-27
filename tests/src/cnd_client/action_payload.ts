@@ -28,33 +28,6 @@ export interface EthereumCallContractPayload {
     chain_id: string;
 }
 
-export interface LndSendPaymentPayload {
-    self_public_key: string;
-    to_public_key: string;
-    amount: string;
-    secret_hash: string;
-    final_cltv_delta: number;
-    chain: string;
-    network: string;
-}
-
-export interface LndAddHoldInvoicePayload {
-    self_public_key: string;
-    amount: string;
-    secret_hash: string;
-    expiry: number;
-    cltv_expiry: number;
-    chain: string;
-    network: string;
-}
-
-export interface LndSettleInvoicePayload {
-    self_public_key: string;
-    secret: string;
-    chain: string;
-    network: string;
-}
-
 export type LedgerAction =
     | {
           type: "bitcoin-send-amount-to-address";
@@ -71,18 +44,6 @@ export type LedgerAction =
     | {
           type: "ethereum-call-contract";
           payload: EthereumCallContractPayload;
-      }
-    | {
-          type: "lnd-send-payment";
-          payload: LndSendPaymentPayload;
-      }
-    | {
-          type: "lnd-add-hold-invoice";
-          payload: LndAddHoldInvoicePayload;
-      }
-    | {
-          type: "lnd-settle-invoice";
-          payload: LndSettleInvoicePayload;
       }
     | {
           type: string;

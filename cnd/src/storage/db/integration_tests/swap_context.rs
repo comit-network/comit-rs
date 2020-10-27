@@ -12,8 +12,7 @@ proptest! {
     #[test]
     fn given_several_swaps_can_correctly_load_swap_context(
         first_swap in db::proptest::created_swap(hbit::created_swap(), herc20::created_swap()),
-        second_swap in db::proptest::created_swap(halbit::created_swap(), herc20::created_swap()),
-        third_swap in db::proptest::created_swap(herc20::created_swap(), halbit::created_swap()),
+        second_swap in db::proptest::created_swap(herc20::created_swap(), hbit::created_swap()),
     ) {
         // GIVEN a database and three swaps
         let storage = Storage::test();
@@ -22,17 +21,13 @@ proptest! {
         // WHEN we save these swaps to the database and load their protocol combinations
         let first_swap_context = runtime.block_on(save_and_load(&storage, &first_swap));
         let second_swap_context = runtime.block_on(save_and_load(&storage, &second_swap));
-        let third_swap_context = runtime.block_on(save_and_load(&storage, &third_swap));
 
         // THEN the swap context matches our expectations
         assert_eq!(first_swap_context.alpha, LockProtocol::Hbit);
         assert_eq!(first_swap_context.beta, LockProtocol::Herc20);
 
-        assert_eq!(second_swap_context.alpha, LockProtocol::Halbit);
-        assert_eq!(second_swap_context.beta, LockProtocol::Herc20);
-
-        assert_eq!(third_swap_context.alpha, LockProtocol::Herc20);
-        assert_eq!(third_swap_context.beta, LockProtocol::Halbit);
+        assert_eq!(second_swap_context.alpha, LockProtocol::Herc20);
+        assert_eq!(second_swap_context.beta, LockProtocol::Hbit);
     }
 }
 

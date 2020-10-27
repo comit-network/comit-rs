@@ -1,16 +1,9 @@
 export function defaultExpiries() {
-    const {
-        alphaAbsoluteExpiry,
-        betaAbsoluteExpiry,
-        alphaCltvExpiry,
-        betaCltvExpiry,
-    } = nowExpiries();
+    const { alphaAbsoluteExpiry, betaAbsoluteExpiry } = nowExpiries();
 
     return {
         alphaAbsoluteExpiry: alphaAbsoluteExpiry + 240,
         betaAbsoluteExpiry: betaAbsoluteExpiry + 120,
-        alphaCltvExpiry,
-        betaCltvExpiry,
     };
 }
 
@@ -21,7 +14,5 @@ export function nowExpiries() {
     return {
         alphaAbsoluteExpiry,
         betaAbsoluteExpiry,
-        alphaCltvExpiry: 350,
-        betaCltvExpiry: 350,
     };
 }

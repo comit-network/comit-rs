@@ -23,7 +23,6 @@ pub enum BehaviourOutEvent {
 pub struct Comit {
     secret_hash: oneshot_behaviour::Behaviour<secret_hash::Message>,
     ethereum_identity: oneshot_behaviour::Behaviour<ethereum_identity::Message>,
-    lightning_identity: oneshot_behaviour::Behaviour<lightning_identity::Message>,
     bitcoin_identity: oneshot_behaviour::Behaviour<bitcoin_identity::Message>,
     finalize: oneshot_behaviour::Behaviour<finalize::Message>,
 
@@ -40,7 +39,6 @@ pub struct Comit {
 #[derive(Debug, Default)]
 struct CommunicationState {
     ethereum_identity_sent: bool,
-    lightning_identity_sent: bool,
     bitcoin_identity_sent: bool,
     received_finalized: bool,
     sent_finalized: bool,
@@ -52,7 +50,6 @@ impl Default for Comit {
         Comit {
             secret_hash: Default::default(),
             ethereum_identity: Default::default(),
-            lightning_identity: Default::default(),
             bitcoin_identity: Default::default(),
             finalize: Default::default(),
             events: Default::default(),
@@ -77,13 +74,6 @@ impl Comit {
             self.ethereum_identity.send(
                 peer_id.clone(),
                 ethereum_identity::Message::new(shared_swap_id, ethereum_identity),
-            );
-        }
-
-        if let Some(lightning_identity) = data.lightning_identity {
-            self.lightning_identity.send(
-                peer_id.clone(),
-                lightning_identity::Message::new(shared_swap_id, lightning_identity),
             );
         }
 
@@ -149,13 +139,6 @@ impl Comit {
                 && (remote_data.ethereum_identity.is_none() || !state.ethereum_identity_sent)
             {
                 // Swap not yet finalized, Ethereum identities not synced.
-                return;
-            }
-
-            if data.lightning_identity.is_some()
-                && (remote_data.lightning_identity.is_none() || !state.lightning_identity_sent)
-            {
-                // Swap not yet finalized, Lightning identities not synced.
                 return;
             }
 
@@ -262,46 +245,6 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<ethereum_identity:
     }
 }
 
-impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<lightning_identity::Message>>
-    for Comit
-{
-    fn inject_event(&mut self, event: oneshot_behaviour::OutEvent<lightning_identity::Message>) {
-        let (peer, swap_id) = match event {
-            oneshot_behaviour::OutEvent::Received {
-                peer,
-                message: lightning_identity::Message { swap_id, pubkey },
-            } => {
-                match bitcoin::PublicKey::from_slice(&pubkey) {
-                    Ok(identity) => {
-                        self.remote_data_insert::<identity::Lightning>(swap_id, identity.into())
-                    }
-                    Err(_) => {
-                        tracing::warn!("received an invalid lightning identity from counterparty");
-                        return;
-                    }
-                };
-
-                (peer, swap_id)
-            }
-            oneshot_behaviour::OutEvent::Sent {
-                peer,
-                message: lightning_identity::Message { swap_id, .. },
-            } => {
-                let state = self
-                    .communication_states
-                    .get_mut(&swap_id)
-                    .expect("Swap should be known as we sent a message about it");
-
-                state.lightning_identity_sent = true;
-
-                (peer, swap_id)
-            }
-        };
-
-        self.finalize(peer, swap_id)
-    }
-}
-
 impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<bitcoin_identity::Message>>
     for Comit
 {
@@ -399,7 +342,6 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 pub struct LocalData {
     pub secret_hash: Option<SecretHash>, // Known by Alice.
     pub ethereum_identity: Option<identity::Ethereum>,
-    pub lightning_identity: Option<identity::Lightning>,
     pub bitcoin_identity: Option<identity::Bitcoin>,
 }
 
@@ -408,7 +350,6 @@ impl LocalData {
         LocalData {
             secret_hash: Some(secret_hash),
             ethereum_identity: identities.ethereum_identity,
-            lightning_identity: identities.lightning_identity,
             bitcoin_identity: identities.bitcoin_identity,
         }
     }
@@ -417,7 +358,6 @@ impl LocalData {
         LocalData {
             secret_hash: None,
             ethereum_identity: identities.ethereum_identity,
-            lightning_identity: identities.lightning_identity,
             bitcoin_identity: identities.bitcoin_identity,
         }
     }
@@ -428,7 +368,6 @@ impl LocalData {
 pub struct RemoteData {
     pub secret_hash: Option<SecretHash>, // Received by Bob from Alice.
     pub ethereum_identity: Option<identity::Ethereum>,
-    pub lightning_identity: Option<identity::Lightning>,
     pub bitcoin_identity: Option<identity::Bitcoin>,
 }
 
@@ -442,12 +381,6 @@ impl Set<identity::Ethereum> for RemoteData {
     }
 }
 
-impl Set<identity::Lightning> for RemoteData {
-    fn set(&mut self, value: identity::Lightning) {
-        self.lightning_identity = Some(value);
-    }
-}
-
 impl Set<identity::Bitcoin> for RemoteData {
     fn set(&mut self, value: identity::Bitcoin) {
         self.bitcoin_identity = Some(value);
@@ -457,73 +390,5 @@ impl Set<identity::Bitcoin> for RemoteData {
 impl Set<SecretHash> for RemoteData {
     fn set(&mut self, value: SecretHash) {
         self.secret_hash = Some(value);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::network::test::{await_events_or_timeout, connect, new_swarm};
-    use std::str::FromStr;
-
-    #[tokio::test]
-    async fn finalize_lightning_ethereum_swap_success() {
-        // arrange
-        let (mut alice_swarm, _, alice_peer_id) = new_swarm(|_, _| Comit::default());
-        let (mut bob_swarm, _, bob_peer_id) = new_swarm(|_, _| Comit::default());
-        connect(&mut alice_swarm, &mut bob_swarm).await;
-
-        let secret_hash = SecretHash::from_str(
-            "bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf\
-             bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf",
-        )
-        .unwrap();
-        let alice_local_data = LocalData {
-            secret_hash: Some(secret_hash),
-            ethereum_identity: Some(identity::Ethereum::random()),
-            lightning_identity: Some(identity::Lightning::random()),
-            bitcoin_identity: None,
-        };
-        let bob_local_data = LocalData {
-            secret_hash: None,
-            ethereum_identity: Some(identity::Ethereum::random()),
-            lightning_identity: Some(identity::Lightning::random()),
-            bitcoin_identity: None,
-        };
-        let shared_swap_id = SharedSwapId::default();
-
-        // act
-        alice_swarm.communicate(bob_peer_id, shared_swap_id, alice_local_data);
-        bob_swarm.communicate(alice_peer_id, shared_swap_id, bob_local_data);
-        let (alice_event, bob_event) =
-            await_events_or_timeout(alice_swarm.next(), bob_swarm.next()).await;
-
-        // assert
-        let (what_alice_learned_from_bob, what_bob_learned_from_alice) =
-            match (alice_event, bob_event) {
-                (
-                    BehaviourOutEvent::SwapFinalized {
-                        remote_data: alice_remote_data,
-                        ..
-                    },
-                    BehaviourOutEvent::SwapFinalized {
-                        remote_data: bob_remote_data,
-                        ..
-                    },
-                ) => (alice_remote_data, bob_remote_data),
-            };
-        assert_eq!(what_alice_learned_from_bob, RemoteData {
-            // This is not exactly 'learned' but it is in the behaviour out event for both roles.
-            secret_hash: alice_local_data.secret_hash,
-            ethereum_identity: bob_local_data.ethereum_identity,
-            lightning_identity: bob_local_data.lightning_identity,
-            bitcoin_identity: None,
-        });
-        assert_eq!(what_bob_learned_from_alice, RemoteData {
-            secret_hash: alice_local_data.secret_hash,
-            ethereum_identity: alice_local_data.ethereum_identity,
-            lightning_identity: alice_local_data.lightning_identity,
-            bitcoin_identity: None,
-        });
     }
 }

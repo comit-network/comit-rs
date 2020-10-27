@@ -14,6 +14,7 @@ pub fn role() -> impl Strategy<Value = Role> {
     prop_oneof![Just(Role::Alice), Just(Role::Bob)]
 }
 
+#[allow(dead_code)]
 pub fn side() -> impl Strategy<Value = Side> {
     prop_oneof![Just(Side::Alpha), Just(Side::Beta)]
 }
@@ -80,15 +81,6 @@ pub mod identity {
                     .expect("any 32 bytes are a valid secret key")
             })
             .prop_map(|sk| identity::Bitcoin::from_secret_key(&&crate::SECP, &sk))
-    }
-
-    pub fn lightning() -> impl Strategy<Value = identity::Lightning> {
-        prop::array::uniform32(1u8..)
-            .prop_map(|bytes| {
-                ::bitcoin::secp256k1::SecretKey::from_slice(&bytes)
-                    .expect("any 32 bytes are a valid secret key")
-            })
-            .prop_map(|sk| identity::Lightning::from_secret_key(&&crate::SECP, &sk))
     }
 }
 
@@ -161,27 +153,6 @@ pub mod herc20 {
                 identity,
                 chain_id,
                 absolute_expiry
-            }
-        }
-    }
-}
-
-pub mod halbit {
-    use super::*;
-    use crate::halbit;
-
-    prop_compose! {
-        pub fn created_swap()(
-            asset in asset::bitcoin(),
-            identity in identity::lightning(),
-            network in ledger::bitcoin(),
-            cltv_expiry in any::<u32>()
-        ) -> halbit::CreatedSwap {
-            halbit::CreatedSwap {
-                asset,
-                identity,
-                network,
-                cltv_expiry
             }
         }
     }

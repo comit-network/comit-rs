@@ -1,11 +1,8 @@
 mod action;
 mod dial_addr;
-pub mod halbit;
-mod halbit_herc20;
 pub mod hbit;
 mod hbit_herc20;
 pub mod herc20;
-mod herc20_halbit;
 mod herc20_hbit;
 mod info;
 mod markets;
@@ -17,9 +14,7 @@ mod serde_peer_id;
 mod swaps;
 mod tokens;
 
-pub use self::{
-    halbit::Halbit, hbit::Hbit, herc20::Herc20, problem::*, route_factory::create as create_routes,
-};
+pub use self::{hbit::Hbit, herc20::Herc20, problem::*, route_factory::create as create_routes};
 
 pub const PATH: &str = "swaps";
 
@@ -192,18 +187,11 @@ fn cancel_action(order: &OrderProperties) -> Option<siren::Action> {
 pub enum Protocol {
     Hbit { asset: Amount },
     Herc20 { asset: Amount },
-    Halbit { asset: Amount },
 }
 
 impl Protocol {
     pub fn hbit(btc: asset::Bitcoin) -> Self {
         Protocol::Hbit {
-            asset: Amount::btc(btc),
-        }
-    }
-
-    pub fn halbit(btc: asset::Bitcoin) -> Self {
-        Protocol::Halbit {
             asset: Amount::btc(btc),
         }
     }
@@ -218,7 +206,6 @@ impl Protocol {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum ActionName {
-    Init,
     Deploy,
     Fund,
     Redeem,
@@ -280,14 +267,6 @@ pub enum SwapEvent {
     Herc20IncorrectlyFunded { tx: ethereum::Hash },
     Herc20Redeemed { tx: ethereum::Hash },
     Herc20Refunded { tx: ethereum::Hash },
-
-    // TODO: Seriously reconsider this naming + the whole halbit protocol design in general. The
-    // event-based design here should allow us to name this whatever and hence make it more
-    // descriptive.
-    HalbitFunded,
-    HalbitIncorrectlyFunded,
-    HalbitRedeemed,
-    HalbitRefunded,
 }
 
 impl From<&herc20::State> for Vec<SwapEvent> {
@@ -402,18 +381,6 @@ impl From<&hbit::State> for Vec<SwapEvent> {
                     tx: refund_transaction.txid(),
                 },
             ],
-        }
-    }
-}
-
-impl From<&halbit::State> for Vec<SwapEvent> {
-    fn from(state: &halbit::State) -> Self {
-        match state {
-            halbit::State::None => vec![],
-            halbit::State::Opened(_) => vec![],
-            halbit::State::Accepted(_) => vec![SwapEvent::HalbitFunded],
-            halbit::State::Settled(_) => vec![SwapEvent::HalbitFunded, SwapEvent::HalbitRedeemed],
-            halbit::State::Cancelled(_) => vec![SwapEvent::HalbitFunded, SwapEvent::HalbitRefunded],
         }
     }
 }
@@ -580,25 +547,6 @@ mod tests {
             result,
             r#"{
   "protocol": "hbit",
-  "asset": {
-    "currency": "BTC",
-    "value": "10000",
-    "decimals": 8
-  }
-}"#
-        )
-    }
-
-    #[test]
-    fn halbit_protocol_serializes_correctly() {
-        let protocol = Protocol::halbit(asset::Bitcoin::from_sat(10_000));
-
-        let result = serde_json::to_string_pretty(&protocol).unwrap();
-
-        assert_eq!(
-            result,
-            r#"{
-  "protocol": "halbit",
   "asset": {
     "currency": "BTC",
     "value": "10000",

@@ -11,8 +11,6 @@ import {
 import {
     newBitcoinStubWallet,
     newEthereumStubWallet,
-    newLightningStubChannel,
-    newLndStubClient,
     Wallets,
 } from "./wallets";
 import {
@@ -184,7 +182,6 @@ async function newCndActor(role: Role, startCnd: boolean) {
     logger.info("Creating new cnd actor in role", role);
 
     const cndConfig = await newCndConfig(
-        role,
         global.environment,
         global.cndConfigOverrides
     );
@@ -210,29 +207,13 @@ async function newCndActor(role: Role, startCnd: boolean) {
     const wallets = new Wallets({
         bitcoin: await bitcoinWallet,
         ethereum: await ethereumWallet,
-        lightning: newLightningStubChannel(), // Lightning channels are initialized lazily
     });
 
     if (cndStarting !== undefined) {
         await cndStarting;
     }
 
-    const lndClient = (() => {
-        switch (role) {
-            case "Alice":
-                return global.lndClients.alice;
-            case "Bob":
-                return global.lndClients.bob;
-        }
-    })();
-
-    return new CndActor(
-        logger,
-        cndInstance,
-        wallets,
-        role,
-        lndClient || newLndStubClient()
-    );
+    return new CndActor(logger, cndInstance, wallets, role);
 }
 
 async function newNectarActor() {

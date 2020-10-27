@@ -33,7 +33,6 @@ mod config;
 mod connectors;
 mod file_lock;
 mod fs;
-mod halbit;
 mod hbit;
 mod herc20;
 mod http_api;
@@ -63,9 +62,6 @@ mod ethereum {
 mod bitcoin {
     pub use comit::bitcoin::*;
 }
-mod lightning {
-    pub use comit::lightning::PublicKey;
-}
 mod btsieve {
     pub use comit::btsieve::*;
 }
@@ -90,10 +86,7 @@ use crate::{
 };
 use ::bitcoin::secp256k1::{All, Secp256k1};
 use anyhow::{Context, Result};
-use comit::{
-    ledger, lnd::LndConnectorParams, LockProtocol, Never, RelativeTime, Role, Secret, SecretHash,
-    Side, Timestamp,
-};
+use comit::{ledger, LockProtocol, Never, Role, Secret, SecretHash, Side, Timestamp};
 use conquer_once::Lazy;
 use futures::future;
 use rand::rngs::OsRng;
@@ -192,21 +185,7 @@ async fn main() -> Result<()> {
         )
     };
 
-    let lnd_connector_params = LndConnectorParams::new(
-        settings.lightning.lnd.rest_api_url.clone(),
-        100,
-        settings.lightning.lnd.cert_path.clone(),
-        settings.lightning.lnd.readonly_macaroon_path.clone(),
-    )
-    .map_err(|err| {
-        tracing::warn!(
-            "Could not read initialise lnd configuration, halbit will not be available: {:?}",
-            err
-        );
-    })
-    .ok();
-
-    let connectors = Connectors::new(bitcoin_connector, ethereum_connector, lnd_connector_params);
+    let connectors = Connectors::new(bitcoin_connector, ethereum_connector);
 
     let swarm = Swarm::new(
         &settings,

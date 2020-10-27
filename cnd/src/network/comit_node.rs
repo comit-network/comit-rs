@@ -9,7 +9,6 @@ use crate::{
     },
 };
 use comit::{
-    lightning,
     network::{
         comit::{Comit, LocalData, RemoteData},
         orderbook,
@@ -93,13 +92,6 @@ impl ComitNode {
         digest: SwapDigest,
         identities: Identities,
     ) -> anyhow::Result<()> {
-        // At this stage we do not know if the arguments passed to us make up a
-        // valid swap, we just trust the controller to pass in something
-        // valid. Do _some_ form of validation here so that we can early return
-        // errors and they do not get lost in the asynchronous call chain that
-        // kicks off here.
-        self.assert_have_lnd_if_needed(identities.lightning_identity)?;
-
         let local_data = match role {
             Role::Alice => {
                 self.announce.announce_swap(digest, peer_id, local_swap_id);
@@ -120,16 +112,6 @@ impl ComitNode {
 
         self.local_data.insert(local_swap_id, local_data);
 
-        Ok(())
-    }
-
-    fn assert_have_lnd_if_needed(
-        &self,
-        identity: Option<lightning::PublicKey>,
-    ) -> anyhow::Result<()> {
-        if identity.is_some() {
-            return self.connectors.supports_halbit();
-        }
         Ok(())
     }
 }
@@ -387,102 +369,6 @@ async fn save_swap_remote_data(
     data: RemoteData,
 ) -> anyhow::Result<()> {
     match (&swap, data) {
-        (
-            SwapContext {
-                alpha: LockProtocol::Herc20,
-                beta: LockProtocol::Halbit,
-                role: Role::Alice,
-                ..
-            },
-            RemoteData {
-                ethereum_identity: Some(ethereum_identity),
-                lightning_identity: Some(lightning_identity),
-                ..
-            },
-        ) => {
-            storage
-                .save(ForSwap {
-                    local_swap_id: swap.id,
-                    data: WhatAliceLearnedFromBob {
-                        alpha_redeem_identity: ethereum_identity,
-                        beta_refund_identity: lightning_identity,
-                    },
-                })
-                .await?;
-        }
-        (
-            SwapContext {
-                alpha: LockProtocol::Herc20,
-                beta: LockProtocol::Halbit,
-                role: Role::Bob,
-                ..
-            },
-            RemoteData {
-                ethereum_identity: Some(ethereum_identity),
-                lightning_identity: Some(lightning_identity),
-                secret_hash: Some(secret_hash),
-                ..
-            },
-        ) => {
-            storage
-                .save(ForSwap {
-                    local_swap_id: swap.id,
-                    data: WhatBobLearnedFromAlice {
-                        secret_hash,
-                        alpha_refund_identity: ethereum_identity,
-                        beta_redeem_identity: lightning_identity,
-                    },
-                })
-                .await?;
-        }
-        (
-            SwapContext {
-                alpha: LockProtocol::Halbit,
-                beta: LockProtocol::Herc20,
-                role: Role::Alice,
-                ..
-            },
-            RemoteData {
-                ethereum_identity: Some(ethereum_identity),
-                lightning_identity: Some(lightning_identity),
-                ..
-            },
-        ) => {
-            storage
-                .save(ForSwap {
-                    local_swap_id: swap.id,
-                    data: WhatAliceLearnedFromBob {
-                        alpha_redeem_identity: lightning_identity,
-                        beta_refund_identity: ethereum_identity,
-                    },
-                })
-                .await?;
-        }
-        (
-            SwapContext {
-                alpha: LockProtocol::Halbit,
-                beta: LockProtocol::Herc20,
-                role: Role::Bob,
-                ..
-            },
-            RemoteData {
-                ethereum_identity: Some(ethereum_identity),
-                lightning_identity: Some(lightning_identity),
-                secret_hash: Some(secret_hash),
-                ..
-            },
-        ) => {
-            storage
-                .save(ForSwap {
-                    local_swap_id: swap.id,
-                    data: WhatBobLearnedFromAlice {
-                        secret_hash,
-                        alpha_refund_identity: lightning_identity,
-                        beta_redeem_identity: ethereum_identity,
-                    },
-                })
-                .await?;
-        }
         (
             SwapContext {
                 alpha: LockProtocol::Herc20,

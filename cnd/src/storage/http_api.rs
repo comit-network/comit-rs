@@ -1,11 +1,11 @@
 //! Implement traits to Load/Save types defined in the http_api module.
 use crate::{
     asset,
-    http_api::{halbit, hbit, herc20, AliceSwap, BobSwap},
+    http_api::{hbit, herc20, AliceSwap, BobSwap},
     state::Get,
     storage::{
-        Halbit, Hbit, Herc20, Load, LoadTables, NoRedeemIdentity, NoRefundIdentity, NoSecretHash,
-        RootSeed, Tables,
+        Hbit, Herc20, Load, LoadTables, NoRedeemIdentity, NoRefundIdentity, NoSecretHash, RootSeed,
+        Tables,
     },
     LocalSwapId, Storage,
 };
@@ -40,78 +40,6 @@ trait IntoFinalizedAsFunder {
         seed: RootSeed,
         state: hbit::State,
     ) -> anyhow::Result<hbit::FinalizedAsFunder>;
-}
-
-#[async_trait]
-impl Load<AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized>>
-    for Storage
-{
-    async fn load(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> anyhow::Result<AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized>>
-    {
-        let alpha_state = self.herc20_states.get(&swap_id).await?;
-        let beta_state = self.halbit_states.get(&swap_id).await?;
-
-        let tab: Tables<Herc20, Halbit> = self.db.load_tables(swap_id).await?;
-
-        let swap = match (alpha_state, beta_state) {
-            (Some(alpha_state), Some(beta_state)) => {
-                let alpha_finalized = tab.alpha.into_finalized(alpha_state)?;
-                let beta_finalized = tab.beta.into_finalized(beta_state)?;
-                let secret = self.seed.derive_swap_seed(swap_id).derive_secret();
-
-                AliceSwap::Finalized {
-                    alpha_finalized,
-                    beta_finalized,
-                    secret,
-                }
-            }
-            _ => AliceSwap::Created {
-                alpha_created: tab.alpha.into(),
-                beta_created: tab.beta.into(),
-            },
-        };
-
-        Ok(swap)
-    }
-}
-
-#[async_trait]
-impl Load<AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized>>
-    for Storage
-{
-    async fn load(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> anyhow::Result<AliceSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized>>
-    {
-        let alpha_state = self.halbit_states.get(&swap_id).await?;
-        let beta_state = self.herc20_states.get(&swap_id).await?;
-
-        let tab: Tables<Halbit, Herc20> = self.db.load_tables(swap_id).await?;
-
-        let swap = match (alpha_state, beta_state) {
-            (Some(alpha_state), Some(beta_state)) => {
-                let alpha_finalized = tab.alpha.into_finalized(alpha_state)?;
-                let beta_finalized = tab.beta.into_finalized(beta_state)?;
-                let secret = self.seed.derive_swap_seed(swap_id).derive_secret();
-
-                AliceSwap::Finalized {
-                    alpha_finalized,
-                    beta_finalized,
-                    secret,
-                }
-            }
-            _ => AliceSwap::Created {
-                alpha_created: tab.alpha.into(),
-                beta_created: tab.beta.into(),
-            },
-        };
-
-        Ok(swap)
-    }
 }
 
 #[async_trait]
@@ -185,76 +113,6 @@ impl Load<AliceSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsFunder, herc2
                 }
             }
             _ => AliceSwap::Created {
-                alpha_created: tab.alpha.into(),
-                beta_created: tab.beta.into(),
-            },
-        };
-
-        Ok(swap)
-    }
-}
-
-#[async_trait]
-impl Load<BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized>> for Storage {
-    async fn load(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> anyhow::Result<BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized>>
-    {
-        let alpha_state = self.herc20_states.get(&swap_id).await?;
-        let beta_state = self.halbit_states.get(&swap_id).await?;
-
-        let tab: Tables<Herc20, Halbit> = self.db.load_tables(swap_id).await?;
-
-        let swap = match (alpha_state, beta_state) {
-            (Some(alpha_state), Some(beta_state)) => {
-                let alpha_finalized = tab.alpha.into_finalized(alpha_state)?;
-                let beta_finalized = tab.beta.into_finalized(beta_state)?;
-
-                let secret_hash = tab.secret_hash.ok_or(NoSecretHash(swap_id))?.secret_hash.0;
-
-                BobSwap::Finalized {
-                    alpha_finalized,
-                    beta_finalized,
-                    secret_hash,
-                }
-            }
-            _ => BobSwap::Created {
-                alpha_created: tab.alpha.into(),
-                beta_created: tab.beta.into(),
-            },
-        };
-
-        Ok(swap)
-    }
-}
-
-#[async_trait]
-impl Load<BobSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized>> for Storage {
-    async fn load(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> anyhow::Result<BobSwap<asset::Bitcoin, asset::Erc20, halbit::Finalized, herc20::Finalized>>
-    {
-        let alpha_state = self.halbit_states.get(&swap_id).await?;
-        let beta_state = self.herc20_states.get(&swap_id).await?;
-
-        let tab: Tables<Halbit, Herc20> = self.db.load_tables(swap_id).await?;
-
-        let swap = match (alpha_state, beta_state) {
-            (Some(alpha_state), Some(beta_state)) => {
-                let alpha_finalized = tab.alpha.into_finalized(alpha_state)?;
-                let beta_finalized = tab.beta.into_finalized(beta_state)?;
-
-                let secret_hash = tab.secret_hash.ok_or(NoSecretHash(swap_id))?.secret_hash.0;
-
-                BobSwap::Finalized {
-                    alpha_finalized,
-                    beta_finalized,
-                    secret_hash,
-                }
-            }
-            _ => BobSwap::Created {
                 alpha_created: tab.alpha.into(),
                 beta_created: tab.beta.into(),
             },
@@ -360,22 +218,6 @@ impl IntoFinalized for Herc20 {
             refund_identity: self.refund_identity.ok_or(NoRefundIdentity)?.0,
             redeem_identity: self.redeem_identity.ok_or(NoRedeemIdentity)?.0,
             expiry: self.expiry.0.into(),
-            state,
-        })
-    }
-}
-
-impl IntoFinalized for Halbit {
-    type Finalized = halbit::Finalized;
-    type State = halbit::State;
-
-    fn into_finalized(self, state: Self::State) -> anyhow::Result<Self::Finalized> {
-        Ok(halbit::Finalized {
-            asset: self.amount.0.into(),
-            network: self.network.0,
-            refund_identity: self.refund_identity.ok_or(NoRefundIdentity)?.0,
-            redeem_identity: self.redeem_identity.ok_or(NoRedeemIdentity)?.0,
-            cltv_expiry: self.cltv_expiry.0.into(),
             state,
         })
     }

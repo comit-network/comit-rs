@@ -3,7 +3,7 @@ mod http_api;
 mod seed;
 
 use crate::{
-    asset, halbit, hbit, herc20, identity,
+    asset, hbit, herc20, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
     spawn,
     storage::db::queries::get_swap_context_by_id,
@@ -41,7 +41,6 @@ pub struct Storage {
     pub db: Sqlite,
     pub seed: RootSeed,
     pub herc20_states: Arc<herc20::States>,
-    pub halbit_states: Arc<halbit::States>,
     pub hbit_states: Arc<hbit::States>,
 }
 
@@ -51,7 +50,6 @@ impl Storage {
             db,
             seed,
             herc20_states: Arc::new(herc20::States::default()),
-            halbit_states: Arc::new(halbit::States::default()),
             hbit_states: Arc::new(hbit::States::default()),
         }
     }
@@ -152,32 +150,6 @@ impl IntoParams for herc20::Params {
             expiry: herc20.expiry.0.into(),
             secret_hash,
             chain_id: herc20.chain_id.0.into(),
-        })
-    }
-}
-
-impl IntoParams for halbit::Params {
-    type ProtocolTable = Halbit;
-
-    fn into_params(
-        halbit: Self::ProtocolTable,
-        id: LocalSwapId,
-        _: RootSeed,
-        _: Role,
-        secret_hash: comit::SecretHash,
-    ) -> anyhow::Result<halbit::Params> {
-        Ok(halbit::Params {
-            redeem_identity: halbit
-                .redeem_identity
-                .ok_or_else(|| NoHalbitRedeemIdentity(id))?
-                .0,
-            refund_identity: halbit
-                .refund_identity
-                .ok_or_else(|| NoHalbitRefundIdentity(id))?
-                .0,
-            cltv_expiry: halbit.cltv_expiry.0.into(),
-            asset: halbit.amount.0.into(),
-            secret_hash,
         })
     }
 }
@@ -297,128 +269,6 @@ where
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("could not derive Bitcoin identity for swap not involving hbit: {0}")]
 pub struct HbitNotInvolved(pub LocalSwapId);
-
-#[async_trait::async_trait]
-impl Save<ForSwap<WhatAliceLearnedFromBob<identity::Ethereum, identity::Lightning>>> for Storage {
-    async fn save(
-        &self,
-        swap: ForSwap<WhatAliceLearnedFromBob<identity::Ethereum, identity::Lightning>>,
-    ) -> anyhow::Result<()> {
-        let local_swap_id = swap.local_swap_id;
-        let redeem_ethereum_identity = swap.data.alpha_redeem_identity;
-        let refund_lightning_identity = swap.data.beta_refund_identity;
-
-        self.db
-            .do_in_transaction(|conn| {
-                self.db.update_herc20_redeem_identity(
-                    conn,
-                    local_swap_id,
-                    redeem_ethereum_identity,
-                )?;
-                self.db.update_halbit_refund_identity(
-                    conn,
-                    local_swap_id,
-                    refund_lightning_identity,
-                )?;
-
-                Ok(())
-            })
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl Save<ForSwap<WhatBobLearnedFromAlice<identity::Ethereum, identity::Lightning>>> for Storage {
-    async fn save(
-        &self,
-        swap: ForSwap<WhatBobLearnedFromAlice<identity::Ethereum, identity::Lightning>>,
-    ) -> anyhow::Result<()> {
-        let local_swap_id = swap.local_swap_id;
-        let redeem_lightning_identity = swap.data.beta_redeem_identity;
-        let refund_ethereum_identity = swap.data.alpha_refund_identity;
-        let secret_hash = swap.data.secret_hash;
-
-        self.db
-            .do_in_transaction(|conn| {
-                self.db.update_halbit_redeem_identity(
-                    conn,
-                    local_swap_id,
-                    redeem_lightning_identity,
-                )?;
-                self.db.update_herc20_refund_identity(
-                    conn,
-                    local_swap_id,
-                    refund_ethereum_identity,
-                )?;
-                self.db
-                    .insert_secret_hash(conn, local_swap_id, secret_hash)?;
-
-                Ok(())
-            })
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl Save<ForSwap<WhatAliceLearnedFromBob<identity::Lightning, identity::Ethereum>>> for Storage {
-    async fn save(
-        &self,
-        swap: ForSwap<WhatAliceLearnedFromBob<identity::Lightning, identity::Ethereum>>,
-    ) -> anyhow::Result<()> {
-        let local_swap_id = swap.local_swap_id;
-        let redeem_lightning_identity = swap.data.alpha_redeem_identity;
-        let refund_ethereum_identity = swap.data.beta_refund_identity;
-
-        self.db
-            .do_in_transaction(|conn| {
-                self.db.update_halbit_redeem_identity(
-                    conn,
-                    local_swap_id,
-                    redeem_lightning_identity,
-                )?;
-                self.db.update_herc20_refund_identity(
-                    conn,
-                    local_swap_id,
-                    refund_ethereum_identity,
-                )?;
-
-                Ok(())
-            })
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl Save<ForSwap<WhatBobLearnedFromAlice<identity::Lightning, identity::Ethereum>>> for Storage {
-    async fn save(
-        &self,
-        swap: ForSwap<WhatBobLearnedFromAlice<identity::Lightning, identity::Ethereum>>,
-    ) -> anyhow::Result<()> {
-        let local_swap_id = swap.local_swap_id;
-        let redeem_ethereum_identity = swap.data.beta_redeem_identity;
-        let refund_lightning_identity = swap.data.alpha_refund_identity;
-        let secret_hash = swap.data.secret_hash;
-
-        self.db
-            .do_in_transaction(|conn| {
-                self.db.update_herc20_redeem_identity(
-                    conn,
-                    local_swap_id,
-                    redeem_ethereum_identity,
-                )?;
-                self.db.update_halbit_refund_identity(
-                    conn,
-                    local_swap_id,
-                    refund_lightning_identity,
-                )?;
-                self.db
-                    .insert_secret_hash(conn, local_swap_id, secret_hash)?;
-
-                Ok(())
-            })
-            .await
-    }
-}
 
 #[async_trait::async_trait]
 impl Save<ForSwap<WhatAliceLearnedFromBob<identity::Ethereum, identity::Bitcoin>>> for Storage {

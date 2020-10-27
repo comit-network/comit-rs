@@ -34,20 +34,6 @@ table! {
 }
 
 table! {
-    halbits {
-        id -> Integer,
-        swap_id -> Integer,
-        amount -> Text,
-        network -> Text,
-        chain -> Text,
-        cltv_expiry -> BigInt,
-        redeem_identity -> Nullable<Text>,
-        refund_identity -> Nullable<Text>,
-        side -> Text,
-    }
-}
-
-table! {
     hbits {
         id -> Integer,
         swap_id -> Integer,
@@ -131,10 +117,8 @@ table! {
     }
 }
 
-allow_tables_to_appear_in_same_query!(swaps, halbits);
 allow_tables_to_appear_in_same_query!(swaps, herc20s);
 allow_tables_to_appear_in_same_query!(swaps, hbits);
-allow_tables_to_appear_in_same_query!(halbits, herc20s);
 allow_tables_to_appear_in_same_query!(hbits, herc20s);
 allow_tables_to_appear_in_same_query!(orders, btc_dai_orders);
 allow_tables_to_appear_in_same_query!(orders, order_hbit_params);

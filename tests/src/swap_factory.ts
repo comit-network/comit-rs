@@ -9,11 +9,8 @@
  */
 import { CndActor } from "./actors/cnd_actor";
 import {
-    HalbitHerc20Payload,
-    HalbitPayload,
     HbitHerc20Payload,
     HbitPayload,
-    Herc20HalbitPayload,
     Herc20HbitPayload,
     Herc20Payload,
     Peer,
@@ -33,14 +30,6 @@ export default class SwapFactory {
         bob: CndActor,
         settings: SwapSettings = { instantRefund: false }
     ): Promise<{
-        herc20Halbit: {
-            alice: Herc20HalbitPayload;
-            bob: Herc20HalbitPayload;
-        };
-        halbitHerc20: {
-            alice: HalbitHerc20Payload;
-            bob: HalbitHerc20Payload;
-        };
         hbitHerc20: {
             alice: HbitHerc20Payload;
             bob: HbitHerc20Payload;
@@ -57,17 +46,13 @@ export default class SwapFactory {
         const {
             alphaAbsoluteExpiry,
             betaAbsoluteExpiry,
-            alphaCltvExpiry,
-            betaCltvExpiry,
         } = settings.instantRefund ? nowExpiries() : defaultExpiries();
 
         const aliceEthereumAccount = alice.wallets.ethereum.getAccount();
         const aliceBitcoinAddress = await alice.wallets.bitcoin.getAddress();
-        const aliceLightningPubkey = await alice.lndClient.getPubkey();
 
         const bobEthereumAccount = bob.wallets.ethereum.getAccount();
         const bobBitcoinAddress = await bob.wallets.bitcoin.getAddress();
-        const bobLightningPubkey = await bob.lndClient.getPubkey();
 
         const aliceAlphaHerc20 = defaultHerc20Payload(
             alphaAbsoluteExpiry,
@@ -105,22 +90,6 @@ export default class SwapFactory {
             bobEthereumAccount,
             erc20TokenContract
         );
-        const aliceBetaHalbit = defaultHalbitPayload(
-            betaCltvExpiry,
-            aliceLightningPubkey
-        );
-        const bobBetaHalbit = defaultHalbitPayload(
-            betaCltvExpiry,
-            bobLightningPubkey
-        );
-        const aliceAlphaHalbit = defaultHalbitPayload(
-            alphaCltvExpiry,
-            aliceLightningPubkey
-        );
-        const bobAlphaHalbit = defaultHalbitPayload(
-            alphaCltvExpiry,
-            bobLightningPubkey
-        );
 
         const herc20Hbit = {
             alice: {
@@ -150,42 +119,9 @@ export default class SwapFactory {
                 peer: await makePeer(alice),
             },
         };
-        const herc20Halbit = {
-            alice: {
-                alpha: aliceAlphaHerc20,
-                beta: aliceBetaHalbit,
-                role: "Alice" as "Alice" | "Bob",
-                peer: await makePeer(bob),
-            },
-            bob: {
-                alpha: bobAlphaHerc20,
-                beta: bobBetaHalbit,
-                role: "Bob" as "Alice" | "Bob",
-                peer: await makePeer(alice),
-            },
-        };
-        const halbitHerc20 = {
-            alice: {
-                alpha: aliceAlphaHalbit,
-                beta: aliceBetaHerc20,
-
-                role: "Alice" as "Alice" | "Bob",
-                peer: await makePeer(bob),
-            },
-            bob: {
-                alpha: bobAlphaHalbit,
-                beta: bobBetaHerc20,
-
-                role: "Bob" as "Alice" | "Bob",
-                peer: await makePeer(alice),
-            },
-        };
-
         return {
             hbitHerc20,
             herc20Hbit,
-            herc20Halbit,
-            halbitHerc20,
         };
     }
 }
@@ -208,18 +144,6 @@ function defaultHbitPayload(
         final_identity: finalIdentity,
         network: "regtest",
         absolute_expiry: absoluteExpiry,
-    };
-}
-
-function defaultHalbitPayload(
-    cltvExpiry: number,
-    lndPubkey: string
-): HalbitPayload {
-    return {
-        amount: 100000n,
-        network: "regtest",
-        identity: lndPubkey,
-        cltv_expiry: cltvExpiry,
     };
 }
 

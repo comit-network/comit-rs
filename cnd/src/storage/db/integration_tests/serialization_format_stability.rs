@@ -54,10 +54,9 @@ fn secrethash() {
 
 #[test]
 fn protocol() {
-    roundtrip_test::<LockProtocol>("halbit");
     roundtrip_test::<LockProtocol>("hbit");
     roundtrip_test::<LockProtocol>("herc20");
-    assert_num_variants::<LockProtocol>(3)
+    assert_num_variants::<LockProtocol>(2)
 }
 
 #[test]

@@ -32,7 +32,7 @@ where
 
 pub mod tables {
     use super::*;
-    use storage::db::{tables, tables::IntoInsertable};
+    use storage::db::tables;
 
     prop_compose! {
         pub fn insertable_swap()(
@@ -42,17 +42,6 @@ pub mod tables {
             start_of_swap in timestamp(),
         ) -> tables::InsertableSwap {
             tables::InsertableSwap::new(local_swap_id, peer, role, start_of_swap)
-        }
-    }
-
-    prop_compose! {
-        pub fn insertable_halbit()(
-            created in halbit::created_swap(),
-            swap_id in any::<i32>(),
-            role in role(),
-            side in side(),
-        ) -> tables::InsertableHalbit {
-            created.into_insertable(swap_id, role, side)
         }
     }
 }

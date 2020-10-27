@@ -4,54 +4,12 @@ use libp2p::multihash::Multihash;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 
-pub fn herc20_halbit<S: Into<Herc20Halbit>>(swap: S) -> SwapDigest {
-    swap.into().digest().into()
-}
-
-pub fn halbit_herc20<S: Into<HalbitHerc20>>(swap: S) -> SwapDigest {
-    swap.into().digest().into()
-}
-
 pub fn herc20_hbit<S: Into<Herc20Hbit>>(swap: S) -> SwapDigest {
     swap.into().digest().into()
 }
 
 pub fn hbit_herc20<S: Into<HbitHerc20>>(swap: S) -> SwapDigest {
     swap.into().digest().into()
-}
-
-/// This represents the information that we use to create a swap digest for
-/// herc20 <-> halbit swaps.
-#[derive(Clone, Digest, Debug)]
-#[digest(hash = "Sha3_256")]
-pub struct Herc20Halbit {
-    #[digest(prefix = "2001")]
-    pub ethereum_absolute_expiry: Timestamp,
-    #[digest(prefix = "2002")]
-    pub erc20_amount: asset::Erc20Quantity,
-    #[digest(prefix = "2003")]
-    pub token_contract: identity::Ethereum,
-    #[digest(prefix = "3001")]
-    pub lightning_cltv_expiry: RelativeTime,
-    #[digest(prefix = "3002")]
-    pub lightning_amount: Digestable<asset::Bitcoin>,
-}
-
-/// This represents the information that we use to create a swap digest for
-/// halbit <-> herc20 swaps.
-#[derive(Clone, Digest, Debug)]
-#[digest(hash = "Sha3_256")]
-pub struct HalbitHerc20 {
-    #[digest(prefix = "2001")]
-    pub lightning_cltv_expiry: RelativeTime,
-    #[digest(prefix = "2002")]
-    pub lightning_amount: Digestable<asset::Bitcoin>,
-    #[digest(prefix = "3001")]
-    pub ethereum_absolute_expiry: Timestamp,
-    #[digest(prefix = "3002")]
-    pub erc20_amount: asset::Erc20Quantity,
-    #[digest(prefix = "3003")]
-    pub token_contract: identity::Ethereum,
 }
 
 /// This represents the information that we use to create a swap digest for

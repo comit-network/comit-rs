@@ -1,12 +1,11 @@
 use crate::{
     actions::{
         bitcoin::{self, SendToAddress},
-        ethereum, lnd,
-        lnd::Chain,
+        ethereum,
     },
     asset,
     ethereum::ChainId,
-    identity, transaction, RelativeTime, Secret, SecretHash, Timestamp,
+    identity, transaction, Timestamp,
 };
 use comit::{ethereum::UnformattedData, ledger};
 use serde::Serialize;
@@ -40,32 +39,6 @@ pub enum ActionResponseBody {
         chain_id: ChainId,
         #[serde(skip_serializing_if = "Option::is_none")]
         min_block_timestamp: Option<Timestamp>,
-    },
-    LndAddHoldInvoice {
-        #[serde(with = "asset::bitcoin::sats_as_string")]
-        amount: asset::Bitcoin,
-        secret_hash: SecretHash,
-        expiry: RelativeTime,
-        cltv_expiry: RelativeTime,
-        chain: Chain,
-        network: ledger::Bitcoin,
-        self_public_key: identity::Lightning,
-    },
-    LndSendPayment {
-        to_public_key: identity::Lightning,
-        #[serde(with = "asset::bitcoin::sats_as_string")]
-        amount: asset::Bitcoin,
-        secret_hash: SecretHash,
-        final_cltv_delta: RelativeTime,
-        chain: Chain,
-        network: ledger::Bitcoin,
-        self_public_key: identity::Lightning,
-    },
-    LndSettleInvoice {
-        secret: Secret,
-        chain: Chain,
-        network: ledger::Bitcoin,
-        self_public_key: identity::Lightning,
     },
 }
 
@@ -117,30 +90,6 @@ impl From<bitcoin::BroadcastSignedTransaction> for ActionResponseBody {
     }
 }
 
-impl From<lnd::AddHoldInvoice> for ActionResponseBody {
-    fn from(action: lnd::AddHoldInvoice) -> Self {
-        let lnd::AddHoldInvoice {
-            amount,
-            secret_hash,
-            expiry,
-            cltv_expiry,
-            chain,
-            network,
-            self_public_key,
-        } = action;
-
-        ActionResponseBody::LndAddHoldInvoice {
-            amount,
-            secret_hash,
-            expiry,
-            cltv_expiry,
-            chain,
-            network,
-            self_public_key,
-        }
-    }
-}
-
 impl From<ethereum::DeployContract> for ActionResponseBody {
     fn from(action: ethereum::DeployContract) -> Self {
         let ethereum::DeployContract {
@@ -155,48 +104,6 @@ impl From<ethereum::DeployContract> for ActionResponseBody {
             amount,
             gas_limit: gas_limit.into(),
             chain_id,
-        }
-    }
-}
-
-impl From<lnd::SendPayment> for ActionResponseBody {
-    fn from(action: lnd::SendPayment) -> Self {
-        let lnd::SendPayment {
-            to_public_key,
-            amount,
-            secret_hash,
-            network,
-            chain,
-            final_cltv_delta,
-            self_public_key,
-        } = action;
-
-        ActionResponseBody::LndSendPayment {
-            to_public_key,
-            amount,
-            secret_hash,
-            network,
-            chain,
-            final_cltv_delta,
-            self_public_key,
-        }
-    }
-}
-
-impl From<lnd::SettleInvoice> for ActionResponseBody {
-    fn from(action: lnd::SettleInvoice) -> Self {
-        let lnd::SettleInvoice {
-            secret,
-            chain,
-            network,
-            self_public_key,
-        } = action;
-
-        ActionResponseBody::LndSettleInvoice {
-            secret,
-            chain,
-            network,
-            self_public_key,
         }
     }
 }

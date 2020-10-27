@@ -21,7 +21,6 @@ macro_rules! swap_id_fk {
 
 mod btc_dai_orders;
 mod completed_swaps;
-mod halbits;
 mod hbits;
 mod herc20s;
 mod order_hbit_params;
@@ -36,7 +35,6 @@ use crate::storage::SameSide;
 pub use btc_dai_orders::{BtcDaiOrder, InsertableBtcDaiOrder};
 use comit::order::SwapProtocol;
 pub use completed_swaps::{CompletedSwap, InsertableCompletedSwap};
-pub use halbits::{Halbit, InsertableHalbit};
 pub use hbits::{Hbit, InsertableHbit};
 pub use herc20s::{Herc20, InsertableHerc20};
 pub use order_hbit_params::{InsertableOrderHbitParams, OrderHbitParams};
@@ -206,8 +204,6 @@ macro_rules! impl_load_tables {
     };
 }
 
-impl_load_tables!(Herc20, Halbit);
-impl_load_tables!(Halbit, Herc20);
 impl_load_tables!(Herc20, Hbit);
 impl_load_tables!(Hbit, Herc20);
 
@@ -233,46 +229,6 @@ impl Sqlite {
             .execute(&*connection)
             .with_context(|| format!("failed to insert secret hash for swap {}", local_swap_id))?;
 
-        Ok(())
-    }
-
-    pub fn update_halbit_refund_identity(
-        &self,
-        connection: &SqliteConnection,
-        local_swap_id: LocalSwapId,
-        identity: identity::Lightning,
-    ) -> anyhow::Result<()> {
-        diesel::update(schema::halbits::table)
-            .filter(schema::halbits::swap_id.eq_any(swap_id_fk!(local_swap_id)))
-            .set(schema::halbits::refund_identity.eq(Text(identity)))
-            .execute(connection)?
-            .ensure_single_row_affected()
-            .with_context(|| {
-                format!(
-                    "failed to update halbit refund identity for swap {}",
-                    local_swap_id
-                )
-            })?;
-        Ok(())
-    }
-
-    pub fn update_halbit_redeem_identity(
-        &self,
-        connection: &SqliteConnection,
-        local_swap_id: LocalSwapId,
-        identity: identity::Lightning,
-    ) -> anyhow::Result<()> {
-        diesel::update(schema::halbits::table)
-            .filter(schema::halbits::swap_id.eq_any(swap_id_fk!(local_swap_id)))
-            .set(schema::halbits::redeem_identity.eq(Text(identity)))
-            .execute(connection)?
-            .ensure_single_row_affected()
-            .with_context(|| {
-                format!(
-                    "failed to update halbit redeem identity for swap {}",
-                    local_swap_id
-                )
-            })?;
         Ok(())
     }
 
@@ -334,33 +290,5 @@ impl Sqlite {
                 )
             })?;
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::storage::db::proptest::tables::insertable_halbit;
-    use proptest::prelude::*;
-    use tokio::runtime::Runtime;
-
-    proptest! {
-        /// Verify that our database enforces foreign key relations
-        ///
-        /// We generate a random InsertableHalbit. This comes with a
-        /// random swap_id already.
-        /// We start with an empty database, so there is no swap that
-        /// exists with this swap_id.
-        #[test]
-        fn fk_relations_are_enforced(
-            insertable_halbit in insertable_halbit(),
-        ) {
-            let db = Sqlite::test();
-            let mut runtime = Runtime::new().unwrap();
-
-            let result = runtime.block_on(db.do_in_transaction(|conn| db.insert(conn, &insertable_halbit)));
-
-            result.unwrap_err();
-        }
     }
 }

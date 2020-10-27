@@ -20,7 +20,7 @@ use crate::{
         Ledger, Protocol, SwapEvent,
     },
     storage::{queries::get_active_swap_contexts, Load, Storage},
-    DeployAction, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role,
+    DeployAction, FundAction, LocalSwapId, RedeemAction, RefundAction, Role,
 };
 use comit::Timestamp;
 use serde::Serialize;
@@ -108,7 +108,6 @@ where
         + BetaProtocol
         + Events
         + DeployAction
-        + InitAction
         + FundAction
         + RedeemAction
         + RefundAction
@@ -167,7 +166,6 @@ async fn next_available_action<S>(
 where
     S: GetRole
         + DeployAction
-        + InitAction
         + FundAction
         + RedeemAction
         + RefundAction
@@ -177,10 +175,6 @@ where
         + AlphaAbsoluteExpiry
         + BetaAbsoluteExpiry,
 {
-    if swap.init_action().is_ok() {
-        return Ok(Some(ActionName::Init));
-    }
-
     if swap.deploy_action().is_ok() {
         return Ok(Some(ActionName::Deploy));
     }
@@ -238,7 +232,6 @@ fn make_siren_action(id: LocalSwapId, action_name: ActionName) -> siren::Action 
 impl std::fmt::Display for ActionName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         let str = match self {
-            ActionName::Init => "init",
             ActionName::Deploy => "deploy",
             ActionName::Fund => "fund",
             ActionName::Redeem => "redeem",
@@ -254,30 +247,6 @@ struct SwapResource {
     pub events: Vec<SwapEvent>,
     pub alpha: Protocol,
     pub beta: Protocol,
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub async fn action_init(id: LocalSwapId, storage: Storage) -> Result<impl Reply, Rejection> {
-    handle_action_init(id, storage)
-        .await
-        .map(|body| warp::reply::json(&body))
-        .map_err(problem::from_anyhow)
-        .map_err(warp::reject::custom)
-}
-
-#[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
-async fn handle_action_init(
-    id: LocalSwapId,
-    storage: Storage,
-) -> anyhow::Result<ActionResponseBody> {
-    let swap_context = storage.load(id).await?;
-    let response = within_swap_context!(swap_context, {
-        let swap: ActorSwap = storage.load(id).await?;
-        let action = swap.init_action()?;
-        ActionResponseBody::from(action)
-    });
-
-    Ok(response)
 }
 
 #[allow(clippy::needless_pass_by_value)]

@@ -1,6 +1,6 @@
 use crate::{
     connectors::Connectors,
-    halbit, hbit, herc20,
+    hbit, herc20,
     local_swap_id::LocalSwapId,
     storage::{commands, Load, SwapContext},
     Role, Side, Storage,
@@ -118,8 +118,6 @@ macro_rules! impl_execute {
 
 impl_execute!(herc20, hbit);
 impl_execute!(hbit, herc20);
-impl_execute!(halbit, herc20);
-impl_execute!(herc20, halbit);
 
 async fn herc20(
     metadata: MetaData,
@@ -167,44 +165,4 @@ async fn hbit(
             metadata.side
         )
     })
-}
-
-async fn halbit(
-    metadata: MetaData,
-    params: halbit::Params,
-    connectors: Connectors,
-    storage: Storage,
-) -> Result<()> {
-    match (metadata.role, metadata.side) {
-        (Role::Alice, Side::Alpha) | (Role::Bob, Side::Beta) => halbit::new(
-            metadata.id,
-            params,
-            metadata.role,
-            metadata.side,
-            storage.clone(),
-            connectors.lnd_as_sender()?,
-        )
-        .await
-        .with_context(|| {
-            format!(
-                "failed to complete halbit as {} ledger protocol",
-                metadata.side
-            )
-        }),
-        (Role::Bob, Side::Alpha) | (Role::Alice, Side::Beta) => halbit::new(
-            metadata.id,
-            params,
-            metadata.role,
-            metadata.side,
-            storage.clone(),
-            connectors.lnd_as_receiver()?,
-        )
-        .await
-        .with_context(|| {
-            format!(
-                "failed to complete halbit as {} ledger protocol",
-                metadata.side
-            )
-        }),
-    }
 }

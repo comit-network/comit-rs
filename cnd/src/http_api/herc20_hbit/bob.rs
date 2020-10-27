@@ -4,7 +4,7 @@ use crate::{
         hbit, herc20, ActionNotFound, AlphaAbsoluteExpiry, AlphaLedger, AlphaProtocol,
         BetaAbsoluteExpiry, BetaLedger, BetaProtocol, BobSwap, Events, Ledger, Protocol, SwapEvent,
     },
-    DeployAction, FundAction, InitAction, RedeemAction, RefundAction, Timestamp,
+    DeployAction, FundAction, RedeemAction, RefundAction, Timestamp,
 };
 use comit::{actions::ethereum, asset, Never};
 
@@ -162,15 +162,6 @@ impl DeployAction
 {
     type Output = Never;
     fn deploy_action(&self) -> anyhow::Result<Self::Output> {
-        anyhow::bail!(ActionNotFound)
-    }
-}
-
-impl InitAction
-    for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::FinalizedAsFunder>
-{
-    type Output = Never;
-    fn init_action(&self) -> anyhow::Result<Self::Output> {
         anyhow::bail!(ActionNotFound)
     }
 }

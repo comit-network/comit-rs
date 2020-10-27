@@ -23,7 +23,6 @@ pub use self::{
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Identities {
     pub ethereum_identity: Option<identity::Ethereum>,
-    pub lightning_identity: Option<identity::Lightning>,
     pub bitcoin_identity: Option<identity::Bitcoin>,
 }
 

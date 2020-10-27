@@ -225,15 +225,6 @@ function newAxiosClient(
 
 export type Network = "main" | "test" | "regtest";
 
-/**
- * A simplied representation of a Bitcoin transaction
- */
-export interface BitcoinTransaction {
-    hex: string;
-    txid: string;
-    confirmations: number;
-}
-
 async function jsonRpcResponseInterceptor(
     logger: Logger,
     error: AxiosError

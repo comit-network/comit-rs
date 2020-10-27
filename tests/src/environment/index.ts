@@ -1,14 +1,9 @@
 import { Global } from "@jest/types";
 import { CndConfig } from "./cnd_config";
 import { Logger } from "log4js";
-import { LndClient } from "../wallets/lightning";
 
 export interface HarnessGlobal extends Global.Global {
     environment: Environment;
-    lndClients: {
-        alice?: LndClient;
-        bob?: LndClient;
-    };
     tokenContract: string;
     cargoTargetDir: string;
     cndConfigOverrides: Partial<CndConfig>;
@@ -30,15 +25,6 @@ export interface BitcoinNode {
     minerWallet?: string;
 }
 
-export interface LightningNode {
-    p2pSocket: string;
-    grpcSocket: string;
-    tlsCertPath: string;
-    macaroonPath: string;
-    restPort: number;
-    dataDir: string;
-}
-
 export interface EthereumNode {
     devAccount: string;
     rpc_url: string;
@@ -53,8 +39,6 @@ export interface FakeTreasuryService {
 export interface Environment {
     bitcoin?: BitcoinNode;
     ethereum?: EthereumNode;
-    aliceLnd?: LightningNode;
-    bobLnd?: LightningNode;
     treasury?: FakeTreasuryService;
 }
 
