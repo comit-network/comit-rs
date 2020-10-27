@@ -34,16 +34,23 @@ use time::Duration;
 // to turn off lints.
 
 mod main {
-    pub const BITCOIN_BLOCK_TIME_SECS: u16 = 600; // 10 minutes, average Bitcoin block time.
-    pub const ETHEREUM_BLOCK_TIME_SECS: u16 = 20; // Conservative Ethereum block
-                                                  // time.
+    use super::*;
 
-    pub const BITCOIN_CONFIRMATIONS: u8 = 6; // Standard in the Bitcoin ecosystem.
-    pub const ETHEREUM_CONFIRMATIONS: u8 = 30; // Value used by Kraken.
+    // 10 minutes, average Bitcoin block time.
+    pub const BITCOIN_BLOCK_TIME: Duration = Duration::seconds(600);
+    // Conservative Ethereum block time.
+    pub const ETHEREUM_BLOCK_TIME: Duration = Duration::seconds(20);
 
-    pub const ACT_IN_SOFTWARE_SECS: u32 = 15 * 60; // Value arbitrarily chosen.
-    pub const ACT_WITH_USER_INTERACTION_SECS: u32 = 60 * 60; // Value arbitrarily
-                                                             // chosen.
+    // Standard in the Bitcoin ecosystem.
+    pub const BITCOIN_CONFIRMATIONS: u8 = 6;
+    // Value used by Kraken.
+    pub const ETHEREUM_CONFIRMATIONS: u8 = 30;
+
+    // Allows someone running this as a software to react to any failure within 24
+    // hours.
+    pub const ACT_IN_SOFTWARE: Duration = Duration::hours(24);
+    // Value arbitrarily chosen.
+    pub const ACT_WITH_USER_INTERACTION: Duration = Duration::minutes(60);
 
     // Considering current market, less than 6 blocks is very expensive.
     pub const BITCOIN_MINE_WITHIN_N_BLOCKS: u8 = 6;
@@ -52,17 +59,19 @@ mod main {
 }
 
 mod dev {
+    use super::*;
+
     // The local dev nets in the e2e tests have a block time of 1 second.
-    pub const BITCOIN_BLOCK_TIME_SECS: u16 = 1;
-    pub const ETHEREUM_BLOCK_TIME_SECS: u16 = 1;
+    pub const BITCOIN_BLOCK_TIME: Duration = Duration::seconds(1);
+    pub const ETHEREUM_BLOCK_TIME: Duration = Duration::seconds(1);
 
     // We don't need many confirmations during testing ...
     pub const BITCOIN_CONFIRMATIONS: u8 = 1;
     pub const ETHEREUM_CONFIRMATIONS: u8 = 1;
 
     // The e2e tests act very fast :)
-    pub const ACT_IN_SOFTWARE_SECS: u32 = 1;
-    pub const ACT_WITH_USER_INTERACTION_SECS: u32 = 1;
+    pub const ACT_IN_SOFTWARE: Duration = Duration::seconds(1);
+    pub const ACT_WITH_USER_INTERACTION: Duration = Duration::seconds(1);
 
     pub const BITCOIN_MINE_WITHIN_N_BLOCKS: u8 = 3;
     pub const ETHEREUM_MINE_WITHIN_N_BLOCKS: u8 = 3;
@@ -74,16 +83,16 @@ pub struct Config {
     protocol: Protocol,
     alpha_required_confirmations: u8,
     beta_required_confirmations: u8,
-    alpha_average_block_time: u16,
-    beta_average_block_time: u16,
+    alpha_average_block_time: Duration,
+    beta_average_block_time: Duration,
     alpha_mine_deploy_within_n_blocks: u8,
     beta_mine_deploy_within_n_blocks: u8,
     alpha_mine_fund_within_n_blocks: u8,
     beta_mine_fund_within_n_blocks: u8,
     alpha_mine_redeem_within_n_blocks: u8,
     beta_mine_redeem_within_n_blocks: u8,
-    act_in_software: u32,
-    act_with_user_interaction: u32,
+    act_in_software: Duration,
+    act_with_user_interaction: Duration,
 }
 
 impl Config {
@@ -172,7 +181,7 @@ impl Config {
 
     /// The duration of time we should wait to ensure that the alpha deploy
     /// transaction has been mined into the blockchain.
-    pub const fn mine_alpha_deploy_transaction(&self) -> Duration {
+    pub fn mine_alpha_deploy_transaction(&self) -> Duration {
         let n = self.alpha_mine_deploy_within_n_blocks;
         let block_time = self.alpha_average_block_time;
 
@@ -181,7 +190,7 @@ impl Config {
 
     /// The duration of time we should wait to ensure that the beta deploy
     /// transaction has been mined into the blockchain.
-    pub const fn mine_beta_deploy_transaction(&self) -> Duration {
+    pub fn mine_beta_deploy_transaction(&self) -> Duration {
         let n = self.beta_mine_deploy_within_n_blocks;
         let block_time = self.beta_average_block_time;
 
@@ -190,7 +199,7 @@ impl Config {
 
     /// The duration of time we should wait to ensure that the alpha fund
     /// transaction has been mined into the blockchain.
-    pub const fn mine_alpha_fund_transaction(&self) -> Duration {
+    pub fn mine_alpha_fund_transaction(&self) -> Duration {
         let n = self.alpha_mine_fund_within_n_blocks;
         let block_time = self.alpha_average_block_time;
 
@@ -199,7 +208,7 @@ impl Config {
 
     /// The duration of time we should wait to ensure that the beta fund
     /// transaction has been mined into the blockchain.
-    pub const fn mine_beta_fund_transaction(&self) -> Duration {
+    pub fn mine_beta_fund_transaction(&self) -> Duration {
         let n = self.beta_mine_fund_within_n_blocks;
         let block_time = self.beta_average_block_time;
 
@@ -208,7 +217,7 @@ impl Config {
 
     /// The duration of time we should wait to ensure that the alpha redeem
     /// transaction has been mined into the blockchain.
-    pub const fn mine_alpha_redeem_transaction(&self) -> Duration {
+    pub fn mine_alpha_redeem_transaction(&self) -> Duration {
         let n = self.alpha_mine_redeem_within_n_blocks;
         let block_time = self.alpha_average_block_time;
 
@@ -217,7 +226,7 @@ impl Config {
 
     /// The duration of time we should wait to ensure that the beta redeem
     /// transaction has been mined into the blockchain.
-    pub const fn mine_beta_redeem_transaction(&self) -> Duration {
+    pub fn mine_beta_redeem_transaction(&self) -> Duration {
         let n = self.beta_mine_redeem_within_n_blocks;
         let block_time = self.beta_average_block_time;
 
@@ -226,7 +235,7 @@ impl Config {
 
     /// The duration of time we should wait to ensure a transaction has reached
     /// finality on the alpha ledger.
-    pub const fn finality_alpha(&self) -> Duration {
+    pub fn finality_alpha(&self) -> Duration {
         let n = self.alpha_required_confirmations;
         let block_time = self.alpha_average_block_time;
 
@@ -235,7 +244,7 @@ impl Config {
 
     /// The duration of time we should wait to ensure a transaction has reached
     /// finality on the beta ledger.
-    pub const fn finality_beta(&self) -> Duration {
+    pub fn finality_beta(&self) -> Duration {
         let n = self.beta_required_confirmations;
         let block_time = self.beta_average_block_time;
 
@@ -245,13 +254,13 @@ impl Config {
     /// If some action requires only software give the actor this long to
     /// act.
     pub const fn period_to_act_in_software(&self) -> Duration {
-        Duration::seconds(self.act_in_software as i64)
+        self.act_in_software
     }
 
     /// If some action requires user interaction give the actor this long
     /// to act.
     pub const fn period_to_act_with_user_interaction(&self) -> Duration {
-        Duration::seconds(self.act_with_user_interaction as i64)
+        self.act_with_user_interaction
     }
 
     /// Gets the protocol for this config object.
@@ -273,8 +282,8 @@ impl Config {
 // N blocks please see:
 // - https://en.wikipedia.org/wiki/Poisson_distribution
 // - https://www.reddit.com/r/btc/comments/6v5ee7/block_times_and_probabilities/
-const fn time_to_mine_n_blocks(n: u8, average_block_time_secs: u16) -> Duration {
-    let t = n as u16 * average_block_time_secs;
+fn time_to_mine_n_blocks(n: u8, average_block_time: Duration) -> Duration {
+    let t = average_block_time * n;
 
     // Because of the nature of the Poisson distribution of events the probability
     // of at least N events within time T is not high enough for our purposes. This
@@ -288,9 +297,7 @@ const fn time_to_mine_n_blocks(n: u8, average_block_time_secs: u16) -> Duration 
     // actually do the math to calculate this time window. This adds however a lot
     // of complexity for minimal benefit.
 
-    let acceptable = t as i64 * 2;
-
-    Duration::seconds(acceptable)
+    t * 2
 }
 
 impl fmt::Display for Config {
@@ -299,14 +306,14 @@ impl fmt::Display for Config {
             r#"
     alpha_required_confirmations: {}
     beta_required_confirmations: {}
-    alpha_average_block_time: {}
-    beta_average_block_time: {}
+    alpha_average_block_time: {:?}
+    beta_average_block_time: {:?}
     alpha_mine_fund_within_n_blocks {}
     beta_mine_fund_within_n_blocks {}
     alpha_mine_redeem_within_n_blocks {}
     beta_mine_redeem_within_n_blocks {}
-    act_in_software {}
-    act_with_user_interaction {}
+    act_in_software {:?}
+    act_with_user_interaction {:?}
 "#,
             self.alpha_required_confirmations,
             self.beta_required_confirmations,
@@ -330,10 +337,10 @@ pub enum Protocol {
     HbitHerc20,
 }
 
-fn bitcoin_blocktime(network: Network) -> u16 {
+fn bitcoin_blocktime(network: Network) -> Duration {
     match network {
-        Network::Main | Network::Test => main::BITCOIN_BLOCK_TIME_SECS,
-        Network::Dev => dev::BITCOIN_BLOCK_TIME_SECS,
+        Network::Main | Network::Test => main::BITCOIN_BLOCK_TIME,
+        Network::Dev => dev::BITCOIN_BLOCK_TIME,
     }
 }
 
@@ -351,10 +358,10 @@ pub fn bitcoin_mine_within_blocks(network: Network) -> u8 {
     }
 }
 
-fn ethereum_blocktime(network: Network) -> u16 {
+fn ethereum_blocktime(network: Network) -> Duration {
     match network {
-        Network::Main | Network::Test => main::ETHEREUM_BLOCK_TIME_SECS,
-        Network::Dev => dev::ETHEREUM_BLOCK_TIME_SECS,
+        Network::Main | Network::Test => main::ETHEREUM_BLOCK_TIME,
+        Network::Dev => dev::ETHEREUM_BLOCK_TIME,
     }
 }
 
@@ -372,16 +379,16 @@ pub fn ethereum_mine_within_blocks(network: Network) -> u8 {
     }
 }
 
-fn act_in_software(network: Network) -> u32 {
+fn act_in_software(network: Network) -> Duration {
     match network {
-        Network::Main | Network::Test => main::ACT_IN_SOFTWARE_SECS,
-        Network::Dev => dev::ACT_IN_SOFTWARE_SECS,
+        Network::Main | Network::Test => main::ACT_IN_SOFTWARE,
+        Network::Dev => dev::ACT_IN_SOFTWARE,
     }
 }
 
-fn act_with_user_interaction(network: Network) -> u32 {
+fn act_with_user_interaction(network: Network) -> Duration {
     match network {
-        Network::Main | Network::Test => main::ACT_WITH_USER_INTERACTION_SECS,
-        Network::Dev => dev::ACT_WITH_USER_INTERACTION_SECS,
+        Network::Main | Network::Test => main::ACT_WITH_USER_INTERACTION,
+        Network::Dev => dev::ACT_WITH_USER_INTERACTION,
     }
 }

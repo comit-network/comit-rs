@@ -1227,15 +1227,19 @@ mod tests {
         let exp = Expiries::new_hbit_herc20(network, start_at, ac.clone(), bc.clone());
         let config = Config::hbit_herc20(network);
 
-        // Alice waits the last minute
+        // Alice waits until the last minute
         let inc = config.period_to_act_with_user_interaction();
         inc_connectors(inc, ac.clone(), bc.clone()).await;
 
-        let mut cur = AliceState::AlphaFunded;
-
-        // Bob waits the last minute
+        // Bob waits until the last minute
         let inc = config.period_to_act_in_software() - 1.minutes();
         inc_connectors(inc, ac.clone(), bc.clone()).await;
+
+        // Mine and finalise Bob's transaction
+        let inc = config.mine_beta_fund_transaction() + config.finality_beta();
+        inc_connectors(inc, ac.clone(), bc.clone()).await;
+
+        let mut cur = AliceState::BetaFunded;
 
         let inc = 1.minutes();
         while cur != AliceState::Done {
