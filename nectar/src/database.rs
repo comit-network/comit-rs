@@ -2,17 +2,24 @@ use self::{
     hbit::{HbitFunded, HbitRedeemed, HbitRefunded},
     herc20::{Herc20Deployed, Herc20Funded, Herc20Redeemed, Herc20Refunded},
 };
-use crate::{network, network::ActivePeer, swap, swap::SwapKind, SwapId};
-use anyhow::{anyhow, Context, Result};
-use serde::{Deserialize, Serialize};
-
 #[cfg(test)]
 use crate::StaticStub;
+use crate::{network, network::ActivePeer, swap, swap::SwapKind, SwapId};
+use anyhow::{anyhow, Context, Result};
+use conquer_once::Lazy;
+use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, iter::FromIterator};
 use time::OffsetDateTime;
 
 mod hbit;
 mod herc20;
+#[cfg(test)]
+mod test_snapshot;
+
+static ACTIVE_PEER_KEY: Lazy<Vec<u8>> =
+    Lazy::new(|| serialize(&"active_peer").expect("this slice can be serialized"));
+static BITCOIN_TRANSIENT_KEYS_INDEX_KEY: Lazy<Vec<u8>> =
+    Lazy::new(|| serialize(&"bitcoin_transient_key_index").expect("this slice can be serialized"));
 
 pub trait Load<T>: Send + Sync + 'static {
     fn load(&self, swap_id: SwapId) -> Result<Option<T>>;
@@ -27,35 +34,42 @@ pub trait Save<T>: Send + Sync + 'static {
 pub struct Database {
     db: sled::Db,
     #[cfg(test)]
-    tmp_dir: tempfile::TempDir,
+    tmp_dir: Option<tempfile::TempDir>,
 }
 
 // TODO: We should not need to manually flush as sled automatically tries to
 // sync all data to disk several times per second already. https://github.com/spacejam/sled#interaction-with-async
 // We should just try to flush on critical saves.
 impl Database {
-    const ACTIVE_PEER_KEY: &'static str = "active_peer";
-    const BITCOIN_TRANSIENT_KEYS_INDEX_KEY: &'static str = "bitcoin_transient_key_index";
-
-    #[cfg(not(test))]
     pub fn new(path: &std::path::Path) -> Result<Self> {
         let path = path
             .to_str()
             .ok_or_else(|| anyhow!("failed to convert path to utf-8 string: {:?}", path))?;
+
+        let db = Self::new_sled(path)?;
+
+        Ok(Database {
+            db,
+            #[cfg(test)]
+            tmp_dir: None,
+        })
+    }
+
+    fn new_sled(path: &str) -> anyhow::Result<sled::Db> {
         let db = sled::open(path).with_context(|| format!("failed to open DB at {}", path))?;
 
-        if !db.contains_key(Self::ACTIVE_PEER_KEY)? {
+        if !db.contains_key(ACTIVE_PEER_KEY.clone())? {
             let peers = Vec::<ActivePeer>::new();
             let peers = serialize(&peers)?;
-            let _ = db.insert(serialize(&Self::ACTIVE_PEER_KEY)?, peers)?;
+            let _ = db.insert(ACTIVE_PEER_KEY.clone(), peers)?;
         }
 
-        if !db.contains_key(Self::BITCOIN_TRANSIENT_KEYS_INDEX_KEY)? {
+        if !db.contains_key(BITCOIN_TRANSIENT_KEYS_INDEX_KEY.clone())? {
             let index = serialize(&0u32)?;
-            let _ = db.insert(serialize(&Self::BITCOIN_TRANSIENT_KEYS_INDEX_KEY)?, index)?;
+            let _ = db.insert(BITCOIN_TRANSIENT_KEYS_INDEX_KEY.clone(), index)?;
         }
 
-        Ok(Database { db })
+        Ok(db)
     }
 
     #[cfg(test)]
@@ -66,17 +80,25 @@ impl Database {
 
         let peers = Vec::<ActivePeer>::new();
         let peers = serialize(&peers)?;
-        let _ = db.insert(serialize(&Self::ACTIVE_PEER_KEY)?, peers)?;
+        let _ = db.insert(ACTIVE_PEER_KEY.clone(), peers)?;
 
         let index = serialize(&0u32)?;
-        let _ = db.insert(serialize(&Self::BITCOIN_TRANSIENT_KEYS_INDEX_KEY)?, index)?;
+        let _ = db.insert(BITCOIN_TRANSIENT_KEYS_INDEX_KEY.clone(), index)?;
 
-        Ok(Database { db, tmp_dir })
+        Ok(Database {
+            db,
+            tmp_dir: Some(tmp_dir),
+        })
+    }
+
+    #[cfg(test)]
+    pub fn path(&self) -> Option<&std::path::Path> {
+        self.tmp_dir.as_ref().map(|tmp_dir| tmp_dir.path())
     }
 
     pub async fn fetch_inc_bitcoin_transient_key_index(&self) -> Result<u32> {
         let old_value = self.db.fetch_and_update(
-            serialize(&Self::BITCOIN_TRANSIENT_KEYS_INDEX_KEY)?,
+            BITCOIN_TRANSIENT_KEYS_INDEX_KEY.clone(),
             |old| match old {
                 Some(bytes) => deserialize::<u32>(bytes)
                     .map_err(|err| {
@@ -193,7 +215,7 @@ impl Database {
                     _,
                 )))
             })
-            .map(|res| res.map(|(swap, swap_id)| SwapKind::from((swap, swap_id))))
+            .map(|res| res.map(SwapKind::from))
             .collect()
     }
 
@@ -281,8 +303,7 @@ impl Database {
         let updated_peers = Vec::<ActivePeer>::from_iter(peers);
         let updated_peers = serialize(&updated_peers)?;
 
-        self.db
-            .insert(serialize(&Self::ACTIVE_PEER_KEY)?, updated_peers)?;
+        self.db.insert(ACTIVE_PEER_KEY.clone(), updated_peers)?;
 
         Ok(())
     }
@@ -290,7 +311,7 @@ impl Database {
     fn peers(&self) -> Result<HashSet<ActivePeer>> {
         let peers = self
             .db
-            .get(serialize(&Self::ACTIVE_PEER_KEY)?)?
+            .get(ACTIVE_PEER_KEY.clone())?
             .ok_or_else(|| anyhow::anyhow!("no key \"active_peer\" in db"))?;
         let peers: Vec<ActivePeer> = deserialize(&peers)?;
         let peers = HashSet::<ActivePeer>::from_iter(peers);
@@ -426,6 +447,7 @@ impl From<SwapKind> for Swap {
 mod tests {
     use super::*;
     use quickcheck::{Arbitrary, StdThreadGen};
+    use tempfile::TempDir;
 
     #[quickcheck_async::tokio]
     async fn save_and_retrieve_swaps(swap_1: SwapKind, swap_2: SwapKind, swap_3: SwapKind) -> bool {
@@ -482,12 +504,13 @@ mod tests {
 
     #[tokio::test]
     async fn save_and_retrieve_hundred_swaps() {
+        let size = 100;
         let db = Database::new_test().unwrap();
 
-        let mut gen = StdThreadGen::new(100);
-        let mut swaps = Vec::with_capacity(100);
+        let mut gen = StdThreadGen::new(size);
+        let mut swaps = Vec::with_capacity(size);
 
-        for _ in 0..100 {
+        for _ in 0..size {
             let swap = SwapKind::arbitrary(&mut gen);
             swaps.push(swap);
         }
@@ -498,8 +521,35 @@ mod tests {
 
         let stored_swaps = db.all_active_swaps().unwrap();
 
+        assert_eq!(stored_swaps.len(), size);
+
         for swap in swaps.iter() {
             assert!(stored_swaps.contains(&swap))
+        }
+    }
+
+    #[tokio::test]
+    async fn save_and_retrieve_hundred_active_peers() {
+        let size = 100;
+        let db = Database::new_test().unwrap();
+        let mut gen = StdThreadGen::new(size);
+        let mut peers = Vec::with_capacity(size);
+
+        for _ in 0..size {
+            let peer = ActivePeer::arbitrary(&mut gen);
+            peers.push(peer);
+        }
+
+        for peer in peers.iter() {
+            db.insert_active_peer(peer.clone()).await.unwrap();
+        }
+
+        let stored_peers = db.peers().unwrap();
+
+        assert_eq!(stored_peers.len(), size);
+
+        for peer in peers.iter() {
+            assert!(stored_peers.contains(&peer))
         }
     }
 
@@ -536,5 +586,134 @@ mod tests {
         db.archive_swap(&swap_id).await.unwrap();
 
         !db.contains_active_peer(&peer).unwrap()
+    }
+
+    #[tokio::test]
+    async fn data_persists_when_reloading_db() {
+        let tmp_dir = TempDir::new().unwrap();
+        let path = tmp_dir.path();
+        let size = 10;
+        let mut gen = StdThreadGen::new(size);
+        let mut swaps = Vec::with_capacity(size);
+        let mut active_peers = Vec::with_capacity(size);
+
+        for _ in 0..size {
+            let swap = SwapKind::arbitrary(&mut gen);
+            swaps.push(swap);
+            let peer = ActivePeer::arbitrary(&mut gen);
+            active_peers.push(peer)
+        }
+
+        {
+            let db = Database::new(path).unwrap();
+
+            for swap in swaps.iter() {
+                db.insert_swap(swap.clone()).await.unwrap();
+            }
+
+            for peer in active_peers.iter() {
+                db.insert_active_peer(peer.clone()).await.unwrap();
+            }
+
+            for _ in 0..size {
+                let _ = db.fetch_inc_bitcoin_transient_key_index().await.unwrap();
+            }
+        }
+
+        {
+            let db = Database::new(path).unwrap();
+
+            let bitcoin_index = db.fetch_inc_bitcoin_transient_key_index().await.unwrap();
+            let stored_swaps = db.all_active_swaps().unwrap();
+            let stored_peers = db.peers().unwrap();
+
+            #[allow(clippy::cast_possible_truncation)]
+            let expected_index = size as u32;
+            assert_eq!(bitcoin_index, expected_index);
+
+            assert_eq!(stored_swaps.len(), size);
+            for swap in swaps.iter() {
+                assert!(stored_swaps.contains(&swap))
+            }
+
+            assert_eq!(active_peers.len(), size);
+            for peer in active_peers.iter() {
+                assert!(stored_peers.contains(&peer))
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod db_compatibility_tests {
+    use super::*;
+    use crate::database::test_snapshot::v0_1_0;
+    use quickcheck::{Arbitrary, StdThreadGen};
+    use tar::Archive;
+    use tempfile::TempDir;
+
+    const SNAPSHOT_SIZE: usize = 10;
+
+    #[tokio::test]
+    async fn ensure_compatiblity_with_0_1_0() {
+        let tmp_dir = TempDir::new().unwrap();
+        let path = tmp_dir.path();
+
+        let mut ar = Archive::new(&v0_1_0::TAR[..]);
+        ar.unpack(path).unwrap();
+
+        let db = Database::new(path).unwrap();
+
+        let bitcoin_index = db.fetch_inc_bitcoin_transient_key_index().await.unwrap();
+        let stored_swaps = db.all_active_swaps().unwrap();
+        let stored_peers = db.peers().unwrap();
+
+        #[allow(clippy::cast_possible_truncation)]
+        let expected_index = SNAPSHOT_SIZE as u32;
+        assert_eq!(bitcoin_index, expected_index);
+        assert_eq!(stored_swaps.len(), SNAPSHOT_SIZE);
+        assert_eq!(stored_peers.len(), SNAPSHOT_SIZE);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    /// Create a snapshot of the DB from random entries
+    /// Run with `--ignored --nocapture`
+    async fn snapshot() {
+        let mut gen = StdThreadGen::new(SNAPSHOT_SIZE);
+        let mut swaps = Vec::with_capacity(SNAPSHOT_SIZE);
+        let mut active_peers = Vec::with_capacity(SNAPSHOT_SIZE);
+
+        for _ in 0..SNAPSHOT_SIZE {
+            let swap = SwapKind::arbitrary(&mut gen);
+            swaps.push(swap);
+            let peer = ActivePeer::arbitrary(&mut gen);
+            active_peers.push(peer)
+        }
+
+        let tar = {
+            let db = Database::new_test().unwrap();
+
+            for swap in swaps.iter() {
+                db.insert_swap(swap.clone()).await.unwrap();
+            }
+
+            for peer in active_peers.iter() {
+                db.insert_active_peer(peer.clone()).await.unwrap();
+            }
+
+            for _ in 0..SNAPSHOT_SIZE {
+                let _ = db.fetch_inc_bitcoin_transient_key_index().await.unwrap();
+            }
+
+            let path = db.path().unwrap();
+
+            let mut ar = tar::Builder::new(Vec::new());
+            ar.append_dir_all("", path).unwrap();
+
+            ar.into_inner().unwrap()
+        };
+
+        println!("{:?}", tar);
     }
 }

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **This release includes changes to the DB schema, we recommend to backup your data directory before upgrading.**
 
+### Fixed
+
+-   Correct a bug that would reset the bitcoin transient key index and the active peers when starting nectar.
+
 ### Added
 
 -   New command to archive swaps: `nectar archive-swap <swap id>`.
