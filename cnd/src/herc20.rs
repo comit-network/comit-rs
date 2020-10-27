@@ -54,15 +54,6 @@ where
     Ok(())
 }
 
-/// Data required to create a swap that involves an ERC20 token.
-#[derive(Clone, Debug, PartialEq)]
-pub struct CreatedSwap {
-    pub asset: asset::Erc20,
-    pub identity: identity::Ethereum,
-    pub chain_id: ChainId,
-    pub absolute_expiry: u32,
-}
-
 #[derive(Default, Debug)]
 pub struct States(Mutex<HashMap<LocalSwapId, State>>);
 

@@ -8,27 +8,6 @@ use bitcoin::secp256k1::SecretKey;
 
 pub use crate::hbit::*;
 
-/// Data for the hbit protocol.
-#[derive(serde::Deserialize, Clone, Debug)]
-pub struct Hbit {
-    #[serde(with = "asset::bitcoin::sats_as_string")]
-    pub amount: asset::Bitcoin,
-    pub final_identity: bitcoin::Address,
-    pub network: ledger::Bitcoin,
-    pub absolute_expiry: u32,
-}
-
-impl From<Hbit> for CreatedSwap {
-    fn from(p: Hbit) -> Self {
-        CreatedSwap {
-            amount: p.amount,
-            final_identity: p.final_identity,
-            network: p.network,
-            absolute_expiry: p.absolute_expiry,
-        }
-    }
-}
-
 /// Data known by the party funding the HTLC in the Hbit protocol, after the
 /// swap has been finalized.
 ///

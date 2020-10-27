@@ -13,11 +13,7 @@ use crate::{
 };
 use anyhow::{Context as _, Result};
 use comit::{
-    network::{
-        protocols::setup_swap::{CommonParams, RoleDependentParams},
-        swap_digest::SwapDigest,
-        Identities,
-    },
+    network::protocols::setup_swap::{CommonParams, RoleDependentParams},
     order::SwapProtocol,
     orderpool, BtcDaiOrder, OrderId, Role, SecretHash, Side,
 };
@@ -63,7 +59,6 @@ impl Swarm {
         let (sender, receiver) = mpsc::channel(1);
 
         let behaviour = ComitNode::new(
-            seed,
             task_executor.clone(),
             storage.clone(),
             connectors,
@@ -98,34 +93,6 @@ impl Swarm {
             inner: swarm,
             local_peer_id,
         })
-    }
-
-    pub async fn initiate_communication(
-        &self,
-        id: LocalSwapId,
-        role: Role,
-        digest: SwapDigest,
-        identities: Identities,
-        peer: PeerId,
-        address_hint: Option<Multiaddr>,
-    ) -> anyhow::Result<()> {
-        let mut guard = self.inner.lock().await;
-
-        if let Some(address_hint) = address_hint {
-            guard
-                .peer_tracker
-                .add_recent_address_hint(peer.clone(), address_hint);
-
-            let existing_connection_to_peer =
-                libp2p::Swarm::connection_info(&mut guard, &peer).is_some();
-
-            if !existing_connection_to_peer {
-                tracing::debug!("dialing ...");
-                let _ = libp2p::Swarm::dial(&mut guard, &peer)?;
-            }
-        }
-
-        guard.initiate_communication(id, peer, role, digest, identities)
     }
 
     pub async fn publish_order(&self, order: BtcDaiOrder) {

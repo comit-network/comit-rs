@@ -3,10 +3,7 @@ mod http_api;
 mod seed;
 
 use crate::{
-    asset, hbit, herc20, identity,
-    network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
-    spawn,
-    storage::db::queries::get_swap_context_by_id,
+    asset, hbit, herc20, identity, spawn, storage::db::queries::get_swap_context_by_id,
     LocalSwapId, Role, Side,
 };
 use async_trait::async_trait;
@@ -19,20 +16,6 @@ pub use seed::*;
 #[async_trait]
 pub trait Load<T>: Send + Sync + 'static {
     async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<T>;
-}
-
-/// Save data to the storage layer.
-#[async_trait]
-pub trait Save<T>: Send + Sync + 'static {
-    async fn save(&self, entity: T) -> anyhow::Result<()>;
-}
-
-/// Convenience struct to use with `Save` for saving some data T that relates to
-/// a LocalSwapId.
-#[derive(Debug)]
-pub struct ForSwap<T> {
-    pub local_swap_id: LocalSwapId,
-    pub data: T,
 }
 
 /// A facade for the storage layer.
@@ -76,6 +59,7 @@ impl Storage {
 }
 
 #[cfg(test)]
+#[allow(dead_code)]
 impl Storage {
     pub fn test() -> Self {
         Self::new(
@@ -226,170 +210,6 @@ fn derive_or_unwrap_secret_hash(
     Ok(secret_hash)
 }
 
-#[async_trait::async_trait]
-impl<TCreatedA, TCreatedB, TInsertableA, TInsertableB> Save<CreatedSwap<TCreatedA, TCreatedB>>
-    for Storage
-where
-    TCreatedA: IntoInsertable<Insertable = TInsertableA> + Clone + Send + 'static,
-    TCreatedB: IntoInsertable<Insertable = TInsertableB> + Send + 'static,
-    TInsertableA: 'static,
-    TInsertableB: 'static,
-    Sqlite: Insert<TInsertableA> + Insert<TInsertableB>,
-{
-    async fn save(
-        &self,
-        CreatedSwap {
-            swap_id,
-            role,
-            peer,
-            alpha,
-            beta,
-            start_of_swap,
-            ..
-        }: CreatedSwap<TCreatedA, TCreatedB>,
-    ) -> anyhow::Result<()> {
-        self.db
-            .do_in_transaction::<_, _>(move |conn| {
-                let swap_fk =
-                    InsertableSwap::new(swap_id, peer, role, start_of_swap).insert(conn)?;
-                let insertable_alpha = alpha.into_insertable(swap_fk, role, Side::Alpha);
-                let insertable_beta = beta.into_insertable(swap_fk, role, Side::Beta);
-
-                self.db.insert(conn, &insertable_alpha)?;
-                self.db.insert(conn, &insertable_beta)?;
-
-                Ok(())
-            })
-            .await?;
-
-        Ok(())
-    }
-}
-
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("could not derive Bitcoin identity for swap not involving hbit: {0}")]
 pub struct HbitNotInvolved(pub LocalSwapId);
-
-#[async_trait::async_trait]
-impl Save<ForSwap<WhatAliceLearnedFromBob<identity::Ethereum, identity::Bitcoin>>> for Storage {
-    async fn save(
-        &self,
-        swap: ForSwap<WhatAliceLearnedFromBob<identity::Ethereum, identity::Bitcoin>>,
-    ) -> anyhow::Result<()> {
-        let local_swap_id = swap.local_swap_id;
-        let redeem_ethereum_identity = swap.data.alpha_redeem_identity;
-        let refund_bitcoin_identity = swap.data.beta_refund_identity;
-
-        self.db
-            .do_in_transaction(|conn| {
-                self.db.update_herc20_redeem_identity(
-                    conn,
-                    local_swap_id,
-                    redeem_ethereum_identity,
-                )?;
-                self.db.update_hbit_transient_identity(
-                    conn,
-                    local_swap_id,
-                    refund_bitcoin_identity,
-                )?;
-
-                Ok(())
-            })
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl Save<ForSwap<WhatBobLearnedFromAlice<identity::Ethereum, identity::Bitcoin>>> for Storage {
-    async fn save(
-        &self,
-        swap: ForSwap<WhatBobLearnedFromAlice<identity::Ethereum, identity::Bitcoin>>,
-    ) -> anyhow::Result<()> {
-        // identity is the transient one in here
-
-        let local_swap_id = swap.local_swap_id;
-        let redeem_bitcoin_identity = swap.data.beta_redeem_identity;
-        let refund_ethereum_identity = swap.data.alpha_refund_identity;
-        let secret_hash = swap.data.secret_hash;
-
-        self.db
-            .do_in_transaction(|conn| {
-                self.db.update_hbit_transient_identity(
-                    conn,
-                    local_swap_id,
-                    redeem_bitcoin_identity,
-                )?;
-                self.db.update_herc20_refund_identity(
-                    conn,
-                    local_swap_id,
-                    refund_ethereum_identity,
-                )?;
-                self.db
-                    .insert_secret_hash(conn, local_swap_id, secret_hash)?;
-
-                Ok(())
-            })
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl Save<ForSwap<WhatAliceLearnedFromBob<identity::Bitcoin, identity::Ethereum>>> for Storage {
-    async fn save(
-        &self,
-        swap: ForSwap<WhatAliceLearnedFromBob<identity::Bitcoin, identity::Ethereum>>,
-    ) -> anyhow::Result<()> {
-        let local_swap_id = swap.local_swap_id;
-        let transient_redeem_bitcoin_identity = swap.data.alpha_redeem_identity;
-        let refund_ethereum_identity = swap.data.beta_refund_identity;
-
-        self.db
-            .do_in_transaction(|conn| {
-                self.db.update_hbit_transient_identity(
-                    conn,
-                    local_swap_id,
-                    transient_redeem_bitcoin_identity,
-                )?;
-                self.db.update_herc20_refund_identity(
-                    conn,
-                    local_swap_id,
-                    refund_ethereum_identity,
-                )?;
-
-                Ok(())
-            })
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl Save<ForSwap<WhatBobLearnedFromAlice<identity::Bitcoin, identity::Ethereum>>> for Storage {
-    async fn save(
-        &self,
-        swap: ForSwap<WhatBobLearnedFromAlice<identity::Bitcoin, identity::Ethereum>>,
-    ) -> anyhow::Result<()> {
-        let local_swap_id = swap.local_swap_id;
-        let transient_refund_bitcoin_identity = swap.data.alpha_refund_identity;
-        let redeem_ethereum_identity = swap.data.beta_redeem_identity;
-        let secret_hash = swap.data.secret_hash;
-
-        self.db
-            .do_in_transaction(|conn| {
-                self.db.update_hbit_transient_identity(
-                    conn,
-                    local_swap_id,
-                    transient_refund_bitcoin_identity,
-                )?;
-                self.db.update_herc20_redeem_identity(
-                    conn,
-                    local_swap_id,
-                    redeem_ethereum_identity,
-                )?;
-                self.db
-                    .insert_secret_hash(conn, local_swap_id, secret_hash)?;
-
-                Ok(())
-            })
-            .await
-    }
-}

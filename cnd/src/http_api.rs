@@ -14,7 +14,7 @@ mod serde_peer_id;
 mod swaps;
 mod tokens;
 
-pub use self::{hbit::Hbit, herc20::Herc20, problem::*, route_factory::create as create_routes};
+pub use self::{problem::*, route_factory::create as create_routes};
 
 pub const PATH: &str = "swaps";
 
@@ -22,50 +22,13 @@ use crate::{
     asset,
     asset::Erc20Quantity,
     ethereum,
-    storage::{BtcDaiOrder, CreatedSwap, Order},
-    LocalSwapId, Role, Secret, SecretHash, Timestamp,
+    storage::{BtcDaiOrder, Order},
+    Role, Secret, SecretHash, Timestamp,
 };
 use anyhow::Result;
 use comit::{OrderId, Position, Price, Quantity};
-use libp2p::{Multiaddr, PeerId};
-use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
+use serde::Serialize;
 use warp::http::Method;
-
-/// Object representing the data of a POST request for creating a swap.
-#[derive(Deserialize, Clone, Debug)]
-pub struct PostBody<A, B> {
-    pub alpha: A,
-    pub beta: B,
-    pub peer: DialInformation,
-    pub role: Role,
-}
-
-impl<A, B> PostBody<A, B> {
-    pub fn to_created_swap<CA, CB>(&self, swap_id: LocalSwapId) -> CreatedSwap<CA, CB>
-    where
-        CA: From<A>,
-        CB: From<B>,
-        Self: Clone,
-    {
-        let body = self.clone();
-
-        let alpha = CA::from(body.alpha);
-        let beta = CB::from(body.beta);
-
-        let start_of_swap = OffsetDateTime::now_utc();
-
-        CreatedSwap {
-            swap_id,
-            alpha,
-            beta,
-            peer: body.peer.into(),
-            address_hint: None,
-            role: body.role,
-            start_of_swap,
-        }
-    }
-}
 
 /// The struct representing the properties within the siren document in our
 /// response.
@@ -420,38 +383,6 @@ impl<AC, BC, AF, BF> GetRole for AliceSwap<AC, BC, AF, BF> {
 impl<AC, BC, AF, BF> GetRole for BobSwap<AC, BC, AF, BF> {
     fn get_role(&self) -> Role {
         Role::Bob
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Deserialize)]
-#[serde(untagged)]
-pub enum DialInformation {
-    JustPeerId(#[serde(with = "serde_peer_id")] PeerId),
-    WithAddressHint {
-        #[serde(with = "serde_peer_id")]
-        peer_id: PeerId,
-        address_hint: Multiaddr,
-    },
-}
-
-impl DialInformation {
-    fn into_peer_with_address_hint(self) -> (PeerId, Option<Multiaddr>) {
-        match self {
-            DialInformation::JustPeerId(inner) => (inner, None),
-            DialInformation::WithAddressHint {
-                peer_id,
-                address_hint,
-            } => (peer_id, Some(address_hint)),
-        }
-    }
-}
-
-impl From<DialInformation> for PeerId {
-    fn from(dial_information: DialInformation) -> Self {
-        match dial_information {
-            DialInformation::JustPeerId(inner) => inner,
-            DialInformation::WithAddressHint { peer_id, .. } => peer_id,
-        }
     }
 }
 

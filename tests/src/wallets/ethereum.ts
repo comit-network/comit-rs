@@ -147,12 +147,6 @@ export class Web3EthereumWallet implements EthereumWallet {
         return this.wallet.address;
     }
 
-    public async getEtherBalance(): Promise<bigint> {
-        return this.wallet
-            .getBalance()
-            .then((balance) => BigInt(balance.toString()));
-    }
-
     public async getErc20Balance(contractAddress: string): Promise<bigint> {
         const contract = new Contract(
             contractAddress,

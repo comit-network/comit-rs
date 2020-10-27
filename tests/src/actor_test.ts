@@ -39,19 +39,6 @@ export function startAlice(
 
 /**
  * Instantiates two CndActors, the first one in the role of Alice and the second one in the role of Bob.
- * Starts respective cnd instances.
- * @param testFn
- */
-export function startAliceAndBob(
-    testFn: ([alice, bob]: CndActor[]) => Promise<void>
-): ProvidesCallback {
-    return startCndActorTest(["Alice", "Bob"], async ([alice, bob]) =>
-        testFn([alice, bob])
-    );
-}
-
-/**
- * Instantiates two CndActors, the first one in the role of Alice and the second one in the role of Bob.
  * Does not start the cnd instances.
  * @param testFn
  */

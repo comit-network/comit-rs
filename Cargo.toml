@@ -1,2 +1,2 @@
 [workspace]
-members = ["cnd", "digest", "digest-macro-derive", "comit", "nectar"]
+members = ["cnd", "comit", "nectar"]

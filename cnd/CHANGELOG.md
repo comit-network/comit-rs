@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 -   Support for Lightning-based swaps.
+-   Endpoints for directly creating swaps.
+    Users are encouraged to migrate to the orderbook-based API or write their own daemon based on the `comit` lib if they need more fine-grained control.
 
 ## [cnd-0.9.0] - 2020-10-12
 

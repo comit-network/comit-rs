@@ -29,3 +29,11 @@ CREATE TABLE halbits
     side                        NOT NULL,
     FOREIGN KEY(swap_id)        REFERENCES swaps(id)
 );
+
+CREATE TABLE shared_swap_ids
+(
+    id                          INTEGER NOT NULL PRIMARY KEY,
+    swap_id                     INTEGER NOT NULL,
+    shared_swap_id              NOT NULL,
+    FOREIGN KEY (swap_id)       REFERENCES swaps(id)
+);

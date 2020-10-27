@@ -18,31 +18,6 @@ export interface Peer {
     address_hint?: string;
 }
 
-interface Payload<A, B> {
-    alpha: A;
-    beta: B;
-    role: "Alice" | "Bob";
-    peer: Peer;
-}
-
-export type HbitHerc20Payload = Payload<HbitPayload, Herc20Payload>;
-export type Herc20HbitPayload = Payload<Herc20Payload, HbitPayload>;
-
-export type Herc20Payload = {
-    amount: bigint;
-    identity: string;
-    token_contract: string;
-    absolute_expiry: number;
-    chain_id: number;
-};
-
-export type HbitPayload = {
-    amount: bigint;
-    final_identity: string;
-    network: string;
-    absolute_expiry: number;
-};
-
 /**
  * The payload returned when fetching one swap on the `/swaps/:id` endpoint
  */

@@ -6,7 +6,7 @@ use crate::{
     LocalSwapId, Role, Side,
 };
 use anyhow::Result;
-use bitcoin::{Address, Block, BlockHash};
+use bitcoin::{Block, BlockHash};
 use comit::{asset, htlc_location, transaction, Secret};
 use futures::TryStreamExt;
 use std::collections::{hash_map::Entry, HashMap};
@@ -46,15 +46,6 @@ where
     tracing::info!("finished");
 
     Ok(())
-}
-
-/// Data required to create a swap that involves Bitcoin.
-#[derive(Clone, Debug)]
-pub struct CreatedSwap {
-    pub amount: asset::Bitcoin,
-    pub final_identity: Address,
-    pub network: ledger::Bitcoin,
-    pub absolute_expiry: u32,
 }
 
 #[derive(Default, Debug)]

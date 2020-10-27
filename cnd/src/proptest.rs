@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! This module defines custom proptest strategies that make it easy to write
 //! property tests for our domain.
 //!
@@ -14,7 +16,6 @@ pub fn role() -> impl Strategy<Value = Role> {
     prop_oneof![Just(Role::Alice), Just(Role::Bob)]
 }
 
-#[allow(dead_code)]
 pub fn side() -> impl Strategy<Value = Side> {
     prop_oneof![Just(Side::Alpha), Just(Side::Beta)]
 }
@@ -117,6 +118,14 @@ pub mod ledger {
             Just(ledger::Bitcoin::Regtest)
         ]
     }
+
+    prop_compose! {
+        pub fn ethereum()(
+            chain_id in any::<u32>()
+        ) -> ledger::Ethereum {
+            chain_id.into()
+        }
+    }
 }
 
 pub mod asset {
@@ -133,48 +142,6 @@ pub mod asset {
             token_contract in identity::ethereum()
         ) -> asset::Erc20 {
             asset::Erc20::new(token_contract, quantity)
-        }
-    }
-}
-
-pub mod herc20 {
-    use super::*;
-    use crate::herc20;
-
-    prop_compose! {
-        pub fn created_swap()(
-            asset in asset::erc20(),
-            identity in identity::ethereum(),
-            chain_id in chain_id(),
-            absolute_expiry in any::<u32>()
-        ) -> herc20::CreatedSwap {
-            herc20::CreatedSwap {
-                asset,
-                identity,
-                chain_id,
-                absolute_expiry
-            }
-        }
-    }
-}
-
-pub mod hbit {
-    use super::*;
-    use crate::hbit;
-
-    prop_compose! {
-        pub fn created_swap()(
-            amount in asset::bitcoin(),
-            final_identity in bitcoin::address(),
-            network in ledger::bitcoin(),
-            absolute_expiry in any::<u32>()
-        ) -> hbit::CreatedSwap {
-            hbit::CreatedSwap {
-                amount,
-                final_identity,
-                network,
-                absolute_expiry
-            }
         }
     }
 }

@@ -596,7 +596,6 @@ dependencies = [
  "derivative",
  "diesel",
  "diesel_migrations",
- "digest 0.1.0",
  "directories-next",
  "fs2",
  "futures",
@@ -655,7 +654,6 @@ dependencies = [
  "byteorder",
  "conquer-once",
  "derivative",
- "digest 0.1.0",
  "ethbloom",
  "futures",
  "genawaiter",
@@ -902,17 +900,6 @@ dependencies = [
 
 [[package]]
 name = "digest"
-version = "0.1.0"
-dependencies = [
- "digest-macro-derive",
- "hex 0.4.2",
- "multihash",
- "serde",
- "serde_derive",
-]
-
-[[package]]
-name = "digest"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
@@ -927,16 +914,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 dependencies = [
  "generic-array 0.14.4",
-]
-
-[[package]]
-name = "digest-macro-derive"
-version = "0.1.0"
-dependencies = [
- "hex 0.4.2",
- "proc-macro2 1.0.24",
- "quote 1.0.7",
- "syn 1.0.48",
 ]
 
 [[package]]

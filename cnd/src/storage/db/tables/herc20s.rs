@@ -1,16 +1,13 @@
-use crate::{
-    herc20,
-    storage::{
-        db::{
-            schema::herc20s,
-            tables::Swap,
-            wrapper_types::{Erc20Amount, U32},
-        },
-        Insert, IntoInsertable, Sqlite, Text,
+use crate::storage::{
+    db::{
+        schema::herc20s,
+        tables::Swap,
+        wrapper_types::{Erc20Amount, U32},
     },
+    Text,
 };
 use anyhow::Result;
-use comit::{asset, ethereum, ethereum::ChainId, Role, Side};
+use comit::{asset, ethereum, ethereum::ChainId, Side};
 use diesel::{prelude::*, SqliteConnection};
 
 #[derive(Associations, Clone, Debug, Identifiable, Queryable, PartialEq)]
@@ -80,46 +77,5 @@ impl From<Herc20> for asset::Erc20 {
             quantity: herc20.amount.0.into(),
             token_contract: herc20.token_contract.0,
         }
-    }
-}
-
-impl IntoInsertable for herc20::CreatedSwap {
-    type Insertable = InsertableHerc20;
-
-    fn into_insertable(self, swap_id: i32, role: Role, side: Side) -> Self::Insertable {
-        let redeem_identity = match (role, side) {
-            (Role::Alice, Side::Beta) | (Role::Bob, Side::Alpha) => Some(Text(self.identity)),
-            _ => None,
-        };
-        let refund_identity = match (role, side) {
-            (Role::Alice, Side::Alpha) | (Role::Bob, Side::Beta) => Some(Text(self.identity)),
-            _ => None,
-        };
-        assert!(redeem_identity.is_some() || refund_identity.is_some());
-
-        InsertableHerc20 {
-            swap_id,
-            amount: Text(self.asset.quantity.into()),
-            chain_id: U32(self.chain_id.into()),
-            expiry: U32(self.absolute_expiry),
-            token_contract: Text(self.asset.token_contract),
-            redeem_identity,
-            refund_identity,
-            side: Text(side),
-        }
-    }
-}
-
-impl Insert<InsertableHerc20> for Sqlite {
-    fn insert(
-        &self,
-        connection: &SqliteConnection,
-        insertable: &InsertableHerc20,
-    ) -> anyhow::Result<()> {
-        diesel::insert_into(herc20s::dsl::herc20s)
-            .values(insertable)
-            .execute(connection)?;
-
-        Ok(())
     }
 }

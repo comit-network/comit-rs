@@ -91,24 +91,34 @@ mod tests {
     use super::*;
     use crate::{
         proptest::*,
-        storage::{db, InsertableCompletedSwap, Save, Storage},
+        storage::{db, db::Sqlite},
     };
+    use comit::{LockProtocol, Side};
     use tokio::runtime::Runtime;
+
+    // FK given by sqlite deterministically start from 1, we can thus anticipate
+    // which FK will be used if we have a fresh test database for every test.
+    const FIRST_SWAP_FK: i32 = 1;
+    const SECOND_SWAP_FK: i32 = 2;
 
     proptest! {
         #[test]
         fn get_active_swap_contexts_does_not_return_completed_swap(
-            swap in db::proptest::created_swap(hbit::created_swap(), herc20::created_swap())
+            insertable_swap in db::proptest::tables::insertable_swap(),
+            insertable_hbit in db::proptest::tables::insertable_hbit(FIRST_SWAP_FK, Side::Alpha),
+            insertable_herc20 in db::proptest::tables::insertable_herc20(FIRST_SWAP_FK, Side::Beta),
+            insertable_completed_swap in db::proptest::tables::insertable_completed_swap(FIRST_SWAP_FK),
         ) {
-            let storage = Storage::test();
+            let db = Sqlite::test();
             let mut runtime = Runtime::new().unwrap();
 
             let active_swap_contexts = runtime.block_on(async {
-                storage.save(swap.clone()).await.unwrap();
-                storage.db.do_in_transaction(|conn| {
-                    // We only insert one swap, fk is always 1.
-                    // The insert would fail if this assumption would not be true thanks to FK-enforcement.
-                    InsertableCompletedSwap::new(1, OffsetDateTime::now_utc()).insert(conn)?;
+                db.do_in_transaction(|conn| {
+                    insertable_swap.insert(conn)?;
+                    insertable_hbit.insert(conn)?;
+                    insertable_herc20.insert(conn)?;
+                    insertable_completed_swap.insert(conn)?;
+
                     get_active_swap_contexts(conn)
                 }).await.unwrap()
             });
@@ -120,17 +130,65 @@ mod tests {
     proptest! {
         #[test]
         fn get_active_swap_contexts_returns_not_completed_swap(
-            swap in db::proptest::created_swap(hbit::created_swap(), herc20::created_swap())
+            insertable_swap in db::proptest::tables::insertable_swap(),
+            insertable_hbit in db::proptest::tables::insertable_hbit(FIRST_SWAP_FK, Side::Alpha),
+            insertable_herc20 in db::proptest::tables::insertable_herc20(FIRST_SWAP_FK, Side::Beta),
         ) {
-            let storage = Storage::test();
+            let db = Sqlite::test();
             let mut runtime = Runtime::new().unwrap();
 
             let active_swap_contexts = runtime.block_on(async {
-                storage.save(swap.clone()).await.unwrap();
-                storage.db.do_in_transaction(get_active_swap_contexts).await.unwrap()
+                db.do_in_transaction(|conn| {
+                    insertable_swap.insert(conn)?;
+                    insertable_hbit.insert(conn)?;
+                    insertable_herc20.insert(conn)?;
+
+                    get_active_swap_contexts(conn)
+                }).await.unwrap()
             });
 
             assert_eq!(active_swap_contexts.len(), 1)
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn get_swap_context_by_id_returns_correct_swap(
+            first_insertable_swap in db::proptest::tables::insertable_swap(),
+            first_insertable_hbit in db::proptest::tables::insertable_hbit(FIRST_SWAP_FK, Side::Alpha),
+            first_insertable_herc20 in db::proptest::tables::insertable_herc20(FIRST_SWAP_FK, Side::Beta),
+            second_insertable_swap in db::proptest::tables::insertable_swap(),
+            second_insertable_herc20 in db::proptest::tables::insertable_herc20(SECOND_SWAP_FK, Side::Alpha),
+            second_insertable_hbit in db::proptest::tables::insertable_hbit(SECOND_SWAP_FK, Side::Beta),
+        ) {
+            let db = Sqlite::test();
+            let mut runtime = Runtime::new().unwrap();
+
+            let first_swap_id = first_insertable_swap.local_swap_id;
+            let second_swap_id = second_insertable_swap.local_swap_id;
+
+            runtime.block_on(async {
+                db.do_in_transaction(|conn| {
+                    first_insertable_swap.insert(conn)?;
+                    first_insertable_hbit.insert(conn)?;
+                    first_insertable_herc20.insert(conn)?;
+
+                    second_insertable_swap.insert(conn)?;
+                    second_insertable_hbit.insert(conn)?;
+                    second_insertable_herc20.insert(conn)?;
+
+                    Ok(())
+                }).await.unwrap();
+            });
+
+            let first_swap_context = runtime.block_on(db.do_in_transaction(|conn| get_swap_context_by_id(conn, first_swap_id.0))).unwrap();
+            let second_swap_context = runtime.block_on(db.do_in_transaction(|conn| get_swap_context_by_id(conn, second_swap_id.0))).unwrap();
+
+            assert_eq!(first_swap_context.alpha, LockProtocol::Hbit);
+            assert_eq!(first_swap_context.beta, LockProtocol::Herc20);
+
+            assert_eq!(second_swap_context.alpha, LockProtocol::Herc20);
+            assert_eq!(second_swap_context.beta, LockProtocol::Hbit);
         }
     }
 }

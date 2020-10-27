@@ -1,14 +1,13 @@
 use crate::{
-    identity,
     local_swap_id::LocalSwapId,
-    storage::{db::schema, NoSwapExists, Sqlite, Text},
+    storage::{NoSwapExists, Sqlite, Text},
 };
 use anyhow::Context;
 use comit::{
     expiries::{AlphaOffset, BetaOffset},
-    Role, Side,
+    Side,
 };
-use diesel::{prelude::*, SqliteConnection};
+use diesel::prelude::*;
 
 #[macro_export]
 macro_rules! swap_id_fk {
@@ -46,32 +45,6 @@ use std::convert::TryFrom;
 pub use swap_contexts::SwapContext;
 pub use swaps::{InsertableSwap, Swap};
 use time::Duration;
-
-pub trait IntoInsertable {
-    type Insertable;
-
-    fn into_insertable(self, swap_id: i32, role: Role, side: Side) -> Self::Insertable;
-}
-
-pub trait Insert<I> {
-    fn insert(&self, connection: &SqliteConnection, insertable: &I) -> anyhow::Result<()>;
-}
-
-trait EnsureSingleRowAffected {
-    fn ensure_single_row_affected(self) -> anyhow::Result<usize>;
-}
-
-impl EnsureSingleRowAffected for usize {
-    fn ensure_single_row_affected(self) -> anyhow::Result<usize> {
-        if self != 1 {
-            return Err(anyhow::anyhow!(
-                "Expected rows to be updated should have been 1 but was {}",
-                self
-            ));
-        }
-        Ok(self)
-    }
-}
 
 /// A newtype for a tuple of params.
 ///
@@ -206,89 +179,3 @@ macro_rules! impl_load_tables {
 
 impl_load_tables!(Herc20, Hbit);
 impl_load_tables!(Hbit, Herc20);
-
-impl Sqlite {
-    pub fn insert_secret_hash(
-        &self,
-        connection: &SqliteConnection,
-        local_swap_id: LocalSwapId,
-        secret_hash: comit::SecretHash,
-    ) -> anyhow::Result<()> {
-        let swap_id = swap_id_fk!(local_swap_id)
-            .first(connection)
-            .with_context(|| {
-                format!(
-                    "failed to find swap_id foreign key for swap {}",
-                    local_swap_id
-                )
-            })?;
-        let insertable = InsertableSecretHash::new(swap_id, secret_hash);
-
-        diesel::insert_into(schema::secret_hashes::table)
-            .values(insertable)
-            .execute(&*connection)
-            .with_context(|| format!("failed to insert secret hash for swap {}", local_swap_id))?;
-
-        Ok(())
-    }
-
-    pub fn update_herc20_refund_identity(
-        &self,
-        connection: &SqliteConnection,
-        local_swap_id: LocalSwapId,
-        identity: identity::Ethereum,
-    ) -> anyhow::Result<()> {
-        diesel::update(schema::herc20s::table)
-            .filter(schema::herc20s::swap_id.eq_any(swap_id_fk!(local_swap_id)))
-            .set(schema::herc20s::refund_identity.eq(Text(identity)))
-            .execute(connection)?
-            .ensure_single_row_affected()
-            .with_context(|| {
-                format!(
-                    "failed to update herc20 refund identity for swap {}",
-                    local_swap_id
-                )
-            })?;
-        Ok(())
-    }
-
-    pub fn update_herc20_redeem_identity(
-        &self,
-        connection: &SqliteConnection,
-        local_swap_id: LocalSwapId,
-        identity: identity::Ethereum,
-    ) -> anyhow::Result<()> {
-        diesel::update(schema::herc20s::table)
-            .filter(schema::herc20s::swap_id.eq_any(swap_id_fk!(local_swap_id)))
-            .set(schema::herc20s::redeem_identity.eq(Text(identity)))
-            .execute(connection)?
-            .ensure_single_row_affected()
-            .with_context(|| {
-                format!(
-                    "failed to update herc20 redeem identity for swap {}",
-                    local_swap_id
-                )
-            })?;
-        Ok(())
-    }
-
-    pub fn update_hbit_transient_identity(
-        &self,
-        connection: &SqliteConnection,
-        local_swap_id: LocalSwapId,
-        identity: identity::Bitcoin,
-    ) -> anyhow::Result<()> {
-        diesel::update(schema::hbits::table)
-            .filter(schema::hbits::swap_id.eq_any(swap_id_fk!(local_swap_id)))
-            .set(schema::hbits::transient_identity.eq(Text(identity)))
-            .execute(connection)?
-            .ensure_single_row_affected()
-            .with_context(|| {
-                format!(
-                    "failed to update hbit transient identity for swap {}",
-                    local_swap_id
-                )
-            })?;
-        Ok(())
-    }
-}

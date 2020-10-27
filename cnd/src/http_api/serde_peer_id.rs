@@ -12,6 +12,7 @@ where
     serializer.serialize_str(&string)
 }
 
+#[allow(dead_code)]
 pub fn deserialize<'de, D>(deserializer: D) -> Result<PeerId, D::Error>
 where
     D: Deserializer<'de>,

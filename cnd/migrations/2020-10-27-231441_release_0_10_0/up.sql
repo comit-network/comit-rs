@@ -17,3 +17,5 @@ FROM swaps;
 
 -- Remove halbits table
 DROP TABLE halbits;
+
+DROP TABLE shared_swap_ids;
