@@ -175,7 +175,7 @@ impl IntoParams for comit::swap::hbit::Params {
         };
 
         Ok(comit::swap::hbit::Params {
-            shared: hbit::Params {
+            shared: hbit::SharedParams {
                 network: hbit.network.0,
                 asset: hbit.amount.0.into(),
                 redeem_identity: redeem,

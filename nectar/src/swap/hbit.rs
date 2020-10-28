@@ -58,20 +58,11 @@ impl WatchForFunded for Facade {
                 )
                 .await
                 {
-                    Ok(comit::hbit::Funded::Correctly {
-                        asset, location, ..
-                    }) => {
-                        let event = Funded { location, asset };
-
+                    Ok(Ok(event)) => {
                         let _ = self.db.save(event, self.swap_id).await;
                         return Ok(event);
                     }
-                    Ok(comit::hbit::Funded::Incorrectly { asset, .. }) => {
-                        return Err(IncorrectlyFunded {
-                            expected: params.shared.asset,
-                            got: asset,
-                        })
-                    }
+                    Ok(Err(e)) => return Err(e),
                     Err(e) => {
                         tracing::warn!("failed to watch for hbit funding, retrying ...: {:#}", e)
                     }

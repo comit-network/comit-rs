@@ -61,7 +61,7 @@ impl crate::StaticStub for SwapParams {
 
         SwapParams {
             hbit_params: comit::swap::hbit::Params {
-                shared: comit::hbit::Params {
+                shared: comit::hbit::SharedParams {
                     network: comit::ledger::Bitcoin::Regtest,
                     asset: comit::asset::Bitcoin::from_sat(12_345_678),
                     redeem_identity: comit::bitcoin::PublicKey::from_str(
@@ -189,7 +189,11 @@ mod tests {
     fn hbit_params(
         secret_hash: SecretHash,
         network: comit::ledger::Bitcoin,
-    ) -> (comit::hbit::Params, bitcoin::SecretKey, bitcoin::SecretKey) {
+    ) -> (
+        comit::hbit::SharedParams,
+        bitcoin::SecretKey,
+        bitcoin::SecretKey,
+    ) {
         let asset = asset::Bitcoin::from_sat(100_000_000);
         let expiry = Timestamp::now().plus(60 * 60);
 
@@ -215,7 +219,7 @@ mod tests {
             (transient_redeem_sk, transient_redeem_pk)
         };
 
-        let shared_params = comit::hbit::Params {
+        let shared_params = comit::hbit::SharedParams {
             network,
             asset,
             redeem_identity: transient_redeem_pk,
@@ -449,7 +453,7 @@ mod tests {
             let swap_id = SwapId::default();
 
             let swap = SwapKind::HbitHerc20(SwapParams {
-                hbit_params: comit::swap::hbit::Params {
+                hbit_params: hbit::Params {
                     shared: hbit_params,
                     transient_sk: hbit_transient_redeem_sk,
                     final_address: bob_bitcoin_wallet.inner.new_address().await?,
@@ -463,11 +467,11 @@ mod tests {
 
             bob_db.insert_swap(swap).await.unwrap();
 
-            let hbit_params = hbit::Params::new(
-                hbit_params,
-                hbit_transient_redeem_sk,
-                bob_bitcoin_wallet.inner.new_address().await?,
-            );
+            let hbit_params = hbit::Params {
+                shared: hbit_params,
+                transient_sk: hbit_transient_redeem_sk,
+                final_address: bob_bitcoin_wallet.inner.new_address().await?,
+            };
 
             drive(
                 comit::swap::hbit_herc20_bob(

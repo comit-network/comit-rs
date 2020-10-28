@@ -1,6 +1,4 @@
-pub mod hbit;
 pub mod hbit_herc20;
-pub mod herc20;
 pub mod herc20_hbit;
 
 pub use crate::{ethereum, *};

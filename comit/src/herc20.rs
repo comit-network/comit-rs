@@ -19,6 +19,7 @@ use anyhow::Result;
 use blockchain_contracts::ethereum::herc20::Htlc;
 use conquer_once::Lazy;
 use std::cmp::Ordering;
+use thiserror::Error;
 use time::OffsetDateTime;
 use tracing_futures::Instrument;
 
@@ -45,16 +46,17 @@ pub struct Deployed {
     pub location: htlc_location::Ethereum,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Funded {
-    Correctly {
-        transaction: ethereum::Hash,
-        asset: asset::Erc20,
-    },
-    Incorrectly {
-        transaction: ethereum::Hash,
-        asset: asset::Erc20,
-    },
+#[derive(Debug, Clone)]
+pub struct Funded {
+    pub transaction: ethereum::Hash,
+    pub asset: asset::Erc20,
+}
+
+#[derive(Debug, Clone, Error)]
+#[error("herc20 HTLC was incorrectly funded, expected {expected} but got {got}")]
+pub struct IncorrectlyFunded {
+    pub expected: asset::Erc20,
+    pub got: asset::Erc20,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -66,6 +68,35 @@ pub struct Redeemed {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Refunded {
     pub transaction: ethereum::Hash,
+}
+
+#[async_trait::async_trait]
+pub trait WatchForDeployed {
+    async fn watch_for_deployed(
+        &self,
+        params: Params,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> Deployed;
+}
+
+#[async_trait::async_trait]
+pub trait WatchForFunded {
+    async fn watch_for_funded(
+        &self,
+        params: Params,
+        deploy_event: Deployed,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> Result<Funded, IncorrectlyFunded>;
+}
+
+#[async_trait::async_trait]
+pub trait WatchForRedeemed {
+    async fn watch_for_redeemed(
+        &self,
+        params: Params,
+        deploy_event: Deployed,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> Redeemed;
 }
 
 pub async fn watch_for_deployed<C>(
@@ -97,7 +128,7 @@ pub async fn watch_for_funded<C>(
     params: Params,
     start_of_swap: OffsetDateTime,
     deployed: Deployed,
-) -> Result<Funded>
+) -> Result<Result<Funded, IncorrectlyFunded>>
 where
     C: LatestBlock<Block = Block>
         + BlockByHash<Block = Block, BlockHash = Hash>
@@ -126,18 +157,16 @@ where
     let quantity = Erc20Quantity::from_wei(U256::from_big_endian(&log.data.0));
     let asset = Erc20::new(log.address, quantity);
 
-    let event = match expected_asset.cmp(&asset) {
-        Ordering::Equal => Funded::Correctly {
+    match expected_asset.cmp(&asset) {
+        Ordering::Equal => Ok(Ok(Funded {
             transaction: transaction.hash,
             asset,
-        },
-        _ => Funded::Incorrectly {
-            transaction: transaction.hash,
-            asset,
-        },
-    };
-
-    Ok(event)
+        })),
+        _ => Ok(Err(IncorrectlyFunded {
+            expected: params.asset,
+            got: asset,
+        })),
+    }
 }
 
 pub async fn watch_for_redeemed<C>(

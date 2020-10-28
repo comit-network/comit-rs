@@ -32,16 +32,12 @@ where
 {
     async fn watch_for_funded(
         &self,
-        params: &comit::swap::hbit::Params,
+        params: &Params,
         start_of_swap: OffsetDateTime,
-    ) -> Result<comit::swap::hbit::Funded, IncorrectlyFunded> {
+    ) -> Result<Funded, IncorrectlyFunded> {
         loop {
             match watch_for_funded(self.connector.as_ref(), &params.shared, start_of_swap).await {
-                Ok(comit::hbit::Funded::Correctly {
-                    asset, location, ..
-                }) => {
-                    let event = comit::swap::hbit::Funded { location, asset };
-
+                Ok(Ok(event)) => {
                     self.storage
                         .hbit_events
                         .lock()
@@ -52,12 +48,7 @@ where
 
                     return Ok(event);
                 }
-                Ok(comit::hbit::Funded::Incorrectly { asset, .. }) => {
-                    return Err(IncorrectlyFunded {
-                        expected: params.shared.asset,
-                        got: asset,
-                    })
-                }
+                Ok(Err(e)) => return Err(e),
                 Err(e) => tracing::warn!("failed to watch for hbit funding, retrying ...: {:#}", e),
             }
         }
@@ -73,8 +64,8 @@ where
 {
     async fn watch_for_redeemed(
         &self,
-        params: &comit::swap::hbit::Params,
-        fund_event: comit::swap::hbit::Funded,
+        params: &Params,
+        fund_event: Funded,
         start_of_swap: OffsetDateTime,
     ) -> Redeemed {
         loop {

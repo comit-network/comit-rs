@@ -105,18 +105,12 @@ impl WatchForFunded for Facade {
                 )
                 .await
                 {
-                    Ok(comit::herc20::Funded::Correctly { transaction, asset }) => {
-                        let event = Funded { transaction, asset };
+                    Ok(Ok(event)) => {
                         let _ = self.db.save(event.clone(), self.swap_id).await;
 
                         return Ok(event);
                     }
-                    Ok(comit::herc20::Funded::Incorrectly { asset, .. }) => {
-                        return Err(IncorrectlyFunded {
-                            expected: params.asset,
-                            got: asset,
-                        })
-                    }
+                    Ok(Err(e)) => return Err(e),
                     Err(e) => {
                         tracing::warn!("failed to watch for herc20 funding, retrying ...: {:#}", e)
                     }

@@ -211,11 +211,11 @@ impl EventLoop {
                     .bitcoin_wallet
                     .derive_transient_sk(exec_swap.context.bitcoin_transient_key_index)
                     .context("Could not derive Bitcoin transient key")?;
-                let hbit_params = crate::swap::hbit::Params::new(
-                    exec_swap.hbit,
-                    bitcoin_transient_sk,
-                    self.bitcoin_wallet.new_address().await?,
-                );
+                let hbit_params = crate::swap::hbit::Params {
+                    shared: exec_swap.hbit,
+                    transient_sk: bitcoin_transient_sk,
+                    final_address: self.bitcoin_wallet.new_address().await?,
+                };
 
                 let params = SwapParams {
                     swap_id,
