@@ -6,7 +6,6 @@ pull_request_rules:
       - "status-success=build (ubuntu-latest)"
       - "status-success=build (windows-latest)"
       - "status-success=build (macos-latest)"
-      - "status-success=license/cla"
       - label!=no-mergify
     actions:
       comment:
@@ -19,7 +18,6 @@ pull_request_rules:
       - "status-success=build (ubuntu-latest)"
       - "status-success=build (windows-latest)"
       - "status-success=build (macos-latest)"
-      - "status-success=license/cla"
       - -conflict
       - label!=work-in-progress
       - label!=blocked
