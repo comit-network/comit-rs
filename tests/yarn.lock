@@ -461,10 +461,10 @@
   dependencies:
     "@ethersproject/logger" "^5.0.5"
 
-"@ethersproject/providers@5.0.13":
-  version "5.0.13"
-  resolved "https://registry.yarnpkg.com/@ethersproject/providers/-/providers-5.0.13.tgz#1ec39e544353e1090803955ba6a1920ee942d6ab"
-  integrity sha512-5jsuk1FwXxmoQApGs8LSQyS43KP01pHA+6cQ1OPov5pT5Pcqe6ffh6UD1//BZ9Vjf+5e9AQqIk8w7FkGyROuCA==
+"@ethersproject/providers@5.0.14":
+  version "5.0.14"
+  resolved "https://registry.yarnpkg.com/@ethersproject/providers/-/providers-5.0.14.tgz#751ccb14b4a8c8e9e4be171818c23f4601be90ba"
+  integrity sha512-K9QRRkkHWyprm3g4L8U9aPx5uyivznL4RYemkN2shCQumyGqFJ5SO+OtQrgebVm0JpGwFAUGugnhRUh49sjErw==
   dependencies:
     "@ethersproject/abstract-provider" "^5.0.4"
     "@ethersproject/abstract-signer" "^5.0.4"
@@ -565,10 +565,10 @@
     "@ethersproject/constants" "^5.0.4"
     "@ethersproject/logger" "^5.0.5"
 
-"@ethersproject/wallet@5.0.6":
-  version "5.0.6"
-  resolved "https://registry.yarnpkg.com/@ethersproject/wallet/-/wallet-5.0.6.tgz#8a3f7556a614b54c24f729b2dac893a66b931ac9"
-  integrity sha512-dRqx3+Degc5pvjaeeTHuk2EuTRM3b6ce/TiV0HRZhRXYnKyyjg0iYXEZo/b6p3rnV+Xhwxkc0+I/ISPkNpictA==
+"@ethersproject/wallet@5.0.7":
+  version "5.0.7"
+  resolved "https://registry.yarnpkg.com/@ethersproject/wallet/-/wallet-5.0.7.tgz#9d4540f97d534e3d61548ace30f15857209b3f02"
+  integrity sha512-n2GX1+2Tc0qV8dguUcLkjNugINKvZY7u/5fEsn0skW9rz5+jHTR5IKMV6jSfXA+WjQT8UCNMvkI3CNcdhaPbTQ==
   dependencies:
     "@ethersproject/abstract-provider" "^5.0.4"
     "@ethersproject/abstract-signer" "^5.0.4"
@@ -2455,10 +2455,10 @@ etag@~1.8.1:
   resolved "https://registry.yarnpkg.com/etag/-/etag-1.8.1.tgz#41ae2eeb65efa62268aebfea83ac7d79299b0887"
   integrity sha1-Qa4u62XvpiJorr/qg6x9eSmbCIc=
 
-ethers@^5.0.18:
-  version "5.0.18"
-  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.18.tgz#2ccf382d32b9712e6967d0b14303cb0fe8056c7a"
-  integrity sha512-WCiKGfAt09hBS1HZspu+JTgeunFcUCVRhCXO8X+VadBJGTRlG722XXib79Vz2oyBperz90CcjkBPdNly61Ah4A==
+ethers@^5.0.19:
+  version "5.0.19"
+  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.19.tgz#a4636f62a180135b13fd1f0a393477beafd535b7"
+  integrity sha512-0AZnUgZh98q888WAd1oI3aLeI+iyDtrupjANVtPPS7O63lVopkR/No8A1NqSkgl/rU+b2iuu2mUZor6GD4RG2w==
   dependencies:
     "@ethersproject/abi" "5.0.7"
     "@ethersproject/abstract-provider" "5.0.5"
@@ -2478,7 +2478,7 @@ ethers@^5.0.18:
     "@ethersproject/networks" "5.0.4"
     "@ethersproject/pbkdf2" "5.0.4"
     "@ethersproject/properties" "5.0.4"
-    "@ethersproject/providers" "5.0.13"
+    "@ethersproject/providers" "5.0.14"
     "@ethersproject/random" "5.0.4"
     "@ethersproject/rlp" "5.0.4"
     "@ethersproject/sha2" "5.0.4"
@@ -2487,7 +2487,7 @@ ethers@^5.0.18:
     "@ethersproject/strings" "5.0.5"
     "@ethersproject/transactions" "5.0.6"
     "@ethersproject/units" "5.0.6"
-    "@ethersproject/wallet" "5.0.6"
+    "@ethersproject/wallet" "5.0.7"
     "@ethersproject/web" "5.0.9"
     "@ethersproject/wordlists" "5.0.5"
 
