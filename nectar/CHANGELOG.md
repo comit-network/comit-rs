@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   New command to archive swaps: `nectar archive-swap <swap id>`.
     The command should only be used while nectar is stopped as it updates the database.
     Archiving a swap stops nectar to resume its automated execution, `create-transaction` command can then be used to recover funds.
+-   New command to migrate the database to a new format;
+    Use `nectar migrate-db status` to check if migration is needed;
+    If so, backup your data and then execute `nectar migrate-db run` to proceed with the migration.
 
 ## [nectar-0.1.0] - 2020-10-20
 

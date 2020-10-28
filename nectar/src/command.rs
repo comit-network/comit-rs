@@ -4,6 +4,7 @@ use structopt::StructOpt;
 mod balance;
 mod create_transaction;
 mod deposit;
+mod migrate_db;
 mod resume_only;
 mod trade;
 mod wallet_info;
@@ -25,6 +26,7 @@ pub use balance::balance;
 use comit::Secret;
 pub use create_transaction::create_transaction;
 pub use deposit::deposit;
+pub use migrate_db::migrate_db;
 pub use resume_only::resume_only;
 use time::OffsetDateTime;
 pub use trade::trade;
@@ -72,6 +74,8 @@ pub enum Command {
     CreateTransaction(CreateTransaction),
     /// Archive a swap, all automated actions will be paused.
     ArchiveSwap { id: SwapId },
+    /// Migrate the database to the current format.
+    MigrateDb(MigrateDb),
 }
 
 pub fn dump_config(settings: Settings) -> anyhow::Result<()> {
@@ -142,6 +146,14 @@ impl CreateTransaction {
             CreateTransaction::Refund { swap_id, .. } => *swap_id,
         }
     }
+}
+
+#[derive(StructOpt, Debug, Clone)]
+pub enum MigrateDb {
+    /// Print whether the database needs a migration.
+    Status,
+    /// Runs a database migration, please backup before proceeding.
+    Run,
 }
 
 fn parse_bitcoin(str: &str) -> anyhow::Result<bitcoin::Amount> {

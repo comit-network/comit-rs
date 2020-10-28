@@ -5,7 +5,7 @@ use self::{
 #[cfg(test)]
 use crate::StaticStub;
 use crate::{network, network::ActivePeer, swap, swap::SwapKind, SwapId};
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Context};
 use conquer_once::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, iter::FromIterator};
@@ -22,12 +22,12 @@ static BITCOIN_TRANSIENT_KEYS_INDEX_KEY: Lazy<Vec<u8>> =
     Lazy::new(|| serialize(&"bitcoin_transient_key_index").expect("this slice can be serialized"));
 
 pub trait Load<T>: Send + Sync + 'static {
-    fn load(&self, swap_id: SwapId) -> Result<Option<T>>;
+    fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<T>>;
 }
 
 #[async_trait::async_trait]
 pub trait Save<T>: Send + Sync + 'static {
-    async fn save(&self, elem: T, swap_id: SwapId) -> Result<()>;
+    async fn save(&self, elem: T, swap_id: SwapId) -> anyhow::Result<()>;
 }
 
 #[derive(Debug)]
@@ -37,14 +37,24 @@ pub struct Database {
     tmp_dir: Option<tempfile::TempDir>,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("Sled: ")]
+    Sled(#[from] sled::Error),
+    #[error("failed to convert path to utf-8 string: {0}")]
+    Path(String),
+    #[error("Serde cbor: ")]
+    SerdeCbor(#[from] serde_cbor::Error),
+}
+
 // TODO: We should not need to manually flush as sled automatically tries to
 // sync all data to disk several times per second already. https://github.com/spacejam/sled#interaction-with-async
 // We should just try to flush on critical saves.
 impl Database {
-    pub fn new(path: &std::path::Path) -> Result<Self> {
+    pub fn new(path: &std::path::Path) -> Result<Self, Error> {
         let path = path
             .to_str()
-            .ok_or_else(|| anyhow!("failed to convert path to utf-8 string: {:?}", path))?;
+            .ok_or_else(|| Error::Path(format!("{:?}", path)))?;
 
         let db = Self::new_sled(path)?;
 
@@ -55,8 +65,8 @@ impl Database {
         })
     }
 
-    fn new_sled(path: &str) -> anyhow::Result<sled::Db> {
-        let db = sled::open(path).with_context(|| format!("failed to open DB at {}", path))?;
+    fn new_sled(path: &str) -> Result<sled::Db, Error> {
+        let db = sled::open(path)?;
 
         if !db.contains_key(ACTIVE_PEER_KEY.clone())? {
             let peers = Vec::<ActivePeer>::new();
@@ -73,7 +83,7 @@ impl Database {
     }
 
     #[cfg(test)]
-    pub fn new_test() -> Result<Self> {
+    pub fn new_test() -> anyhow::Result<Self> {
         let tmp_dir = tempfile::TempDir::new().unwrap();
         let db = sled::open(tmp_dir.path())
             .with_context(|| format!("failed to open DB at {}", tmp_dir.path().display()))?;
@@ -96,7 +106,7 @@ impl Database {
         self.tmp_dir.as_ref().map(|tmp_dir| tmp_dir.path())
     }
 
-    pub async fn fetch_inc_bitcoin_transient_key_index(&self) -> Result<u32> {
+    pub async fn fetch_inc_bitcoin_transient_key_index(&self) -> anyhow::Result<u32> {
         let old_value = self.db.fetch_and_update(
             BITCOIN_TRANSIENT_KEYS_INDEX_KEY.clone(),
             |old| match old {
@@ -121,7 +131,7 @@ impl Database {
             .context("Could not flush db")?;
 
         match old_value {
-            Some(index) => deserialize(&index),
+            Some(index) => Ok(deserialize(&index)?),
             None => Err(anyhow!(
                 "The Bitcoin transient keys index was not properly instantiated in the db"
             )),
@@ -129,7 +139,7 @@ impl Database {
     }
 
     /// Mark a swap as archived and remove its peer from the "active peers"
-    pub async fn archive_swap(&self, swap_id: &SwapId) -> Result<()> {
+    pub async fn archive_swap(&self, swap_id: &SwapId) -> anyhow::Result<()> {
         let stored_swap = self.get_swap_or_bail(&swap_id)?;
 
         if let Some(true) = stored_swap.archived {
@@ -158,11 +168,76 @@ impl Database {
             peer,
         ))
     }
+
+    /// Check if any stored swaps use an old serialisation format
+    pub async fn are_any_swap_stored_in_old_format(&self) -> anyhow::Result<bool> {
+        let res = self
+            .db
+            .iter()
+            .filter_map(|item| match item {
+                Ok((key, value)) => {
+                    let swap_id = deserialize::<SwapId>(&key);
+                    let swap = deserialize::<Swap>(&value).context("failed to deserialize swap");
+                    match (swap_id, swap) {
+                        (Ok(_), Ok(swap)) => match serialize(&swap) {
+                            Ok(value_current_format) => {
+                                let value_current_format: &[u8] = value_current_format.as_ref();
+                                if value != value_current_format {
+                                    Some(Ok(()))
+                                } else {
+                                    None
+                                }
+                            }
+                            Err(err) => Some(Err(err).context("failed to serialize swap")),
+                        },
+                        (Ok(_), Err(err)) => Some(Err(err)), // If the swap id deserialize, then
+                        // it should be a swap
+                        (..) => None, // This is not a swap item
+                    }
+                }
+                Err(err) => Some(Err(err).context("failed to retrieve swaps from DB")),
+            })
+            .collect::<Result<Vec<()>, _>>()?;
+
+        Ok(!res.is_empty())
+    }
+
+    // Rewrite all swaps in the current serialisation foramt
+    pub async fn reserialize(&self) -> anyhow::Result<()> {
+        let _ = self
+            .db
+            .iter()
+            .map(|item| match item {
+                Ok((key, old_value)) => {
+                    let swap_id = deserialize::<SwapId>(&key);
+                    let swap =
+                        deserialize::<Swap>(&old_value).context("failed to deserialize swap");
+
+                    match (swap_id, swap) {
+                        (Ok(_), Ok(swap)) => match serialize(&swap) {
+                            Ok(new_value) => self
+                                .db
+                                .compare_and_swap(key, Some(old_value), Some(new_value))
+                                .context("failed to write in the DB")?
+                                .context("failed to save in the DB, stored swap somehow changed"),
+                            Err(err) => Err(err).context("failed to serialize swap"),
+                        },
+                        (Ok(_), Err(err)) => Err(err), // If the swap id deserialize, then
+                        // it should be a swap
+                        (..) => Ok(()), // This is not a swap item
+                    }
+                }
+                Err(err) => Err(err).context("failed to retrieve swaps from DB"),
+            })
+            .collect::<Result<Vec<()>, _>>()?;
+
+        Ok(())
+    }
 }
 
 /// Swap related functions
 impl Database {
-    pub async fn insert_swap(&self, swap: SwapKind) -> Result<()> {
+    pub async fn insert_swap(&self, swap: SwapKind) -> anyhow::Result<()> {
         let swap_id = swap.swap_id();
 
         let stored_swap = self.get_swap_or_bail(&swap_id);
@@ -189,7 +264,7 @@ impl Database {
         }
     }
 
-    pub fn all_active_swaps(&self) -> Result<Vec<SwapKind>> {
+    pub fn all_active_swaps(&self) -> anyhow::Result<Vec<SwapKind>> {
         self.db
             .iter()
             .filter_map(|item| match item {
@@ -219,7 +294,7 @@ impl Database {
             .collect()
     }
 
-    pub async fn remove_swap(&self, swap_id: &SwapId) -> Result<()> {
+    pub async fn remove_swap(&self, swap_id: &SwapId) -> anyhow::Result<()> {
         let key = serialize(swap_id)?;
 
         self.db
@@ -234,7 +309,7 @@ impl Database {
             .context("failed to flush db")
     }
 
-    fn get_swap_or_bail(&self, swap_id: &SwapId) -> Result<Swap> {
+    fn get_swap_or_bail(&self, swap_id: &SwapId) -> anyhow::Result<Swap> {
         let swap = self
             .get_swap(swap_id)?
             .ok_or_else(|| anyhow!("swap does not exists {}", swap_id))?;
@@ -242,7 +317,7 @@ impl Database {
         Ok(swap)
     }
 
-    fn get_swap(&self, swap_id: &SwapId) -> Result<Option<Swap>> {
+    fn get_swap(&self, swap_id: &SwapId) -> anyhow::Result<Option<Swap>> {
         let key = serialize(swap_id)?;
 
         let swap = match self.db.get(&key)? {
@@ -255,7 +330,7 @@ impl Database {
 }
 
 impl Load<SwapKind> for Database {
-    fn load(&self, swap_id: SwapId) -> Result<Option<SwapKind>> {
+    fn load(&self, swap_id: SwapId) -> anyhow::Result<Option<SwapKind>> {
         let swap = self.get_swap(&swap_id)?;
         let swap_kind = swap.map(|swap| SwapKind::from((swap, swap_id)));
 
@@ -267,7 +342,7 @@ impl Load<SwapKind> for Database {
 /// swap with nectar An active peer refers to one that has an ongoing swap with
 /// nectar.
 impl Database {
-    pub async fn insert_active_peer(&self, peer: ActivePeer) -> Result<()> {
+    pub async fn insert_active_peer(&self, peer: ActivePeer) -> anyhow::Result<()> {
         self.modify_peers_with(|peers: &mut HashSet<ActivePeer>| peers.insert(peer.clone()))?;
 
         self.db
@@ -277,7 +352,7 @@ impl Database {
             .context("failed to flush db")
     }
 
-    pub async fn remove_active_peer(&self, peer: &ActivePeer) -> Result<()> {
+    pub async fn remove_active_peer(&self, peer: &ActivePeer) -> anyhow::Result<()> {
         self.modify_peers_with(|peers: &mut HashSet<ActivePeer>| peers.remove(peer))?;
         self.db
             .flush_async()
@@ -286,7 +361,7 @@ impl Database {
             .context("failed to flush db")
     }
 
-    pub fn contains_active_peer(&self, peer: &ActivePeer) -> Result<bool> {
+    pub fn contains_active_peer(&self, peer: &ActivePeer) -> anyhow::Result<bool> {
         let peers = self.peers()?;
 
         Ok(peers.contains(&peer))
@@ -295,7 +370,7 @@ impl Database {
     fn modify_peers_with(
         &self,
         operation_fn: impl Fn(&mut HashSet<ActivePeer>) -> bool,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         let mut peers = self.peers()?;
 
         operation_fn(&mut peers);
@@ -308,7 +383,7 @@ impl Database {
         Ok(())
     }
 
-    fn peers(&self) -> Result<HashSet<ActivePeer>> {
+    fn peers(&self) -> anyhow::Result<HashSet<ActivePeer>> {
         let peers = self
             .db
             .get(ACTIVE_PEER_KEY.clone())?
@@ -320,14 +395,14 @@ impl Database {
     }
 }
 
-pub fn serialize<T>(t: &T) -> Result<Vec<u8>>
+pub fn serialize<T>(t: &T) -> Result<Vec<u8>, serde_cbor::Error>
 where
     T: Serialize,
 {
     Ok(serde_cbor::to_vec(t)?)
 }
 
-pub fn deserialize<'a, T>(v: &'a [u8]) -> Result<T>
+pub fn deserialize<'a, T>(v: &'a [u8]) -> Result<T, serde_cbor::Error>
 where
     T: Deserialize<'a>,
 {
@@ -673,6 +748,30 @@ mod db_compatibility_tests {
         assert_eq!(bitcoin_index, expected_index);
         assert_eq!(stored_swaps.len(), SNAPSHOT_SIZE);
         assert_eq!(stored_peers.len(), SNAPSHOT_SIZE);
+    }
+
+    #[tokio::test]
+    async fn migration_needed_from_0_1_0() {
+        let tmp_dir = TempDir::new().unwrap();
+        let path = tmp_dir.path();
+
+        let mut ar = Archive::new(&v0_1_0::TAR[..]);
+        ar.unpack(path).unwrap();
+
+        let db = Database::new(path).unwrap();
+
+        let res = db.are_any_swap_stored_in_old_format().await.unwrap();
+        assert!(res);
+
+        // Check that `reserialize` fixes it
+        db.reserialize().await.unwrap();
+
+        let res = db.are_any_swap_stored_in_old_format().await.unwrap();
+        assert!(!res);
+
+        // Check we did not lose swaps
+        let stored_swaps = db.all_active_swaps().unwrap();
+        assert_eq!(stored_swaps.len(), SNAPSHOT_SIZE);
     }
 
     #[tokio::test]

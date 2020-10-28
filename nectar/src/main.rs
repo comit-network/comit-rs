@@ -41,8 +41,8 @@ mod arbitrary;
 
 use crate::{
     command::{
-        balance, create_transaction, deposit, dump_config, resume_only, trade, wallet_info,
-        withdraw, Command, Options,
+        balance, create_transaction, deposit, dump_config, migrate_db, resume_only, trade,
+        wallet_info, withdraw, Command, Options,
     },
     config::{read_config, Settings},
     fs::default_config_path,
@@ -201,6 +201,9 @@ async fn main() -> Result<()> {
             db.archive_swap(&id)
                 .await
                 .context("failed to archive swap")?;
+        }
+        Command::MigrateDb(action) => {
+            migrate_db(action, &settings.data.dir.join("database")).await?
         }
     };
 
