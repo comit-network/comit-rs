@@ -13,7 +13,7 @@ use crate::{
 };
 use anyhow::{Context as _, Result};
 use comit::{
-    network::protocols::setup_swap::{CommonParams, RoleDependentParams},
+    network::setup_swap::{CommonParams, RoleDependentParams},
     order::SwapProtocol,
     orderpool, BtcDaiOrder, OrderId, Role, SecretHash, Side,
 };

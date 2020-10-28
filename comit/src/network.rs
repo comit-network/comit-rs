@@ -1,6 +1,6 @@
 pub mod orderbook;
-pub mod protocols;
+pub mod setup_swap;
 #[cfg(any(test, feature = "test"))]
 pub mod test;
 
-pub use self::{orderbook::*, protocols::*};
+pub use self::orderbook::*;

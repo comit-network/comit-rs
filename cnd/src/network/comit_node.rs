@@ -9,7 +9,7 @@ use crate::{
     },
 };
 use comit::{
-    network::{orderbook, orderbook::Orderbook, protocols::setup_swap::SetupSwap, setup_swap},
+    network::{orderbook, orderbook::Orderbook, setup_swap, setup_swap::SetupSwap},
     orderpool, LockProtocol, Never, OrderId, Quantity, Role, Side,
 };
 use futures::{channel::mpsc, SinkExt, TryFutureExt};
@@ -101,7 +101,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<setup_swap::BehaviourOutEvent<S
         match event {
             setup_swap::BehaviourOutEvent::ExecutableSwap(exec_swap) => {
                 use crate::storage::{InsertableHbit, InsertableHerc20, InsertableSwap};
-                use setup_swap::SwapProtocol::*;
+                use comit::network::setup_swap::SwapProtocol::*;
 
                 let SetupSwapContext {
                     swap: swap_id,
