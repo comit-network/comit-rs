@@ -1,3 +1,5 @@
+pub use comit::{hbit::*, identity};
+
 use crate::{
     btsieve::{BlockByHash, ConnectedNetwork, LatestBlock},
     ledger,
@@ -5,11 +7,11 @@ use crate::{
     LocalSwapId,
 };
 use anyhow::Result;
+use backoff::{backoff::Constant, future::FutureOperation};
 use comit::swap::hbit::{IncorrectlyFunded, WatchForFunded, WatchForRedeemed};
-use std::sync::Arc;
+use futures::TryFutureExt;
+use std::{sync::Arc, time::Duration};
 use time::OffsetDateTime;
-
-pub use comit::{hbit::*, identity};
 
 #[derive(Clone, Debug, Default)]
 pub struct Events {
@@ -35,23 +37,27 @@ where
         params: &Params,
         start_of_swap: OffsetDateTime,
     ) -> Result<Funded, IncorrectlyFunded> {
-        loop {
-            match watch_for_funded(self.connector.as_ref(), &params.shared, start_of_swap).await {
-                Ok(Ok(event)) => {
-                    self.storage
-                        .hbit_events
-                        .lock()
-                        .await
-                        .entry(self.swap_id)
-                        .or_default()
-                        .fund = Some(event);
+        let operation = || {
+            comit::hbit::watch_for_funded(self.connector.as_ref(), &params.shared, start_of_swap)
+                .map_err(backoff::Error::Transient)
+        };
 
-                    return Ok(event);
-                }
-                Ok(Err(e)) => return Err(e),
-                Err(e) => tracing::warn!("failed to watch for hbit funding, retrying ...: {:#}", e),
-            }
-        }
+        let funded = operation
+            .retry_notify(Constant::new(Duration::from_secs(1)), |e, _| {
+                tracing::warn!("failed to watch for hbit funding, retrying ...: {:#}", e)
+            })
+            .await
+            .expect("transient error is never returned")?;
+
+        self.storage
+            .hbit_events
+            .lock()
+            .await
+            .entry(self.swap_id)
+            .or_default()
+            .fund = Some(funded);
+
+        Ok(funded)
     }
 }
 
@@ -68,28 +74,31 @@ where
         fund_event: Funded,
         start_of_swap: OffsetDateTime,
     ) -> Redeemed {
-        loop {
-            match watch_for_redeemed(
+        let operation = || {
+            watch_for_redeemed(
                 self.connector.as_ref(),
                 &params.shared,
                 fund_event.location,
                 start_of_swap,
             )
-            .await
-            {
-                Ok(event) => {
-                    self.storage
-                        .hbit_events
-                        .lock()
-                        .await
-                        .entry(self.swap_id)
-                        .or_default()
-                        .redeem = Some(event);
+            .map_err(backoff::Error::Transient)
+        };
 
-                    return event;
-                }
-                Err(e) => tracing::warn!("failed to watch for hbit redeem, retrying ...: {:#}", e),
-            }
-        }
+        let redeemed = operation
+            .retry_notify(Constant::new(Duration::from_secs(1)), |e, _| {
+                tracing::warn!("failed to watch for hbit redeem, retrying ...: {:#}", e)
+            })
+            .await
+            .expect("transient error is never returned");
+
+        self.storage
+            .hbit_events
+            .lock()
+            .await
+            .entry(self.swap_id)
+            .or_default()
+            .redeem = Some(redeemed);
+
+        redeemed
     }
 }

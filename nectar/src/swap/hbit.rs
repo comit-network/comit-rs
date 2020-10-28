@@ -8,11 +8,13 @@ use crate::{
     swap::{bitcoin::Wallet, Database},
     SwapId,
 };
+use backoff::{backoff::Constant, future::FutureOperation};
 use comit::{
     ledger,
     swap::hbit::{WatchForFunded, WatchForRedeemed},
 };
-use std::sync::Arc;
+use futures::TryFutureExt;
+use std::{sync::Arc, time::Duration};
 use time::OffsetDateTime;
 
 pub struct Facade {
@@ -23,16 +25,22 @@ pub struct Facade {
 
 impl Facade {
     async fn wait_until_confirmed(&self, tx: bitcoin::Txid, network: ledger::Bitcoin) {
-        loop {
-            match self.wallet.inner.wait_until_confirmed(tx, network).await {
-                Ok(()) => return,
-                Err(e) => tracing::warn!(
+        let operation = || {
+            self.wallet
+                .inner
+                .wait_until_confirmed(tx, network)
+                .map_err(backoff::Error::Transient)
+        };
+
+        let _ = operation
+            .retry_notify(Constant::new(Duration::from_secs(1)), |e, _| {
+                tracing::warn!(
                     "failed to wait for {} getting confirmed, retrying ...: {:#}",
                     tx,
                     e
-                ),
-            }
-        }
+                )
+            })
+            .await;
     }
 }
 
@@ -43,32 +51,32 @@ impl WatchForFunded for Facade {
         params: &Params,
         start_of_swap: OffsetDateTime,
     ) -> Result<Funded, IncorrectlyFunded> {
-        match self.db.load(self.swap_id) {
-            Ok(Some(Funded { location, asset })) => {
-                self.wait_until_confirmed(location.txid, params.shared.network)
-                    .await;
+        if let Ok(Some(Funded { location, asset })) = self.db.load(self.swap_id) {
+            self.wait_until_confirmed(location.txid, params.shared.network)
+                .await;
 
-                Ok(Funded { asset, location })
-            }
-            _ => loop {
-                match comit::hbit::watch_for_funded(
-                    self.wallet.connector.as_ref(),
-                    &params.shared,
-                    start_of_swap,
-                )
-                .await
-                {
-                    Ok(Ok(event)) => {
-                        let _ = self.db.save(event, self.swap_id).await;
-                        return Ok(event);
-                    }
-                    Ok(Err(e)) => return Err(e),
-                    Err(e) => {
-                        tracing::warn!("failed to watch for hbit funding, retrying ...: {:#}", e)
-                    }
-                }
-            },
+            return Ok(Funded { asset, location });
         }
+
+        let operation = || {
+            comit::hbit::watch_for_funded(
+                self.wallet.connector.as_ref(),
+                &params.shared,
+                start_of_swap,
+            )
+            .map_err(backoff::Error::Transient)
+        };
+
+        let funded = operation
+            .retry_notify(Constant::new(Duration::from_secs(1)), |e, _| {
+                tracing::warn!("failed to watch for hbit funding, retrying ...: {:#}", e)
+            })
+            .await
+            .expect("transient error is never returned")?;
+
+        let _ = self.db.save(funded, self.swap_id).await;
+
+        Ok(funded)
     }
 }
 
@@ -80,37 +88,39 @@ impl WatchForRedeemed for Facade {
         fund_event: Funded,
         start_of_swap: OffsetDateTime,
     ) -> Redeemed {
-        match self.db.load(self.swap_id) {
-            Ok(Some(Redeemed {
+        if let Ok(Some(Redeemed {
+            transaction,
+            secret,
+        })) = self.db.load(self.swap_id)
+        {
+            self.wait_until_confirmed(transaction, params.shared.network)
+                .await;
+
+            return Redeemed {
                 transaction,
                 secret,
-            })) => {
-                self.wait_until_confirmed(transaction, params.shared.network)
-                    .await;
-
-                Redeemed {
-                    transaction,
-                    secret,
-                }
-            }
-            _ => loop {
-                match watch_for_redeemed(
-                    self.wallet.connector.as_ref(),
-                    &params.shared,
-                    fund_event.location,
-                    start_of_swap,
-                )
-                .await
-                {
-                    Ok(event) => {
-                        let _ = self.db.save(event, self.swap_id).await;
-                        return event;
-                    }
-                    Err(e) => {
-                        tracing::warn!("failed to watch for hbit redeem, retrying ...: {:#}", e)
-                    }
-                }
-            },
+            };
         }
+
+        let operation = || {
+            watch_for_redeemed(
+                self.wallet.connector.as_ref(),
+                &params.shared,
+                fund_event.location,
+                start_of_swap,
+            )
+            .map_err(backoff::Error::Transient)
+        };
+
+        let redeemed = operation
+            .retry_notify(Constant::new(Duration::from_secs(1)), |e, _| {
+                tracing::warn!("failed to watch for hbit redeem, retrying ...: {:#}", e)
+            })
+            .await
+            .expect("transient error is never returned");
+
+        let _ = self.db.save(redeemed, self.swap_id).await;
+
+        redeemed
     }
 }

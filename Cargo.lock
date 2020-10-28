@@ -183,6 +183,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
+name = "backoff"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "721c249ab59cbc483ad4294c9ee2671835c1e43e9ffc277e6b4ecfef733cfdc5"
+dependencies = [
+ "futures-core",
+ "instant",
+ "pin-project 0.4.27",
+ "rand 0.7.3",
+ "tokio",
+]
+
+[[package]]
 name = "backtrace"
 version = "0.3.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -586,6 +599,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "atty",
+ "backoff",
  "base64 0.13.0",
  "bitcoin",
  "bitcoincore-rpc",
@@ -2414,6 +2428,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "atty",
+ "backoff",
  "base64 0.13.0",
  "bitcoin",
  "clarity",

@@ -1,3 +1,5 @@
+pub use comit::herc20::*;
+
 use crate::{
     btsieve::{
         ethereum::{GetLogs, ReceiptByHash, TransactionByHash},
@@ -8,11 +10,11 @@ use crate::{
     LocalSwapId,
 };
 use anyhow::Result;
+use backoff::{backoff::Constant, future::FutureOperation};
 use comit::swap::herc20::{IncorrectlyFunded, WatchForDeployed, WatchForFunded, WatchForRedeemed};
-use std::sync::Arc;
+use futures::TryFutureExt;
+use std::{sync::Arc, time::Duration};
 use time::OffsetDateTime;
-
-pub use comit::herc20::*;
 
 #[derive(Clone, Debug, Default)]
 pub struct Events {
@@ -40,26 +42,30 @@ where
         params: Params,
         utc_start_of_swap: OffsetDateTime,
     ) -> Deployed {
-        loop {
-            match watch_for_deployed(self.connector.as_ref(), params.clone(), utc_start_of_swap)
-                .await
-            {
-                Ok(event) => {
-                    self.storage
-                        .herc20_events
-                        .lock()
-                        .await
-                        .entry(self.swap_id)
-                        .or_default()
-                        .deploy = Some(event);
-                    return event;
-                }
-                Err(e) => tracing::warn!(
+        let operation = || {
+            watch_for_deployed(self.connector.as_ref(), params.clone(), utc_start_of_swap)
+                .map_err(backoff::Error::Transient)
+        };
+
+        let deployed = operation
+            .retry_notify(Constant::new(Duration::from_secs(1)), |e, _| {
+                tracing::warn!(
                     "failed to watch for herc20 deployment, retrying ...: {:#}",
                     e
-                ),
-            }
-        }
+                )
+            })
+            .await
+            .expect("transient error is never returned");
+
+        self.storage
+            .herc20_events
+            .lock()
+            .await
+            .entry(self.swap_id)
+            .or_default()
+            .deploy = Some(deployed);
+
+        deployed
     }
 }
 
@@ -79,32 +85,32 @@ where
         deploy_event: Deployed,
         utc_start_of_swap: OffsetDateTime,
     ) -> Result<comit::swap::herc20::Funded, IncorrectlyFunded> {
-        loop {
-            match watch_for_funded(
+        let operation = || {
+            watch_for_funded(
                 self.connector.as_ref(),
                 params.clone(),
                 utc_start_of_swap,
                 deploy_event,
             )
-            .await
-            {
-                Ok(Ok(event)) => {
-                    self.storage
-                        .herc20_events
-                        .lock()
-                        .await
-                        .entry(self.swap_id)
-                        .or_default()
-                        .fund = Some(event.clone());
+            .map_err(backoff::Error::Transient)
+        };
 
-                    return Ok(event);
-                }
-                Ok(Err(e)) => return Err(e),
-                Err(e) => {
-                    tracing::warn!("failed to watch for herc20 funding, retrying ...: {:#}", e)
-                }
-            }
-        }
+        let funded = operation
+            .retry_notify(Constant::new(Duration::from_secs(1)), |e, _| {
+                tracing::warn!("failed to watch for herc20 funding, retrying ...: {:#}", e)
+            })
+            .await
+            .expect("transient error is never returned")?;
+
+        self.storage
+            .herc20_events
+            .lock()
+            .await
+            .entry(self.swap_id)
+            .or_default()
+            .fund = Some(funded.clone());
+
+        Ok(funded)
     }
 }
 
@@ -124,24 +130,26 @@ where
         deploy_event: Deployed,
         utc_start_of_swap: OffsetDateTime,
     ) -> Redeemed {
-        loop {
-            match watch_for_redeemed(self.connector.as_ref(), utc_start_of_swap, deploy_event).await
-            {
-                Ok(event) => {
-                    self.storage
-                        .herc20_events
-                        .lock()
-                        .await
-                        .entry(self.swap_id)
-                        .or_default()
-                        .redeem = Some(event);
+        let operation = || {
+            watch_for_redeemed(self.connector.as_ref(), utc_start_of_swap, deploy_event)
+                .map_err(backoff::Error::Transient)
+        };
 
-                    return event;
-                }
-                Err(e) => {
-                    tracing::warn!("failed to watch for herc20 funding, retrying ...: {:#}", e)
-                }
-            }
-        }
+        let redeemed = operation
+            .retry_notify(Constant::new(Duration::from_secs(1)), |e, _| {
+                tracing::warn!("failed to watch for herc20 redeem, retrying ...: {:#}", e)
+            })
+            .await
+            .expect("transient error is never returned");
+
+        self.storage
+            .herc20_events
+            .lock()
+            .await
+            .entry(self.swap_id)
+            .or_default()
+            .redeem = Some(redeemed);
+
+        redeemed
     }
 }
