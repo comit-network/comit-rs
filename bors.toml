@@ -4,5 +4,5 @@ status = [
     "build (macos-latest)",
     "build (windows-latest)",
 ]
-pr_status = ["license/cla"]
+pr_status = []
 block_labels = ["no-mergify"]
