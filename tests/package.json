@@ -30,7 +30,7 @@
         "@types/rimraf": "^3.0.0",
         "@types/tail": "^2.0.0",
         "@types/tmp": "^0.2.0",
-        "@types/urijs": "^1.19.12",
+        "@types/urijs": "^1.19.13",
         "ajv": "^6.12.6",
         "axios": "^0.21.0",
         "bitcoin-core": "^3.0.0",
