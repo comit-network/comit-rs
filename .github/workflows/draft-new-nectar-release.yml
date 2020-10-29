@@ -27,8 +27,8 @@ jobs:
 
       - name: Initialize mandatory git config
         run: |
-          git config user.name "COMIT Botty McBotface"
-          git config user.email botty@coblox.tech
+          git config user.name "d4nte bot"
+          git config user.email franck+bot@royer.one
 
       - name: Bump version in Cargo.toml
         uses: thomaseizinger/set-crate-version@1.0.0
