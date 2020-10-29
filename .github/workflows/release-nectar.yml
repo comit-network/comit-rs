@@ -4,6 +4,10 @@ on:
   release:
     types: [created]
 
+
+env:
+  CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
+
 jobs:
   release:
     if: startsWith(github.event.release.tag_name, 'nectar-') # only trigger this if we released nectar
@@ -11,6 +15,18 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            arch: x86_64
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            arch: armv7
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-gnu
+            arch: x86_64
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout tagged commit
@@ -24,10 +40,17 @@ jobs:
         with:
           profile: minimal
           override: true
+          target: ${{ matrix.target }}
 
-      - name: Build ${{ matrix.os }} release binary
+      - name: Install compiler for armhf arch
+        if: matrix.target == 'armv7-unknown-linux-gnueabihf'
+        run: |
+          sudo apt-get update
+          sudo apt-get install gcc-arm-linux-gnueabihf
+
+      - name: Build ${{ matrix.target }} release binary
         id: build
-        run: cargo build --release --package nectar
+        run: cargo build --target=${{ matrix.target }} --release --package nectar
 
       - name: Extract version from tag name
         id: extract-version
@@ -47,6 +70,9 @@ jobs:
         with:
           binary: nectar
           version: ${{ steps.extract-version.outputs.trimmed }}
+          arch: ${{ matrix.arch }}
+          target: ${{ matrix.target }}
+
 
       - name: Upload ${{ matrix.os }} release binary
         uses: actions/upload-release-asset@v1
