@@ -23,7 +23,7 @@
         "@types/find-cache-dir": "^3.2.0",
         "@types/glob": "^7.1.3",
         "@types/jest": "^26.0.15",
-        "@types/lodash": "^4.14.162",
+        "@types/lodash": "^4.14.163",
         "@types/morgan": "^1.9.1",
         "@types/node": "^14.14",
         "@types/proper-lockfile": "^4.1.1",
