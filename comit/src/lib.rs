@@ -12,7 +12,6 @@
     clippy::dbg_macro
 )]
 #![forbid(unsafe_code)]
-#![type_length_limit = "1049479"] // Regressed with Rust 1.46.0 :(
 
 pub mod actions;
 pub mod asset;
