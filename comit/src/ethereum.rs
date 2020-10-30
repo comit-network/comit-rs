@@ -263,6 +263,25 @@ pub mod serde_hex_data {
     }
 }
 
+#[cfg(feature = "quickcheck")]
+impl quickcheck::Arbitrary for ChainId {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        ChainId::from(u32::arbitrary(g))
+    }
+}
+
+#[cfg(feature = "quickcheck")]
+impl quickcheck::Arbitrary for Address {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        let mut bytes = [0u8; 20];
+        for byte in &mut bytes {
+            *byte = u8::arbitrary(g);
+        }
+
+        Address::from(bytes)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

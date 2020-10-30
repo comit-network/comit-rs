@@ -198,6 +198,29 @@ impl Erc20 {
     }
 }
 
+#[cfg(feature = "quickcheck")]
+impl quickcheck::Arbitrary for Erc20 {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        Erc20 {
+            token_contract: Address::arbitrary(g),
+            quantity: Erc20Quantity::arbitrary(g),
+        }
+    }
+}
+
+#[cfg(feature = "quickcheck")]
+impl quickcheck::Arbitrary for Erc20Quantity {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        let mut bytes = [0u8; 8];
+        for byte in bytes.iter_mut() {
+            *byte = u8::arbitrary(g);
+        }
+        let int = num::BigUint::from_bytes_be(&bytes);
+
+        Erc20Quantity::try_from_wei(int).unwrap()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

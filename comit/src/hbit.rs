@@ -305,56 +305,29 @@ pub fn build_bitcoin_htlc(
 mod arbitrary {
     use super::*;
     use crate::{asset, identity, ledger, SecretHash, Timestamp};
-    use ::bitcoin::secp256k1::SecretKey;
     use quickcheck::{Arbitrary, Gen};
 
-    impl Arbitrary for Params {
+    impl Arbitrary for SharedParams {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            Params {
-                shared: SharedParams {
-                    network: bitcoin_network(g),
-                    asset: bitcoin_asset(g),
-                    redeem_identity: bitcoin_identity(g),
-                    refund_identity: bitcoin_identity(g),
-                    expiry: Timestamp::arbitrary(g),
-                    secret_hash: SecretHash::arbitrary(g),
-                },
-                transient_sk: secret_key(g),
-                final_address: bitcoin_address(g),
+            SharedParams {
+                network: ledger::Bitcoin::arbitrary(g),
+                asset: asset::bitcoin::arbitrary(g),
+                redeem_identity: identity::Bitcoin::arbitrary(g),
+                refund_identity: identity::Bitcoin::arbitrary(g),
+                expiry: Timestamp::arbitrary(g),
+                secret_hash: SecretHash::arbitrary(g),
             }
         }
     }
 
-    fn secret_key<G: Gen>(g: &mut G) -> SecretKey {
-        let mut bytes = [0u8; 32];
-        for byte in &mut bytes {
-            *byte = u8::arbitrary(g);
+    impl Arbitrary for Params {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Params {
+                shared: SharedParams::arbitrary(g),
+                transient_sk: crate::arbitrary::secp256k1::secret_key(g),
+                final_address: crate::arbitrary::bitcoin::address(g),
+            }
         }
-        SecretKey::from_slice(&bytes).unwrap()
-    }
-
-    fn bitcoin_network<G: Gen>(g: &mut G) -> ledger::Bitcoin {
-        match u8::arbitrary(g) % 3 {
-            0 => ledger::Bitcoin::Mainnet,
-            1 => ledger::Bitcoin::Testnet,
-            2 => ledger::Bitcoin::Regtest,
-            _ => unreachable!(),
-        }
-    }
-
-    fn bitcoin_asset<G: Gen>(g: &mut G) -> asset::Bitcoin {
-        asset::Bitcoin::from_sat(u64::arbitrary(g))
-    }
-
-    fn bitcoin_identity<G: Gen>(g: &mut G) -> identity::Bitcoin {
-        identity::Bitcoin::from_secret_key(
-            &bitcoin::secp256k1::Secp256k1::signing_only(),
-            &secret_key(g),
-        )
-    }
-
-    fn bitcoin_address<G: Gen>(g: &mut G) -> bitcoin::Address {
-        bitcoin::Address::p2wpkh(&bitcoin_identity(g).into(), bitcoin_network(g).into()).unwrap()
     }
 }
 
