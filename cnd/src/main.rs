@@ -25,7 +25,7 @@ mod proptest;
 #[cfg(test)]
 mod spectral_ext;
 #[macro_use]
-mod with_swap_types;
+mod within_swap_context;
 mod actions;
 mod bitcoin_fees;
 mod cli;
