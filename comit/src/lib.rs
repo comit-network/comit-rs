@@ -59,7 +59,7 @@ pub use self::{
     order::{BtcDaiOrder, OrderId, Position, Price, Quantity},
     secret::Secret,
     secret_hash::SecretHash,
-    timestamp::{RelativeTime, Timestamp},
+    timestamp::Timestamp,
 };
 
 use serde::{Deserialize, Serialize};
