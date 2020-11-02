@@ -25,30 +25,6 @@ pub struct NoOrderForSwap(pub LocalSwapId);
 pub struct NoSecretHash(pub LocalSwapId);
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
-#[error("no herc20 refund identity found in database for swap {0}")]
-pub struct NoHerc20RefundIdentity(pub LocalSwapId);
-
-#[derive(thiserror::Error, Debug, Clone, Copy)]
-#[error("no herc20 redeem identity found in database for swap {0}")]
-pub struct NoHerc20RedeemIdentity(pub LocalSwapId);
-
-#[derive(thiserror::Error, Debug, Clone, Copy)]
-#[error("no hbit refund identity found in database for swap {0}")]
-pub struct NoHbitRefundIdentity(pub LocalSwapId);
-
-#[derive(thiserror::Error, Debug, Clone, Copy)]
-#[error("no hbit redeem identity found in database for swap {0}")]
-pub struct NoHbitRedeemIdentity(pub LocalSwapId);
-
-#[derive(thiserror::Error, Debug, Clone, Copy)]
-#[error("no redeem identity set")]
-pub struct NoRedeemIdentity;
-
-#[derive(thiserror::Error, Debug, Clone, Copy)]
-#[error("no refund identity set")]
-pub struct NoRefundIdentity;
-
-#[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("Order {0} is no longer open and can therefore not be cancelled")]
 pub struct NotOpen(pub OrderId);
 

@@ -150,19 +150,19 @@ macro_rules! impl_load_tables {
                     .await
                     .context(NoSwapExists(id))?;
 
-                if alpha.side.0 != Side::Alpha {
+                if alpha.side != Side::Alpha {
                     anyhow::bail!(
                         "attempted to load {} as side Alpha but it was {}",
                         stringify!($alpha),
-                        alpha.side.0
+                        alpha.side
                     );
                 }
 
-                if beta.side.0 != Side::Beta {
+                if beta.side != Side::Beta {
                     anyhow::bail!(
                         "attempted to load {} as side Beta but it was {}",
                         stringify!($alpha),
-                        beta.side.0
+                        beta.side
                     );
                 }
 

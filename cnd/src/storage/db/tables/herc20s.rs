@@ -7,7 +7,7 @@ use crate::storage::{
     Text,
 };
 use anyhow::Result;
-use comit::{asset, ethereum, ethereum::ChainId, Side};
+use comit::{asset, ethereum, ethereum::ChainId, Side, Timestamp};
 use diesel::{prelude::*, SqliteConnection};
 
 #[derive(Associations, Clone, Debug, Identifiable, Queryable, PartialEq)]
@@ -18,12 +18,18 @@ pub struct Herc20 {
     swap_id: i32,
     #[diesel(deserialize_as = "Text<Erc20Amount>")]
     pub amount: asset::Erc20Quantity,
-    pub chain_id: U32,
-    pub expiry: U32,
-    pub token_contract: Text<ethereum::Address>,
-    pub redeem_identity: Option<Text<ethereum::Address>>,
-    pub refund_identity: Option<Text<ethereum::Address>>,
-    pub side: Text<Side>,
+    #[diesel(deserialize_as = "U32")]
+    pub chain_id: ChainId,
+    #[diesel(deserialize_as = "U32")]
+    pub expiry: Timestamp,
+    #[diesel(deserialize_as = "Text<ethereum::Address>")]
+    pub token_contract: ethereum::Address,
+    #[diesel(deserialize_as = "Text<ethereum::Address>")]
+    pub redeem_identity: ethereum::Address,
+    #[diesel(deserialize_as = "Text<ethereum::Address>")]
+    pub refund_identity: ethereum::Address,
+    #[diesel(deserialize_as = "Text<Side>")]
+    pub side: Side,
 }
 
 #[derive(Insertable, Debug, Clone)]
@@ -34,8 +40,8 @@ pub struct InsertableHerc20 {
     pub chain_id: U32,
     pub expiry: U32,
     pub token_contract: Text<ethereum::Address>,
-    pub redeem_identity: Option<Text<ethereum::Address>>,
-    pub refund_identity: Option<Text<ethereum::Address>>,
+    pub redeem_identity: Text<ethereum::Address>,
+    pub refund_identity: Text<ethereum::Address>,
     pub side: Text<Side>,
 }
 
@@ -65,8 +71,8 @@ impl InsertableHerc20 {
             chain_id: u32::from(chain_id).into(),
             expiry: U32::from(expiry),
             token_contract: Text(asset.token_contract),
-            redeem_identity: Some(Text(redeem_identity)),
-            refund_identity: Some(Text(refund_identity)),
+            redeem_identity: Text(redeem_identity),
+            refund_identity: Text(refund_identity),
             side: Text(side),
         }
     }
@@ -76,7 +82,7 @@ impl From<Herc20> for asset::Erc20 {
     fn from(herc20: Herc20) -> asset::Erc20 {
         asset::Erc20 {
             quantity: herc20.amount,
-            token_contract: herc20.token_contract.0,
+            token_contract: herc20.token_contract,
         }
     }
 }
