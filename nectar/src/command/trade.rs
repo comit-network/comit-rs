@@ -10,7 +10,7 @@ use crate::{
     mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, new_swarm},
     swap::{Database, SwapExecutor, SwapKind, SwapParams},
-    Maker, MidMarketRate, Seed, Spread,
+    Maker, Rate, Seed, Spread,
 };
 use anyhow::Context;
 use comit::{
@@ -168,7 +168,7 @@ fn init_rate_updates(
     kraken_api_host: KrakenApiHost,
 ) -> (
     impl Future<Output = comit::Never> + Send,
-    mpsc::Receiver<anyhow::Result<MidMarketRate>>,
+    mpsc::Receiver<anyhow::Result<Rate>>,
 ) {
     let (mut sender, receiver) = make_update_channel();
 

@@ -2,7 +2,7 @@ use crate::{
     bitcoin,
     ethereum::{self, dai},
     order::Symbol,
-    MidMarketRate,
+    Rate,
 };
 use comit::{ledger, order::SwapProtocol, BtcDaiOrder, Position, Role};
 
@@ -13,7 +13,7 @@ pub mod strategy;
 pub struct Maker {
     btc_balance: Option<bitcoin::Amount>,
     dai_balance: Option<dai::Amount>,
-    mid_market_rate: Option<MidMarketRate>,
+    mid_market_rate: Option<Rate>,
     pub strategy: strategy::AllIn,
     bitcoin_network: ledger::Bitcoin,
     ethereum_chain: ethereum::Chain,
@@ -26,7 +26,7 @@ impl Maker {
     pub fn new(
         btc_balance: bitcoin::Amount,
         dai_balance: dai::Amount,
-        mid_market_rate: MidMarketRate,
+        mid_market_rate: Rate,
         strategy: strategy::AllIn,
         bitcoin_network: ledger::Bitcoin,
         dai_chain: ethereum::Chain,
@@ -45,10 +45,7 @@ impl Maker {
         }
     }
 
-    pub fn update_rate(
-        &mut self,
-        mid_market_rate: MidMarketRate,
-    ) -> anyhow::Result<Option<PublishOrders>> {
+    pub fn update_rate(&mut self, mid_market_rate: Rate) -> anyhow::Result<Option<PublishOrders>> {
         match self.mid_market_rate {
             Some(previous_mid_market_rate) if previous_mid_market_rate == mid_market_rate => {
                 Ok(None)
@@ -126,9 +123,7 @@ impl Maker {
             .btc_balance
             .ok_or_else(|| BalanceNotAvailable(Symbol::Btc))?;
 
-        let form = self
-            .strategy
-            .new_sell(btc_balance, mid_market_rate.into())?;
+        let form = self.strategy.new_sell(btc_balance, mid_market_rate)?;
         let order = form.to_comit_order(self.swap_protocol(Position::Sell));
 
         Ok(order)
@@ -143,7 +138,7 @@ impl Maker {
             .clone()
             .ok_or_else(|| BalanceNotAvailable(Symbol::Dai))?;
 
-        let form = self.strategy.new_buy(dai_balance, mid_market_rate.into())?;
+        let form = self.strategy.new_buy(dai_balance, mid_market_rate)?;
         let order = form.to_comit_order(self.swap_protocol(Position::Buy));
 
         Ok(order)
@@ -166,12 +161,8 @@ impl Maker {
             .as_ref()
             .ok_or_else(|| BalanceNotAvailable(Symbol::Btc))?;
 
-        self.strategy.process_taken_order(
-            order,
-            current_mid_market_rate.into(),
-            dai_balance,
-            btc_balance,
-        )
+        self.strategy
+            .process_taken_order(order, current_mid_market_rate, dai_balance, btc_balance)
     }
 }
 
@@ -205,7 +196,7 @@ mod tests {
         ethereum::dai::{dai, some_dai},
         order::btc_dai_order,
         rate::rate,
-        MidMarketRate, Rate, Spread, StaticStub,
+        Rate, Spread, StaticStub,
     };
     use std::convert::TryFrom;
 
@@ -215,7 +206,7 @@ mod tests {
                 btc_balance: Some(bitcoin::Amount::default()),
                 dai_balance: Some(dai::Amount::default()),
                 strategy: strategy::AllIn::static_stub(),
-                mid_market_rate: Some(MidMarketRate::static_stub()),
+                mid_market_rate: Some(Rate::static_stub()),
                 bitcoin_network: ledger::Bitcoin::Mainnet,
                 ethereum_chain: ethereum::Chain::static_stub(),
                 role: Role::Bob,
@@ -224,8 +215,8 @@ mod tests {
         }
     }
 
-    fn some_rate(rate: f64) -> Option<MidMarketRate> {
-        Some(MidMarketRate::new(Rate::try_from(rate).unwrap()))
+    fn some_rate(rate: f64) -> Option<Rate> {
+        Some(Rate::try_from(rate).unwrap())
     }
 
     #[test]
@@ -285,7 +276,7 @@ mod tests {
             ..StaticStub::static_stub()
         };
 
-        let new_mid_market_rate = MidMarketRate::new(Rate::try_from(1.0).unwrap());
+        let new_mid_market_rate = Rate::try_from(1.0).unwrap();
 
         let result = maker.update_rate(new_mid_market_rate).unwrap();
         assert!(result.is_none());
@@ -301,7 +292,7 @@ mod tests {
             ..StaticStub::static_stub()
         };
 
-        let new_mid_market_rate = MidMarketRate::new(Rate::try_from(2.0).unwrap());
+        let new_mid_market_rate = Rate::try_from(2.0).unwrap();
 
         let result = maker.update_rate(new_mid_market_rate).unwrap();
         assert!(result.is_some());

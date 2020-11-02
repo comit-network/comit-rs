@@ -5,30 +5,8 @@ use std::convert::TryInto;
 ///
 /// Currently, this function only delegates to Kraken. Eventually, it
 /// could return a value based on multiple sources.
-pub async fn get_btc_dai_mid_market_rate(host: &KrakenApiHost) -> anyhow::Result<MidMarketRate> {
+pub async fn get_btc_dai_mid_market_rate(host: &KrakenApiHost) -> anyhow::Result<Rate> {
     kraken::get_btc_dai_mid_market_rate(host).await
-}
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct MidMarketRate(Rate);
-
-impl MidMarketRate {
-    pub fn new(rate: Rate) -> Self {
-        Self { 0: rate }
-    }
-}
-
-#[cfg(test)]
-impl crate::StaticStub for MidMarketRate {
-    fn static_stub() -> Self {
-        Self(crate::StaticStub::static_stub())
-    }
-}
-
-impl From<MidMarketRate> for Rate {
-    fn from(rate: MidMarketRate) -> Self {
-        rate.0
-    }
 }
 
 mod kraken {
@@ -42,9 +20,7 @@ mod kraken {
     /// More info here: https://www.kraken.com/features/api
     /// Rate limits: For public API a frequency of 1 call per second is
     /// acceptable, More info here: https://support.kraken.com/hc/en-us/articles/206548367-What-are-the-REST-API-rate-limits-
-    pub async fn get_btc_dai_mid_market_rate(
-        host: &KrakenApiHost,
-    ) -> anyhow::Result<MidMarketRate> {
+    pub async fn get_btc_dai_mid_market_rate(host: &KrakenApiHost) -> anyhow::Result<Rate> {
         let endpoint = host.with_trading_pair("XBTDAI")?;
 
         let mid_market_rate = reqwest::get(endpoint)
@@ -103,7 +79,7 @@ mod kraken {
         }
     }
 
-    impl TryFrom<AskAndBid> for MidMarketRate {
+    impl TryFrom<AskAndBid> for Rate {
         type Error = anyhow::Error;
 
         fn try_from(AskAndBid { ask, bid }: AskAndBid) -> anyhow::Result<Self> {
@@ -123,7 +99,7 @@ mod kraken {
                 ask
             );
 
-            Ok(Self(rate))
+            Ok(rate)
         }
     }
 
@@ -186,9 +162,9 @@ mod kraken {
                 bid: "9462.76543".parse().unwrap(),
             };
 
-            let mid_market_rate: MidMarketRate = ask_and_bid.try_into().unwrap();
+            let mid_market_rate: Rate = ask_and_bid.try_into().unwrap();
 
-            assert_eq!(mid_market_rate, MidMarketRate(Rate::new(94761543200000)))
+            assert_eq!(mid_market_rate, Rate::new(94761543200000))
         }
     }
 }

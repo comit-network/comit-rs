@@ -6,7 +6,7 @@ use crate::{
     maker::{PublishOrders, TakeRequestDecision},
     network::{self, ActivePeer, SetupSwapContext, Swarm},
     swap::{hbit, Database, SwapExecutor, SwapKind, SwapParams},
-    Maker, MidMarketRate, SwapId,
+    Maker, Rate, SwapId,
 };
 use anyhow::{bail, Context, Result};
 use comit::{
@@ -55,7 +55,7 @@ impl EventLoop {
     pub async fn run(
         mut self,
         mut finished_swap_receiver: Receiver<FinishedSwap>,
-        mut rate_update_receiver: Receiver<Result<MidMarketRate>>,
+        mut rate_update_receiver: Receiver<Result<Rate>>,
         mut btc_balance_update_receiver: Receiver<Result<bitcoin::Amount>>,
         mut dai_balance_update_receiver: Receiver<Result<dai::Amount>>,
     ) -> anyhow::Result<()> {
@@ -110,7 +110,7 @@ impl EventLoop {
         }
     }
 
-    fn handle_rate_update(&mut self, new_rate: MidMarketRate) -> Result<()> {
+    fn handle_rate_update(&mut self, new_rate: Rate) -> Result<()> {
         let publish_order = self.maker.update_rate(new_rate)?;
         if let Some(PublishOrders {
             new_sell_order,
