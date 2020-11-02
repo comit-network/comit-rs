@@ -35,7 +35,7 @@ impl GasPrice {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "testcontainers"))]
     pub fn geth_url(geth_url: url::Url) -> Self {
         let client = geth::Client::new(geth_url);
         Self {
@@ -51,7 +51,7 @@ impl GasPrice {
     }
 }
 
-#[cfg(all(test, feature = "test-docker"))]
+#[cfg(all(test, feature = "testcontainers"))]
 mod tests {
     use super::*;
     use crate::test_harness::ethereum::Blockchain;

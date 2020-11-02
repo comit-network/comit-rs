@@ -67,4 +67,3 @@ regex = "1.4"
 serde_urlencoded = "0.7"
 spectral = { version = "0.6", default-features = false }
 tempfile = "3.1.0"
-testcontainers = "0.10"

@@ -44,7 +44,7 @@ fn ethereum_info(ethereum_wallet: Option<ethereum::Wallet>, seed: &Seed) -> Stri
     }
 }
 
-#[cfg(all(test, feature = "test-docker"))]
+#[cfg(all(test, feature = "testcontainers"))]
 mod tests {
     use super::*;
     use crate::{test_harness, Seed};

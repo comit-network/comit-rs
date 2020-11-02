@@ -36,6 +36,9 @@ spectral = "0.6"
 structopt = "0.3"
 strum = "0.19"
 strum_macros = "0.19"
+# In dependencies instead of dev-dependencies so it can be set as optional
+# Only used for test purposes
+testcontainers = { version = "0.10", optional = true }
 thiserror = "1.0"
 time = { version = "0.2", features = ["serde"] }
 tokio = { version = "0.2", features = ["macros", "time"] }
@@ -58,11 +61,6 @@ quickcheck = "0.9"
 quickcheck_async = "0.1"
 tar = "0.4"
 tempfile = "3"
-testcontainers = "0.10"
 
 [features]
-default = ["test-docker"]
-
-# "test-docker" feature is related to test code
-# if it's enabled then tests needing docker will be ran
-test-docker = []
+default = []

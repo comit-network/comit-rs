@@ -104,7 +104,7 @@ where
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "testcontainers"))]
 pub fn params(
     secret_hash: SecretHash,
     chain_id: crate::swap::ethereum::ChainId,

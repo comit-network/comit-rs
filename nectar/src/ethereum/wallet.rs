@@ -49,7 +49,7 @@ impl Wallet {
         Ok(wallet)
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "testcontainers"))]
     pub fn new_from_private_key(
         private_key: clarity::PrivateKey,
         url: Url,
@@ -390,7 +390,7 @@ impl Wallet {
         self.geth_client.gas_limit(request).await
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "testcontainers"))]
     pub async fn deploy_dai_token_contract(
         &mut self,
         deployment_data: DeployContract,
@@ -421,7 +421,7 @@ impl From<DeployedContract> for comit::herc20::Deployed {
     }
 }
 
-#[cfg(all(test, feature = "test-docker"))]
+#[cfg(all(test, feature = "testcontainers"))]
 mod tests {
     use super::*;
     use crate::{
