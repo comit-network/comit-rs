@@ -24,7 +24,6 @@ mod fs;
 mod history;
 mod jsonrpc;
 mod maker;
-mod mid_market_rate;
 mod network;
 mod order;
 mod rate;

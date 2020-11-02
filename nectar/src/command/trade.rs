@@ -7,8 +7,8 @@ use crate::{
     ethereum::{self, dai},
     history::History,
     maker::strategy,
-    mid_market_rate::get_btc_dai_mid_market_rate,
     network::{self, new_swarm},
+    rate::kraken,
     swap::{Database, SwapExecutor, SwapKind, SwapParams},
     Maker, Rate, Seed, Spread,
 };
@@ -137,7 +137,7 @@ async fn init_maker(
 
     let btc_dai = settings.maker.btc_dai;
 
-    let initial_rate = get_btc_dai_mid_market_rate(&settings.maker.kraken_api_host)
+    let initial_rate = kraken::get_btc_dai_mid_market_rate(&settings.maker.kraken_api_host)
         .await
         .context("Could not get rate")?;
 
@@ -174,7 +174,7 @@ fn init_rate_updates(
 
     let future = async move {
         loop {
-            let rate = get_btc_dai_mid_market_rate(&kraken_api_host).await;
+            let rate = kraken::get_btc_dai_mid_market_rate(&kraken_api_host).await;
 
             let _ = sender.send(rate).await.map_err(|e| {
                 tracing::trace!(

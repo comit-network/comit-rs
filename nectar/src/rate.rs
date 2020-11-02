@@ -1,3 +1,5 @@
+pub mod kraken;
+
 use anyhow::Context;
 use comit::{
     asset::{ethereum::FromWei, Erc20Quantity},
