@@ -34,16 +34,17 @@ pub async fn create_transaction(
             let redeem_address = bitcoin_wallet.new_address().await?;
             let vbyte_rate = bitcoin_fee.vbyte_rate().await?;
 
-            let action = params.hbit_params.shared.build_redeem_action(
+            let action = params.hbit_params.build_spend_action(
                 &crate::SECP,
                 fund_amount.unwrap_or(params.hbit_params.shared.asset),
                 outpoint.context(
                     "HTLC outpoint required but not provided, please provide with --outpoint",
                 )?,
-                params.hbit_params.transient_sk,
                 redeem_address,
-                secret,
                 vbyte_rate,
+                |htlc, secret_key| {
+                    htlc.unlock_with_secret(&crate::SECP, secret_key, secret.into_raw_secret())
+                },
             )?;
 
             hex::encode(::bitcoin::consensus::serialize(&action.transaction))
@@ -130,18 +131,18 @@ pub async fn create_transaction(
                 ..
             },
         ) => {
-            let redeem_address = bitcoin_wallet.new_address().await?;
+            let refund_address = bitcoin_wallet.new_address().await?;
             let vbyte_rate = bitcoin_fee.vbyte_rate().await?;
 
-            let action = params.hbit_params.shared.build_refund_action(
+            let action = params.hbit_params.build_spend_action(
                 &crate::SECP,
                 fund_amount.unwrap_or(params.hbit_params.shared.asset),
                 outpoint.context(
                     "HTLC outpoint required but not provided, please provide with --outpoint",
                 )?,
-                params.hbit_params.transient_sk,
-                redeem_address,
+                refund_address,
                 vbyte_rate,
+                |htlc, secret_key| htlc.unlock_after_timeout(&crate::SECP, secret_key),
             )?;
 
             hex::encode(::bitcoin::consensus::serialize(&action.transaction))

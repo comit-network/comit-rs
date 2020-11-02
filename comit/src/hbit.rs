@@ -157,11 +157,12 @@ pub struct Params {
     pub final_address: bitcoin::Address,
 }
 
-impl SharedParams {
+impl Params {
+    /// Builds the fund action for the hbit protocol.
     pub fn build_fund_action(&self) -> SendToAddress {
-        let network = self.network;
-        let to = self.compute_address();
-        let amount = self.asset;
+        let network = self.shared.network;
+        let to = self.shared.compute_address();
+        let amount = self.shared.asset;
 
         SendToAddress {
             to,
@@ -170,13 +171,16 @@ impl SharedParams {
         }
     }
 
+    /// Builds the refund action for the hbit protocol.
+    ///
+    /// This function assumes that the HTLC was funded with the intended amount.
+    /// Be aware that if that is not the case, then this function might result
+    /// in absurdly high fees because it spends only the originally intended
+    /// amount.
     pub fn build_refund_action<C>(
         &self,
         secp: &Secp256k1<C>,
-        fund_amount: asset::Bitcoin,
         fund_location: htlc_location::Bitcoin,
-        transient_refund_sk: SecretKey,
-        refund_address: Address,
         vbyte_rate: asset::Bitcoin,
     ) -> Result<BroadcastSignedTransaction>
     where
@@ -184,23 +188,24 @@ impl SharedParams {
     {
         self.build_spend_action(
             &secp,
-            fund_amount,
+            self.shared.asset,
             fund_location,
-            refund_address,
+            self.final_address.clone(),
             vbyte_rate,
-            |htlc| htlc.unlock_after_timeout(&secp, transient_refund_sk),
+            |htlc, secret_key| htlc.unlock_after_timeout(&secp, secret_key),
         )
     }
 
-    // TODO: Improve the interface
-    #[allow(clippy::too_many_arguments)]
+    /// Builds the redeem action for the hbit protocol.
+    ///
+    /// This function assumes that the HTLC was funded with the intended amount.
+    /// Be aware that if that is not the case, then this function might result
+    /// in absurdly high fees because it spends only the originally intended
+    /// amount.
     pub fn build_redeem_action<C>(
         &self,
         secp: &Secp256k1<C>,
-        fund_amount: asset::Bitcoin,
         fund_location: htlc_location::Bitcoin,
-        transient_redeem_sk: SecretKey,
-        redeem_address: Address,
         secret: Secret,
         vbyte_rate: asset::Bitcoin,
     ) -> Result<BroadcastSignedTransaction>
@@ -209,35 +214,30 @@ impl SharedParams {
     {
         self.build_spend_action(
             &secp,
-            fund_amount,
+            self.shared.asset,
             fund_location,
-            redeem_address,
+            self.final_address.clone(),
             vbyte_rate,
-            |htlc| htlc.unlock_with_secret(secp, transient_redeem_sk, secret.into_raw_secret()),
+            |htlc, secret_key| htlc.unlock_with_secret(secp, secret_key, secret.into_raw_secret()),
         )
     }
 
-    fn build_spend_action<C>(
+    pub fn build_spend_action<C>(
         &self,
         secp: &Secp256k1<C>,
         fund_amount: asset::Bitcoin,
         fund_location: htlc_location::Bitcoin,
         spend_address: Address,
         vbyte_rate: asset::Bitcoin,
-        unlock_fn: impl Fn(Htlc) -> UnlockParameters,
+        unlock_fn: impl Fn(Htlc, SecretKey) -> UnlockParameters,
     ) -> Result<BroadcastSignedTransaction>
     where
         C: Signing,
     {
-        let network = self.network;
+        let network = self.shared.network;
         let primed_transaction = {
-            let htlc = build_bitcoin_htlc(
-                self.redeem_identity,
-                self.refund_identity,
-                self.expiry,
-                self.secret_hash,
-            );
-            let input_parameters = unlock_fn(htlc);
+            let htlc = self.shared.into();
+            let input_parameters = unlock_fn(htlc, self.transient_sk);
             let spend_output =
                 SpendOutput::new(fund_location, fund_amount, input_parameters, network);
 

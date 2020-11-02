@@ -145,18 +145,9 @@ impl ActionResponseBody {
             Action::Herc20Redeem(params, deployed, secret) => {
                 params.build_redeem_action(deployed.location, secret).into()
             }
-            Action::HbitFund(params) => params.shared.build_fund_action().into(),
+            Action::HbitFund(params) => params.build_fund_action().into(),
             Action::HbitRedeem(params, funded, secret) => params
-                .shared
-                .build_redeem_action(
-                    &crate::SECP,
-                    funded.asset,
-                    funded.location,
-                    params.transient_sk,
-                    params.final_address,
-                    secret,
-                    vbyte_rate,
-                )?
+                .build_redeem_action(&crate::SECP, funded.location, secret, vbyte_rate)?
                 .into(),
         })
     }

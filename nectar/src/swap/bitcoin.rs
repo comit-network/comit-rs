@@ -18,7 +18,7 @@ pub struct Wallet {
 
 impl Wallet {
     pub async fn execute_fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::Funded> {
-        let action = params.shared.build_fund_action();
+        let action = params.build_fund_action();
 
         let kbyte_fee_rate = self.fee.kvbyte_rate().await?;
 
@@ -45,15 +45,8 @@ impl Wallet {
     ) -> anyhow::Result<hbit::Redeemed> {
         let vbyte_rate = self.fee.vbyte_rate().await?;
 
-        let action = params.shared.build_redeem_action(
-            &crate::SECP,
-            fund_event.asset,
-            fund_event.location,
-            params.transient_sk,
-            params.final_address,
-            secret,
-            vbyte_rate,
-        )?;
+        let action =
+            params.build_redeem_action(&crate::SECP, fund_event.location, secret, vbyte_rate)?;
         let transaction = self.spend(action).await?;
         let txid = transaction.txid();
 
