@@ -26,7 +26,6 @@ mod proptest;
 mod spectral_ext;
 #[macro_use]
 mod within_swap_context;
-mod actions;
 mod bitcoin_fees;
 mod cli;
 mod config;
@@ -40,7 +39,6 @@ mod local_swap_id;
 mod republish;
 mod respawn;
 mod spawn;
-mod state;
 mod storage;
 mod trace;
 

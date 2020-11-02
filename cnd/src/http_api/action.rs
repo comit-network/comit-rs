@@ -1,14 +1,14 @@
-use crate::{
+use crate::{asset, ethereum::ChainId, identity, transaction, Timestamp};
+use anyhow::Result;
+use comit::{
     actions::{
         bitcoin::{self, SendToAddress},
         ethereum,
     },
-    asset,
-    ethereum::ChainId,
-    identity, transaction, Timestamp,
+    ethereum::UnformattedData,
+    ledger,
+    swap::Action,
 };
-use anyhow::Result;
-use comit::{ethereum::UnformattedData, ledger, swap::Action};
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
