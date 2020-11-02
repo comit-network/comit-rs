@@ -3,12 +3,12 @@ mod event_loop;
 use crate::{
     bitcoin,
     command::trade::event_loop::EventLoop,
-    config::{KrakenApiHost, Settings},
+    config::{RateStrategy, Settings},
     ethereum::{self, dai},
     history::History,
     maker::strategy,
     network::{self, new_swarm},
-    rate::kraken,
+    rate::RateRetrieval,
     swap::{Database, SwapExecutor, SwapKind, SwapParams},
     Maker, Rate, Seed, Spread,
 };
@@ -33,10 +33,16 @@ pub async fn trade(
 
     let bitcoind_client = bitcoin::Client::new(settings.bitcoin.bitcoind.node_url.clone());
 
+    let rate_retrieval = match &settings.maker.rate_strategy {
+        RateStrategy::Kraken(api_host) => RateRetrieval::new_kraken(api_host.clone()),
+        RateStrategy::Static(rate) => RateRetrieval::new_static(*rate),
+    };
+
     let mut maker = init_maker(
         Arc::clone(&bitcoin_wallet),
         bitcoind_client.clone(),
         Arc::clone(&ethereum_wallet),
+        rate_retrieval.clone(),
         settings.clone(),
         network,
     )
@@ -64,7 +70,7 @@ pub async fn trade(
     let update_interval = Duration::from_secs(15u64);
 
     let (rate_future, rate_update_receiver) =
-        init_rate_updates(Duration::from_secs(5 * 60), settings.maker.kraken_api_host);
+        init_rate_updates(Duration::from_secs(5 * 60), rate_retrieval);
     let (btc_balance_future, btc_balance_update_receiver) =
         init_bitcoin_balance_updates(update_interval, Arc::clone(&bitcoin_wallet));
     let (dai_balance_future, dai_balance_update_receiver) =
@@ -122,6 +128,7 @@ async fn init_maker(
     bitcoin_wallet: Arc<bitcoin::Wallet>,
     bitcoind_client: bitcoin::Client,
     ethereum_wallet: Arc<ethereum::Wallet>,
+    rate_retrieval: RateRetrieval,
     settings: Settings,
     network: comit::Network,
 ) -> anyhow::Result<Maker> {
@@ -137,9 +144,7 @@ async fn init_maker(
 
     let btc_dai = settings.maker.btc_dai;
 
-    let initial_rate = kraken::get_btc_dai_mid_market_rate(&settings.maker.kraken_api_host)
-        .await
-        .context("Could not get rate")?;
+    let initial_rate = rate_retrieval.get().await.context("Could not get rate")?;
 
     let spread: Spread = settings.maker.spread;
 
@@ -165,7 +170,7 @@ async fn init_maker(
 
 fn init_rate_updates(
     update_interval: Duration,
-    kraken_api_host: KrakenApiHost,
+    rate_retrieval: RateRetrieval,
 ) -> (
     impl Future<Output = comit::Never> + Send,
     mpsc::Receiver<anyhow::Result<Rate>>,
@@ -174,7 +179,7 @@ fn init_rate_updates(
 
     let future = async move {
         loop {
-            let rate = kraken::get_btc_dai_mid_market_rate(&kraken_api_host).await;
+            let rate = rate_retrieval.get().await;
 
             let _ = sender.send(rate).await.map_err(|e| {
                 tracing::trace!(
@@ -308,7 +313,7 @@ mod tests {
             maker: settings::Maker {
                 btc_dai: Default::default(),
                 spread: StaticStub::static_stub(),
-                kraken_api_host: Default::default(),
+                rate_strategy: Default::default(),
             },
             network: Network {
                 listen: vec!["/ip4/98.97.96.95/tcp/20500"

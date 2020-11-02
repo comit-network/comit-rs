@@ -152,7 +152,11 @@ mod tests {
                     max_sell_quantity: Some(bitcoin::Amount::from_btc(0.1).unwrap()),
                 }),
                 spread: Some(Spread::new(500).unwrap()),
-                kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
+                rate: Some(file::Rate {
+                    strategy: Some(file::RateStrategy::KrakenMidMarket),
+                    kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
+                    static_rate: None,
+                }),
             }),
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],

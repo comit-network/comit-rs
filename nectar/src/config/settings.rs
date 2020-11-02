@@ -3,12 +3,13 @@ use crate::{
     config::{
         file, file::EthereumGasPriceService, Bitcoind, BtcDai, Data, EstimateMode, File, Network,
     },
-    ethereum, Spread,
+    ethereum, Rate, Spread,
 };
 use anyhow::{Context, Result};
 use comit::ledger;
 use conquer_once::Lazy;
 use log::LevelFilter;
+use std::convert::TryFrom;
 use url::Url;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -202,13 +203,27 @@ pub struct Maker {
     /// Spread to apply to the mid-market rate, format is permyriad. E.g. 5.20
     /// is 5.2% spread
     pub spread: Spread,
-    pub kraken_api_host: KrakenApiHost,
+    pub rate_strategy: RateStrategy,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum RateStrategy {
+    Kraken(KrakenApiHost),
+    Static(Rate),
+}
+
+impl Default for RateStrategy {
+    fn default() -> Self {
+        Self::Kraken(KrakenApiHost::default())
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct KrakenApiHost(Url);
 
 impl KrakenApiHost {
+    // TODO: Use type system instead of a string that must be specifically formated
+    // to match kraken's api
     pub fn with_trading_pair(&self, trading_pair: &str) -> Result<Url> {
         let url = self
             .0
@@ -358,17 +373,53 @@ impl Default for EthereumGasPrice {
     }
 }
 
+impl From<RateStrategy> for file::Rate {
+    fn from(settings: RateStrategy) -> Self {
+        match settings {
+            RateStrategy::Kraken(api_host) => Self {
+                strategy: Some(file::RateStrategy::KrakenMidMarket),
+                kraken_api_host: Some(api_host.0),
+                static_rate: None,
+            },
+            RateStrategy::Static(rate) => Self {
+                strategy: Some(file::RateStrategy::Static),
+                kraken_api_host: None,
+                // TODO: Better leverage types
+                static_rate: Some(rate.as_f64().expect(
+                    "The rate was set from a float, it should be possible to revert it back to a float",
+                )),
+            },
+        }
+    }
+}
+
+impl RateStrategy {
+    pub fn from_file(file: file::Rate) -> Result<Self> {
+        match file.strategy {
+            None => Ok(Self::default()),
+            Some(file::RateStrategy::KrakenMidMarket) => Ok(Self::Kraken(
+                file.kraken_api_host
+                    .map_or_else(KrakenApiHost::default, KrakenApiHost),
+            )),
+            Some(file::RateStrategy::Static) => file
+                .static_rate
+                .map_or_else(|| Ok(Rate::one_for_one()), Rate::try_from)
+                .map(Self::Static),
+        }
+    }
+}
+
 impl Maker {
-    fn from_file(file: file::Maker) -> Self {
-        Self {
+    fn from_file(file: file::Maker) -> Result<Self> {
+        Ok(Self {
             btc_dai: file.btc_dai.unwrap_or_default(),
             spread: file
                 .spread
                 .unwrap_or_else(|| Spread::new(500).expect("500 is a valid spread value")),
-            kraken_api_host: file
-                .kraken_api_host
-                .map_or_else(KrakenApiHost::default, KrakenApiHost),
-        }
+            rate_strategy: file
+                .rate
+                .map_or_else(|| Ok(Default::default()), RateStrategy::from_file)?,
+        })
     }
 }
 
@@ -377,7 +428,7 @@ impl Default for Maker {
         Self {
             btc_dai: BtcDai::default(),
             spread: Spread::new(500).expect("500 is a valid spread value"),
-            kraken_api_host: KrakenApiHost::default(),
+            rate_strategy: RateStrategy::Kraken(KrakenApiHost::default()),
         }
     }
 }
@@ -442,7 +493,7 @@ impl From<Maker> for file::Maker {
                 max_sell => Some(max_sell),
             },
             spread: Some(maker.spread),
-            kraken_api_host: Some(maker.kraken_api_host.0),
+            rate: Some(maker.rate_strategy.into()),
         }
     }
 }
@@ -463,7 +514,7 @@ impl Settings {
         } = config_file;
 
         Ok(Self {
-            maker: maker.map_or_else(Maker::default, Maker::from_file),
+            maker: maker.map_or_else(|| Ok(Maker::default()), Maker::from_file)?,
             network: network.unwrap_or_else(|| {
                 let default_socket = "/ip4/0.0.0.0/tcp/9939"
                     .parse()

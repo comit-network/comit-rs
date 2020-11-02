@@ -1,5 +1,6 @@
 pub mod kraken;
 
+use crate::config::KrakenApiHost;
 use anyhow::Context;
 use comit::{
     asset::{ethereum::FromWei, Erc20Quantity},
@@ -8,7 +9,7 @@ use comit::{
 use num::{BigUint, Integer, ToPrimitive};
 use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, fmt};
+use std::{convert::TryFrom, fmt, ops::Div};
 
 /// Represent a rate. Note this is designed to support Bitcoin/Dai buy and sell
 /// rates (Bitcoin being in the range of 10k-100kDai) A rate has a maximum
@@ -38,6 +39,16 @@ impl Rate {
     /// integer = rate * 10ePRECISION
     pub fn integer(self) -> BigUint {
         BigUint::from(self.0)
+    }
+
+    pub fn as_f64(&self) -> anyhow::Result<f64> {
+        let v = u32::try_from(self.0)?;
+        let v = f64::try_from(v)?;
+        Ok(v.div(10.0f64.powi(Self::PRECISION as i32)))
+    }
+
+    pub fn one_for_one() -> Self {
+        Rate(10u64.pow(Self::PRECISION as u32))
     }
 }
 
@@ -111,6 +122,29 @@ impl Spread {
             .to_u64()
             .ok_or_else(|| anyhow::anyhow!("Result is unexpectedly large"))?;
         Ok(Rate::new(rate))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum RateRetrieval {
+    Kraken(KrakenApiHost),
+    Static(Rate),
+}
+
+impl RateRetrieval {
+    pub fn new_kraken(url: KrakenApiHost) -> Self {
+        Self::Kraken(url)
+    }
+
+    pub fn new_static(static_rate: Rate) -> Self {
+        Self::Static(static_rate)
+    }
+
+    pub async fn get(&self) -> anyhow::Result<Rate> {
+        match self {
+            RateRetrieval::Kraken(url) => kraken::get_btc_dai_mid_market_rate(url).await,
+            RateRetrieval::Static(rate) => Ok(*rate),
+        }
     }
 }
 
@@ -205,6 +239,18 @@ mod tests {
         assert_eq!(rate, res);
     }
 
+    #[test]
+    fn one_for_one_rate_returns_one_btc_for_one_token_price() {
+        let rate = Rate::one_for_one();
+
+        let price: Price<comit::asset::Bitcoin, comit::asset::Erc20Quantity> = rate.into();
+        let wei_per_btc = price.wei_per_btc();
+
+        let one = Erc20Quantity::from_wei_dec_str("1_000_000_000_000_000_000").unwrap();
+
+        assert_eq!(wei_per_btc, one);
+    }
+
     proptest! {
         #[test]
         fn spread_new_doesnt_panic(s in any::<u16>()) {
@@ -258,6 +304,15 @@ mod tests {
 
                 let res = spread.apply(rate, Position::Buy).unwrap();
                 assert_eq!(res, rate);
+            }
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn rate_as_f64_doesnt_panic(rate in new_rate()) {
+            if let Ok(rate) = rate {
+                let _ = rate.as_f64();
             }
         }
     }

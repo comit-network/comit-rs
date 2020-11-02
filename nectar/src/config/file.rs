@@ -30,8 +30,22 @@ pub struct File {
 #[serde(deny_unknown_fields)]
 pub struct Maker {
     pub spread: Option<Spread>,
-    pub kraken_api_host: Option<Url>,
+    pub rate: Option<Rate>,
     pub btc_dai: Option<BtcDai>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Rate {
+    pub strategy: Option<RateStrategy>,
+    pub kraken_api_host: Option<Url>,
+    pub static_rate: Option<f64>,
+}
+
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RateStrategy {
+    KrakenMidMarket,
+    Static,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -213,7 +227,10 @@ mod tests {
 [maker]
 # 1000 is 10.00% spread
 spread = 1000
-kraken_api_host = "https://api.kraken.com"
+
+[maker.rate]
+strategy = "static"
+static_rate = 100
 
 [maker.btc_dai]
 max_buy_quantity = 1.23456
@@ -257,7 +274,11 @@ url = "https://public_key@account.ingest.sentry.io/project_id"
                     max_sell_quantity: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
                 }),
                 spread: Some(Spread::new(1000).unwrap()),
-                kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
+                rate: Some(Rate {
+                    strategy: Some(RateStrategy::Static),
+                    kraken_api_host: None,
+                    static_rate: Some(100.0),
+                }),
             }),
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
@@ -322,7 +343,11 @@ url = "https://public_key@account.ingest.sentry.io/project_id"
                     max_sell_quantity: Some(bitcoin::Amount::from_btc(1.23456).unwrap()),
                 }),
                 spread: Some(Spread::new(1000).unwrap()),
-                kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
+                rate: Some(Rate {
+                    strategy: Some(RateStrategy::KrakenMidMarket),
+                    kraken_api_host: Some("https://api.kraken.com".parse().unwrap()),
+                    static_rate: None,
+                }),
             }),
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
@@ -369,6 +394,9 @@ url = "https://public_key@account.ingest.sentry.io/project_id"
 
         let expected = r#"[maker]
 spread = 1000
+
+[maker.rate]
+strategy = "kraken_mid_market"
 kraken_api_host = "https://api.kraken.com/"
 
 [maker.btc_dai]

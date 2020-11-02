@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   New command to migrate the database to a new format;
     Use `nectar migrate-db status` to check if migration is needed;
     If so, backup your data and then execute `nectar migrate-db run` to proceed with the migration.
+-  **Config file breaking change**: Introduced the possibility to use a static rate instead of Kraken mid market rate.
 
 ## [nectar-0.1.0] - 2020-10-20
 
