@@ -301,6 +301,7 @@ async fn execute_subcommand(
             secret,
             outpoint,
             address,
+            fund_amount,
         }) => {
             let swap_context: SwapContext = storage
                 .load(swap_id)
@@ -348,7 +349,7 @@ async fn execute_subcommand(
 
             let transaction = hbit_params.shared.build_redeem_action(
                 &*SECP,
-                hbit_params.shared.asset,
+                fund_amount.unwrap_or(hbit_params.shared.asset),
                 outpoint,
                 hbit_params.transient_sk,
                 address,
@@ -364,6 +365,7 @@ async fn execute_subcommand(
             swap_id,
             outpoint,
             address,
+            fund_amount,
         }) => {
             let swap_context: SwapContext = storage
                 .load(swap_id)
@@ -398,7 +400,7 @@ async fn execute_subcommand(
 
             let transaction = hbit_params.shared.build_refund_action(
                 &*SECP,
-                hbit_params.shared.asset,
+                fund_amount.unwrap_or(hbit_params.shared.asset),
                 outpoint,
                 hbit_params.transient_sk,
                 address,

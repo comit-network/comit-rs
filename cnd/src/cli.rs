@@ -53,6 +53,11 @@ pub enum CreateTransaction {
         /// The Bitcoin address the coins should be redeemed to.
         #[structopt(long)]
         address: ::bitcoin::Address,
+        /// The actual amount that was sent to the `hbit` HTLC. If this is not
+        /// provided, we will assume that the originally agreed amount is to be
+        /// spent.
+        #[structopt(long)]
+        fund_amount: Option<::bitcoin::Amount>,
     },
     /// Create the transaction for the `refund` action.
     Refund {
@@ -65,6 +70,11 @@ pub enum CreateTransaction {
         /// The Bitcoin address the coins should be refunded to.
         #[structopt(long)]
         address: ::bitcoin::Address,
+        /// The actual amount that was sent to the `hbit` HTLC. If this is not
+        /// provided, we will assume that the originally agreed amount is to be
+        /// spent.
+        #[structopt(long)]
+        fund_amount: Option<::bitcoin::Amount>,
     },
 }
 

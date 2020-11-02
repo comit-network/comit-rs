@@ -25,7 +25,10 @@ pub async fn create_transaction(
         (
             SwapKind::HbitHerc20(params),
             CreateTransaction::Redeem {
-                secret, outpoint, ..
+                secret,
+                outpoint,
+                fund_amount,
+                ..
             },
         ) => {
             let redeem_address = bitcoin_wallet.new_address().await?;
@@ -33,8 +36,7 @@ pub async fn create_transaction(
 
             let action = params.hbit_params.shared.build_redeem_action(
                 &crate::SECP,
-                params.hbit_params.shared.asset, /* TODO: allow the user to override this on the
-                                                  * commandline */
+                fund_amount.unwrap_or(params.hbit_params.shared.asset),
                 outpoint.context(
                     "HTLC outpoint required but not provided, please provide with --outpoint",
                 )?,
@@ -120,14 +122,20 @@ pub async fn create_transaction(
                 )
             )
         }
-        (SwapKind::Herc20Hbit(params), CreateTransaction::Refund { outpoint, .. }) => {
+        (
+            SwapKind::Herc20Hbit(params),
+            CreateTransaction::Refund {
+                outpoint,
+                fund_amount,
+                ..
+            },
+        ) => {
             let redeem_address = bitcoin_wallet.new_address().await?;
             let vbyte_rate = bitcoin_fee.vbyte_rate().await?;
 
             let action = params.hbit_params.shared.build_refund_action(
                 &crate::SECP,
-                params.hbit_params.shared.asset, /* TODO: allow the user to override this on the
-                                                  * commandline */
+                fund_amount.unwrap_or(params.hbit_params.shared.asset),
                 outpoint.context(
                     "HTLC outpoint required but not provided, please provide with --outpoint",
                 )?,
