@@ -8,6 +8,10 @@ use diesel::{prelude::*, SqliteConnection};
 use libp2p::PeerId;
 use time::OffsetDateTime;
 
+#[derive(thiserror::Error, Debug, Clone, Copy)]
+#[error("no swap exists in the database for id {0}")]
+pub struct NoSwapExists(pub LocalSwapId);
+
 #[derive(Identifiable, Queryable, PartialEq, Debug)]
 #[table_name = "swaps"]
 pub struct Swap {

@@ -1,6 +1,6 @@
 use crate::{
     local_swap_id::LocalSwapId,
-    storage::{NoSwapExists, Sqlite, Text},
+    storage::{Sqlite, Text},
 };
 use anyhow::Context;
 use comit::{
@@ -30,7 +30,6 @@ mod secret_hashes;
 mod swap_contexts;
 mod swaps;
 
-use crate::storage::SameSide;
 pub use btc_dai_orders::{BtcDaiOrder, InsertableBtcDaiOrder};
 use comit::order::SwapProtocol;
 pub use completed_swaps::{CompletedSwap, InsertableCompletedSwap};
@@ -39,11 +38,11 @@ pub use herc20s::{Herc20, InsertableHerc20};
 pub use order_hbit_params::{InsertableOrderHbitParams, OrderHbitParams};
 pub use order_herc20_params::{InsertableOrderHerc20Params, OrderHerc20Params};
 pub use order_swaps::{InsertableOrderSwap, OrderSwap};
-pub use orders::{InsertableOrder, Order};
+pub use orders::{InsertableOrder, NoOrderExists, Order};
 pub use secret_hashes::{InsertableSecretHash, SecretHash};
 use std::convert::TryFrom;
 pub use swap_contexts::SwapContext;
-pub use swaps::{InsertableSwap, Swap};
+pub use swaps::{InsertableSwap, NoSwapExists, Swap};
 use time::Duration;
 
 /// A newtype for a tuple of params.
@@ -107,6 +106,10 @@ impl TryFrom<ParamsTuple> for SwapProtocol {
         }
     }
 }
+
+#[derive(thiserror::Error, Debug, Clone, Copy)]
+#[error("both params are side {0}")]
+pub struct SameSide(pub Side);
 
 /// Load data from tables, A and B are protocol tables.
 #[async_trait::async_trait]

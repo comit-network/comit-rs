@@ -1,4 +1,4 @@
-use crate::storage::{db::schema::orders, NoOrderExists, Text};
+use crate::storage::{db::schema::orders, Text};
 use anyhow::{Context, Result};
 use comit::{OrderId, Position};
 use diesel::{prelude::*, SqliteConnection};
@@ -25,6 +25,10 @@ impl Order {
         Ok(order)
     }
 }
+
+#[derive(thiserror::Error, Debug, Clone, Copy)]
+#[error("no order exists in the database for id {0}")]
+pub struct NoOrderExists(pub OrderId);
 
 #[derive(Insertable, Clone, Copy, Debug)]
 #[table_name = "orders"]

@@ -214,5 +214,5 @@ fn derive_or_unwrap_secret_hash(
 }
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
-#[error("could not derive Bitcoin identity for swap not involving hbit: {0}")]
-pub struct HbitNotInvolved(pub LocalSwapId);
+#[error("no secret hash found in database for swap {0}")]
+pub struct NoSecretHash(pub LocalSwapId);
