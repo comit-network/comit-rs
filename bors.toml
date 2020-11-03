@@ -1,7 +1,8 @@
 status = [
     "static_analysis",
-    "build (ubuntu-latest)",
-    "build (macos-latest)",
-    "build (windows-latest)",
+    "build (x86_64-unknown-linux-gnu)",
+    "build (armv7-unknown-linux-gnueabihf)",
+    "build (x86_64-apple-darwin)",
+    "build (x86_64-pc-windows-gnu)",
 ]
 block_labels = ["no-mergify"]

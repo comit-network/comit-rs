@@ -58,12 +58,27 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        target: [x86_64-unknown-linux-gnu, armv7-unknown-linux-gnueabihf, x86_64-apple-darwin, x86_64-pc-windows-gnu]
         include:
-          - os: ubuntu-latest
-            e2e: true
-          - os: macos-latest
-            e2e: true
+
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            test_features: testcontainers
+
+          - target: armv7-unknown-linux-gnueabihf
+            os: ubuntu-latest
+            # This target is only for cross-compiling, skip all tests.
+            skip_unit_tests: true
+            skip_e2e_tests: true
+
+          - target: x86_64-apple-darwin
+            os: macos-latest
+
+          - target: x86_64-pc-windows-gnu
+            os: windows-latest
+            skip_e2e_tests: true # Our e2e test framework doesn't work on windows.
+            file_ext: .exe
+
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout sources
@@ -75,6 +90,13 @@ jobs:
         with:
           profile: minimal
           override: true
+          target: ${{ matrix.target }}
+
+      - name: Install compiler for armhf arch
+        if: matrix.target == 'armv7-unknown-linux-gnueabihf'
+        run: |
+          sudo apt-get update
+          sudo apt-get install gcc-arm-linux-gnueabihf
 
       - name: Cache cargo registry
         uses: actions/cache@v2
@@ -96,59 +118,53 @@ jobs:
         with:
           path: target
           # The target directory is only useful with the same Rust version, dependencies and operating system.
-          key: ${{ matrix.os }}-target-${{ steps.toolchain.outputs.rustc_hash }}-${{ hashFiles('Cargo.lock') }}-build-v3
-
-      - name: Build ${{ matrix.os }} binary
-        run: make build
+          key: ${{ matrix.target }}-target-${{ steps.toolchain.outputs.rustc_hash }}-${{ hashFiles('Cargo.lock') }}-build-v3
 
       - name: Build docs
-        run: make doc
+        run: cargo doc
 
-      - name: Run unit tests (no docker)
-        if: matrix.os != 'ubuntu-latest'
-        run: make test
-
-      - name: Run unit tests (with docker)
-        if: matrix.os == 'ubuntu-latest'
-        run: make test_docker
-
-      # We've ran `cargo build --all-targets` earlier, that is different to from just building the binary.
-      # Our e2e tests lazily re-build the binaries, that can timeout our tests so build them here in advance.
-      - name: Build binaries for e2e test
-        if: matrix.e2e
+      - name: Run unit tests
+        if: (!matrix.skip_unit_tests)
+        shell: bash
         run: |
-          cargo build -p cnd
-          cargo build -p nectar
+          (cd ./comit; cargo test --features "${{ matrix.test_features }}")
+          (cd ./cnd; cargo test)
+          (cd ./nectar; cargo test --features "${{ matrix.test_features }}")
 
-      - name: Upload cnd-${{ matrix.os }} archive that contains the cnd binary
-        if: matrix.e2e
+      - name: Build binaries
+        env:
+          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
+        run: |
+          cargo build -p cnd --target ${{ matrix.target }}
+          cargo build -p nectar --target ${{ matrix.target }}
+
+      - name: Upload cnd binary
         uses: actions/upload-artifact@v1
         with:
-          name: cnd-${{ matrix.os }}
-          path: target/debug/cnd
+          name: cnd-${{ matrix.target }}
+          path: target/${{ matrix.target }}/debug/cnd${{ matrix.file_ext }}
 
-      - name: Upload nectar-${{ matrix.os }} archive that contains the nectar binary
-        if: matrix.e2e
+      - name: Upload nectar binary
         uses: actions/upload-artifact@v1
         with:
-          name: nectar-${{ matrix.os }}
-          path: target/debug/nectar
+          name: nectar-${{ matrix.target }}
+          path: target/${{ matrix.target }}/debug/nectar${{ matrix.file_ext }}
 
       - name: Install NodeJS 14.x
-        if: matrix.e2e
+        if: (!matrix.skip_e2e_tests)
         uses: actions/setup-node@v1
         with:
           node-version: '14.x'
 
       - name: Cache node_modules directory
-        if: matrix.e2e
+        if: (!matrix.skip_e2e_tests)
         uses: actions/cache@v2
         with:
           path: tests/node_modules
           key: ${{ matrix.os }}-node-14-node-modules-directory-${{ hashFiles('tests/package.json') }}
 
       - name: Run e2e tests
-        if: matrix.e2e
+        if: (!matrix.skip_e2e_tests)
         run: |
           export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH
           cd tests
@@ -156,28 +172,28 @@ jobs:
           yarn test
 
       - name: Upload bitcoind log
-        if: matrix.e2e && failure()
+        if: (!matrix.skip_e2e_tests) && failure()
         uses: actions/upload-artifact@v2-preview
         with:
           name: ${{ matrix.os }}-e2e-logs-bitcoind.log
           path: tests/log/bitcoind/regtest/debug.log
 
       - name: Upload parity log
-        if: matrix.e2e && failure()
+        if: (!matrix.skip_e2e_tests) && failure()
         uses: actions/upload-artifact@v2-preview
         with:
           name: ${{ matrix.os }}-e2e-logs-parity.log
           path: tests/log/parity/parity.log
 
       - name: Upload lnd logs
-        if: matrix.e2e && failure()
+        if: (!matrix.skip_e2e_tests) && failure()
         uses: actions/upload-artifact@v2-preview
         with:
           name: ${{ matrix.os }}-e2e-logs-lnd
           path: tests/log/lnd-*/logs/bitcoin/regtest/lnd.log
 
       - name: Upload e2e logs
-        if: matrix.e2e && failure()
+        if: (!matrix.skip_e2e_tests) && failure()
         uses: actions/upload-artifact@v2-preview
         with:
           name: ${{ matrix.os }}-e2e-test-logs
