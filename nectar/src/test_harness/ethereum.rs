@@ -2,8 +2,8 @@ use crate::ethereum::{self, ether, Address, ChainId, GasPrice};
 use anyhow::Context;
 use clarity::{PrivateKey, Uint256};
 use comit::{
-    actions::ethereum::DeployContract,
     asset::{Erc20, Erc20Quantity, Ether},
+    swap::actions::DeployContract,
 };
 use std::str::FromStr;
 use tempfile::TempDir;

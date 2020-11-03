@@ -345,20 +345,18 @@ async fn execute_subcommand(
                 }
             };
 
-            let transaction = hbit_params.build_spend_action(
-                &*SECP,
-                fund_amount.unwrap_or(hbit_params.shared.asset),
-                outpoint,
-                address,
-                bitcoin_fees.get_per_vbyte_rate().await?,
-                |htlc, secret_key| {
-                    htlc.unlock_with_secret(&*SECP, secret_key, secret.into_raw_secret())
-                },
-            )?;
+            let transaction = hbit_params
+                .build_spend_action(
+                    fund_amount.unwrap_or(hbit_params.shared.asset),
+                    outpoint,
+                    address,
+                    |htlc, secret_key| {
+                        htlc.unlock_with_secret(&*SECP, secret_key, secret.into_raw_secret())
+                    },
+                )
+                .sign(&*SECP, bitcoin_fees.get_per_vbyte_rate().await?)?;
 
-            Ok(hex::encode(::bitcoin::consensus::serialize(
-                &transaction.transaction,
-            )))
+            Ok(::bitcoin::consensus::encode::serialize_hex(&transaction))
         }
         Command::CreateTransaction(CreateTransaction::Refund {
             swap_id,
@@ -397,18 +395,16 @@ async fn execute_subcommand(
                 }
             };
 
-            let transaction = hbit_params.build_spend_action(
-                &*SECP,
-                fund_amount.unwrap_or(hbit_params.shared.asset),
-                outpoint,
-                address,
-                bitcoin_fees.get_per_vbyte_rate().await?,
-                |htlc, secret_key| htlc.unlock_after_timeout(&*SECP, secret_key),
-            )?;
+            let transaction = hbit_params
+                .build_spend_action(
+                    fund_amount.unwrap_or(hbit_params.shared.asset),
+                    outpoint,
+                    address,
+                    |htlc, secret_key| htlc.unlock_after_timeout(&*SECP, secret_key),
+                )
+                .sign(&*SECP, bitcoin_fees.get_per_vbyte_rate().await?)?;
 
-            Ok(hex::encode(::bitcoin::consensus::serialize(
-                &transaction.transaction,
-            )))
+            Ok(::bitcoin::consensus::encode::serialize_hex(&transaction))
         }
     }
 }

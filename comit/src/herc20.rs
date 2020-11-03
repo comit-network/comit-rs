@@ -1,7 +1,7 @@
 //! Htlc ERC20 Token atomic swap protocol.
 
 use crate::{
-    actions, asset,
+    asset,
     asset::{ethereum::FromWei, Erc20, Erc20Quantity},
     btsieve::{
         ethereum::{
@@ -12,6 +12,7 @@ use crate::{
     ethereum,
     ethereum::{Block, ChainId, Hash, U256},
     htlc_location, identity,
+    swap::actions::{CallContract, DeployContract},
     timestamp::Timestamp,
     Secret, SecretHash,
 };
@@ -244,12 +245,12 @@ impl Params {
         Htlc::from(self.clone()).into()
     }
 
-    pub fn build_deploy_action(&self) -> actions::ethereum::DeployContract {
+    pub fn build_deploy_action(&self) -> DeployContract {
         let chain_id = self.chain_id;
         let htlc = Htlc::from(self.clone());
         let gas_limit = Htlc::deploy_tx_gas_limit();
 
-        actions::ethereum::DeployContract {
+        DeployContract {
             data: htlc.into(),
             amount: asset::Ether::zero(),
             gas_limit,
@@ -257,10 +258,7 @@ impl Params {
         }
     }
 
-    pub fn build_fund_action(
-        &self,
-        htlc_location: htlc_location::Ethereum,
-    ) -> actions::ethereum::CallContract {
+    pub fn build_fund_action(&self, htlc_location: htlc_location::Ethereum) -> CallContract {
         let to = self.asset.token_contract;
         let htlc_address = blockchain_contracts::ethereum::Address(htlc_location.into());
         let data =
@@ -269,7 +267,7 @@ impl Params {
 
         let gas_limit = Htlc::fund_tx_gas_limit();
 
-        actions::ethereum::CallContract {
+        CallContract {
             to,
             data,
             gas_limit,
@@ -277,14 +275,11 @@ impl Params {
         }
     }
 
-    pub fn build_refund_action(
-        &self,
-        htlc_location: htlc_location::Ethereum,
-    ) -> actions::ethereum::CallContract {
+    pub fn build_refund_action(&self, htlc_location: htlc_location::Ethereum) -> CallContract {
         let data = None;
         let gas_limit = Htlc::refund_tx_gas_limit();
 
-        actions::ethereum::CallContract {
+        CallContract {
             to: htlc_location,
             data,
             gas_limit,
@@ -296,11 +291,11 @@ impl Params {
         &self,
         htlc_location: htlc_location::Ethereum,
         secret: Secret,
-    ) -> actions::ethereum::CallContract {
+    ) -> CallContract {
         let data = Some(secret.into_raw_secret().to_vec());
         let gas_limit = Htlc::redeem_tx_gas_limit();
 
-        actions::ethereum::CallContract {
+        CallContract {
             to: htlc_location,
             data,
             gas_limit,

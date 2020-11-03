@@ -13,7 +13,6 @@
 )]
 #![forbid(unsafe_code)]
 
-pub mod actions;
 #[cfg(feature = "quickcheck")]
 pub mod arbitrary;
 pub mod asset;

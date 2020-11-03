@@ -1,13 +1,12 @@
 use crate::{asset, ethereum::ChainId, identity};
 use anyhow::Result;
 use comit::{
-    actions::{
-        bitcoin::{self, SendToAddress},
-        ethereum,
-    },
     ethereum::UnformattedData,
     ledger,
-    swap::Action,
+    swap::{
+        actions::{CallContract, DeployContract, SendToAddress},
+        Action,
+    },
 };
 use serde::Serialize;
 
@@ -39,7 +38,7 @@ pub enum ActionResponseBody {
     },
 }
 
-impl From<bitcoin::SendToAddress> for ActionResponseBody {
+impl From<SendToAddress> for ActionResponseBody {
     fn from(action: SendToAddress) -> Self {
         let SendToAddress {
             to,
@@ -54,23 +53,9 @@ impl From<bitcoin::SendToAddress> for ActionResponseBody {
     }
 }
 
-impl From<bitcoin::BroadcastSignedTransaction> for ActionResponseBody {
-    fn from(
-        bitcoin::BroadcastSignedTransaction {
-            transaction,
-            network,
-        }: bitcoin::BroadcastSignedTransaction,
-    ) -> Self {
-        ActionResponseBody::BitcoinBroadcastSignedTransaction {
-            hex: ::bitcoin::consensus::encode::serialize_hex(&transaction),
-            network,
-        }
-    }
-}
-
-impl From<ethereum::DeployContract> for ActionResponseBody {
-    fn from(action: ethereum::DeployContract) -> Self {
-        let ethereum::DeployContract {
+impl From<DeployContract> for ActionResponseBody {
+    fn from(action: DeployContract) -> Self {
+        let DeployContract {
             amount,
             chain_id,
             gas_limit,
@@ -86,9 +71,9 @@ impl From<ethereum::DeployContract> for ActionResponseBody {
     }
 }
 
-impl From<ethereum::CallContract> for ActionResponseBody {
-    fn from(action: ethereum::CallContract) -> Self {
-        let ethereum::CallContract {
+impl From<CallContract> for ActionResponseBody {
+    fn from(action: CallContract) -> Self {
+        let CallContract {
             to,
             data,
             gas_limit,
@@ -113,17 +98,18 @@ impl From<comit::Never> for ActionResponseBody {
 impl ActionResponseBody {
     pub fn from_action(action: comit::swap::Action, vbyte_rate: asset::Bitcoin) -> Result<Self> {
         Ok(match action {
-            Action::Herc20Deploy(params) => params.build_deploy_action().into(),
-            Action::Herc20Fund(params, deployed) => {
-                params.build_fund_action(deployed.location).into()
+            Action::Herc20Deploy(inner) => inner.into(),
+            Action::Herc20Fund(inner) => inner.into(),
+            Action::Herc20Redeem(inner, _) => inner.into(),
+            Action::HbitFund(inner) => inner.into(),
+            Action::HbitRedeem(inner, _) => {
+                let network = inner.network;
+                let transaction = inner.sign(&crate::SECP, vbyte_rate)?;
+                Self::BitcoinBroadcastSignedTransaction {
+                    hex: hex::encode(bitcoin::consensus::serialize(&transaction)),
+                    network,
+                }
             }
-            Action::Herc20Redeem(params, deployed, secret) => {
-                params.build_redeem_action(deployed.location, secret).into()
-            }
-            Action::HbitFund(params) => params.build_fund_action().into(),
-            Action::HbitRedeem(params, funded, secret) => params
-                .build_redeem_action(&crate::SECP, funded.location, secret, vbyte_rate)?
-                .into(),
         })
     }
 }

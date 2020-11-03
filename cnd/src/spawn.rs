@@ -118,6 +118,7 @@ impl Swap<hbit::Params, herc20::Params> {
                     comit::swap::hbit_herc20_bob(
                         hbit_facade,
                         herc20_facade,
+                        crate::SECP.clone(),
                         self.alpha,
                         self.beta,
                         self.start_of_swap,
@@ -155,6 +156,7 @@ impl Swap<herc20::Params, hbit::Params> {
                     comit::swap::herc20_hbit_alice(
                         herc20_facade,
                         hbit_facade,
+                        crate::SECP.clone(),
                         self.alpha,
                         self.beta,
                         storage.seed.derive_swap_seed(id).derive_secret(),

@@ -451,6 +451,7 @@ mod tests {
                         db: bob_db.clone(),
                         wallet: bob_ethereum_wallet.clone(),
                     },
+                    crate::SECP.clone(),
                     hbit_params,
                     herc20_params.clone(),
                     start_of_swap,
@@ -615,6 +616,7 @@ async fn execute(
                     db: db.clone(),
                     wallet: ethereum_wallet.clone(),
                 },
+                crate::SECP.clone(),
                 hbit_params,
                 herc20_params,
                 start_of_swap,
@@ -686,28 +688,28 @@ where
 {
     while let Some(action) = swap.try_next().await? {
         match action {
-            Action::Herc20Deploy(params) => {
-                let action = ethereum_wallet.execute_deploy(params);
+            Action::Herc20Deploy(inner) => {
+                let action = ethereum_wallet.execute_deploy(inner);
 
                 execute_idempotently(db.as_ref(), swap_id, action).await?;
             }
-            Action::Herc20Fund(params, deployed) => {
-                let action = ethereum_wallet.execute_fund(params, deployed);
+            Action::Herc20Fund(inner) => {
+                let action = ethereum_wallet.execute_fund(inner);
 
                 execute_idempotently(db.as_ref(), swap_id, action).await?;
             }
-            Action::Herc20Redeem(params, deployed, secret) => {
-                let action = ethereum_wallet.execute_redeem(params, secret, deployed);
+            Action::Herc20Redeem(inner, secret) => {
+                let action = ethereum_wallet.execute_redeem(inner, secret);
 
                 execute_idempotently(db.as_ref(), swap_id, action).await?;
             }
-            Action::HbitFund(params) => {
-                let action = bitcoin_wallet.execute_fund(&params);
+            Action::HbitFund(inner) => {
+                let action = bitcoin_wallet.execute_fund(inner);
 
                 execute_idempotently(db.as_ref(), swap_id, action).await?;
             }
-            Action::HbitRedeem(params, funded, secret) => {
-                let action = bitcoin_wallet.execute_redeem(params, funded, secret);
+            Action::HbitRedeem(inner, secret) => {
+                let action = bitcoin_wallet.execute_redeem(inner, secret);
 
                 execute_idempotently(db.as_ref(), swap_id, action).await?;
             }

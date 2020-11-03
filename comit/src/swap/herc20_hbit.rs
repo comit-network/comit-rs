@@ -2,14 +2,16 @@ use crate::{
     swap::{hbit, herc20, Action, Error},
     Secret,
 };
+use bitcoin::secp256k1::{Secp256k1, Signing};
 use futures::Stream;
 use genawaiter::sync::Gen;
 use time::OffsetDateTime;
 
 /// Execute a Herc20<->Hbit swap for Alice.
-pub fn herc20_hbit_alice<A, B>(
+pub fn herc20_hbit_alice<A, B, C>(
     herc20: A,
     hbit: B,
+    secp: Secp256k1<C>,
     herc20_params: herc20::Params,
     hbit_params: hbit::Params,
     secret: Secret,
@@ -18,12 +20,15 @@ pub fn herc20_hbit_alice<A, B>(
 where
     A: herc20::WatchForDeployed + herc20::WatchForFunded + herc20::WatchForRedeemed,
     B: hbit::WatchForRedeemed + hbit::WatchForFunded,
+    C: Signing,
 {
     Gen::new(|co| async move {
         tracing::info!("starting swap");
 
-        co.yield_(Ok(Action::Herc20Deploy(herc20_params.clone())))
-            .await;
+        co.yield_(Ok(Action::Herc20Deploy(
+            herc20_params.build_deploy_action(),
+        )))
+        .await;
         let herc20_deployed = herc20
             .watch_for_deployed(herc20_params.clone(), utc_start_of_swap)
             .await;
@@ -31,8 +36,7 @@ where
         tracing::info!("we deployed the herc20 htlc");
 
         co.yield_(Ok(Action::Herc20Fund(
-            herc20_params.clone(),
-            herc20_deployed,
+            herc20_params.build_fund_action(herc20_deployed.location),
         )))
         .await;
         match herc20
@@ -59,8 +63,7 @@ where
         tracing::info!("bob funded the hbit htlc");
 
         co.yield_(Ok(Action::HbitRedeem(
-            hbit_params.clone(),
-            hbit_funded,
+            hbit_params.build_redeem_action(&secp, hbit_funded.location, secret),
             secret,
         )))
         .await;
@@ -112,7 +115,8 @@ where
 
         tracing::info!("alice funded the herc20 htlc");
 
-        co.yield_(Ok(Action::HbitFund(hbit_params.clone()))).await;
+        co.yield_(Ok(Action::HbitFund(hbit_params.build_fund_action())))
+            .await;
         let hbit_funded = match hbit.watch_for_funded(&hbit_params, utc_start_of_swap).await {
             Ok(hbit_funded) => hbit_funded,
             Err(e) => {
@@ -130,8 +134,7 @@ where
         tracing::info!("alice redeemed the hbit htlc");
 
         co.yield_(Ok(Action::Herc20Redeem(
-            herc20_params.clone(),
-            herc20_deployed,
+            herc20_params.build_redeem_action(herc20_deployed.location, hbit_redeemed.secret),
             hbit_redeemed.secret,
         )))
         .await;

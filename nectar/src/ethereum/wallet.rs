@@ -10,8 +10,8 @@ use anyhow::Context;
 use bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey};
 use clarity::Uint256;
 use comit::{
-    actions::ethereum::{CallContract, DeployContract},
     asset::Erc20,
+    swap::actions::{CallContract, DeployContract},
 };
 use conquer_once::Lazy;
 use num::BigUint;
