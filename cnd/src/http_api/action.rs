@@ -1,4 +1,4 @@
-use crate::{asset, ethereum::ChainId, identity, transaction, Timestamp};
+use crate::{asset, ethereum::ChainId, identity};
 use anyhow::Result;
 use comit::{
     actions::{
@@ -23,8 +23,6 @@ pub enum ActionResponseBody {
     BitcoinBroadcastSignedTransaction {
         hex: String,
         network: ledger::Bitcoin,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        min_median_block_time: Option<Timestamp>,
     },
     EthereumDeployContract {
         data: crate::ethereum::UnformattedData,
@@ -38,31 +36,7 @@ pub enum ActionResponseBody {
         data: Option<crate::ethereum::UnformattedData>,
         gas_limit: crate::ethereum::U256,
         chain_id: ChainId,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        min_block_timestamp: Option<Timestamp>,
     },
-}
-
-impl ActionResponseBody {
-    pub fn bitcoin_broadcast_signed_transaction(
-        transaction: &transaction::Bitcoin,
-        network: ledger::Bitcoin,
-    ) -> Self {
-        let min_median_block_time = if transaction.lock_time == 0 {
-            None
-        } else {
-            // The first time a tx with lock_time can be broadcasted is when
-            // mediantime == locktime + 1
-            let min_median_block_time = transaction.lock_time + 1;
-            Some(Timestamp::from(min_median_block_time))
-        };
-
-        ActionResponseBody::BitcoinBroadcastSignedTransaction {
-            hex: ::bitcoin::consensus::encode::serialize_hex(transaction),
-            network,
-            min_median_block_time,
-        }
-    }
 }
 
 impl From<bitcoin::SendToAddress> for ActionResponseBody {
@@ -87,7 +61,10 @@ impl From<bitcoin::BroadcastSignedTransaction> for ActionResponseBody {
             network,
         }: bitcoin::BroadcastSignedTransaction,
     ) -> Self {
-        Self::bitcoin_broadcast_signed_transaction(&transaction, network)
+        ActionResponseBody::BitcoinBroadcastSignedTransaction {
+            hex: ::bitcoin::consensus::encode::serialize_hex(&transaction),
+            network,
+        }
     }
 }
 
@@ -116,7 +93,6 @@ impl From<ethereum::CallContract> for ActionResponseBody {
             data,
             gas_limit,
             chain_id,
-            min_block_timestamp,
         } = action;
 
         ActionResponseBody::EthereumCallContract {
@@ -124,7 +100,6 @@ impl From<ethereum::CallContract> for ActionResponseBody {
             data: data.map(UnformattedData),
             gas_limit: gas_limit.into(),
             chain_id,
-            min_block_timestamp,
         }
     }
 }
@@ -172,7 +147,6 @@ mod test {
             data: None,
             gas_limit: U256::from(1),
             chain_id,
-            min_block_timestamp: None,
         };
         let serialized = serde_json::to_string(&contract).unwrap();
         assert_eq!(

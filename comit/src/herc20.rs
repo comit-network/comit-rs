@@ -270,14 +270,12 @@ impl Params {
         let data = Some(data);
 
         let gas_limit = Htlc::fund_tx_gas_limit();
-        let min_block_timestamp = None;
 
         actions::ethereum::CallContract {
             to,
             data,
             gas_limit,
             chain_id: self.chain_id,
-            min_block_timestamp,
         }
     }
 
@@ -287,14 +285,12 @@ impl Params {
     ) -> actions::ethereum::CallContract {
         let data = None;
         let gas_limit = Htlc::refund_tx_gas_limit();
-        let min_block_timestamp = Some(self.expiry);
 
         actions::ethereum::CallContract {
             to: htlc_location,
             data,
             gas_limit,
             chain_id: self.chain_id,
-            min_block_timestamp,
         }
     }
 
@@ -305,14 +301,12 @@ impl Params {
     ) -> actions::ethereum::CallContract {
         let data = Some(secret.into_raw_secret().to_vec());
         let gas_limit = Htlc::redeem_tx_gas_limit();
-        let min_block_timestamp = None;
 
         actions::ethereum::CallContract {
             to: htlc_location,
             data,
             gas_limit,
             chain_id: self.chain_id,
-            min_block_timestamp,
         }
     }
 }

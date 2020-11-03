@@ -83,7 +83,7 @@ use crate::{
 };
 use ::bitcoin::secp256k1::{All, Secp256k1};
 use anyhow::{Context, Result};
-use comit::{ledger, LockProtocol, Never, Role, Secret, Side, Timestamp};
+use comit::{ledger, LockProtocol, Never, Role, Secret, Side};
 use conquer_once::Lazy;
 use futures::future;
 use rand::rngs::OsRng;

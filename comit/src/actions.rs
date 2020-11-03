@@ -78,7 +78,7 @@ pub mod bitcoin {
 }
 
 pub mod ethereum {
-    use crate::{asset, ethereum::ChainId, identity, Timestamp};
+    use crate::{asset, ethereum::ChainId, identity};
 
     #[derive(Debug, Clone, PartialEq)]
     pub struct DeployContract {
@@ -94,6 +94,5 @@ pub mod ethereum {
         pub data: Option<Vec<u8>>,
         pub gas_limit: u64,
         pub chain_id: ChainId,
-        pub min_block_timestamp: Option<Timestamp>,
     }
 }
