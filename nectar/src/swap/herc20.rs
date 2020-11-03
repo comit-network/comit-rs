@@ -100,11 +100,11 @@ impl WatchForFunded for Facade {
         deploy_event: Deployed,
         utc_start_of_swap: OffsetDateTime,
     ) -> Result<Funded, IncorrectlyFunded> {
-        if let Ok(Some(Funded { transaction, asset })) = self.db.load(self.swap_id) {
+        if let Ok(Some(Funded { transaction })) = self.db.load(self.swap_id) {
             self.wait_until_confirmed(transaction, params.chain_id)
                 .await;
 
-            return Ok(Funded { transaction, asset });
+            return Ok(Funded { transaction });
         }
 
         let operation = || {
@@ -124,7 +124,7 @@ impl WatchForFunded for Facade {
             .await
             .expect("transient error is never returned")?;
 
-        let _ = self.db.save(funded.clone(), self.swap_id).await;
+        let _ = self.db.save(funded, self.swap_id).await;
 
         Ok(funded)
     }

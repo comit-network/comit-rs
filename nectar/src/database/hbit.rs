@@ -10,7 +10,6 @@ use serde::{Deserialize, Serialize};
 // TODO: control the serialisation
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct HbitFunded {
-    pub asset: Amount,
     pub location: ::bitcoin::OutPoint,
 }
 
@@ -32,7 +31,6 @@ impl From<comit::asset::Bitcoin> for Amount {
 impl From<HbitFunded> for hbit::Funded {
     fn from(funded: HbitFunded) -> Self {
         hbit::Funded {
-            asset: funded.asset.into(),
             location: funded.location,
         }
     }
@@ -41,7 +39,6 @@ impl From<HbitFunded> for hbit::Funded {
 impl From<hbit::Funded> for HbitFunded {
     fn from(funded: hbit::Funded) -> Self {
         HbitFunded {
-            asset: funded.asset.into(),
             location: funded.location,
         }
     }
@@ -273,7 +270,6 @@ mod tests {
     #[tokio::test]
     async fn save_and_load_hbit_funded() {
         let db = Database::new_test().unwrap();
-        let asset = comit::asset::Bitcoin::from_sat(123456);
         let location = comit::htlc_location::Bitcoin::default();
         let swap = Swap::static_stub();
         let swap_id = SwapId::default();
@@ -282,7 +278,7 @@ mod tests {
 
         db.insert_swap(swap_kind).await.unwrap();
 
-        let funded = hbit::Funded { asset, location };
+        let funded = hbit::Funded { location };
         db.save(funded, swap_id).await.unwrap();
 
         let stored_funded: hbit::Funded = db
@@ -290,7 +286,6 @@ mod tests {
             .expect("No error loading")
             .expect("found the event");
 
-        assert_eq!(stored_funded.asset, asset);
         assert_eq!(stored_funded.location, location);
     }
 

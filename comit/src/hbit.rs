@@ -32,7 +32,6 @@ pub struct IncorrectlyFunded {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Funded {
-    pub asset: asset::Bitcoin,
     pub location: htlc_location::Bitcoin,
 }
 
@@ -86,7 +85,7 @@ where
     let asset = asset::Bitcoin::from_sat(transaction.output[location.vout as usize].value);
 
     match expected_asset.cmp(&asset) {
-        Ordering::Equal => Ok(Ok(Funded { asset, location })),
+        Ordering::Equal => Ok(Ok(Funded { location })),
         _ => Ok(Err(IncorrectlyFunded {
             expected: expected_asset,
             got: asset,

@@ -108,7 +108,7 @@ where
             .await
             .entry(self.swap_id)
             .or_default()
-            .fund = Some(funded.clone());
+            .fund = Some(funded);
 
         Ok(funded)
     }

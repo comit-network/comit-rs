@@ -31,10 +31,7 @@ impl Wallet {
 
         tracing::info!("signed hbit fund transaction {}", txid);
 
-        Ok(hbit::Funded {
-            asset: action.amount,
-            location,
-        })
+        Ok(hbit::Funded { location })
     }
 
     pub async fn execute_redeem(

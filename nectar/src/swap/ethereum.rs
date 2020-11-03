@@ -41,7 +41,6 @@ impl Wallet {
 
         Ok(herc20::Funded {
             transaction: tx_hash,
-            asset: params.asset,
         })
     }
 

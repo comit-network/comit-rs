@@ -52,17 +52,15 @@ impl Load<herc20::Deployed> for Database {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Herc20Funded {
     pub transaction: ethereum::Hash,
-    pub asset: Erc20Asset,
 }
 
 impl From<Herc20Funded> for herc20::Funded {
     fn from(event: Herc20Funded) -> Self {
         herc20::Funded {
             transaction: event.transaction,
-            asset: event.asset.into(),
         }
     }
 }
@@ -71,7 +69,6 @@ impl From<herc20::Funded> for Herc20Funded {
     fn from(event: herc20::Funded) -> Self {
         Herc20Funded {
             transaction: event.transaction,
-            asset: event.asset.into(),
         }
     }
 }
@@ -314,19 +311,12 @@ mod tests {
         let swap = Swap::static_stub();
         let swap_id = SwapId::default();
         let transaction = comit::transaction::Ethereum::default().hash;
-        let asset = comit::asset::Erc20::new(
-            ethereum::Address::random(),
-            comit::asset::Erc20Quantity::from_wei_dec_str("123456789012345678").unwrap(),
-        );
 
         let swap_kind = SwapKind::from((swap, swap_id));
 
         db.insert_swap(swap_kind).await.unwrap();
 
-        let event = herc20::Funded {
-            transaction,
-            asset: asset.clone(),
-        };
+        let event = herc20::Funded { transaction };
         db.save(event, swap_id).await.unwrap();
 
         let stored_event: herc20::Funded = db
@@ -335,7 +325,6 @@ mod tests {
             .expect("found the event");
 
         assert_eq!(stored_event.transaction, transaction);
-        assert_eq!(stored_event.asset, asset);
     }
 
     #[tokio::test]

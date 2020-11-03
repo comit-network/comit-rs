@@ -46,10 +46,9 @@ pub struct Deployed {
     pub location: htlc_location::Ethereum,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Funded {
     pub transaction: ethereum::Hash,
-    pub asset: asset::Erc20,
 }
 
 #[derive(Debug, Clone, Error)]
@@ -160,7 +159,6 @@ where
     match expected_asset.cmp(&asset) {
         Ordering::Equal => Ok(Ok(Funded {
             transaction: transaction.hash,
-            asset,
         })),
         _ => Ok(Err(IncorrectlyFunded {
             expected: params.asset,

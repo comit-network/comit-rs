@@ -51,11 +51,11 @@ impl WatchForFunded for Facade {
         params: &Params,
         start_of_swap: OffsetDateTime,
     ) -> Result<Funded, IncorrectlyFunded> {
-        if let Ok(Some(Funded { location, asset })) = self.db.load(self.swap_id) {
+        if let Ok(Some(Funded { location })) = self.db.load(self.swap_id) {
             self.wait_until_confirmed(location.txid, params.shared.network)
                 .await;
 
-            return Ok(Funded { asset, location });
+            return Ok(Funded { location });
         }
 
         let operation = || {
