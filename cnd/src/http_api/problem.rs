@@ -1,6 +1,6 @@
 use crate::{
     http_api::ActionNotFound,
-    storage::{NoOrderExists, NoSwapExists, NotOpen},
+    storage::{commands::NotOpen, NoOrderExists, NoSwapExists},
 };
 use http_api_problem::HttpApiProblem;
 use std::error::Error;

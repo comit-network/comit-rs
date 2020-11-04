@@ -118,7 +118,7 @@ impl IntoParams for herc20::Params {
 
     fn into_params(
         herc20: Self::ProtocolTable,
-        id: LocalSwapId,
+        _: LocalSwapId,
         _: RootSeed,
         _: Role,
         secret_hash: comit::SecretHash,
@@ -126,19 +126,13 @@ impl IntoParams for herc20::Params {
         Ok(herc20::Params {
             asset: asset::Erc20 {
                 quantity: herc20.amount,
-                token_contract: herc20.token_contract.0,
+                token_contract: herc20.token_contract,
             },
-            redeem_identity: herc20
-                .redeem_identity
-                .ok_or_else(|| NoHerc20RedeemIdentity(id))?
-                .0,
-            refund_identity: herc20
-                .refund_identity
-                .ok_or_else(|| NoHerc20RefundIdentity(id))?
-                .0,
-            expiry: herc20.expiry.0.into(),
+            redeem_identity: herc20.redeem_identity,
+            refund_identity: herc20.refund_identity,
+            expiry: herc20.expiry,
             secret_hash,
-            chain_id: herc20.chain_id.0.into(),
+            chain_id: herc20.chain_id,
         })
     }
 }
@@ -153,18 +147,18 @@ impl IntoParams for comit::swap::hbit::Params {
         role: Role,
         secret_hash: comit::SecretHash,
     ) -> anyhow::Result<comit::swap::hbit::Params> {
-        let (secret_key, redeem, refund) = match (hbit.side.0, role) {
+        let (secret_key, redeem, refund) = match (hbit.side, role) {
             (Side::Alpha, Role::Bob) | (Side::Beta, Role::Alice) => {
                 let redeem_secret_key =
                     seed.derive_swap_seed(id).derive_transient_redeem_identity();
 
                 let redeem = identity::Bitcoin::from_secret_key(&*crate::SECP, &redeem_secret_key);
-                let refund = hbit.transient_identity.ok_or(NoHbitRefundIdentity(id))?.0;
+                let refund = hbit.transient_identity;
 
                 (redeem_secret_key, redeem, refund)
             }
             (Side::Alpha, Role::Alice) | (Side::Beta, Role::Bob) => {
-                let redeem = hbit.transient_identity.ok_or(NoHbitRedeemIdentity(id))?.0;
+                let redeem = hbit.transient_identity;
 
                 let refund_secret_key =
                     seed.derive_swap_seed(id).derive_transient_refund_identity();
@@ -176,11 +170,11 @@ impl IntoParams for comit::swap::hbit::Params {
 
         Ok(comit::swap::hbit::Params {
             shared: hbit::SharedParams {
-                network: hbit.network.0,
-                asset: hbit.amount.0.into(),
+                network: hbit.network,
+                asset: hbit.amount,
                 redeem_identity: redeem,
                 refund_identity: refund,
-                expiry: hbit.expiry.0.into(),
+                expiry: hbit.expiry,
                 secret_hash,
             },
             transient_sk: secret_key,
@@ -214,11 +208,11 @@ fn derive_or_unwrap_secret_hash(
             let swap_seed = seed.derive_swap_seed(id);
             comit::SecretHash::new(swap_seed.derive_secret())
         }
-        Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
+        Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash,
     };
     Ok(secret_hash)
 }
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
-#[error("could not derive Bitcoin identity for swap not involving hbit: {0}")]
-pub struct HbitNotInvolved(pub LocalSwapId);
+#[error("no secret hash found in database for swap {0}")]
+pub struct NoSecretHash(pub LocalSwapId);

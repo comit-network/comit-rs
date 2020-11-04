@@ -45,3 +45,10 @@ pub mod sats_as_string {
         Ok(amount)
     }
 }
+
+#[cfg(feature = "quickcheck")]
+pub fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Bitcoin {
+    use quickcheck::Arbitrary;
+
+    Bitcoin::from_sat(u64::arbitrary(g))
+}

@@ -1,6 +1,5 @@
-use bitcoin::hashes::core::fmt::Formatter;
 use serde::{Deserialize, Serialize};
-use std::{fmt, time::SystemTime};
+use std::time::SystemTime;
 use time::Duration;
 use tracing::warn;
 
@@ -115,40 +114,5 @@ pub fn duration_between(t: Timestamp, u: Timestamp) -> Duration {
 impl quickcheck::Arbitrary for Timestamp {
     fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
         Timestamp::from(u32::arbitrary(g))
-    }
-}
-
-/// A duration used to represent a relative timelock
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Deserialize, Serialize)]
-#[serde(transparent)]
-pub struct RelativeTime(u32);
-
-impl RelativeTime {
-    pub const fn new(time_secs: u32) -> Self {
-        RelativeTime(time_secs)
-    }
-
-    pub fn to_bytes(self) -> [u8; 4] {
-        self.0.to_le_bytes()
-    }
-}
-
-/// The u32 returned is the duration in seconds
-impl From<RelativeTime> for u32 {
-    fn from(item: RelativeTime) -> Self {
-        item.0
-    }
-}
-
-/// The u32 input is the duration in seconds
-impl From<u32> for RelativeTime {
-    fn from(item: u32) -> Self {
-        Self(item)
-    }
-}
-
-impl fmt::Display for RelativeTime {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
     }
 }

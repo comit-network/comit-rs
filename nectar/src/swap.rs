@@ -108,11 +108,7 @@ impl crate::StaticStub for SwapParams {
 #[cfg(test)]
 mod arbitrary {
     use super::*;
-    use comit::{
-        asset::{ethereum::TryFromWei, Erc20, Erc20Quantity},
-        ethereum::ChainId,
-        SecretHash, Timestamp,
-    };
+    use comit::SecretHash;
     use quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for SwapKind {
@@ -127,44 +123,14 @@ mod arbitrary {
 
     impl Arbitrary for SwapParams {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let herc20_params = herc20::Params {
-                asset: erc20(g),
-                redeem_identity: ethereum_address(g),
-                refund_identity: ethereum_address(g),
-                expiry: Timestamp::arbitrary(g),
-                secret_hash: SecretHash::arbitrary(g),
-                chain_id: ChainId::from(u32::arbitrary(g)),
-            };
-
             SwapParams {
                 hbit_params: hbit::Params::arbitrary(g),
-                herc20_params,
+                herc20_params: herc20::Params::arbitrary(g),
                 secret_hash: SecretHash::arbitrary(g),
                 start_of_swap: OffsetDateTime::from_unix_timestamp(u32::arbitrary(g) as i64),
                 swap_id: SwapId::arbitrary(g),
                 taker: ActivePeer::arbitrary(g),
             }
-        }
-    }
-
-    fn ethereum_address<G: Gen>(g: &mut G) -> ethereum::Address {
-        let mut bytes = [0u8; 20];
-        for byte in &mut bytes {
-            *byte = u8::arbitrary(g);
-        }
-        ethereum::Address::from(bytes)
-    }
-
-    fn erc20<G: Gen>(g: &mut G) -> Erc20 {
-        let mut bytes = [0u8; 8];
-        for byte in bytes.iter_mut() {
-            *byte = u8::arbitrary(g);
-        }
-        let int = num::BigUint::from_bytes_be(&bytes);
-        let quantity = Erc20Quantity::try_from_wei(int).unwrap();
-        Erc20 {
-            token_contract: ethereum_address(g),
-            quantity,
         }
     }
 }

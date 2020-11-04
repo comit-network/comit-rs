@@ -356,3 +356,17 @@ pub fn build_erc20_htlc(
         asset.quantity.into(),
     )
 }
+
+#[cfg(feature = "quickcheck")]
+impl quickcheck::Arbitrary for Params {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        Self {
+            asset: asset::Erc20::arbitrary(g),
+            redeem_identity: ethereum::Address::arbitrary(g),
+            refund_identity: ethereum::Address::arbitrary(g),
+            expiry: Timestamp::arbitrary(g),
+            secret_hash: SecretHash::arbitrary(g),
+            chain_id: ChainId::arbitrary(g),
+        }
+    }
+}

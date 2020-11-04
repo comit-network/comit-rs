@@ -10,7 +10,7 @@ use crate::{
     },
 };
 use anyhow::Result;
-use comit::{bitcoin, ledger, Side};
+use comit::{bitcoin, ledger, Side, Timestamp};
 use diesel::{prelude::*, sqlite::SqliteConnection};
 
 #[derive(Associations, Clone, Debug, Identifiable, Queryable, PartialEq)]
@@ -19,13 +19,18 @@ use diesel::{prelude::*, sqlite::SqliteConnection};
 pub struct Hbit {
     id: i32,
     swap_id: i32,
-    pub amount: Text<Satoshis>,
-    pub network: Text<ledger::Bitcoin>,
-    pub expiry: U32,
+    #[diesel(deserialize_as = "Text<Satoshis>")]
+    pub amount: asset::Bitcoin,
+    #[diesel(deserialize_as = "Text<ledger::Bitcoin>")]
+    pub network: ledger::Bitcoin,
+    #[diesel(deserialize_as = "U32")]
+    pub expiry: Timestamp,
     #[diesel(deserialize_as = "Text<bitcoin::Address>")]
     pub final_identity: bitcoin::Address,
-    pub transient_identity: Option<Text<bitcoin::PublicKey>>,
-    pub side: Text<Side>,
+    #[diesel(deserialize_as = "Text<bitcoin::PublicKey>")]
+    pub transient_identity: bitcoin::PublicKey,
+    #[diesel(deserialize_as = "Text<Side>")]
+    pub side: Side,
 }
 
 #[derive(Insertable, Clone, Debug)]
@@ -38,7 +43,7 @@ pub struct InsertableHbit {
     // TODO: Rename to make it obvious that this is OUR final address
     pub final_identity: Text<bitcoin::Address>,
     // TODO: Rename to make it obvious that this is the other party's transient identity
-    pub transient_identity: Option<Text<bitcoin::PublicKey>>,
+    pub transient_identity: Text<bitcoin::PublicKey>,
     pub side: Text<Side>,
 }
 
@@ -58,7 +63,7 @@ impl InsertableHbit {
             network: Text(network),
             expiry: expiry.into(),
             final_identity: Text(final_identity),
-            transient_identity: Some(Text(transient_identity)),
+            transient_identity: Text(transient_identity),
             side: Text(side),
         }
     }
@@ -74,6 +79,6 @@ impl InsertableHbit {
 
 impl From<Hbit> for asset::Bitcoin {
     fn from(hbit: Hbit) -> Self {
-        hbit.amount.0.into()
+        hbit.amount
     }
 }

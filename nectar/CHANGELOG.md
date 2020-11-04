@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   New command to migrate the database to a new format;
     Use `nectar migrate-db status` to check if migration is needed;
     If so, backup your data and then execute `nectar migrate-db run` to proceed with the migration.
+-   Add an optional `fund_amount` parameter to the `create-transaction` command.
+    This allows users to redeem/refund `hbit` HTLCs that were funded with amounts different from what as agreed through the orderbook.
 
 ### Changed
 

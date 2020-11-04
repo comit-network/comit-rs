@@ -8,7 +8,7 @@ use crate::{
     local_swap_id::LocalSwapId,
     storage::{
         db::{schema::*, wrapper_types::Satoshis},
-        BtcDaiOrder, InsertableCompletedSwap, NoOrderForSwap, NotOpen, NotSettling, Order, Text,
+        BtcDaiOrder, InsertableCompletedSwap, Order, Text,
     },
 };
 use anyhow::{Context, Result};
@@ -169,3 +169,15 @@ pub fn mark_swap_as_completed(
 
     Ok(())
 }
+
+#[derive(thiserror::Error, Debug, Clone, Copy)]
+#[error("no order found in the database for swap id {0}")]
+pub struct NoOrderForSwap(pub LocalSwapId);
+
+#[derive(thiserror::Error, Debug, Clone, Copy)]
+#[error("Order {0} is no longer open and can therefore not be cancelled")]
+pub struct NotOpen(pub OrderId);
+
+#[derive(thiserror::Error, Debug, Clone, Copy)]
+#[error("Order {0} is not settling and can therefore not be closed")]
+pub struct NotSettling(pub OrderId);

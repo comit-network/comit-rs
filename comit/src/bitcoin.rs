@@ -108,6 +108,16 @@ impl<'de> Deserialize<'de> for PublicKey {
     }
 }
 
+#[cfg(feature = "quickcheck")]
+impl quickcheck::Arbitrary for PublicKey {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        PublicKey::from_secret_key(
+            &bitcoin::secp256k1::Secp256k1::signing_only(),
+            &crate::arbitrary::secp256k1::secret_key(g),
+        )
+    }
+}
+
 /// Median time in Bitcoin is defined as the median of the blocktimes from the
 /// last 11 blocks.
 pub async fn median_time_past<C>(connector: &C) -> Result<Timestamp>

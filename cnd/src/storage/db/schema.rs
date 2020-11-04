@@ -27,8 +27,8 @@ table! {
         chain_id -> BigInt,
         expiry -> BigInt,
         token_contract -> Text,
-        redeem_identity -> Nullable<Text>,
-        refund_identity -> Nullable<Text>,
+        redeem_identity -> Text,
+        refund_identity -> Text,
         side -> Text,
     }
 }
@@ -41,7 +41,7 @@ table! {
         network -> Text,
         expiry -> BigInt,
         final_identity -> Text,
-        transient_identity -> Nullable<Text>,
+        transient_identity -> Text,
         side -> Text,
     }
 }

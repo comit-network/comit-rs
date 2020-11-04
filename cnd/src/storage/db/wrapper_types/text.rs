@@ -1,4 +1,8 @@
-use crate::{ethereum, ledger, storage::db::wrapper_types::Erc20Amount, LocalSwapId};
+use crate::{
+    ethereum, ledger,
+    storage::db::wrapper_types::{Erc20Amount, Satoshis},
+    LocalSwapId,
+};
 use comit::{asset, LockProtocol, OrderId, Position, Role, Side};
 use diesel::{
     backend::Backend,
@@ -73,9 +77,17 @@ impl_from_text!(::bitcoin::Address);
 impl_from_text!(OrderId);
 impl_from_text!(Position);
 impl_from_text!(LockProtocol);
+impl_from_text!(comit::bitcoin::PublicKey);
+impl_from_text!(comit::SecretHash);
 
 impl From<Text<Erc20Amount>> for asset::Erc20Quantity {
     fn from(text: Text<Erc20Amount>) -> Self {
+        text.0.into()
+    }
+}
+
+impl From<Text<Satoshis>> for asset::Bitcoin {
+    fn from(text: Text<Satoshis>) -> Self {
         text.0.into()
     }
 }

@@ -14,6 +14,8 @@
 #![forbid(unsafe_code)]
 
 pub mod actions;
+#[cfg(feature = "quickcheck")]
+pub mod arbitrary;
 pub mod asset;
 pub mod bitcoin;
 pub mod btsieve;
@@ -59,7 +61,7 @@ pub use self::{
     order::{BtcDaiOrder, OrderId, Position, Price, Quantity},
     secret::Secret,
     secret_hash::SecretHash,
-    timestamp::{RelativeTime, Timestamp},
+    timestamp::Timestamp,
 };
 
 use serde::{Deserialize, Serialize};

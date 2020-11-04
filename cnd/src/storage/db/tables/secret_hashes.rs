@@ -11,7 +11,8 @@ use diesel::{prelude::*, sqlite::SqliteConnection};
 pub struct SecretHash {
     id: i32,
     swap_id: i32,
-    pub secret_hash: Text<comit::SecretHash>,
+    #[diesel(deserialize_as = "Text<comit::SecretHash>")]
+    pub secret_hash: comit::SecretHash,
 }
 
 #[derive(Insertable, Debug, Clone, Copy)]

@@ -157,11 +157,12 @@ pub struct Params {
     pub final_address: bitcoin::Address,
 }
 
-impl SharedParams {
+impl Params {
+    /// Builds the fund action for the hbit protocol.
     pub fn build_fund_action(&self) -> SendToAddress {
-        let network = self.network;
-        let to = self.compute_address();
-        let amount = self.asset;
+        let network = self.shared.network;
+        let to = self.shared.compute_address();
+        let amount = self.shared.asset;
 
         SendToAddress {
             to,
@@ -170,13 +171,16 @@ impl SharedParams {
         }
     }
 
+    /// Builds the refund action for the hbit protocol.
+    ///
+    /// This function assumes that the HTLC was funded with the intended amount.
+    /// Be aware that if that is not the case, then this function might result
+    /// in absurdly high fees because it spends only the originally intended
+    /// amount.
     pub fn build_refund_action<C>(
         &self,
         secp: &Secp256k1<C>,
-        fund_amount: asset::Bitcoin,
         fund_location: htlc_location::Bitcoin,
-        transient_refund_sk: SecretKey,
-        refund_address: Address,
         vbyte_rate: asset::Bitcoin,
     ) -> Result<BroadcastSignedTransaction>
     where
@@ -184,23 +188,24 @@ impl SharedParams {
     {
         self.build_spend_action(
             &secp,
-            fund_amount,
+            self.shared.asset,
             fund_location,
-            refund_address,
+            self.final_address.clone(),
             vbyte_rate,
-            |htlc| htlc.unlock_after_timeout(&secp, transient_refund_sk),
+            |htlc, secret_key| htlc.unlock_after_timeout(&secp, secret_key),
         )
     }
 
-    // TODO: Improve the interface
-    #[allow(clippy::too_many_arguments)]
+    /// Builds the redeem action for the hbit protocol.
+    ///
+    /// This function assumes that the HTLC was funded with the intended amount.
+    /// Be aware that if that is not the case, then this function might result
+    /// in absurdly high fees because it spends only the originally intended
+    /// amount.
     pub fn build_redeem_action<C>(
         &self,
         secp: &Secp256k1<C>,
-        fund_amount: asset::Bitcoin,
         fund_location: htlc_location::Bitcoin,
-        transient_redeem_sk: SecretKey,
-        redeem_address: Address,
         secret: Secret,
         vbyte_rate: asset::Bitcoin,
     ) -> Result<BroadcastSignedTransaction>
@@ -209,35 +214,30 @@ impl SharedParams {
     {
         self.build_spend_action(
             &secp,
-            fund_amount,
+            self.shared.asset,
             fund_location,
-            redeem_address,
+            self.final_address.clone(),
             vbyte_rate,
-            |htlc| htlc.unlock_with_secret(secp, transient_redeem_sk, secret.into_raw_secret()),
+            |htlc, secret_key| htlc.unlock_with_secret(secp, secret_key, secret.into_raw_secret()),
         )
     }
 
-    fn build_spend_action<C>(
+    pub fn build_spend_action<C>(
         &self,
         secp: &Secp256k1<C>,
         fund_amount: asset::Bitcoin,
         fund_location: htlc_location::Bitcoin,
         spend_address: Address,
         vbyte_rate: asset::Bitcoin,
-        unlock_fn: impl Fn(Htlc) -> UnlockParameters,
+        unlock_fn: impl Fn(Htlc, SecretKey) -> UnlockParameters,
     ) -> Result<BroadcastSignedTransaction>
     where
         C: Signing,
     {
-        let network = self.network;
+        let network = self.shared.network;
         let primed_transaction = {
-            let htlc = build_bitcoin_htlc(
-                self.redeem_identity,
-                self.refund_identity,
-                self.expiry,
-                self.secret_hash,
-            );
-            let input_parameters = unlock_fn(htlc);
+            let htlc = self.shared.into();
+            let input_parameters = unlock_fn(htlc, self.transient_sk);
             let spend_output =
                 SpendOutput::new(fund_location, fund_amount, input_parameters, network);
 
@@ -305,56 +305,29 @@ pub fn build_bitcoin_htlc(
 mod arbitrary {
     use super::*;
     use crate::{asset, identity, ledger, SecretHash, Timestamp};
-    use ::bitcoin::secp256k1::SecretKey;
     use quickcheck::{Arbitrary, Gen};
 
-    impl Arbitrary for Params {
+    impl Arbitrary for SharedParams {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            Params {
-                shared: SharedParams {
-                    network: bitcoin_network(g),
-                    asset: bitcoin_asset(g),
-                    redeem_identity: bitcoin_identity(g),
-                    refund_identity: bitcoin_identity(g),
-                    expiry: Timestamp::arbitrary(g),
-                    secret_hash: SecretHash::arbitrary(g),
-                },
-                transient_sk: secret_key(g),
-                final_address: bitcoin_address(g),
+            SharedParams {
+                network: ledger::Bitcoin::arbitrary(g),
+                asset: asset::bitcoin::arbitrary(g),
+                redeem_identity: identity::Bitcoin::arbitrary(g),
+                refund_identity: identity::Bitcoin::arbitrary(g),
+                expiry: Timestamp::arbitrary(g),
+                secret_hash: SecretHash::arbitrary(g),
             }
         }
     }
 
-    fn secret_key<G: Gen>(g: &mut G) -> SecretKey {
-        let mut bytes = [0u8; 32];
-        for byte in &mut bytes {
-            *byte = u8::arbitrary(g);
+    impl Arbitrary for Params {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Params {
+                shared: SharedParams::arbitrary(g),
+                transient_sk: crate::arbitrary::secp256k1::secret_key(g),
+                final_address: crate::arbitrary::bitcoin::address(g),
+            }
         }
-        SecretKey::from_slice(&bytes).unwrap()
-    }
-
-    fn bitcoin_network<G: Gen>(g: &mut G) -> ledger::Bitcoin {
-        match u8::arbitrary(g) % 3 {
-            0 => ledger::Bitcoin::Mainnet,
-            1 => ledger::Bitcoin::Testnet,
-            2 => ledger::Bitcoin::Regtest,
-            _ => unreachable!(),
-        }
-    }
-
-    fn bitcoin_asset<G: Gen>(g: &mut G) -> asset::Bitcoin {
-        asset::Bitcoin::from_sat(u64::arbitrary(g))
-    }
-
-    fn bitcoin_identity<G: Gen>(g: &mut G) -> identity::Bitcoin {
-        identity::Bitcoin::from_secret_key(
-            &bitcoin::secp256k1::Secp256k1::signing_only(),
-            &secret_key(g),
-        )
-    }
-
-    fn bitcoin_address<G: Gen>(g: &mut G) -> bitcoin::Address {
-        bitcoin::Address::p2wpkh(&bitcoin_identity(g).into(), bitcoin_network(g).into()).unwrap()
     }
 }
 

@@ -93,6 +93,18 @@ pub mod bitcoind_jsonrpc_network {
     }
 }
 
+#[cfg(feature = "quickcheck")]
+impl quickcheck::Arbitrary for Bitcoin {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        match u8::arbitrary(g) % 3 {
+            0 => Bitcoin::Mainnet,
+            1 => Bitcoin::Testnet,
+            2 => Bitcoin::Regtest,
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

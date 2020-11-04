@@ -2,7 +2,6 @@
 mod tables;
 
 pub mod commands;
-mod errors;
 pub mod queries;
 mod schema;
 mod wrapper_types;
@@ -13,7 +12,6 @@ mod integration_tests;
 mod proptest;
 
 pub use self::{
-    errors::*,
     tables::*,
     wrapper_types::{Text, Timestamp},
 };

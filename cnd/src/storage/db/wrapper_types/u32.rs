@@ -1,5 +1,5 @@
 use crate::ethereum;
-use comit::{RelativeTime, Timestamp};
+use comit::Timestamp;
 use diesel::{
     backend::Backend,
     deserialize, serialize,
@@ -63,11 +63,5 @@ impl From<u32> for U32 {
 impl From<U32> for Timestamp {
     fn from(value: U32) -> Timestamp {
         Timestamp::from(value.0)
-    }
-}
-
-impl From<U32> for RelativeTime {
-    fn from(value: U32) -> RelativeTime {
-        RelativeTime::from(value.0)
     }
 }

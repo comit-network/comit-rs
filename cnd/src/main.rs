@@ -25,8 +25,7 @@ mod proptest;
 #[cfg(test)]
 mod spectral_ext;
 #[macro_use]
-mod with_swap_types;
-mod actions;
+mod within_swap_context;
 mod bitcoin_fees;
 mod cli;
 mod config;
@@ -40,7 +39,6 @@ mod local_swap_id;
 mod republish;
 mod respawn;
 mod spawn;
-mod state;
 mod storage;
 mod trace;
 
@@ -301,6 +299,7 @@ async fn execute_subcommand(
             secret,
             outpoint,
             address,
+            fund_amount,
         }) => {
             let swap_context: SwapContext = storage
                 .load(swap_id)
@@ -346,14 +345,15 @@ async fn execute_subcommand(
                 }
             };
 
-            let transaction = hbit_params.shared.build_redeem_action(
+            let transaction = hbit_params.build_spend_action(
                 &*SECP,
-                hbit_params.shared.asset,
+                fund_amount.unwrap_or(hbit_params.shared.asset),
                 outpoint,
-                hbit_params.transient_sk,
                 address,
-                secret,
                 bitcoin_fees.get_per_vbyte_rate().await?,
+                |htlc, secret_key| {
+                    htlc.unlock_with_secret(&*SECP, secret_key, secret.into_raw_secret())
+                },
             )?;
 
             Ok(hex::encode(::bitcoin::consensus::serialize(
@@ -364,6 +364,7 @@ async fn execute_subcommand(
             swap_id,
             outpoint,
             address,
+            fund_amount,
         }) => {
             let swap_context: SwapContext = storage
                 .load(swap_id)
@@ -396,13 +397,13 @@ async fn execute_subcommand(
                 }
             };
 
-            let transaction = hbit_params.shared.build_refund_action(
+            let transaction = hbit_params.build_spend_action(
                 &*SECP,
-                hbit_params.shared.asset,
+                fund_amount.unwrap_or(hbit_params.shared.asset),
                 outpoint,
-                hbit_params.transient_sk,
                 address,
                 bitcoin_fees.get_per_vbyte_rate().await?,
+                |htlc, secret_key| htlc.unlock_after_timeout(&*SECP, secret_key),
             )?;
 
             Ok(hex::encode(::bitcoin::consensus::serialize(

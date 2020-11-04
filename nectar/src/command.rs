@@ -123,6 +123,11 @@ pub enum CreateTransaction {
         /// required for swaps where nectar sells BTC/DAI.
         #[structopt(long)]
         address: Option<ethereum::Address>,
+        /// The actual amount that was sent to the `hbit` HTLC. If this is not
+        /// provided, we will assume that the originally agreed amount is to be
+        /// spent.
+        #[structopt(long)]
+        fund_amount: Option<::bitcoin::Amount>,
     },
     /// Create the transaction for the `refund` action.
     Refund {
@@ -136,6 +141,11 @@ pub enum CreateTransaction {
         /// required for swaps where nectar buys BTC/DAI.
         #[structopt(long)]
         address: Option<ethereum::Address>,
+        /// The actual amount that was sent to the `hbit` HTLC. If this is not
+        /// provided, we will assume that the originally agreed amount is to be
+        /// spent.
+        #[structopt(long)]
+        fund_amount: Option<::bitcoin::Amount>,
     },
 }
 
