@@ -1,13 +1,12 @@
-use crate::{asset, ethereum::ChainId, identity, transaction, Timestamp};
+use crate::{asset, ethereum::ChainId, identity};
 use anyhow::Result;
 use comit::{
-    actions::{
-        bitcoin::{self, SendToAddress},
-        ethereum,
-    },
     ethereum::UnformattedData,
     ledger,
-    swap::Action,
+    swap::{
+        actions::{CallContract, DeployContract, SendToAddress},
+        Action,
+    },
 };
 use serde::Serialize;
 
@@ -23,8 +22,6 @@ pub enum ActionResponseBody {
     BitcoinBroadcastSignedTransaction {
         hex: String,
         network: ledger::Bitcoin,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        min_median_block_time: Option<Timestamp>,
     },
     EthereumDeployContract {
         data: crate::ethereum::UnformattedData,
@@ -38,34 +35,10 @@ pub enum ActionResponseBody {
         data: Option<crate::ethereum::UnformattedData>,
         gas_limit: crate::ethereum::U256,
         chain_id: ChainId,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        min_block_timestamp: Option<Timestamp>,
     },
 }
 
-impl ActionResponseBody {
-    pub fn bitcoin_broadcast_signed_transaction(
-        transaction: &transaction::Bitcoin,
-        network: ledger::Bitcoin,
-    ) -> Self {
-        let min_median_block_time = if transaction.lock_time == 0 {
-            None
-        } else {
-            // The first time a tx with lock_time can be broadcasted is when
-            // mediantime == locktime + 1
-            let min_median_block_time = transaction.lock_time + 1;
-            Some(Timestamp::from(min_median_block_time))
-        };
-
-        ActionResponseBody::BitcoinBroadcastSignedTransaction {
-            hex: ::bitcoin::consensus::encode::serialize_hex(transaction),
-            network,
-            min_median_block_time,
-        }
-    }
-}
-
-impl From<bitcoin::SendToAddress> for ActionResponseBody {
+impl From<SendToAddress> for ActionResponseBody {
     fn from(action: SendToAddress) -> Self {
         let SendToAddress {
             to,
@@ -80,20 +53,9 @@ impl From<bitcoin::SendToAddress> for ActionResponseBody {
     }
 }
 
-impl From<bitcoin::BroadcastSignedTransaction> for ActionResponseBody {
-    fn from(
-        bitcoin::BroadcastSignedTransaction {
-            transaction,
-            network,
-        }: bitcoin::BroadcastSignedTransaction,
-    ) -> Self {
-        Self::bitcoin_broadcast_signed_transaction(&transaction, network)
-    }
-}
-
-impl From<ethereum::DeployContract> for ActionResponseBody {
-    fn from(action: ethereum::DeployContract) -> Self {
-        let ethereum::DeployContract {
+impl From<DeployContract> for ActionResponseBody {
+    fn from(action: DeployContract) -> Self {
+        let DeployContract {
             amount,
             chain_id,
             gas_limit,
@@ -109,14 +71,13 @@ impl From<ethereum::DeployContract> for ActionResponseBody {
     }
 }
 
-impl From<ethereum::CallContract> for ActionResponseBody {
-    fn from(action: ethereum::CallContract) -> Self {
-        let ethereum::CallContract {
+impl From<CallContract> for ActionResponseBody {
+    fn from(action: CallContract) -> Self {
+        let CallContract {
             to,
             data,
             gas_limit,
             chain_id,
-            min_block_timestamp,
         } = action;
 
         ActionResponseBody::EthereumCallContract {
@@ -124,7 +85,6 @@ impl From<ethereum::CallContract> for ActionResponseBody {
             data: data.map(UnformattedData),
             gas_limit: gas_limit.into(),
             chain_id,
-            min_block_timestamp,
         }
     }
 }
@@ -138,17 +98,18 @@ impl From<comit::Never> for ActionResponseBody {
 impl ActionResponseBody {
     pub fn from_action(action: comit::swap::Action, vbyte_rate: asset::Bitcoin) -> Result<Self> {
         Ok(match action {
-            Action::Herc20Deploy(params) => params.build_deploy_action().into(),
-            Action::Herc20Fund(params, deployed) => {
-                params.build_fund_action(deployed.location).into()
+            Action::Herc20Deploy(inner) => inner.into(),
+            Action::Herc20Fund(inner) => inner.into(),
+            Action::Herc20Redeem(inner, _) => inner.into(),
+            Action::HbitFund(inner) => inner.into(),
+            Action::HbitRedeem(inner, _) => {
+                let network = inner.network;
+                let transaction = inner.sign(&crate::SECP, vbyte_rate)?;
+                Self::BitcoinBroadcastSignedTransaction {
+                    hex: hex::encode(bitcoin::consensus::serialize(&transaction)),
+                    network,
+                }
             }
-            Action::Herc20Redeem(params, deployed, secret) => {
-                params.build_redeem_action(deployed.location, secret).into()
-            }
-            Action::HbitFund(params) => params.build_fund_action().into(),
-            Action::HbitRedeem(params, funded, secret) => params
-                .build_redeem_action(&crate::SECP, funded.location, secret, vbyte_rate)?
-                .into(),
         })
     }
 }
@@ -172,7 +133,6 @@ mod test {
             data: None,
             gas_limit: U256::from(1),
             chain_id,
-            min_block_timestamp: None,
         };
         let serialized = serde_json::to_string(&contract).unwrap();
         assert_eq!(

@@ -1,13 +1,14 @@
 use crate::{bitcoin, swap::hbit};
+use anyhow::Result;
 use comit::{
     btsieve::{BlockByHash, LatestBlock},
+    swap::actions::{SendToAddress, SpendOutput},
     Secret,
 };
 use std::sync::Arc;
 
 pub use crate::bitcoin::Amount;
 pub use ::bitcoin::{secp256k1::SecretKey, Address, Block, BlockHash, OutPoint, Transaction};
-use comit::actions::bitcoin::BroadcastSignedTransaction;
 
 #[derive(Debug, Clone)]
 pub struct Wallet {
@@ -17,9 +18,7 @@ pub struct Wallet {
 }
 
 impl Wallet {
-    pub async fn execute_fund(&self, params: &hbit::Params) -> anyhow::Result<hbit::Funded> {
-        let action = params.build_fund_action();
-
+    pub async fn execute_fund(&self, action: SendToAddress) -> Result<hbit::Funded> {
         let kbyte_fee_rate = self.fee.kvbyte_rate().await?;
 
         let location = self
@@ -31,24 +30,23 @@ impl Wallet {
 
         tracing::info!("signed hbit fund transaction {}", txid);
 
-        Ok(hbit::Funded {
-            asset: action.amount,
-            location,
-        })
+        Ok(hbit::Funded { location })
     }
 
     pub async fn execute_redeem(
         &self,
-        params: hbit::Params,
-        fund_event: hbit::Funded,
-        secret: Secret,
-    ) -> anyhow::Result<hbit::Redeemed> {
+        action: SpendOutput,
+        secret: Secret, /* Receiving the secret here is a bit of a hack but otherwise, we have
+                         * to get it out of the action again which is even more cumbersome. */
+    ) -> Result<hbit::Redeemed> {
         let vbyte_rate = self.fee.vbyte_rate().await?;
+        let network = action.network;
+        let transaction = action.sign(&crate::SECP, vbyte_rate)?;
 
-        let action =
-            params.build_redeem_action(&crate::SECP, fund_event.location, secret, vbyte_rate)?;
-        let transaction = self.spend(action).await?;
-        let txid = transaction.txid();
+        let txid = self
+            .inner
+            .send_raw_transaction(transaction, network)
+            .await?;
 
         tracing::info!("signed hbit redeem transaction {}", txid);
 
@@ -56,18 +54,6 @@ impl Wallet {
             transaction: txid,
             secret,
         })
-    }
-
-    pub async fn spend(
-        &self,
-        action: BroadcastSignedTransaction,
-    ) -> anyhow::Result<bitcoin::Transaction> {
-        let _txid = self
-            .inner
-            .send_raw_transaction(action.transaction.clone(), action.network)
-            .await?;
-
-        Ok(action.transaction)
     }
 }
 

@@ -2,6 +2,7 @@ use crate::swap::herc20;
 use comit::btsieve::LatestBlock;
 use std::sync::Arc;
 
+use comit::swap::actions::{CallContract, DeployContract};
 pub use comit::{
     ethereum::{Address, Block, ChainId, Hash, Transaction},
     Secret,
@@ -15,8 +16,7 @@ pub struct Wallet {
 }
 
 impl Wallet {
-    pub async fn execute_deploy(&self, params: herc20::Params) -> anyhow::Result<herc20::Deployed> {
-        let action = params.build_deploy_action();
+    pub async fn execute_deploy(&self, action: DeployContract) -> anyhow::Result<herc20::Deployed> {
         let gas_price = self.gas_price.gas_price().await?;
         let (tx_hash, contract_address) = self.inner.deploy_contract(action, gas_price).await?;
 
@@ -28,12 +28,7 @@ impl Wallet {
         })
     }
 
-    pub async fn execute_fund(
-        &self,
-        params: herc20::Params,
-        deploy_event: herc20::Deployed,
-    ) -> anyhow::Result<herc20::Funded> {
-        let action = params.build_fund_action(deploy_event.location);
+    pub async fn execute_fund(&self, action: CallContract) -> anyhow::Result<herc20::Funded> {
         let gas_price = self.gas_price.gas_price().await?;
         let tx_hash = self.inner.call_contract(action, gas_price).await?;
 
@@ -41,17 +36,15 @@ impl Wallet {
 
         Ok(herc20::Funded {
             transaction: tx_hash,
-            asset: params.asset,
         })
     }
 
     pub async fn execute_redeem(
         &self,
-        params: herc20::Params,
-        secret: Secret,
-        deploy_event: herc20::Deployed,
+        action: CallContract,
+        secret: Secret, /* Receiving the secret here is a bit of a hack but otherwise, we have
+                         * to get it out of the action again which is even more cumbersome. */
     ) -> anyhow::Result<herc20::Redeemed> {
-        let action = params.build_redeem_action(deploy_event.location, secret);
         let gas_price = self.gas_price.gas_price().await?;
         let tx_hash = self.inner.call_contract(action, gas_price).await?;
 

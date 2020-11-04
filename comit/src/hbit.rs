@@ -1,13 +1,13 @@
 //! Htlc Bitcoin atomic swap protocol.
 
 use crate::{
-    actions::bitcoin::{sign, BroadcastSignedTransaction, SendToAddress, SpendOutput},
     asset,
     btsieve::{
         bitcoin::{watch_for_created_outpoint, watch_for_spent_outpoint},
         BlockByHash, ConnectedNetwork, LatestBlock,
     },
     htlc_location, identity, ledger,
+    swap::actions::{SendToAddress, SpendOutput},
     timestamp::Timestamp,
     Secret, SecretHash,
 };
@@ -32,7 +32,6 @@ pub struct IncorrectlyFunded {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Funded {
-    pub asset: asset::Bitcoin,
     pub location: htlc_location::Bitcoin,
 }
 
@@ -86,7 +85,7 @@ where
     let asset = asset::Bitcoin::from_sat(transaction.output[location.vout as usize].value);
 
     match expected_asset.cmp(&asset) {
-        Ordering::Equal => Ok(Ok(Funded { asset, location })),
+        Ordering::Equal => Ok(Ok(Funded { location })),
         _ => Ok(Err(IncorrectlyFunded {
             expected: expected_asset,
             got: asset,
@@ -181,17 +180,14 @@ impl Params {
         &self,
         secp: &Secp256k1<C>,
         fund_location: htlc_location::Bitcoin,
-        vbyte_rate: asset::Bitcoin,
-    ) -> Result<BroadcastSignedTransaction>
+    ) -> SpendOutput
     where
         C: Signing,
     {
         self.build_spend_action(
-            &secp,
             self.shared.asset,
             fund_location,
             self.final_address.clone(),
-            vbyte_rate,
             |htlc, secret_key| htlc.unlock_after_timeout(&secp, secret_key),
         )
     }
@@ -207,48 +203,35 @@ impl Params {
         secp: &Secp256k1<C>,
         fund_location: htlc_location::Bitcoin,
         secret: Secret,
-        vbyte_rate: asset::Bitcoin,
-    ) -> Result<BroadcastSignedTransaction>
+    ) -> SpendOutput
     where
         C: Signing,
     {
         self.build_spend_action(
-            &secp,
             self.shared.asset,
             fund_location,
             self.final_address.clone(),
-            vbyte_rate,
             |htlc, secret_key| htlc.unlock_with_secret(secp, secret_key, secret.into_raw_secret()),
         )
     }
 
-    pub fn build_spend_action<C>(
+    pub fn build_spend_action(
         &self,
-        secp: &Secp256k1<C>,
         fund_amount: asset::Bitcoin,
         fund_location: htlc_location::Bitcoin,
         spend_address: Address,
-        vbyte_rate: asset::Bitcoin,
         unlock_fn: impl Fn(Htlc, SecretKey) -> UnlockParameters,
-    ) -> Result<BroadcastSignedTransaction>
-    where
-        C: Signing,
-    {
-        let network = self.shared.network;
-        let primed_transaction = {
-            let htlc = self.shared.into();
-            let input_parameters = unlock_fn(htlc, self.transient_sk);
-            let spend_output =
-                SpendOutput::new(fund_location, fund_amount, input_parameters, network);
+    ) -> SpendOutput {
+        let htlc = self.shared.into();
+        let input_parameters = unlock_fn(htlc, self.transient_sk);
 
-            spend_output.spend_to(spend_address)
-        };
-        let transaction = sign(&secp, primed_transaction, vbyte_rate)?;
-
-        Ok(BroadcastSignedTransaction {
-            transaction,
-            network,
-        })
+        SpendOutput::new(
+            fund_location,
+            fund_amount,
+            input_parameters,
+            self.shared.network,
+            spend_address,
+        )
     }
 }
 
