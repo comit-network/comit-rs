@@ -135,9 +135,13 @@ impl<'c> Blockchain<'c> {
     ) -> anyhow::Result<()> {
         let gas_price = self.gas_price.gas_price().await?;
 
-        let _ = self
+        let hash = self
             .dev_account_wallet
             .send_transaction(to, ether, Some(100_000), None, chain_id, gas_price)
+            .await?;
+
+        self.dev_account_wallet
+            .wait_until_confirmed(hash, chain_id)
             .await?;
 
         Ok(())
@@ -152,7 +156,7 @@ impl<'c> Blockchain<'c> {
         let transfer = self.transfer_fn(to, asset.quantity)?;
         let gas_price = self.gas_price.gas_price().await?;
 
-        let _ = self
+        let hash = self
             .dev_account_wallet
             .send_transaction(
                 asset.token_contract,
@@ -162,6 +166,10 @@ impl<'c> Blockchain<'c> {
                 chain_id,
                 gas_price,
             )
+            .await?;
+
+        self.dev_account_wallet
+            .wait_until_confirmed(hash, chain_id)
             .await?;
 
         Ok(())
@@ -184,7 +192,8 @@ impl<'c> Blockchain<'c> {
         let contract = hex::decode(contract).context("token contract should be valid hex")?;
         let gas_price = self.gas_price.gas_price().await?;
 
-        self.dev_account_wallet
+        let hash = self
+            .dev_account_wallet
             .deploy_dai_token_contract(
                 DeployContract {
                     data: contract,
@@ -194,6 +203,10 @@ impl<'c> Blockchain<'c> {
                 },
                 gas_price,
             )
+            .await?;
+
+        self.dev_account_wallet
+            .wait_until_confirmed(hash, ChainId::GETH_DEV)
             .await?;
 
         Ok(())

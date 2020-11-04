@@ -267,7 +267,9 @@ fn respawn_swaps(
                 let fund_amount = herc20_params.asset.clone().into();
                 maker.strategy.hbit_herc20_swap_resumed(fund_amount);
             }
-            SwapKind::Herc20Hbit(SwapParams { hbit_params, .. }) => {
+            SwapKind::Herc20Hbit(SwapParams {
+                ref hbit_params, ..
+            }) => {
                 let fund_amount = hbit_params.shared.asset;
                 maker.strategy.herc20_hbit_swap_resumed(fund_amount)?;
             }
@@ -284,10 +286,14 @@ mod tests {
     use super::*;
     use crate::{
         config::{settings, Data, Logging, Network},
-        swap::herc20::asset::ethereum::FromWei,
         test_harness, Seed, StaticStub,
     };
-    use comit::{asset, asset::Erc20Quantity, ethereum::ChainId, ledger};
+    use comit::{
+        asset,
+        asset::{ethereum::FromWei, Erc20Quantity},
+        ethereum::ChainId,
+        ledger,
+    };
     use ethereum::ether;
     use log::LevelFilter;
 

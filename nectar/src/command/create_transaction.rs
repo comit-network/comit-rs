@@ -54,7 +54,7 @@ pub async fn create_transaction(
             let to = to_clarity_address(action.to)?;
             let chain_id = action.chain_id;
 
-            ethereum_wallet
+            let (signed_transaction, _) = ethereum_wallet
                 .sign(
                     |nonce| clarity::Transaction {
                         nonce,
@@ -67,7 +67,16 @@ pub async fn create_transaction(
                     },
                     chain_id,
                 )
-                .await?
+                .await?;
+
+            format!(
+                "0x{}",
+                hex::encode(
+                    signed_transaction
+                        .to_bytes()
+                        .context("failed to serialize signed transaction to bytes")?
+                )
+            )
         }
 
         (
@@ -87,7 +96,7 @@ pub async fn create_transaction(
             let to = to_clarity_address(action.to)?;
             let chain_id = action.chain_id;
 
-            ethereum_wallet
+            let (signed_transaction, _) = ethereum_wallet
                 .sign(
                     |nonce| clarity::Transaction {
                         nonce,
@@ -100,7 +109,16 @@ pub async fn create_transaction(
                     },
                     chain_id,
                 )
-                .await?
+                .await?;
+
+            format!(
+                "0x{}",
+                hex::encode(
+                    signed_transaction
+                        .to_bytes()
+                        .context("failed to serialize signed transaction to bytes")?
+                )
+            )
         }
         (SwapKind::Herc20Hbit(params), CreateTransaction::Refund { outpoint, .. }) => {
             let redeem_address = bitcoin_wallet.new_address().await?;

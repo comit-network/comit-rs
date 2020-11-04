@@ -6,9 +6,9 @@
 use crate::{
     identity,
     storage::db::wrapper_types::{Erc20Amount, Ether, Satoshis},
-    LockProtocol, SecretHash,
+    LockProtocol,
 };
-use comit::{ledger, Position};
+use comit::{ledger, Position, SecretHash};
 use std::{fmt, str::FromStr};
 
 #[test]
@@ -54,10 +54,9 @@ fn secrethash() {
 
 #[test]
 fn protocol() {
-    roundtrip_test::<LockProtocol>("halbit");
     roundtrip_test::<LockProtocol>("hbit");
     roundtrip_test::<LockProtocol>("herc20");
-    assert_num_variants::<LockProtocol>(3)
+    assert_num_variants::<LockProtocol>(2)
 }
 
 #[test]

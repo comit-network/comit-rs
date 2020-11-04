@@ -24,24 +24,6 @@ impl PeerTracker {
     pub fn connected_peers(&self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
         self.connected_peers.clone().into_iter()
     }
-
-    /// Adds an address hint for the given peer id. The added address is
-    /// considered most recent and hence is added at the start of the list
-    /// because libp2p tries to connect with the first address first.
-    pub fn add_recent_address_hint(&mut self, id: PeerId, addr: Multiaddr) {
-        let old_addresses = self.address_hints.get_mut(&id);
-
-        match old_addresses {
-            None => {
-                let mut hints = VecDeque::new();
-                hints.push_back(addr);
-                self.address_hints.insert(id, hints);
-            }
-            Some(hints) => {
-                hints.push_front(addr);
-            }
-        }
-    }
 }
 
 impl NetworkBehaviour for PeerTracker {

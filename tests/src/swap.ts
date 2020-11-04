@@ -148,106 +148,6 @@ export class Swap {
                     });
                 }
             }
-            case "lnd-send-payment": {
-                const {
-                    self_public_key,
-                    to_public_key,
-                    amount,
-                    secret_hash,
-                    final_cltv_delta,
-                    chain,
-                    network,
-                } = ledgerAction.payload;
-
-                try {
-                    await this.wallets.lightning.assertLndDetails(
-                        self_public_key,
-                        chain,
-                        network
-                    );
-
-                    await this.wallets.lightning.sendPayment(
-                        to_public_key,
-                        amount,
-                        secret_hash,
-                        final_cltv_delta
-                    );
-
-                    return secret_hash;
-                } catch (error) {
-                    throw new WalletError(ledgerAction.type, error, {
-                        self_public_key,
-                        to_public_key,
-                        amount,
-                        secret_hash,
-                        final_cltv_delta,
-                        chain,
-                        network,
-                    });
-                }
-            }
-            case "lnd-add-hold-invoice": {
-                const {
-                    self_public_key,
-                    amount,
-                    secret_hash,
-                    expiry,
-                    cltv_expiry,
-                    chain,
-                    network,
-                } = ledgerAction.payload;
-
-                try {
-                    await this.wallets.lightning.assertLndDetails(
-                        self_public_key,
-                        chain,
-                        network
-                    );
-
-                    return this.wallets.lightning.addHoldInvoice(
-                        amount,
-                        secret_hash,
-                        expiry,
-                        cltv_expiry
-                    );
-                } catch (error) {
-                    throw new WalletError(ledgerAction.type, error, {
-                        self_public_key,
-                        amount,
-                        secret_hash,
-                        expiry,
-                        cltv_expiry,
-                        chain,
-                        network,
-                    });
-                }
-            }
-            case "lnd-settle-invoice": {
-                const {
-                    self_public_key,
-                    secret,
-                    chain,
-                    network,
-                } = ledgerAction.payload;
-                try {
-                    await this.wallets.lightning.assertLndDetails(
-                        self_public_key,
-                        chain,
-                        network
-                    );
-
-                    await this.wallets.lightning.settleInvoice(secret);
-
-                    return secret;
-                } catch (error) {
-                    throw new WalletError(ledgerAction.type, error, {
-                        self_public_key,
-                        secret,
-                        chain,
-                        network,
-                    });
-                }
-            }
             default:
                 throw new Error(`Cannot handle ${ledgerAction.type}`);
         }
@@ -281,12 +181,4 @@ export class Swap {
             return this.wallets.ethereum.getAccount();
         }
     }
-}
-
-/**
- * Defines the parameters (for how long and how often) to try executing an action of a {@link Swap}.
- */
-export interface TryParams {
-    maxTimeoutSecs: number;
-    tryIntervalSecs: number;
 }

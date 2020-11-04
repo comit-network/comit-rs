@@ -41,7 +41,7 @@ pub enum BehaviourOutEvent<C> {
 pub struct ExecutableSwap<C> {
     pub our_role: Role,
     pub herc20: herc20::Params,
-    pub hbit: hbit::Params,
+    pub hbit: hbit::SharedParams,
     pub swap_protocol: SwapProtocol,
     pub peer_id: PeerId,
     pub context: C,
@@ -68,7 +68,7 @@ impl<C> BehaviourOutEvent<C> {
                     secret_hash: alice.secret_hash,
                     chain_id: common.ethereum_chain_id,
                 },
-                hbit: hbit::Params {
+                hbit: hbit::SharedParams {
                     network: common.bitcoin_network,
                     asset: common.bitcoin,
                     redeem_identity: bob.bitcoin_identity,
@@ -90,7 +90,7 @@ impl<C> BehaviourOutEvent<C> {
                     secret_hash: alice.secret_hash,
                     chain_id: common.ethereum_chain_id,
                 },
-                hbit: hbit::Params {
+                hbit: hbit::SharedParams {
                     network: common.bitcoin_network,
                     asset: common.bitcoin,
                     redeem_identity: alice.bitcoin_identity,

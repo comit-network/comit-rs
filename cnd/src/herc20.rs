@@ -1,39 +1,76 @@
-use crate::{
-    asset,
-    btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
-    ethereum::{Block, ChainId, Hash},
-    htlc_location, identity, state,
-    state::Update,
-    storage::Storage,
-    transaction, LocalSwapId, Role, Secret, Side,
-};
-use anyhow::Result;
-use futures::TryStreamExt;
-use std::collections::{hash_map::Entry, HashMap};
-use time::OffsetDateTime;
-use tokio::sync::Mutex;
-
-use crate::btsieve::{
-    ethereum::{GetLogs, TransactionByHash},
-    ConnectedNetwork,
-};
 pub use comit::herc20::*;
 
-/// Creates a new instance of the herc20 protocol, annotated with tracing spans
-/// and saves all events in the `States` hashmap.
-///
-/// This wrapper functions allows us to reuse code within `cnd` without having
-/// to give knowledge about tracing or the state hashmaps to the `comit` crate.
-#[tracing::instrument(name = "herc20", level = "error", skip(params, start_of_swap, storage, connector), fields(%id, %role, %side))]
-pub async fn new<C>(
-    id: LocalSwapId,
-    params: Params,
-    start_of_swap: OffsetDateTime,
-    role: Role,
-    side: Side,
-    storage: Storage,
-    connector: impl AsRef<C>,
-) -> Result<()>
+use crate::{
+    btsieve::{
+        ethereum::{GetLogs, ReceiptByHash, TransactionByHash},
+        BlockByHash, ConnectedNetwork, LatestBlock,
+    },
+    ethereum::{Block, ChainId, Hash},
+    storage::Storage,
+    LocalSwapId,
+};
+use anyhow::Result;
+use backoff::{backoff::Constant, future::FutureOperation};
+use comit::swap::herc20::{IncorrectlyFunded, WatchForDeployed, WatchForFunded, WatchForRedeemed};
+use futures::TryFutureExt;
+use std::{sync::Arc, time::Duration};
+use time::OffsetDateTime;
+
+#[derive(Clone, Debug, Default)]
+pub struct Events {
+    pub deploy: Option<comit::herc20::Deployed>,
+    pub fund: Option<comit::swap::herc20::Funded>,
+    pub redeem: Option<comit::herc20::Redeemed>,
+}
+
+pub struct Facade<C> {
+    pub connector: Arc<C>,
+    pub swap_id: LocalSwapId,
+    pub storage: Storage,
+}
+
+#[async_trait::async_trait]
+impl<C> WatchForDeployed for Facade<C>
+where
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash
+        + ConnectedNetwork<Network = ChainId>,
+{
+    async fn watch_for_deployed(
+        &self,
+        params: Params,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> Deployed {
+        let operation = || {
+            watch_for_deployed(self.connector.as_ref(), params.clone(), utc_start_of_swap)
+                .map_err(backoff::Error::Transient)
+        };
+
+        let deployed = operation
+            .retry_notify(Constant::new(Duration::from_secs(1)), |e, _| {
+                tracing::warn!(
+                    "failed to watch for herc20 deployment, retrying ...: {:#}",
+                    e
+                )
+            })
+            .await
+            .expect("transient error is never returned");
+
+        self.storage
+            .herc20_events
+            .lock()
+            .await
+            .entry(self.swap_id)
+            .or_default()
+            .deploy = Some(deployed);
+
+        deployed
+    }
+}
+
+#[async_trait::async_trait]
+impl<C> WatchForFunded for Facade<C>
 where
     C: LatestBlock<Block = Block>
         + BlockByHash<Block = Block, BlockHash = Hash>
@@ -42,215 +79,77 @@ where
         + ConnectedNetwork<Network = ChainId>
         + GetLogs,
 {
-    let mut events = comit::herc20::new(connector.as_ref(), params, start_of_swap);
+    async fn watch_for_funded(
+        &self,
+        params: Params,
+        deploy_event: Deployed,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> Result<comit::swap::herc20::Funded, IncorrectlyFunded> {
+        let operation = || {
+            watch_for_funded(
+                self.connector.as_ref(),
+                params.clone(),
+                utc_start_of_swap,
+                deploy_event,
+            )
+            .map_err(backoff::Error::Transient)
+        };
 
-    while let Some(event) = events.try_next().await? {
-        tracing::info!("yielded event {}", event);
-        storage.herc20_states.update(&id, event).await;
-    }
+        let funded = operation
+            .retry_notify(Constant::new(Duration::from_secs(1)), |e, _| {
+                tracing::warn!("failed to watch for herc20 funding, retrying ...: {:#}", e)
+            })
+            .await
+            .expect("transient error is never returned")?;
 
-    tracing::info!("finished");
+        self.storage
+            .herc20_events
+            .lock()
+            .await
+            .entry(self.swap_id)
+            .or_default()
+            .fund = Some(funded.clone());
 
-    Ok(())
-}
-
-/// Data required to create a swap that involves an ERC20 token.
-#[derive(Clone, Debug, PartialEq)]
-pub struct CreatedSwap {
-    pub asset: asset::Erc20,
-    pub identity: identity::Ethereum,
-    pub chain_id: ChainId,
-    pub absolute_expiry: u32,
-}
-
-#[derive(Default, Debug)]
-pub struct States(Mutex<HashMap<LocalSwapId, State>>);
-
-impl State {
-    pub fn transition_to_deployed(&mut self, deployed: Deployed) {
-        let Deployed {
-            transaction,
-            location,
-        } = deployed;
-
-        match std::mem::replace(self, State::None) {
-            State::None => {
-                *self = State::Deployed {
-                    deploy_transaction: transaction,
-                    htlc_location: location,
-                }
-            }
-            other => panic!("expected state None, got {}", other),
-        }
-    }
-
-    pub fn transition_to_funded(&mut self, funded: Funded) {
-        match std::mem::replace(self, State::None) {
-            State::Deployed {
-                deploy_transaction,
-                htlc_location,
-            } => match funded {
-                Funded::Correctly { asset, transaction } => {
-                    *self = State::Funded {
-                        deploy_transaction,
-                        htlc_location,
-                        fund_transaction: transaction,
-                        asset,
-                    }
-                }
-                Funded::Incorrectly { asset, transaction } => {
-                    *self = State::IncorrectlyFunded {
-                        deploy_transaction,
-                        htlc_location,
-                        fund_transaction: transaction,
-                        asset,
-                    }
-                }
-            },
-            other => panic!("expected state Deployed, got {}", other),
-        }
-    }
-
-    pub fn transition_to_redeemed(&mut self, redeemed: Redeemed) {
-        let Redeemed {
-            transaction,
-            secret,
-        } = redeemed;
-
-        match std::mem::replace(self, State::None) {
-            State::Funded {
-                deploy_transaction,
-                htlc_location,
-                asset,
-                fund_transaction,
-            } => {
-                *self = State::Redeemed {
-                    deploy_transaction,
-                    htlc_location,
-                    fund_transaction,
-                    redeem_transaction: transaction,
-                    asset,
-                    secret,
-                }
-            }
-            other => panic!("expected state Funded, got {}", other),
-        }
-    }
-
-    pub fn transition_to_refunded(&mut self, refunded: Refunded) {
-        let Refunded { transaction } = refunded;
-
-        match std::mem::replace(self, State::None) {
-            State::Funded {
-                deploy_transaction,
-                htlc_location,
-                asset,
-                fund_transaction,
-            }
-            | State::IncorrectlyFunded {
-                deploy_transaction,
-                htlc_location,
-                asset,
-                fund_transaction,
-            } => {
-                *self = State::Refunded {
-                    deploy_transaction,
-                    htlc_location,
-                    fund_transaction,
-                    refund_transaction: transaction,
-                    asset,
-                }
-            }
-            other => panic!("expected state Funded or IncorrectlyFunded, got {}", other),
-        }
+        Ok(funded)
     }
 }
 
 #[async_trait::async_trait]
-impl state::Get<State> for States {
-    async fn get(&self, key: &LocalSwapId) -> anyhow::Result<Option<State>> {
-        let states = self.0.lock().await;
-        let state = states.get(key).cloned();
+impl<C> WatchForRedeemed for Facade<C>
+where
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash
+        + TransactionByHash
+        + ConnectedNetwork<Network = ChainId>
+        + GetLogs,
+{
+    async fn watch_for_redeemed(
+        &self,
+        _: Params,
+        deploy_event: Deployed,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> Redeemed {
+        let operation = || {
+            watch_for_redeemed(self.connector.as_ref(), utc_start_of_swap, deploy_event)
+                .map_err(backoff::Error::Transient)
+        };
 
-        Ok(state)
+        let redeemed = operation
+            .retry_notify(Constant::new(Duration::from_secs(1)), |e, _| {
+                tracing::warn!("failed to watch for herc20 redeem, retrying ...: {:#}", e)
+            })
+            .await
+            .expect("transient error is never returned");
+
+        self.storage
+            .herc20_events
+            .lock()
+            .await
+            .entry(self.swap_id)
+            .or_default()
+            .redeem = Some(redeemed);
+
+        redeemed
     }
-}
-
-#[async_trait::async_trait]
-impl state::Update<Event> for States {
-    async fn update(&self, key: &LocalSwapId, event: Event) {
-        let mut states = self.0.lock().await;
-        let entry = states.entry(*key);
-
-        match (event, entry) {
-            (Event::Started, Entry::Vacant(vacant)) => {
-                vacant.insert(State::None);
-            }
-            (Event::Deployed(deployed), Entry::Occupied(mut state)) => {
-                state.get_mut().transition_to_deployed(deployed)
-            }
-            (Event::Funded(funded), Entry::Occupied(mut state)) => {
-                state.get_mut().transition_to_funded(funded)
-            }
-            (Event::Redeemed(redeemed), Entry::Occupied(mut state)) => {
-                state.get_mut().transition_to_redeemed(redeemed)
-            }
-            (Event::Refunded(refunded), Entry::Occupied(mut state)) => {
-                state.get_mut().transition_to_refunded(refunded)
-            }
-            (Event::Started, Entry::Occupied(_)) => {
-                tracing::warn!(
-                    "Received Started event for {} although state is already present",
-                    key
-                );
-            }
-            (_, Entry::Vacant(_)) => {
-                tracing::warn!("State not found for {}", key);
-            }
-        }
-    }
-}
-
-/// Represents states that an ERC20 HTLC can be in.
-#[derive(Debug, Clone, strum_macros::Display)]
-#[allow(clippy::large_enum_variant)]
-pub enum State {
-    None,
-    Deployed {
-        htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-    },
-    Funded {
-        htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-        fund_transaction: transaction::Ethereum,
-        asset: asset::Erc20,
-    },
-    IncorrectlyFunded {
-        htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-        fund_transaction: transaction::Ethereum,
-        asset: asset::Erc20,
-    },
-    Redeemed {
-        htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-        fund_transaction: transaction::Ethereum,
-        redeem_transaction: transaction::Ethereum,
-        asset: asset::Erc20,
-        secret: Secret,
-    },
-    Refunded {
-        htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-        fund_transaction: transaction::Ethereum,
-        refund_transaction: transaction::Ethereum,
-        asset: asset::Erc20,
-    },
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Identities {
-    pub redeem_identity: identity::Ethereum,
-    pub refund_identity: identity::Ethereum,
 }

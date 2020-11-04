@@ -88,7 +88,8 @@ test_docker:
 doc:
 	$(CARGO) doc
 
-e2e: build
+e2e:
+	$(CARGO) build -p cnd -p nectar $(BUILD_ARGS)
 	(cd ./tests; yarn install; yarn test)
 
 check_format: check_rust_format check_toml_format check_ts_format

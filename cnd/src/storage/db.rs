@@ -10,24 +10,20 @@ embed_migrations!("./migrations");
 #[cfg(test)]
 mod integration_tests;
 #[cfg(test)]
-pub mod proptest;
+mod proptest;
 
 pub use self::{
     errors::*,
     tables::*,
     wrapper_types::{Text, Timestamp},
 };
-pub use crate::storage::{ForSwap, Save};
 
-use crate::{LocalSwapId, Role};
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
-use libp2p::PeerId;
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
     sync::Arc,
 };
-use time::OffsetDateTime;
 use tokio::sync::Mutex;
 
 /// This module provides persistent storage by way of Sqlite.
@@ -86,6 +82,7 @@ impl Sqlite {
 }
 
 #[cfg(test)]
+#[allow(dead_code)]
 impl Sqlite {
     /// Returns a new in-memory database that can be used in tests.
     ///
@@ -108,31 +105,6 @@ fn ensure_folder_tree_exists(path: &Path) -> anyhow::Result<()> {
     }
 
     Ok(())
-}
-
-/// Data required to create a swap.
-///
-/// 'create' a swap is defined as the process of initiating a swap within `cnd`.
-/// The data required to do so is assumed to have been negotiated between the
-/// two parties prior to each creating the swap. This struct can be saved into
-/// the database.
-#[derive(Debug, Clone, PartialEq)]
-pub struct CreatedSwap<A, B> {
-    /// Node specific swap identifier.
-    pub swap_id: LocalSwapId,
-    /// The parameters used on the alpha ledger.
-    pub alpha: A,
-    /// The parameters used on the beta ledger.
-    pub beta: B,
-    /// Peer ID of the swap counterparty.
-    pub peer: PeerId,
-    /// The address hint of the swap counterparty, only relevant to the party
-    /// that starts the communication.
-    pub address_hint: Option<libp2p::Multiaddr>,
-    /// Role of the node in this swap, Alice or Bob.
-    pub role: Role,
-    /// Timestamp when cnd has first learned about the swap.
-    pub start_of_swap: OffsetDateTime,
 }
 
 #[cfg(test)]

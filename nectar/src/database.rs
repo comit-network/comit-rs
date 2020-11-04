@@ -13,8 +13,6 @@ use time::OffsetDateTime;
 
 mod hbit;
 mod herc20;
-#[cfg(test)]
-mod test_snapshot;
 
 static ACTIVE_PEER_KEY: Lazy<Vec<u8>> =
     Lazy::new(|| serialize(&"active_peer").expect("this slice can be serialized"));
@@ -99,11 +97,6 @@ impl Database {
             db,
             tmp_dir: Some(tmp_dir),
         })
-    }
-
-    #[cfg(test)]
-    pub fn path(&self) -> Option<&std::path::Path> {
-        self.tmp_dir.as_ref().map(|tmp_dir| tmp_dir.path())
     }
 
     pub async fn fetch_inc_bitcoin_transient_key_index(&self) -> anyhow::Result<u32> {
@@ -307,6 +300,30 @@ impl Database {
             .await
             .map(|_| ())
             .context("failed to flush db")
+    }
+
+    async fn update_swap<U>(&self, swap_id: &SwapId, update_fn: U) -> anyhow::Result<()>
+    where
+        U: FnOnce(Swap) -> anyhow::Result<Swap>,
+    {
+        let stored_swap = self.get_swap_or_bail(&swap_id)?;
+        let old_value = serialize(&stored_swap).context("Could not serialize old swap value")?;
+
+        let new_swap = update_fn(stored_swap)?;
+
+        let key = serialize(&swap_id)?;
+        let new_value = serialize(&new_swap).context("Could not serialize new swap value")?;
+
+        self.db
+            .compare_and_swap(key, Some(old_value), Some(new_value))
+            .context("Could not write in the DB")?
+            .context("Stored swap somehow changed, aborting saving")?;
+
+        self.db
+            .flush_async()
+            .await
+            .map(|_| ())
+            .context("Could not flush db")
     }
 
     fn get_swap_or_bail(&self, swap_id: &SwapId) -> anyhow::Result<Swap> {
@@ -716,103 +733,5 @@ mod tests {
                 assert!(stored_peers.contains(&peer))
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod db_compatibility_tests {
-    use super::*;
-    use crate::database::test_snapshot::v0_1_0;
-    use quickcheck::{Arbitrary, StdThreadGen};
-    use tar::Archive;
-    use tempfile::TempDir;
-
-    const SNAPSHOT_SIZE: usize = 10;
-
-    #[tokio::test]
-    async fn ensure_compatiblity_with_0_1_0() {
-        let tmp_dir = TempDir::new().unwrap();
-        let path = tmp_dir.path();
-
-        let mut ar = Archive::new(&v0_1_0::TAR[..]);
-        ar.unpack(path).unwrap();
-
-        let db = Database::new(path).unwrap();
-
-        let bitcoin_index = db.fetch_inc_bitcoin_transient_key_index().await.unwrap();
-        let stored_swaps = db.all_active_swaps().unwrap();
-        let stored_peers = db.peers().unwrap();
-
-        #[allow(clippy::cast_possible_truncation)]
-        let expected_index = SNAPSHOT_SIZE as u32;
-        assert_eq!(bitcoin_index, expected_index);
-        assert_eq!(stored_swaps.len(), SNAPSHOT_SIZE);
-        assert_eq!(stored_peers.len(), SNAPSHOT_SIZE);
-    }
-
-    #[tokio::test]
-    async fn migration_needed_from_0_1_0() {
-        let tmp_dir = TempDir::new().unwrap();
-        let path = tmp_dir.path();
-
-        let mut ar = Archive::new(&v0_1_0::TAR[..]);
-        ar.unpack(path).unwrap();
-
-        let db = Database::new(path).unwrap();
-
-        let res = db.are_any_swap_stored_in_old_format().await.unwrap();
-        assert!(res);
-
-        // Check that `reserialize` fixes it
-        db.reserialize().await.unwrap();
-
-        let res = db.are_any_swap_stored_in_old_format().await.unwrap();
-        assert!(!res);
-
-        // Check we did not lose swaps
-        let stored_swaps = db.all_active_swaps().unwrap();
-        assert_eq!(stored_swaps.len(), SNAPSHOT_SIZE);
-    }
-
-    #[tokio::test]
-    #[ignore]
-    /// Create a snapshot of the DB from random entries
-    /// Run with `--ignored --nocapture`
-    async fn snapshot() {
-        let mut gen = StdThreadGen::new(SNAPSHOT_SIZE);
-        let mut swaps = Vec::with_capacity(SNAPSHOT_SIZE);
-        let mut active_peers = Vec::with_capacity(SNAPSHOT_SIZE);
-
-        for _ in 0..SNAPSHOT_SIZE {
-            let swap = SwapKind::arbitrary(&mut gen);
-            swaps.push(swap);
-            let peer = ActivePeer::arbitrary(&mut gen);
-            active_peers.push(peer)
-        }
-
-        let tar = {
-            let db = Database::new_test().unwrap();
-
-            for swap in swaps.iter() {
-                db.insert_swap(swap.clone()).await.unwrap();
-            }
-
-            for peer in active_peers.iter() {
-                db.insert_active_peer(peer.clone()).await.unwrap();
-            }
-
-            for _ in 0..SNAPSHOT_SIZE {
-                let _ = db.fetch_inc_bitcoin_transient_key_index().await.unwrap();
-            }
-
-            let path = db.path().unwrap();
-
-            let mut ar = tar::Builder::new(Vec::new());
-            ar.append_dir_all("", path).unwrap();
-
-            ar.into_inner().unwrap()
-        };
-
-        println!("{:?}", tar);
     }
 }

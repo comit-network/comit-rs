@@ -9,20 +9,17 @@ use crate::{
         },
         BlockByHash, ConnectedNetwork, LatestBlock,
     },
+    ethereum,
     ethereum::{Block, ChainId, Hash, U256},
     htlc_location, identity,
     timestamp::Timestamp,
-    transaction, Secret, SecretHash,
+    Secret, SecretHash,
 };
 use anyhow::Result;
 use blockchain_contracts::ethereum::herc20::Htlc;
 use conquer_once::Lazy;
-use futures::{
-    future::{self, Either},
-    Stream,
-};
-use genawaiter::sync::{Co, Gen};
 use std::cmp::Ordering;
+use thiserror::Error;
 use time::OffsetDateTime;
 use tracing_futures::Instrument;
 
@@ -42,125 +39,64 @@ static TRANSFER_LOG_MSG: Lazy<Hash> = Lazy::new(|| {
         .expect("to be valid hex")
 });
 
-/// Represents the events in the herc20 protocol.
-#[derive(Debug, Clone, PartialEq, strum_macros::Display)]
-pub enum Event {
-    /// The protocol was started.
-    Started,
-
-    /// The HTLC was deployed and is pending funding.
-    Deployed(Deployed),
-
-    /// The HTLC has been funded with ERC20 tokens.
-    Funded(Funded),
-
-    /// The HTLC has been destroyed via the redeem path, token have been sent to
-    /// the redeemer.
-    Redeemed(Redeemed),
-
-    /// The HTLC has been destroyed via the refund path, token has been sent
-    /// back to funder.
-    Refunded(Refunded),
-}
-
 /// Represents the data available at said state.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Deployed {
-    pub transaction: transaction::Ethereum,
+    pub transaction: ethereum::Hash,
     pub location: htlc_location::Ethereum,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Funded {
-    Correctly {
-        transaction: transaction::Ethereum,
-        asset: asset::Erc20,
-    },
-    Incorrectly {
-        transaction: transaction::Ethereum,
-        asset: asset::Erc20,
-    },
+#[derive(Debug, Clone)]
+pub struct Funded {
+    pub transaction: ethereum::Hash,
+    pub asset: asset::Erc20,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Error)]
+#[error("herc20 HTLC was incorrectly funded, expected {expected} but got {got}")]
+pub struct IncorrectlyFunded {
+    pub expected: asset::Erc20,
+    pub got: asset::Erc20,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Redeemed {
-    pub transaction: transaction::Ethereum,
+    pub transaction: ethereum::Hash,
     pub secret: Secret,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Refunded {
-    pub transaction: transaction::Ethereum,
+    pub transaction: ethereum::Hash,
 }
 
-/// Creates a new instance of the herc20 protocol.
-///
-/// Returns a stream of events happening during the execution.
-pub fn new<'a, C>(
-    connector: &'a C,
-    params: Params,
-    start_of_swap: OffsetDateTime,
-) -> impl Stream<Item = Result<Event>> + 'a
-where
-    C: LatestBlock<Block = Block>
-        + BlockByHash<Block = Block, BlockHash = Hash>
-        + ReceiptByHash
-        + TransactionByHash
-        + ConnectedNetwork<Network = ChainId>
-        + GetLogs,
-{
-    Gen::new({
-        |co| async move {
-            if let Err(error) = watch_ledger(connector, params, start_of_swap, &co).await {
-                co.yield_(Err(error)).await;
-            }
-        }
-    })
+#[async_trait::async_trait]
+pub trait WatchForDeployed {
+    async fn watch_for_deployed(
+        &self,
+        params: Params,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> Deployed;
 }
 
-async fn watch_ledger<C, R>(
-    connector: &C,
-    params: Params,
-    start_of_swap: OffsetDateTime,
-    co: &Co<Result<Event>, R>,
-) -> Result<()>
-where
-    C: LatestBlock<Block = Block>
-        + BlockByHash<Block = Block, BlockHash = Hash>
-        + ReceiptByHash
-        + TransactionByHash
-        + ConnectedNetwork<Network = ChainId>
-        + GetLogs,
-{
-    co.yield_(Ok(Event::Started)).await;
+#[async_trait::async_trait]
+pub trait WatchForFunded {
+    async fn watch_for_funded(
+        &self,
+        params: Params,
+        deploy_event: Deployed,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> Result<Funded, IncorrectlyFunded>;
+}
 
-    let deployed = watch_for_deployed(connector, params.clone(), start_of_swap).await?;
-    co.yield_(Ok(Event::Deployed(deployed.clone()))).await;
-
-    let funded =
-        watch_for_funded(connector, params.clone(), start_of_swap, deployed.clone()).await?;
-    co.yield_(Ok(Event::Funded(funded))).await;
-
-    let redeemed = watch_for_redeemed(connector, start_of_swap, deployed.clone());
-    let refunded = watch_for_refunded(connector, start_of_swap, deployed);
-
-    futures::pin_mut!(redeemed);
-    futures::pin_mut!(refunded);
-
-    match future::try_select(redeemed, refunded).await {
-        Ok(Either::Left((redeemed, _))) => {
-            co.yield_(Ok(Event::Redeemed(redeemed))).await;
-        }
-        Ok(Either::Right((refunded, _))) => {
-            co.yield_(Ok(Event::Refunded(refunded))).await;
-        }
-        Err(either) => {
-            let (error, _other_future) = either.factor_first();
-            return Err(error);
-        }
-    }
-
-    Ok(())
+#[async_trait::async_trait]
+pub trait WatchForRedeemed {
+    async fn watch_for_redeemed(
+        &self,
+        params: Params,
+        deploy_event: Deployed,
+        utc_start_of_swap: OffsetDateTime,
+    ) -> Redeemed;
 }
 
 pub async fn watch_for_deployed<C>(
@@ -182,7 +118,7 @@ where
             .await?;
 
     Ok(Deployed {
-        transaction,
+        transaction: transaction.hash,
         location,
     })
 }
@@ -192,7 +128,7 @@ pub async fn watch_for_funded<C>(
     params: Params,
     start_of_swap: OffsetDateTime,
     deployed: Deployed,
-) -> Result<Funded>
+) -> Result<Result<Funded, IncorrectlyFunded>>
 where
     C: LatestBlock<Block = Block>
         + BlockByHash<Block = Block, BlockHash = Hash>
@@ -221,12 +157,16 @@ where
     let quantity = Erc20Quantity::from_wei(U256::from_big_endian(&log.data.0));
     let asset = Erc20::new(log.address, quantity);
 
-    let event = match expected_asset.cmp(&asset) {
-        Ordering::Equal => Funded::Correctly { transaction, asset },
-        _ => Funded::Incorrectly { transaction, asset },
-    };
-
-    Ok(event)
+    match expected_asset.cmp(&asset) {
+        Ordering::Equal => Ok(Ok(Funded {
+            transaction: transaction.hash,
+            asset,
+        })),
+        _ => Ok(Err(IncorrectlyFunded {
+            expected: params.asset,
+            got: asset,
+        })),
+    }
 }
 
 pub async fn watch_for_redeemed<C>(
@@ -257,7 +197,7 @@ where
         Secret::from_vec(&log.data.0).expect("Must be able to construct secret from log data");
 
     Ok(Redeemed {
-        transaction,
+        transaction: transaction.hash,
         secret,
     })
 }
@@ -286,7 +226,9 @@ where
         .instrument(tracing::info_span!("", action = "refund"))
         .await?;
 
-    Ok(Refunded { transaction })
+    Ok(Refunded {
+        transaction: transaction.hash,
+    })
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

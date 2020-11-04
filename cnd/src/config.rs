@@ -21,8 +21,6 @@ static BITCOIND_RPC_MAINNET: Lazy<Url> = Lazy::new(|| parse_unchecked("http://lo
 static BITCOIND_RPC_TESTNET: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:18332"));
 static BITCOIND_RPC_REGTEST: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:18443"));
 
-static LND_URL: Lazy<Url> = Lazy::new(|| parse_unchecked("https://localhost:8080"));
-
 static WEB3_URL: Lazy<Url> = Lazy::new(|| parse_unchecked("http://localhost:8545"));
 
 /// The DAI token contract on Ethereum mainnet.
@@ -200,121 +198,6 @@ fn dai_address_from_chain_id(id: ChainId) -> Result<ethereum::Address> {
     })
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
-pub struct Lightning {
-    pub network: ledger::Bitcoin,
-    pub lnd: Lnd,
-}
-
-impl Lightning {
-    fn new(network: ledger::Bitcoin) -> Self {
-        Self {
-            network,
-            lnd: Lnd::new(network),
-        }
-    }
-
-    fn from_file(
-        lightning: file::Lightning,
-        comit_network: Option<comit::Network>,
-    ) -> Result<Self> {
-        if let Some(comit_network) = comit_network {
-            let inferred = ledger::Bitcoin::from(comit_network);
-            if inferred != lightning.network {
-                anyhow::bail!(
-                    "inferred Lightning network {} from CLI argument {} but config file says {}",
-                    inferred,
-                    comit_network,
-                    lightning.network
-                );
-            }
-        }
-
-        let network = lightning.network;
-        let lnd = lightning.lnd.map_or_else::<Result<Lnd>, _, _>(
-            || Ok(Lnd::new(network)),
-            |file| Lnd::from_file(file, network),
-        )?;
-
-        Ok(Lightning { network, lnd })
-    }
-}
-
-impl From<Lightning> for file::Lightning {
-    fn from(lightning: Lightning) -> Self {
-        file::Lightning {
-            lnd: Some(file::Lnd {
-                rest_api_url: lightning.lnd.rest_api_url,
-                dir: lightning.lnd.dir,
-            }),
-            network: lightning.network,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize)]
-pub struct Lnd {
-    pub rest_api_url: Url,
-    pub dir: PathBuf,
-    pub cert_path: PathBuf,
-    pub readonly_macaroon_path: PathBuf,
-}
-
-impl Lnd {
-    fn new(network: ledger::Bitcoin) -> Self {
-        Self::from_url_dir_and_network(LND_URL.clone(), default_lnd_dir(), network)
-    }
-
-    fn from_file(file: file::Lnd, network: ledger::Bitcoin) -> Result<Self> {
-        let rest_api_url = assert_lnd_url_https(file.rest_api_url)?;
-
-        Ok(Self::from_url_dir_and_network(
-            rest_api_url,
-            file.dir,
-            network,
-        ))
-    }
-
-    fn from_url_dir_and_network(rest_api_url: Url, dir: PathBuf, network: ledger::Bitcoin) -> Self {
-        Lnd {
-            rest_api_url,
-            dir: dir.clone(),
-            cert_path: default_lnd_cert_path(dir.clone()),
-            readonly_macaroon_path: default_lnd_readonly_macaroon_path(dir, network),
-        }
-    }
-}
-
-fn assert_lnd_url_https(lnd_url: Url) -> Result<Url> {
-    if lnd_url.scheme() == "https" {
-        Ok(lnd_url)
-    } else {
-        Err(anyhow::anyhow!("HTTPS scheme is expected for lnd url."))
-    }
-}
-
-fn default_lnd_dir() -> PathBuf {
-    fs::lnd_dir().expect("no home directory")
-}
-
-fn default_lnd_cert_path(lnd_dir: PathBuf) -> PathBuf {
-    lnd_dir.join("tls.cert")
-}
-
-fn default_lnd_readonly_macaroon_path(lnd_dir: PathBuf, network: ledger::Bitcoin) -> PathBuf {
-    let network_dir = match network {
-        ledger::Bitcoin::Mainnet => "mainnet",
-        ledger::Bitcoin::Testnet => "testnet",
-        ledger::Bitcoin::Regtest => "regtest",
-    };
-    lnd_dir
-        .join("data")
-        .join("chain")
-        .join("bitcoin")
-        .join(network_dir)
-        .join("readonly.macaroon")
-}
-
 fn parse_unchecked<T>(str: &'static str) -> T
 where
     T: FromStr + Debug,
@@ -323,48 +206,4 @@ where
     str.parse()
         .with_context(|| format!("failed to parse static string '{}' into T", str))
         .unwrap()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn lnd_deserializes_correctly() {
-        let actual = toml::from_str(
-            r#"
-            rest_api_url = "https://localhost:8080"
-            dir = "~/.local/share/comit/lnd"
-            "#,
-        );
-
-        let expected = file::Lnd {
-            rest_api_url: LND_URL.clone(),
-            dir: PathBuf::from("~/.local/share/comit/lnd"),
-        };
-
-        assert_eq!(actual, Ok(expected));
-    }
-
-    #[test]
-    fn lightning_deserializes_correctly() {
-        let actual = toml::from_str(
-            r#"
-            network = "regtest"
-            [lnd]
-            rest_api_url = "https://localhost:8080"
-            dir = "/path/to/lnd"
-            "#,
-        );
-
-        let expected = file::Lightning {
-            network: ledger::Bitcoin::Regtest,
-            lnd: Some(file::Lnd {
-                rest_api_url: LND_URL.clone(),
-                dir: PathBuf::from("/path/to/lnd"),
-            }),
-        };
-
-        assert_eq!(actual, Ok(expected));
-    }
 }

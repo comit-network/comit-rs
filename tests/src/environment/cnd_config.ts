@@ -1,11 +1,9 @@
 import * as tmp from "tmp";
 import getPort from "get-port";
-import { Role } from "../actors";
-import { BitcoinNode, EthereumNode, Environment, LightningNode } from "./index";
+import { BitcoinNode, EthereumNode, Environment } from "./index";
 import { merge } from "lodash";
 
 export async function newCndConfig(
-    role: Role,
     env: Environment,
     overrides: Partial<CndConfig>
 ): Promise<CndConfig> {
@@ -27,7 +25,7 @@ export async function newCndConfig(
         logging: {
             level: "trace",
         },
-        ...makeLedgerConfig(env, role),
+        ...makeLedgerConfig(env),
     };
 
     return merge(config, overrides);
@@ -40,7 +38,6 @@ export interface CndConfig {
     logging: { level: string };
     bitcoin?: BitcoinConfig;
     ethereum?: EthereumConfig;
-    lightning?: LightningConfig;
 }
 
 export interface HttpApi {
@@ -50,7 +47,6 @@ export interface HttpApi {
 interface LedgerConfig {
     bitcoin?: BitcoinConfig;
     ethereum?: EthereumConfig;
-    lightning?: LightningConfig;
 }
 
 interface Geth {
@@ -92,17 +88,7 @@ interface BitcoinConfig {
     fees?: BitcoinFees;
 }
 
-interface Lnd {
-    rest_api_url: string;
-    dir: string;
-}
-
-interface LightningConfig {
-    network: string;
-    lnd: Lnd;
-}
-
-function makeLedgerConfig(env: Environment, role: Role) {
+function makeLedgerConfig(env: Environment) {
     const ledgerConfig: LedgerConfig = {};
 
     if (env.bitcoin) {
@@ -111,21 +97,6 @@ function makeLedgerConfig(env: Environment, role: Role) {
 
     if (env.ethereum) {
         ledgerConfig.ethereum = makeEthereumConfig(env.ethereum);
-    }
-
-    switch (role) {
-        case "Alice": {
-            if (env.aliceLnd) {
-                ledgerConfig.lightning = makeLightningConfig(env.aliceLnd);
-            }
-            break;
-        }
-        case "Bob": {
-            if (env.bobLnd) {
-                ledgerConfig.lightning = makeLightningConfig(env.bobLnd);
-            }
-            break;
-        }
     }
 
     return ledgerConfig;
@@ -148,16 +119,6 @@ function makeEthereumConfig(ethereum: EthereumNode): EthereumConfig {
         },
         tokens: {
             dai: ethereum.tokenContract,
-        },
-    };
-}
-
-function makeLightningConfig(lightning: LightningNode): LightningConfig {
-    return {
-        network: "regtest",
-        lnd: {
-            rest_api_url: `https://localhost:${lightning.restPort}`,
-            dir: lightning.dataDir,
         },
     };
 }

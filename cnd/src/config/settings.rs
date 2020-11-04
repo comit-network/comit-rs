@@ -1,5 +1,5 @@
 use crate::config::{
-    file, Bitcoind, Data, Ethereum, File, Lightning, COMIT_SOCKET, CYPHERBLOCK_MAINNET_URL,
+    file, Bitcoind, Data, Ethereum, File, COMIT_SOCKET, CYPHERBLOCK_MAINNET_URL,
     CYPHERBLOCK_TESTNET_URL, FEERATE_SAT_PER_VBYTE,
 };
 use anyhow::Result;
@@ -22,7 +22,6 @@ pub struct Settings {
     pub logging: Logging,
     pub bitcoin: Bitcoin,
     pub ethereum: Ethereum,
-    pub lightning: Lightning,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -228,7 +227,6 @@ impl Settings {
             logging,
             bitcoin,
             ethereum,
-            lightning,
         } = config_file;
 
         Ok(Self {
@@ -249,10 +247,6 @@ impl Settings {
                 || Ethereum::new(comit_network.unwrap_or_default().into()),
                 |file| Ethereum::from_file(file, comit_network),
             )?,
-            lightning: lightning.map_or_else(
-                || Ok(Lightning::new(comit_network.unwrap_or_default().into())),
-                |file| Lightning::from_file(file, comit_network),
-            )?,
         })
     }
 }
@@ -261,7 +255,7 @@ impl Settings {
 mod tests {
     use super::*;
     use crate::{
-        config::{file, Bitcoind, Geth, Lnd, Tokens, DAI_MAINNET},
+        config::{file, Bitcoind, Geth, Tokens, DAI_MAINNET},
         ethereum::ChainId,
     };
     use comit::ledger;
@@ -424,60 +418,6 @@ mod tests {
                 },
                 tokens: Tokens { dai: *DAI_MAINNET },
             })
-    }
-
-    #[test]
-    fn lightning_section_defaults() {
-        let config_file = File {
-            lightning: None,
-            ..File::default()
-        };
-
-        let settings = Settings::from_config_file_and_defaults(config_file, None);
-
-        assert_that(&settings)
-            .is_ok()
-            .map(|settings| &settings.lightning)
-            .is_equal_to(Lightning::new(ledger::Bitcoin::Mainnet))
-    }
-
-    #[test]
-    fn lightning_lnd_section_defaults() {
-        let config_file = File {
-            lightning: Some(file::Lightning {
-                network: ledger::Bitcoin::Regtest,
-                lnd: None,
-            }),
-            ..File::default()
-        };
-
-        let settings = Settings::from_config_file_and_defaults(config_file, None);
-
-        assert_that(&settings)
-            .is_ok()
-            .map(|settings| &settings.lightning)
-            .is_equal_to(Lightning {
-                network: ledger::Bitcoin::Regtest,
-                lnd: Lnd::new(ledger::Bitcoin::Regtest),
-            })
-    }
-
-    #[test]
-    fn error_on_http_url_for_lnd() {
-        let config_file = File {
-            lightning: Some(file::Lightning {
-                network: ledger::Bitcoin::Regtest,
-                lnd: Some(file::Lnd {
-                    rest_api_url: "http://localhost:8000/".parse().unwrap(),
-                    dir: Default::default(),
-                }),
-            }),
-            ..File::default()
-        };
-
-        let settings = Settings::from_config_file_and_defaults(config_file, None);
-
-        assert_that(&settings).is_err();
     }
 
     #[test]

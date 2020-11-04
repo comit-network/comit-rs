@@ -139,6 +139,17 @@ impl From<SecretHash> for [u8; 32] {
     }
 }
 
+#[cfg(feature = "quickcheck")]
+impl quickcheck::Arbitrary for SecretHash {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        let mut bytes = [0u8; 32];
+        for byte in &mut bytes {
+            *byte = u8::arbitrary(g);
+        }
+        SecretHash::from(bytes)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -4,14 +4,7 @@ import actionToHttpRequest, {
 } from "../action_to_http_request";
 import { problemResponseInterceptor } from "../axios_rfc7807_middleware";
 import { Action } from "./siren";
-import {
-    CreateBtcDaiOrderPayload,
-    GetInfoResponse,
-    HalbitHerc20Payload,
-    HbitHerc20Payload,
-    Herc20HalbitPayload,
-    Herc20HbitPayload,
-} from "./payload";
+import { CreateBtcDaiOrderPayload, GetInfoResponse } from "./payload";
 
 export default class CndClient {
     public readonly client: AxiosInstance;
@@ -89,46 +82,6 @@ export default class CndClient {
         const request = await actionToHttpRequest(action, resolver);
 
         return this.client.request(request);
-    }
-
-    public async createHerc20Hbit(body: Herc20HbitPayload): Promise<string> {
-        const response = await this.client.post(
-            "swaps/herc20/hbit",
-            JSON.stringify(body, bigIntSerializer)
-        );
-
-        return response.headers.location;
-    }
-
-    public async createHbitHerc20(body: HbitHerc20Payload): Promise<string> {
-        const response = await this.client.post(
-            "swaps/hbit/herc20",
-            JSON.stringify(body, bigIntSerializer)
-        );
-
-        return response.headers.location;
-    }
-
-    public async createHalbitHerc20(
-        body: HalbitHerc20Payload
-    ): Promise<string> {
-        const response = await this.client.post(
-            "swaps/halbit/herc20",
-            JSON.stringify(body, bigIntSerializer)
-        );
-
-        return response.headers.location;
-    }
-
-    public async createHerc20Halbit(
-        body: Herc20HalbitPayload
-    ): Promise<string> {
-        const response = await this.client.post(
-            "swaps/herc20/halbit",
-            JSON.stringify(body, bigIntSerializer)
-        );
-
-        return response.headers.location;
     }
 
     public async createBtcDaiOrder(order: CreateBtcDaiOrderPayload) {

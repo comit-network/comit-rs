@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! This module defines custom proptest strategies that make it easy to write
 //! property tests for our domain.
 //!
@@ -81,15 +83,6 @@ pub mod identity {
             })
             .prop_map(|sk| identity::Bitcoin::from_secret_key(&&crate::SECP, &sk))
     }
-
-    pub fn lightning() -> impl Strategy<Value = identity::Lightning> {
-        prop::array::uniform32(1u8..)
-            .prop_map(|bytes| {
-                ::bitcoin::secp256k1::SecretKey::from_slice(&bytes)
-                    .expect("any 32 bytes are a valid secret key")
-            })
-            .prop_map(|sk| identity::Lightning::from_secret_key(&&crate::SECP, &sk))
-    }
 }
 
 pub mod ethereum {
@@ -125,6 +118,14 @@ pub mod ledger {
             Just(ledger::Bitcoin::Regtest)
         ]
     }
+
+    prop_compose! {
+        pub fn ethereum()(
+            chain_id in any::<u32>()
+        ) -> ledger::Ethereum {
+            chain_id.into()
+        }
+    }
 }
 
 pub mod asset {
@@ -141,69 +142,6 @@ pub mod asset {
             token_contract in identity::ethereum()
         ) -> asset::Erc20 {
             asset::Erc20::new(token_contract, quantity)
-        }
-    }
-}
-
-pub mod herc20 {
-    use super::*;
-    use crate::herc20;
-
-    prop_compose! {
-        pub fn created_swap()(
-            asset in asset::erc20(),
-            identity in identity::ethereum(),
-            chain_id in chain_id(),
-            absolute_expiry in any::<u32>()
-        ) -> herc20::CreatedSwap {
-            herc20::CreatedSwap {
-                asset,
-                identity,
-                chain_id,
-                absolute_expiry
-            }
-        }
-    }
-}
-
-pub mod halbit {
-    use super::*;
-    use crate::halbit;
-
-    prop_compose! {
-        pub fn created_swap()(
-            asset in asset::bitcoin(),
-            identity in identity::lightning(),
-            network in ledger::bitcoin(),
-            cltv_expiry in any::<u32>()
-        ) -> halbit::CreatedSwap {
-            halbit::CreatedSwap {
-                asset,
-                identity,
-                network,
-                cltv_expiry
-            }
-        }
-    }
-}
-
-pub mod hbit {
-    use super::*;
-    use crate::hbit;
-
-    prop_compose! {
-        pub fn created_swap()(
-            amount in asset::bitcoin(),
-            final_identity in bitcoin::address(),
-            network in ledger::bitcoin(),
-            absolute_expiry in any::<u32>()
-        ) -> hbit::CreatedSwap {
-            hbit::CreatedSwap {
-                amount,
-                final_identity,
-                network,
-                absolute_expiry
-            }
         }
     }
 }

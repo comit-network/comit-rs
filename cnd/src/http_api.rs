@@ -1,12 +1,5 @@
 mod action;
 mod dial_addr;
-pub mod halbit;
-mod halbit_herc20;
-pub mod hbit;
-mod hbit_herc20;
-pub mod herc20;
-mod herc20_halbit;
-mod herc20_hbit;
 mod info;
 mod markets;
 mod orders;
@@ -17,9 +10,7 @@ mod serde_peer_id;
 mod swaps;
 mod tokens;
 
-pub use self::{
-    halbit::Halbit, hbit::Hbit, herc20::Herc20, problem::*, route_factory::create as create_routes,
-};
+pub use self::{problem::*, route_factory::create as create_routes, swaps::SwapResource};
 
 pub const PATH: &str = "swaps";
 
@@ -27,50 +18,12 @@ use crate::{
     asset,
     asset::Erc20Quantity,
     ethereum,
-    storage::{BtcDaiOrder, CreatedSwap, Order},
-    LocalSwapId, Role, Secret, SecretHash, Timestamp,
+    storage::{BtcDaiOrder, Order},
 };
 use anyhow::Result;
-use comit::{OrderId, Position, Price, Quantity};
-use libp2p::{Multiaddr, PeerId};
-use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
+use comit::{swap::Action, OrderId, Position, Price, Quantity};
+use serde::Serialize;
 use warp::http::Method;
-
-/// Object representing the data of a POST request for creating a swap.
-#[derive(Deserialize, Clone, Debug)]
-pub struct PostBody<A, B> {
-    pub alpha: A,
-    pub beta: B,
-    pub peer: DialInformation,
-    pub role: Role,
-}
-
-impl<A, B> PostBody<A, B> {
-    pub fn to_created_swap<CA, CB>(&self, swap_id: LocalSwapId) -> CreatedSwap<CA, CB>
-    where
-        CA: From<A>,
-        CB: From<B>,
-        Self: Clone,
-    {
-        let body = self.clone();
-
-        let alpha = CA::from(body.alpha);
-        let beta = CB::from(body.beta);
-
-        let start_of_swap = OffsetDateTime::now_utc();
-
-        CreatedSwap {
-            swap_id,
-            alpha,
-            beta,
-            peer: body.peer.into(),
-            address_hint: None,
-            role: body.role,
-            start_of_swap,
-        }
-    }
-}
 
 /// The struct representing the properties within the siren document in our
 /// response.
@@ -192,18 +145,11 @@ fn cancel_action(order: &OrderProperties) -> Option<siren::Action> {
 pub enum Protocol {
     Hbit { asset: Amount },
     Herc20 { asset: Amount },
-    Halbit { asset: Amount },
 }
 
 impl Protocol {
     pub fn hbit(btc: asset::Bitcoin) -> Self {
         Protocol::Hbit {
-            asset: Amount::btc(btc),
-        }
-    }
-
-    pub fn halbit(btc: asset::Bitcoin) -> Self {
-        Protocol::Halbit {
             asset: Amount::btc(btc),
         }
     }
@@ -218,274 +164,31 @@ impl Protocol {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum ActionName {
-    Init,
     Deploy,
     Fund,
     Redeem,
-    Refund,
 }
 
-pub trait Events {
-    fn events(&self) -> Vec<SwapEvent>;
-}
-
-/// Get the underlying ledger used by the alpha protocol.
-pub trait AlphaLedger {
-    fn alpha_ledger(&self) -> Ledger;
-}
-
-/// Get the underlying ledger used by the beta protocol.
-pub trait BetaLedger {
-    fn beta_ledger(&self) -> Ledger;
-}
-
-/// Get the absolute expiry time for the alpha protocol.
-pub trait AlphaAbsoluteExpiry {
-    fn alpha_absolute_expiry(&self) -> Option<Timestamp>;
-}
-
-/// Get the absolute expiry time for the beta protocol.
-pub trait BetaAbsoluteExpiry {
-    fn beta_absolute_expiry(&self) -> Option<Timestamp>;
-}
-
-/// Ledgers we currently support swaps on top of.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Ledger {
-    Bitcoin,
-    Ethereum,
-}
-
-pub trait GetRole {
-    fn get_role(&self) -> Role;
-}
-
-pub trait AlphaProtocol {
-    fn alpha_protocol(&self) -> Protocol;
-}
-
-pub trait BetaProtocol {
-    fn beta_protocol(&self) -> Protocol;
+impl From<Action> for ActionName {
+    fn from(action: Action) -> Self {
+        match action {
+            Action::Herc20Deploy(_) => ActionName::Deploy,
+            Action::Herc20Fund(..) => ActionName::Fund,
+            Action::Herc20Redeem(..) => ActionName::Redeem,
+            Action::HbitFund(_) => ActionName::Fund,
+            Action::HbitRedeem(..) => ActionName::Redeem,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(tag = "name", rename_all = "snake_case")]
 pub enum SwapEvent {
     HbitFunded { tx: bitcoin::Txid },
-    HbitIncorrectlyFunded { tx: bitcoin::Txid },
     HbitRedeemed { tx: bitcoin::Txid },
-    HbitRefunded { tx: bitcoin::Txid },
     Herc20Deployed { tx: ethereum::Hash },
     Herc20Funded { tx: ethereum::Hash },
-    Herc20IncorrectlyFunded { tx: ethereum::Hash },
     Herc20Redeemed { tx: ethereum::Hash },
-    Herc20Refunded { tx: ethereum::Hash },
-
-    // TODO: Seriously reconsider this naming + the whole halbit protocol design in general. The
-    // event-based design here should allow us to name this whatever and hence make it more
-    // descriptive.
-    HalbitFunded,
-    HalbitIncorrectlyFunded,
-    HalbitRedeemed,
-    HalbitRefunded,
-}
-
-impl From<&herc20::State> for Vec<SwapEvent> {
-    fn from(state: &herc20::State) -> Self {
-        match state {
-            herc20::State::None => vec![],
-            herc20::State::Deployed {
-                deploy_transaction, ..
-            } => vec![SwapEvent::Herc20Deployed {
-                tx: deploy_transaction.hash,
-            }],
-            herc20::State::Funded {
-                deploy_transaction,
-                fund_transaction,
-                ..
-            } => vec![
-                SwapEvent::Herc20Deployed {
-                    tx: deploy_transaction.hash,
-                },
-                SwapEvent::Herc20Funded {
-                    tx: fund_transaction.hash,
-                },
-            ],
-            herc20::State::IncorrectlyFunded {
-                deploy_transaction,
-                fund_transaction,
-                ..
-            } => vec![
-                SwapEvent::Herc20Deployed {
-                    tx: deploy_transaction.hash,
-                },
-                SwapEvent::Herc20IncorrectlyFunded {
-                    tx: fund_transaction.hash,
-                },
-            ],
-            herc20::State::Redeemed {
-                deploy_transaction,
-                fund_transaction,
-                redeem_transaction,
-                ..
-            } => vec![
-                SwapEvent::Herc20Deployed {
-                    tx: deploy_transaction.hash,
-                },
-                SwapEvent::Herc20Funded {
-                    tx: fund_transaction.hash,
-                },
-                SwapEvent::Herc20Redeemed {
-                    tx: redeem_transaction.hash,
-                },
-            ],
-            herc20::State::Refunded {
-                deploy_transaction,
-                fund_transaction,
-                refund_transaction,
-                ..
-            } => vec![
-                SwapEvent::Herc20Deployed {
-                    tx: deploy_transaction.hash,
-                },
-                SwapEvent::Herc20Funded {
-                    tx: fund_transaction.hash,
-                },
-                SwapEvent::Herc20Refunded {
-                    tx: refund_transaction.hash,
-                },
-            ],
-        }
-    }
-}
-
-impl From<&hbit::State> for Vec<SwapEvent> {
-    fn from(state: &hbit::State) -> Self {
-        match state {
-            hbit::State::None => vec![],
-            hbit::State::Funded {
-                fund_transaction, ..
-            } => vec![SwapEvent::HbitFunded {
-                tx: fund_transaction.txid(),
-            }],
-            hbit::State::IncorrectlyFunded {
-                fund_transaction, ..
-            } => vec![
-                SwapEvent::HbitFunded {
-                    tx: fund_transaction.txid(),
-                },
-                SwapEvent::HbitIncorrectlyFunded {
-                    tx: fund_transaction.txid(),
-                },
-            ],
-            hbit::State::Redeemed {
-                fund_transaction,
-                redeem_transaction,
-                ..
-            } => vec![
-                SwapEvent::HbitFunded {
-                    tx: fund_transaction.txid(),
-                },
-                SwapEvent::HbitRedeemed {
-                    tx: redeem_transaction.txid(),
-                },
-            ],
-            hbit::State::Refunded {
-                fund_transaction,
-                refund_transaction,
-                ..
-            } => vec![
-                SwapEvent::HbitFunded {
-                    tx: fund_transaction.txid(),
-                },
-                SwapEvent::HbitRefunded {
-                    tx: refund_transaction.txid(),
-                },
-            ],
-        }
-    }
-}
-
-impl From<&halbit::State> for Vec<SwapEvent> {
-    fn from(state: &halbit::State) -> Self {
-        match state {
-            halbit::State::None => vec![],
-            halbit::State::Opened(_) => vec![],
-            halbit::State::Accepted(_) => vec![SwapEvent::HalbitFunded],
-            halbit::State::Settled(_) => vec![SwapEvent::HalbitFunded, SwapEvent::HalbitRedeemed],
-            halbit::State::Cancelled(_) => vec![SwapEvent::HalbitFunded, SwapEvent::HalbitRefunded],
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum AliceSwap<AC, BC, AF, BF> {
-    Created {
-        alpha_created: AC,
-        beta_created: BC,
-    },
-    Finalized {
-        alpha_finalized: AF,
-        beta_finalized: BF,
-        secret: Secret,
-    },
-}
-
-#[derive(Clone, Debug)]
-pub enum BobSwap<AC, BC, AF, BF> {
-    Created {
-        alpha_created: AC,
-        beta_created: BC,
-    },
-    Finalized {
-        alpha_finalized: AF,
-        beta_finalized: BF,
-        secret_hash: SecretHash,
-    },
-}
-
-impl<AC, BC, AF, BF> GetRole for AliceSwap<AC, BC, AF, BF> {
-    fn get_role(&self) -> Role {
-        Role::Alice
-    }
-}
-
-impl<AC, BC, AF, BF> GetRole for BobSwap<AC, BC, AF, BF> {
-    fn get_role(&self) -> Role {
-        Role::Bob
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Deserialize)]
-#[serde(untagged)]
-pub enum DialInformation {
-    JustPeerId(#[serde(with = "serde_peer_id")] PeerId),
-    WithAddressHint {
-        #[serde(with = "serde_peer_id")]
-        peer_id: PeerId,
-        address_hint: Multiaddr,
-    },
-}
-
-impl DialInformation {
-    fn into_peer_with_address_hint(self) -> (PeerId, Option<Multiaddr>) {
-        match self {
-            DialInformation::JustPeerId(inner) => (inner, None),
-            DialInformation::WithAddressHint {
-                peer_id,
-                address_hint,
-            } => (peer_id, Some(address_hint)),
-        }
-    }
-}
-
-impl From<DialInformation> for PeerId {
-    fn from(dial_information: DialInformation) -> Self {
-        match dial_information {
-            DialInformation::JustPeerId(inner) => inner,
-            DialInformation::WithAddressHint { peer_id, .. } => peer_id,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, thiserror::Error)]
@@ -580,25 +283,6 @@ mod tests {
             result,
             r#"{
   "protocol": "hbit",
-  "asset": {
-    "currency": "BTC",
-    "value": "10000",
-    "decimals": 8
-  }
-}"#
-        )
-    }
-
-    #[test]
-    fn halbit_protocol_serializes_correctly() {
-        let protocol = Protocol::halbit(asset::Bitcoin::from_sat(10_000));
-
-        let result = serde_json::to_string_pretty(&protocol).unwrap();
-
-        assert_eq!(
-            result,
-            r#"{
-  "protocol": "halbit",
   "asset": {
     "currency": "BTC",
     "value": "10000",

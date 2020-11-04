@@ -1,5 +1,5 @@
-use crate::{ethereum, ledger, LocalSwapId};
-use comit::{LockProtocol, OrderId, Position, Role, Side};
+use crate::{ethereum, ledger, storage::db::wrapper_types::Erc20Amount, LocalSwapId};
+use comit::{asset, LockProtocol, OrderId, Position, Role, Side};
 use diesel::{
     backend::Backend,
     deserialize::{self, FromSql},
@@ -73,3 +73,9 @@ impl_from_text!(::bitcoin::Address);
 impl_from_text!(OrderId);
 impl_from_text!(Position);
 impl_from_text!(LockProtocol);
+
+impl From<Text<Erc20Amount>> for asset::Erc20Quantity {
+    fn from(text: Text<Erc20Amount>) -> Self {
+        text.0.into()
+    }
+}

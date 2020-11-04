@@ -21,6 +21,10 @@ export default class NectarActor
         return Promise.resolve(undefined);
     }
 
+    async start(): Promise<void> {
+        await this.nectarInstance.trade();
+    }
+
     async stop(): Promise<void> {
         return this.nectarInstance.stop();
     }

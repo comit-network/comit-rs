@@ -1,6 +1,5 @@
 import { EthereumWallet } from "../wallets/ethereum";
 import { BitcoinWallet } from "../wallets/bitcoin";
-import { LightningChannel } from "../wallets/lightning";
 
 export interface BalanceAsserter {
     assertReceived(): Promise<void>;
@@ -130,65 +129,6 @@ export class OnChainBitcoinBalanceAsserter implements BalanceAsserter {
         const expectedBalance = this.startingBalance - this.wallet.MaximumFee; // Even if we refund, we have to spend some money on fees
 
         expect(currentBalance).toBeGreaterThanOrEqual(expectedBalance);
-    }
-
-    public async assertNothingReceived() {
-        const currentBalance = await this.wallet.getBalance();
-
-        expect(currentBalance.toString(10)).toEqual(
-            this.startingBalance.toString(10)
-        );
-    }
-}
-
-export class LNBitcoinBalanceAsserter implements BalanceAsserter {
-    public static async newInstance(
-        wallet: LightningChannel,
-        swapAmount: bigint
-    ) {
-        const startingBalance = await wallet.getBalance();
-
-        return new LNBitcoinBalanceAsserter(
-            wallet,
-            startingBalance,
-            swapAmount
-        );
-    }
-
-    constructor(
-        private readonly wallet: LightningChannel,
-        private readonly startingBalance: bigint,
-        private readonly swapAmount: bigint
-    ) {}
-
-    public async assertReceived() {
-        const currentBalance = await this.wallet.getBalance();
-        const expectedBalance = this.startingBalance + this.swapAmount;
-
-        if (currentBalance !== expectedBalance) {
-            throw new Error(
-                `Expected ${expectedBalance} sats but got ${currentBalance}`
-            );
-        }
-    }
-
-    public async assertSpent(): Promise<void> {
-        const currentBalance = await this.wallet.getBalance();
-        const expectedBalance = this.startingBalance - this.swapAmount;
-
-        if (currentBalance !== expectedBalance) {
-            throw new Error(
-                `Expected ${expectedBalance} sats but got ${currentBalance}`
-            );
-        }
-    }
-
-    public async assertRefunded() {
-        const currentBalance = await this.wallet.getBalance();
-
-        expect(currentBalance.toString(10)).toEqual(
-            this.startingBalance.toString(10)
-        );
     }
 
     public async assertNothingReceived() {

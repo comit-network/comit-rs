@@ -111,6 +111,13 @@ pub fn duration_between(t: Timestamp, u: Timestamp) -> Duration {
     Duration::new(seconds, 0)
 }
 
+#[cfg(feature = "quickcheck")]
+impl quickcheck::Arbitrary for Timestamp {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        Timestamp::from(u32::arbitrary(g))
+    }
+}
+
 /// A duration used to represent a relative timelock
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Deserialize, Serialize)]
 #[serde(transparent)]

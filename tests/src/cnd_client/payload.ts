@@ -18,40 +18,6 @@ export interface Peer {
     address_hint?: string;
 }
 
-interface Payload<A, B> {
-    alpha: A;
-    beta: B;
-    role: "Alice" | "Bob";
-    peer: Peer;
-}
-
-export type HalbitHerc20Payload = Payload<HalbitPayload, Herc20Payload>;
-export type Herc20HalbitPayload = Payload<Herc20Payload, HalbitPayload>;
-export type HbitHerc20Payload = Payload<HbitPayload, Herc20Payload>;
-export type Herc20HbitPayload = Payload<Herc20Payload, HbitPayload>;
-
-export type HalbitPayload = {
-    amount: bigint;
-    identity: string;
-    network: string;
-    cltv_expiry: number;
-};
-
-export type Herc20Payload = {
-    amount: bigint;
-    identity: string;
-    token_contract: string;
-    absolute_expiry: number;
-    chain_id: number;
-};
-
-export type HbitPayload = {
-    amount: bigint;
-    final_identity: string;
-    network: string;
-    absolute_expiry: number;
-};
-
 /**
  * The payload returned when fetching one swap on the `/swaps/:id` endpoint
  */
@@ -84,7 +50,7 @@ export interface SwapProperties {
     beta: LockProtocol;
 }
 
-export type LockProtocol = HbitProtocol | Herc20Protocol | HalbitProtocol;
+export type LockProtocol = HbitProtocol | Herc20Protocol;
 
 export interface HbitProtocol {
     protocol: "hbit";
@@ -96,20 +62,9 @@ export interface Herc20Protocol {
     asset: Amount;
 }
 
-export interface HalbitProtocol {
-    protocol: "halbit";
-    asset: Amount;
-}
-
-export type FundEvent = HbitFundedEvent | Herc20FundedEvent | HalbitFundedEvent;
-export type RefundEvent =
-    | HbitRefundedEvent
-    | Herc20RefundedEvent
-    | HalbitRefundedEvent;
-export type RedeemEvent =
-    | HbitRedeemedEvent
-    | Herc20RedeemedEvent
-    | HalbitRedeemedEvent;
+export type FundEvent = HbitFundedEvent | Herc20FundedEvent;
+export type RefundEvent = HbitRefundedEvent | Herc20RefundedEvent;
+export type RedeemEvent = HbitRedeemedEvent | Herc20RedeemedEvent;
 
 export type SwapEvent =
     | FundEvent
@@ -154,25 +109,13 @@ export interface Herc20RefundedEvent {
     tx: string;
 }
 
-export interface HalbitFundedEvent {
-    name: "halbit_funded";
-}
-
-export interface HalbitRedeemedEvent {
-    name: "halbit_redeemed";
-}
-
-export interface HalbitRefundedEvent {
-    name: "halbit_refunded";
-}
-
 /**
  * The possible steps needed on each side of the swap for its execution.
  *
  * Not all steps are needed for all protocols and ledgers.
  * E.g. for Han Bitcoin the steps are: fund, redeem (or refund)
  */
-export type ActionKind = "init" | "fund" | "deploy" | "redeem" | "refund";
+export type ActionKind = "fund" | "deploy" | "redeem" | "refund";
 
 /**
  * An action that is available for the given swap.

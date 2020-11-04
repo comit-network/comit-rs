@@ -25,10 +25,10 @@ pub struct Swap {
 #[derive(Insertable, Debug, Clone)]
 #[table_name = "swaps"]
 pub struct InsertableSwap {
-    local_swap_id: Text<LocalSwapId>,
-    role: Text<Role>,
-    counterparty_peer_id: Text<PeerId>,
-    start_of_swap: i64,
+    pub local_swap_id: Text<LocalSwapId>,
+    pub role: Text<Role>,
+    pub counterparty_peer_id: Text<PeerId>,
+    pub start_of_swap: i64,
 }
 
 impl InsertableSwap {

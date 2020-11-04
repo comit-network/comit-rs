@@ -11,8 +11,6 @@ import {
 import {
     newBitcoinStubWallet,
     newEthereumStubWallet,
-    newLightningStubChannel,
-    newLndStubClient,
     Wallets,
 } from "./wallets";
 import {
@@ -37,19 +35,6 @@ export function startAlice(
     testFn: (alice: CndActor) => Promise<void>
 ): ProvidesCallback {
     return startCndActorTest(["Alice"], async ([alice]) => testFn(alice));
-}
-
-/**
- * Instantiates two CndActors, the first one in the role of Alice and the second one in the role of Bob.
- * Starts respective cnd instances.
- * @param testFn
- */
-export function startAliceAndBob(
-    testFn: ([alice, bob]: CndActor[]) => Promise<void>
-): ProvidesCallback {
-    return startCndActorTest(["Alice", "Bob"], async ([alice, bob]) =>
-        testFn([alice, bob])
-    );
 }
 
 /**
@@ -184,7 +169,6 @@ async function newCndActor(role: Role, startCnd: boolean) {
     logger.info("Creating new cnd actor in role", role);
 
     const cndConfig = await newCndConfig(
-        role,
         global.environment,
         global.cndConfigOverrides
     );
@@ -210,29 +194,13 @@ async function newCndActor(role: Role, startCnd: boolean) {
     const wallets = new Wallets({
         bitcoin: await bitcoinWallet,
         ethereum: await ethereumWallet,
-        lightning: newLightningStubChannel(), // Lightning channels are initialized lazily
     });
 
     if (cndStarting !== undefined) {
         await cndStarting;
     }
 
-    const lndClient = (() => {
-        switch (role) {
-            case "Alice":
-                return global.lndClients.alice;
-            case "Bob":
-                return global.lndClients.bob;
-        }
-    })();
-
-    return new CndActor(
-        logger,
-        cndInstance,
-        wallets,
-        role,
-        lndClient || newLndStubClient()
-    );
+    return new CndActor(logger, cndInstance, wallets, role);
 }
 
 async function newNectarActor() {

@@ -1,14 +1,14 @@
 use crate::{
     actions::{
         bitcoin::{self, SendToAddress},
-        ethereum, lnd,
-        lnd::Chain,
+        ethereum,
     },
     asset,
     ethereum::ChainId,
-    identity, transaction, RelativeTime, Secret, SecretHash, Timestamp,
+    identity, transaction, Timestamp,
 };
-use comit::{ethereum::UnformattedData, ledger};
+use anyhow::Result;
+use comit::{ethereum::UnformattedData, ledger, swap::Action};
 use serde::Serialize;
 
 #[derive(Clone, Debug, Serialize)]
@@ -40,32 +40,6 @@ pub enum ActionResponseBody {
         chain_id: ChainId,
         #[serde(skip_serializing_if = "Option::is_none")]
         min_block_timestamp: Option<Timestamp>,
-    },
-    LndAddHoldInvoice {
-        #[serde(with = "asset::bitcoin::sats_as_string")]
-        amount: asset::Bitcoin,
-        secret_hash: SecretHash,
-        expiry: RelativeTime,
-        cltv_expiry: RelativeTime,
-        chain: Chain,
-        network: ledger::Bitcoin,
-        self_public_key: identity::Lightning,
-    },
-    LndSendPayment {
-        to_public_key: identity::Lightning,
-        #[serde(with = "asset::bitcoin::sats_as_string")]
-        amount: asset::Bitcoin,
-        secret_hash: SecretHash,
-        final_cltv_delta: RelativeTime,
-        chain: Chain,
-        network: ledger::Bitcoin,
-        self_public_key: identity::Lightning,
-    },
-    LndSettleInvoice {
-        secret: Secret,
-        chain: Chain,
-        network: ledger::Bitcoin,
-        self_public_key: identity::Lightning,
     },
 }
 
@@ -117,30 +91,6 @@ impl From<bitcoin::BroadcastSignedTransaction> for ActionResponseBody {
     }
 }
 
-impl From<lnd::AddHoldInvoice> for ActionResponseBody {
-    fn from(action: lnd::AddHoldInvoice) -> Self {
-        let lnd::AddHoldInvoice {
-            amount,
-            secret_hash,
-            expiry,
-            cltv_expiry,
-            chain,
-            network,
-            self_public_key,
-        } = action;
-
-        ActionResponseBody::LndAddHoldInvoice {
-            amount,
-            secret_hash,
-            expiry,
-            cltv_expiry,
-            chain,
-            network,
-            self_public_key,
-        }
-    }
-}
-
 impl From<ethereum::DeployContract> for ActionResponseBody {
     fn from(action: ethereum::DeployContract) -> Self {
         let ethereum::DeployContract {
@@ -155,48 +105,6 @@ impl From<ethereum::DeployContract> for ActionResponseBody {
             amount,
             gas_limit: gas_limit.into(),
             chain_id,
-        }
-    }
-}
-
-impl From<lnd::SendPayment> for ActionResponseBody {
-    fn from(action: lnd::SendPayment) -> Self {
-        let lnd::SendPayment {
-            to_public_key,
-            amount,
-            secret_hash,
-            network,
-            chain,
-            final_cltv_delta,
-            self_public_key,
-        } = action;
-
-        ActionResponseBody::LndSendPayment {
-            to_public_key,
-            amount,
-            secret_hash,
-            network,
-            chain,
-            final_cltv_delta,
-            self_public_key,
-        }
-    }
-}
-
-impl From<lnd::SettleInvoice> for ActionResponseBody {
-    fn from(action: lnd::SettleInvoice) -> Self {
-        let lnd::SettleInvoice {
-            secret,
-            chain,
-            network,
-            self_public_key,
-        } = action;
-
-        ActionResponseBody::LndSettleInvoice {
-            secret,
-            chain,
-            network,
-            self_public_key,
         }
     }
 }
@@ -224,6 +132,33 @@ impl From<ethereum::CallContract> for ActionResponseBody {
 impl From<comit::Never> for ActionResponseBody {
     fn from(_: comit::Never) -> Self {
         unreachable!("impl should be removed once ! type is stabilised")
+    }
+}
+
+impl ActionResponseBody {
+    pub fn from_action(action: comit::swap::Action, vbyte_rate: asset::Bitcoin) -> Result<Self> {
+        Ok(match action {
+            Action::Herc20Deploy(params) => params.build_deploy_action().into(),
+            Action::Herc20Fund(params, deployed) => {
+                params.build_fund_action(deployed.location).into()
+            }
+            Action::Herc20Redeem(params, deployed, secret) => {
+                params.build_redeem_action(deployed.location, secret).into()
+            }
+            Action::HbitFund(params) => params.shared.build_fund_action().into(),
+            Action::HbitRedeem(params, funded, secret) => params
+                .shared
+                .build_redeem_action(
+                    &crate::SECP,
+                    funded.asset,
+                    funded.location,
+                    params.transient_sk,
+                    params.final_address,
+                    secret,
+                    vbyte_rate,
+                )?
+                .into(),
+        })
     }
 }
 
@@ -279,17 +214,17 @@ mod test {
 
         let input = &[
             ActionResponseBody::from(SendToAddress {
-                to: to.clone().into(),
+                to: to.clone(),
                 amount,
                 network: ledger::Bitcoin::Mainnet,
             }),
             ActionResponseBody::from(SendToAddress {
-                to: to.clone().into(),
+                to: to.clone(),
                 amount,
                 network: ledger::Bitcoin::Testnet,
             }),
             ActionResponseBody::from(SendToAddress {
-                to: to.into(),
+                to,
                 amount,
                 network: ledger::Bitcoin::Regtest,
             }),

@@ -1,17 +1,16 @@
 use crate::{
-    asset, hbit,
+    asset,
     storage::{
         db::{
-            schema,
             schema::*,
             tables::Swap,
             wrapper_types::{Satoshis, U32},
         },
-        Insert, IntoInsertable, Sqlite, Text,
+        Text,
     },
 };
 use anyhow::Result;
-use comit::{bitcoin, ledger, Role, Side};
+use comit::{bitcoin, ledger, Side};
 use diesel::{prelude::*, sqlite::SqliteConnection};
 
 #[derive(Associations, Clone, Debug, Identifiable, Queryable, PartialEq)]
@@ -23,7 +22,8 @@ pub struct Hbit {
     pub amount: Text<Satoshis>,
     pub network: Text<ledger::Bitcoin>,
     pub expiry: U32,
-    pub final_identity: Text<bitcoin::Address>,
+    #[diesel(deserialize_as = "Text<bitcoin::Address>")]
+    pub final_identity: bitcoin::Address,
     pub transient_identity: Option<Text<bitcoin::PublicKey>>,
     pub side: Text<Side>,
 }
@@ -75,36 +75,5 @@ impl InsertableHbit {
 impl From<Hbit> for asset::Bitcoin {
     fn from(hbit: Hbit) -> Self {
         hbit.amount.0.into()
-    }
-}
-
-impl IntoInsertable for hbit::CreatedSwap {
-    type Insertable = InsertableHbit;
-
-    fn into_insertable(self, swap_id: i32, _: Role, side: Side) -> Self::Insertable {
-        InsertableHbit {
-            swap_id,
-            amount: Text(self.amount.into()),
-            network: Text(self.network),
-            expiry: U32(self.absolute_expiry),
-            final_identity: Text(self.final_identity.into()),
-            // We always retrieve the transient identity from the other party
-            transient_identity: None,
-            side: Text(side),
-        }
-    }
-}
-
-impl Insert<InsertableHbit> for Sqlite {
-    fn insert(
-        &self,
-        connection: &SqliteConnection,
-        insertable: &InsertableHbit,
-    ) -> anyhow::Result<()> {
-        diesel::insert_into(schema::hbits::table)
-            .values(insertable)
-            .execute(connection)?;
-
-        Ok(())
     }
 }

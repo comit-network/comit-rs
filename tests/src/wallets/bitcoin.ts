@@ -225,15 +225,6 @@ function newAxiosClient(
 
 export type Network = "main" | "test" | "regtest";
 
-/**
- * A simplied representation of a Bitcoin transaction
- */
-export interface BitcoinTransaction {
-    hex: string;
-    txid: string;
-    confirmations: number;
-}
-
 async function jsonRpcResponseInterceptor(
     logger: Logger,
     error: AxiosError
@@ -253,8 +244,10 @@ async function jsonRpcResponseInterceptor(
     logger.error("JSON-RPC request failed. Original request:", error.config);
 
     return Promise.reject(
-        `JSON-RPC request '${
-            JSON.parse(error.config.data).method
-        }' failed with '${body.error.message}'`
+        new Error(
+            `JSON-RPC request '${
+                JSON.parse(error.config.data).method
+            }' failed with '${body.error.message}'`
+        )
     );
 }

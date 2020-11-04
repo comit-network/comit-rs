@@ -9,6 +9,7 @@ description = "Reference implementation of a COMIT network daemon."
 anyhow = "1"
 async-trait = "0.1"
 atty = "0.2"
+backoff = { version = "0.2.1", features = ["tokio"] }
 base64 = "0.13.0"
 bitcoin = { version = "0.25", features = ["use-serde"] }
 comit = { path = "../comit" }
@@ -18,7 +19,6 @@ data-encoding = "2.3"
 derivative = "2"
 diesel = { version = "1.4", features = ["sqlite"] }
 diesel_migrations = "1.4.0"
-digest = { path = "../digest" }
 directories-next = "2"
 fs2 = "0.4.3"
 futures = { version = "0.3", default-features = false }

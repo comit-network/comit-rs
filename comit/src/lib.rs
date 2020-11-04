@@ -19,14 +19,11 @@ pub mod bitcoin;
 pub mod btsieve;
 pub mod ethereum;
 pub mod expiries;
-pub mod halbit;
 pub mod hbit;
 pub mod herc20;
 pub mod htlc_location;
 pub mod identity;
 pub mod ledger;
-pub mod lightning;
-pub mod lnd;
 pub mod network;
 pub mod order;
 pub mod orderpool;
@@ -34,6 +31,7 @@ pub mod orderpool;
 pub mod proptest;
 mod secret;
 mod secret_hash;
+pub mod swap;
 mod timestamp;
 pub mod transaction;
 
@@ -58,7 +56,6 @@ pub mod export {
 }
 
 pub use self::{
-    network::SharedSwapId,
     order::{BtcDaiOrder, OrderId, Position, Price, Quantity},
     secret::Secret,
     secret_hash::SecretHash,
@@ -87,8 +84,6 @@ use serde::{Deserialize, Serialize};
 pub enum LockProtocol {
     /// The [`hbit`](crate::hbit) locking protocol.
     Hbit,
-    /// The [`halbit`](crate::halbit) locking protocol.
-    Halbit,
     /// The [`herc20`](crate::herc20) locking protocol.
     Herc20,
 }

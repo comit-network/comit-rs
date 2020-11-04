@@ -33,7 +33,6 @@ mod config;
 mod connectors;
 mod file_lock;
 mod fs;
-mod halbit;
 mod hbit;
 mod herc20;
 mod http_api;
@@ -63,15 +62,11 @@ mod ethereum {
 mod bitcoin {
     pub use comit::bitcoin::*;
 }
-mod lightning {
-    pub use comit::lightning::PublicKey;
-}
 mod btsieve {
     pub use comit::btsieve::*;
 }
 
 use self::{
-    actions::*,
     bitcoin_fees::BitcoinFees,
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
     config::{validate_connection_to_network, Settings},
@@ -90,10 +85,7 @@ use crate::{
 };
 use ::bitcoin::secp256k1::{All, Secp256k1};
 use anyhow::{Context, Result};
-use comit::{
-    ledger, lnd::LndConnectorParams, LockProtocol, Never, RelativeTime, Role, Secret, SecretHash,
-    Side, Timestamp,
-};
+use comit::{ledger, LockProtocol, Never, Role, Secret, Side, Timestamp};
 use conquer_once::Lazy;
 use futures::future;
 use rand::rngs::OsRng;
@@ -192,21 +184,7 @@ async fn main() -> Result<()> {
         )
     };
 
-    let lnd_connector_params = LndConnectorParams::new(
-        settings.lightning.lnd.rest_api_url.clone(),
-        100,
-        settings.lightning.lnd.cert_path.clone(),
-        settings.lightning.lnd.readonly_macaroon_path.clone(),
-    )
-    .map_err(|err| {
-        tracing::warn!(
-            "Could not read initialise lnd configuration, halbit will not be available: {:?}",
-            err
-        );
-    })
-    .ok();
-
-    let connectors = Connectors::new(bitcoin_connector, ethereum_connector, lnd_connector_params);
+    let connectors = Connectors::new(bitcoin_connector, ethereum_connector);
 
     let swarm = Swarm::new(
         &settings,
@@ -233,7 +211,6 @@ async fn main() -> Result<()> {
         options.network.unwrap_or_default(),
         swarm.clone(),
         storage,
-        connectors,
         http_api_listener,
     ));
     tokio::spawn(make_network_api_worker(swarm));
@@ -273,11 +250,9 @@ async fn make_http_api_worker(
     network: comit::Network,
     swarm: Swarm,
     storage: Storage,
-    connectors: Connectors,
     incoming_requests: tokio::net::TcpListener,
 ) {
-    let routes =
-        http_api::create_routes(swarm, storage, connectors, &settings, bitcoin_fees, network);
+    let routes = http_api::create_routes(swarm, storage, &settings, bitcoin_fees, network);
 
     match incoming_requests.local_addr() {
         Ok(socket) => {
@@ -352,7 +327,7 @@ async fn execute_subcommand(
                     role: Role::Bob,
                     ..
                 } => {
-                    let swap: Swap<hbit::Params, herc20::Params> = storage.load(swap_id).await?;
+                    let swap: Swap<comit::swap::hbit::Params, herc20::Params> = storage.load(swap_id).await?;
 
                     swap.alpha
                 }
@@ -362,7 +337,7 @@ async fn execute_subcommand(
                     role: Role::Alice,
                     ..
                 } => {
-                    let swap: Swap<herc20::Params, hbit::Params> = storage.load(swap_id).await?;
+                    let swap: Swap<herc20::Params, comit::swap::hbit::Params> = storage.load(swap_id).await?;
 
                     swap.beta
                 }
@@ -371,14 +346,11 @@ async fn execute_subcommand(
                 }
             };
 
-            let transaction = hbit_params.build_redeem_action(
+            let transaction = hbit_params.shared.build_redeem_action(
                 &*SECP,
-                hbit_params.asset,
+                hbit_params.shared.asset,
                 outpoint,
-                storage
-                    .seed
-                    .derive_swap_seed(swap_id)
-                    .derive_transient_redeem_identity(),
+                hbit_params.transient_sk,
                 address,
                 secret,
                 bitcoin_fees.get_per_vbyte_rate().await?,
@@ -405,7 +377,7 @@ async fn execute_subcommand(
                     role: Role::Bob,
                     ..
                 } => {
-                    let swap: Swap<hbit::Params, herc20::Params> = storage.load(swap_id).await?;
+                    let swap: Swap<comit::swap::hbit::Params, herc20::Params> = storage.load(swap_id).await?;
 
                     swap.alpha
                 }
@@ -415,7 +387,7 @@ async fn execute_subcommand(
                     role: Role::Alice,
                     ..
                 } => {
-                    let swap: Swap<herc20::Params, hbit::Params> = storage.load(swap_id).await?;
+                    let swap: Swap<herc20::Params, comit::swap::hbit::Params> = storage.load(swap_id).await?;
 
                     swap.beta
                 }
@@ -424,14 +396,11 @@ async fn execute_subcommand(
                 }
             };
 
-            let transaction = hbit_params.build_refund_action(
+            let transaction = hbit_params.shared.build_refund_action(
                 &*SECP,
-                hbit_params.asset,
+                hbit_params.shared.asset,
                 outpoint,
-                storage
-                    .seed
-                    .derive_swap_seed(swap_id)
-                    .derive_transient_redeem_identity(),
+                hbit_params.transient_sk,
                 address,
                 bitcoin_fees.get_per_vbyte_rate().await?,
             )?;

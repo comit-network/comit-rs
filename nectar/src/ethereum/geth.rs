@@ -7,7 +7,7 @@ use asset::Erc20Quantity;
 use clarity::Uint256;
 use comit::{
     asset::{self, ethereum::TryFromWei},
-    ethereum::{ChainId, Hash, Transaction, TransactionReceipt, UnformattedData},
+    ethereum::{ChainId, Hash, TransactionReceipt, UnformattedData},
 };
 use ethereum_types::U256;
 use num::{BigUint, Num};
@@ -54,23 +54,6 @@ impl Client {
             .context("failed to send raw transaction")?;
 
         Ok(tx_hash)
-    }
-
-    pub async fn get_transaction_by_hash(
-        &self,
-        transaction_hash: Hash,
-    ) -> anyhow::Result<Transaction> {
-        let transaction = self
-            .rpc_client
-            .send(jsonrpc::Request::new(
-                "eth_getTransactionByHash",
-                vec![jsonrpc::serialize(transaction_hash)?],
-                JSONRPC_VERSION.into(),
-            ))
-            .await
-            .context("failed to get transaction by hash")?;
-
-        Ok(transaction)
     }
 
     pub async fn get_transaction_receipt(
