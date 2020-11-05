@@ -147,7 +147,6 @@ async fn handle_action(
         .get(&id)
         .cloned()
         .ok_or(ActionNotFound)?;
-    let btc_per_vbyte = bitcoin_fees.get_per_vbyte_rate().await?;
 
-    ActionResponseBody::from_action(action, btc_per_vbyte)
+    ActionResponseBody::from_action(action, bitcoin_fees).await
 }

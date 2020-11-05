@@ -1,4 +1,4 @@
-use crate::{asset, ethereum::ChainId, identity};
+use crate::{asset, bitcoin_fees::BitcoinFees, ethereum::ChainId, identity};
 use anyhow::Result;
 use comit::{
     ethereum::UnformattedData,
@@ -96,7 +96,10 @@ impl From<comit::Never> for ActionResponseBody {
 }
 
 impl ActionResponseBody {
-    pub fn from_action(action: comit::swap::Action, vbyte_rate: asset::Bitcoin) -> Result<Self> {
+    pub async fn from_action(
+        action: comit::swap::Action,
+        bitcoin_fees: BitcoinFees,
+    ) -> Result<Self> {
         Ok(match action {
             Action::Herc20Deploy(inner) => inner.into(),
             Action::Herc20Fund(inner) => inner.into(),
@@ -104,7 +107,9 @@ impl ActionResponseBody {
             Action::HbitFund(inner) => inner.into(),
             Action::HbitRedeem(inner, _) => {
                 let network = inner.network;
-                let transaction = inner.sign(&crate::SECP, vbyte_rate)?;
+                let rate = bitcoin_fees.get_per_vbyte_rate().await?;
+
+                let transaction = inner.sign(&crate::SECP, rate)?;
                 Self::BitcoinBroadcastSignedTransaction {
                     hex: hex::encode(bitcoin::consensus::serialize(&transaction)),
                     network,
