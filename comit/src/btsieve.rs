@@ -195,6 +195,7 @@ mod tests {
     use super::*;
     use futures::{future, Stream, TryStreamExt};
     use genawaiter::GeneratorState;
+    use std::{collections::hash_map::RandomState, iter::FromIterator};
     use tokio::{
         sync::Mutex,
         time::{delay_for, Delay},
@@ -227,6 +228,29 @@ mod tests {
             .expect("block processing to not fail");
 
         println!("{:?}", processed_blocks);
+    }
+
+    #[tokio::test]
+    async fn every_block_is_yieled_at_most_once() {
+        // for this test, we don't need to emulate mainnet conditions
+        let mining_speed = Duration::from_millis(10);
+
+        let blocks = make_blockchain(100, mining_speed);
+        let start_of_swap = blocks[20].timestamp;
+        let connector = FakeConnector::new(blocks, 50, Duration::from_secs(0), mining_speed);
+
+        let gen = fetch_blocks_since(&connector, start_of_swap, ZERO_POLL_INTERVAL);
+        let yielded_blocks = fallible_generator_to_try_stream(gen)
+            .map_ok(|b| b.number)
+            .try_take_while(|n| future::ready(Ok(*n != 65)))
+            .try_collect::<Vec<_>>()
+            .await
+            .expect("block processing to not fail");
+
+        let number_of_yielded_blocks = yielded_blocks.len();
+        let unique_blocks = HashSet::<_, RandomState>::from_iter(yielded_blocks);
+
+        assert_eq!(number_of_yielded_blocks, unique_blocks.len())
     }
 
     fn fallible_generator_to_try_stream<I, E, F: Future<Output = Result<Never, E>>>(
