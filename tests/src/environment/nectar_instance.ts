@@ -5,7 +5,7 @@ import waitForLogMessage from "./wait_for_log_message";
 import { Logger } from "log4js";
 import path from "path";
 import { crashListener } from "./crash_listener";
-import { openAsync, execAsync } from "./async_fs";
+import { execAsync, openAsync } from "./async_fs";
 import { NectarConfig } from "./nectar_config";
 import { sleep } from "../utils";
 import { parseFixed } from "@ethersproject/bignumber";
@@ -17,7 +17,7 @@ export class NectarInstance {
         private readonly cargoTargetDirectory: string,
         private readonly logFile: string,
         private readonly logger: Logger,
-        private readonly _config: NectarConfig
+        private readonly _config: NectarConfig,
     ) {}
 
     public get config() {
@@ -31,14 +31,14 @@ export class NectarInstance {
 
         const configFile = await tempWrite(
             stringify((this._config as unknown) as JsonMap),
-            "config.toml"
+            "config.toml",
         );
 
         const { stdout } = await execAsync(
             `${bin} --config=${configFile} --network=dev deposit`,
             {
                 encoding: "utf-8",
-            }
+            },
         );
 
         return parseDepositOutput(stdout);
@@ -51,14 +51,14 @@ export class NectarInstance {
 
         const configFile = await tempWrite(
             stringify((this._config as unknown) as JsonMap),
-            "config.toml"
+            "config.toml",
         );
 
         const { stdout } = await execAsync(
             `${bin} --config=${configFile} --network=dev balance`,
             {
                 encoding: "utf-8",
-            }
+            },
         );
 
         return parseBalanceOutput(stdout);
@@ -76,7 +76,7 @@ export class NectarInstance {
 
         const configFile = await tempWrite(
             stringify((this._config as unknown) as JsonMap),
-            "config.toml"
+            "config.toml",
         );
 
         const logFile = await openAsync(this.logFile, "w");
@@ -90,17 +90,17 @@ export class NectarInstance {
                     logFile, // stdout
                     logFile, // stderr
                 ],
-            }
+            },
         );
 
         this.process.on(
             "exit",
-            crashListener(this.process.pid, "nectar", this.logFile)
+            crashListener(this.process.pid, "nectar", this.logFile),
         );
 
         const line = await waitForLogMessage(
             this.logFile,
-            "Initialized swarm with identity"
+            "Initialized swarm with identity",
         );
 
         // Nectar doesn't have an API like cnd does, so we extract the PeerId from the log!
@@ -121,7 +121,7 @@ export class NectarInstance {
         }
 
         this.logger.debug(
-            "Path to `nectar` has not been provided, building from scratch"
+            "Path to `nectar` has not been provided, building from scratch",
         );
 
         await execAsync("cargo build -p nectar");
@@ -148,7 +148,7 @@ interface DepositAddresses {
 
 export function parseDepositOutput(output: string): DepositAddresses {
     const match = output.match(
-        /Bitcoin: (bcrt1[a-z0-9]+)\sDai\/Ether: (0x[a-z0-9]+)/
+        /Bitcoin: (bcrt1[a-z0-9]+)\sDai\/Ether: (0x[a-z0-9]+)/,
     );
     if (!match) {
         throw new Error("Failed to extract addresses from output");
@@ -168,7 +168,7 @@ export interface Balances {
 
 export function parseBalanceOutput(output: string): Balances {
     const match = output.match(
-        /Bitcoin: ([0-9.]+) BTC\sDai: ([0-9.]+) DAI\sEther: ([0-9.]+) ETH/
+        /Bitcoin: ([0-9.]+) BTC\sDai: ([0-9.]+) DAI\sEther: ([0-9.]+) ETH/,
     );
     if (!match) {
         throw new Error("Failed to extract addresses from output");

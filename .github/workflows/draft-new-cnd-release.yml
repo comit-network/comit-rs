@@ -45,6 +45,9 @@ jobs:
       - name: Commit changelog and manifest files
         id: make-commit
         run: |
+          curl -fsSL https://dprint.dev/install.sh | sh
+          dprint fmt
+
           git add cnd/CHANGELOG.md cnd/Cargo.toml Cargo.lock
           git commit --message "Prepare release cnd ${{ github.event.inputs.version }}"
 

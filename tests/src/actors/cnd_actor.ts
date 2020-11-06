@@ -12,13 +12,7 @@ import {
 import { Logger } from "log4js";
 import { CndInstance } from "../environment/cnd_instance";
 import { sleep } from "../utils";
-import {
-    DumpState,
-    GetListenAddress,
-    GetPeerId,
-    Role,
-    Stoppable,
-} from "./index";
+import { DumpState, GetListenAddress, GetPeerId, Role, Stoppable } from "./index";
 import { Wallets } from "../wallets";
 import pTimeout from "p-timeout";
 import { AxiosResponse } from "axios";
@@ -26,11 +20,7 @@ import CndClient from "../cnd_client";
 import { Swap } from "../swap";
 import { Entity } from "../cnd_client/siren";
 import { HarnessGlobal } from "../environment";
-import {
-    BalanceAsserter,
-    Erc20BalanceAsserter,
-    OnChainBitcoinBalanceAsserter,
-} from "./balance_asserter";
+import { BalanceAsserter, Erc20BalanceAsserter, OnChainBitcoinBalanceAsserter } from "./balance_asserter";
 import { parseFixed } from "@ethersproject/bignumber";
 
 declare var global: HarnessGlobal;
@@ -40,8 +30,7 @@ declare var global: HarnessGlobal;
  *
  * Although in reality instance of cnd can handle multiple swaps in different roles at the same time, the test framework limits an instance to one specific role.
  */
-export class CndActor
-    implements Stoppable, DumpState, GetListenAddress, GetPeerId {
+export class CndActor implements Stoppable, DumpState, GetListenAddress, GetPeerId {
     readonly cnd: CndClient;
     public swap: Swap;
 
@@ -53,13 +42,13 @@ export class CndActor
         public readonly logger: Logger,
         public readonly cndInstance: CndInstance,
         public readonly wallets: Wallets,
-        public readonly role: Role
+        public readonly role: Role,
     ) {
         logger.info(
             "Created new actor in role",
             role,
             "with config",
-            cndInstance.config
+            cndInstance.config,
         );
         const socket = cndInstance.config.http_api.socket;
         this.cnd = new CndClient(`http://${socket}`);
@@ -89,14 +78,14 @@ export class CndActor
             "Successfully connected to",
             otherPeerId,
             "on",
-            listenAddress
+            listenAddress,
         );
     }
 
     public async makeBtcDaiOrder(
         position: Position,
         quantity: string,
-        price: string
+        price: string,
     ): Promise<string> {
         const sats = BigInt(parseFixed(quantity, 8).toString());
         const weiPerBtc = BigInt(parseFixed(price, 18).toString());
@@ -112,23 +101,23 @@ export class CndActor
                         this.alphaBalance = await Erc20BalanceAsserter.newInstance(
                             this.wallets.ethereum,
                             dai,
-                            global.tokenContract
+                            global.tokenContract,
                         );
                         this.betaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
                             this.wallets.bitcoin,
-                            sats
+                            sats,
                         );
                         break;
                     }
                     case "Bob": {
                         this.alphaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
                             this.wallets.bitcoin,
-                            sats
+                            sats,
                         );
                         this.betaBalance = await Erc20BalanceAsserter.newInstance(
                             this.wallets.ethereum,
                             dai,
-                            global.tokenContract
+                            global.tokenContract,
                         );
                         break;
                     }
@@ -140,12 +129,12 @@ export class CndActor
                     case "Alice": {
                         this.alphaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
                             this.wallets.bitcoin,
-                            sats
+                            sats,
                         );
                         this.betaBalance = await Erc20BalanceAsserter.newInstance(
                             this.wallets.ethereum,
                             dai,
-                            global.tokenContract
+                            global.tokenContract,
                         );
                         break;
                     }
@@ -153,11 +142,11 @@ export class CndActor
                         this.alphaBalance = await Erc20BalanceAsserter.newInstance(
                             this.wallets.ethereum,
                             dai,
-                            global.tokenContract
+                            global.tokenContract,
                         );
                         this.betaBalance = await OnChainBitcoinBalanceAsserter.newInstance(
                             this.wallets.bitcoin,
-                            sats
+                            sats,
                         );
                         break;
                     }
@@ -200,10 +189,10 @@ export class CndActor
 
     public async executeSirenAction<T>(
         entity: Entity,
-        actionName: string
+        actionName: string,
     ): Promise<AxiosResponse<T>> {
         const action = entity.actions.find(
-            (action) => action.name === actionName
+            (action) => action.name === actionName,
         );
 
         if (!action) {
@@ -220,7 +209,7 @@ export class CndActor
 
     public async pollCndUntil<T>(
         location: string,
-        predicate: (body: T) => boolean
+        predicate: (body: T) => boolean,
     ): Promise<T> {
         const poller = async () => {
             let response = await this.cnd.fetch<T>(location);
@@ -237,8 +226,8 @@ export class CndActor
             poller(),
             10_000,
             new Error(
-                `response from ${location} did not satisfy predicate after 10 seconds`
-            )
+                `response from ${location} did not satisfy predicate after 10 seconds`,
+            ),
         );
     }
 
@@ -261,24 +250,24 @@ export class CndActor
                 }
             })(),
             20 * 1000,
-            `action '${expectedActionName}' not found`
+            `action '${expectedActionName}' not found`,
         );
 
         this.logger.debug(
             "%s done on swap %s in %s",
             action.name,
             this.swap.self,
-            transaction
+            transaction,
         );
 
         const swapProperties = await this.getSwapResponse().then(
-            (e) => e.properties
+            (e) => e.properties,
         );
         const event = nextExpectedEvent(
             swapProperties.role,
             expectedActionName,
             swapProperties.alpha.protocol,
-            swapProperties.beta.protocol
+            swapProperties.beta.protocol,
         );
 
         if (event === null) {
@@ -302,7 +291,7 @@ export class CndActor
                 }
             })(),
             30_000,
-            `event '${event}' expected but never found`
+            `event '${event}' expected but never found`,
         );
     }
 
@@ -348,7 +337,7 @@ export class CndActor
 
     public async assertOrderClosed() {
         const order = await this.cnd.fetch<OrderEntity>(
-            this.mostRecentOrderHref
+            this.mostRecentOrderHref,
         );
 
         expect(order.data.properties.state).toMatchObject({
@@ -397,7 +386,7 @@ export class CndActor
     public async waitForSwap(): Promise<void> {
         const response = await this.pollCndUntil<Entity>(
             "/swaps",
-            (body) => body.entities.length > 0
+            (body) => body.entities.length > 0,
         );
 
         this.swap = new Swap(
@@ -406,7 +395,7 @@ export class CndActor
             new Wallets({
                 ethereum: this.wallets.ethereum,
                 bitcoin: this.wallets.bitcoin,
-            })
+            }),
         );
     }
 
@@ -420,8 +409,8 @@ export class CndActor
             const betaRedeemed = `${body.properties.beta.protocol}_redeemed` as RedeemEventKind;
 
             return (
-                eventNames.includes(alphaRedeemed) &&
-                eventNames.includes(betaRedeemed)
+                eventNames.includes(alphaRedeemed)
+                && eventNames.includes(betaRedeemed)
             );
         });
     }
@@ -440,8 +429,8 @@ export class CndActor
         await this.pollCndUntil<Peers>(
             "/peers",
             (peers) =>
-                peers.peers.findIndex((candidate) => candidate.id === peer) !==
-                -1
+                peers.peers.findIndex((candidate) => candidate.id === peer)
+                    !== -1,
         );
     }
 }
@@ -453,7 +442,7 @@ function nextExpectedEvent(
     role: "Alice" | "Bob",
     action: ActionKind,
     alphaProtocol: "hbit" | "herc20",
-    betaProtocol: "hbit" | "herc20"
+    betaProtocol: "hbit" | "herc20",
 ): SwapEventKind {
     switch (action) {
         // "deploy" can only mean we are waiting for "herc20_deployed"
@@ -462,6 +451,7 @@ function nextExpectedEvent(
         }
 
         // Alice is always funding and refunding on the alpha ledger, likewise Bob on the beta ledger
+
         case "fund":
         case "refund": {
             switch (role) {
@@ -475,7 +465,7 @@ function nextExpectedEvent(
                 }
                 default:
                     throw new Error(
-                        `Who is ${role}? We expected either Alice or Bob!`
+                        `Who is ${role}? We expected either Alice or Bob!`,
                     );
             }
         }
@@ -492,7 +482,7 @@ function nextExpectedEvent(
                 }
                 default:
                     throw new Error(
-                        `Who is ${role}? We expected either Alice or Bob!`
+                        `Who is ${role}? We expected either Alice or Bob!`,
                     );
             }
         }

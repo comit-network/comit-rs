@@ -14,11 +14,11 @@ export interface BitcoinWallet {
     sendToAddress(
         address: string,
         satoshis: number,
-        network: Network
+        network: Network,
     ): Promise<string>;
     broadcastTransaction(
         transactionHex: string,
-        network: Network
+        network: Network,
     ): Promise<string>;
 
     getFee(): string;
@@ -43,7 +43,7 @@ export class BitcoinFaucet {
     public async mint(
         satoshis: bigint,
         address: string,
-        getBalance?: () => Promise<bigint>
+        getBalance?: () => Promise<bigint>,
     ): Promise<void> {
         const startingBalance = getBalance ? await getBalance() : 0n;
 
@@ -51,7 +51,7 @@ export class BitcoinFaucet {
 
         if (blockHeight < 101) {
             throw new Error(
-                "unable to mint bitcoin, coinbase transactions are not yet spendable"
+                "unable to mint bitcoin, coinbase transactions are not yet spendable",
             );
         }
 
@@ -63,7 +63,7 @@ export class BitcoinFaucet {
         if (getBalance) {
             await waitUntilBalanceReaches(
                 getBalance,
-                startingBalance + satoshis
+                startingBalance + satoshis,
             );
         }
     }
@@ -71,13 +71,13 @@ export class BitcoinFaucet {
 
 async function waitUntilBalanceReaches(
     getBalance: () => Promise<bigint>,
-    expectedBalance: bigint
+    expectedBalance: bigint,
 ): Promise<void> {
     let currentBalance = await getBalance();
 
     const timeout = 10;
     const error = new Error(
-        `Balance did not reach ${expectedBalance} after ${timeout} seconds, starting balance was ${currentBalance}`
+        `Balance did not reach ${expectedBalance} after ${timeout} seconds, starting balance was ${currentBalance}`,
     );
     Error.captureStackTrace(error);
 
@@ -112,7 +112,7 @@ export class BitcoindWallet implements BitcoinWallet {
         const walletClient = newAxiosClient(
             `${config.rpcUrl}/wallet/${walletName}`,
             auth,
-            logger
+            logger,
         );
         const faucet = new BitcoinFaucet(config, logger);
 
@@ -123,13 +123,11 @@ export class BitcoindWallet implements BitcoinWallet {
 
     constructor(
         private readonly faucet: BitcoinFaucet,
-        private readonly rpcClient: AxiosInstance
+        private readonly rpcClient: AxiosInstance,
     ) {}
 
     public async mint(satoshis: bigint): Promise<void> {
-        await this.faucet.mint(satoshis, await this.getAddress(), async () =>
-            this.getBalance()
-        );
+        await this.faucet.mint(satoshis, await this.getAddress(), async () => this.getBalance());
     }
 
     public async getBalance(): Promise<bigint> {
@@ -155,7 +153,7 @@ export class BitcoindWallet implements BitcoinWallet {
     public async sendToAddress(
         address: string,
         satoshis: number,
-        network: Network
+        network: Network,
     ): Promise<string> {
         await this.assertNetwork(network);
 
@@ -172,7 +170,7 @@ export class BitcoindWallet implements BitcoinWallet {
 
     public async broadcastTransaction(
         transactionHex: string,
-        network: Network
+        network: Network,
     ): Promise<string> {
         await this.assertNetwork(network);
 
@@ -199,7 +197,7 @@ export class BitcoindWallet implements BitcoinWallet {
 
         if (res.data.result.chain !== network) {
             return Promise.reject(
-                `This wallet is only connected to the ${network} network and cannot perform actions on the ${network} network`
+                `This wallet is only connected to the ${network} network and cannot perform actions on the ${network} network`,
             );
         }
     }
@@ -208,7 +206,7 @@ export class BitcoindWallet implements BitcoinWallet {
 function newAxiosClient(
     baseUrl: string,
     auth: { password: string; username: string },
-    logger: Logger
+    logger: Logger,
 ) {
     const client = axios.create({
         baseURL: baseUrl,
@@ -217,7 +215,7 @@ function newAxiosClient(
     });
     client.interceptors.response.use(
         (response) => response,
-        (error) => jsonRpcResponseInterceptor(logger, error)
+        (error) => jsonRpcResponseInterceptor(logger, error),
     );
 
     return client;
@@ -227,7 +225,7 @@ export type Network = "main" | "test" | "regtest";
 
 async function jsonRpcResponseInterceptor(
     logger: Logger,
-    error: AxiosError
+    error: AxiosError,
 ): Promise<AxiosError> {
     const response = error.response;
 
@@ -245,9 +243,7 @@ async function jsonRpcResponseInterceptor(
 
     return Promise.reject(
         new Error(
-            `JSON-RPC request '${
-                JSON.parse(error.config.data).method
-            }' failed with '${body.error.message}'`
-        )
+            `JSON-RPC request '${JSON.parse(error.config.data).method}' failed with '${body.error.message}'`,
+        ),
     );
 }

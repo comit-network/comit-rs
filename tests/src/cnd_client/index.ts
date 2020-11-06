@@ -1,7 +1,5 @@
 import axios, { AxiosInstance, AxiosPromise, AxiosResponse } from "axios";
-import actionToHttpRequest, {
-    FieldValueResolverFn,
-} from "../action_to_http_request";
+import actionToHttpRequest, { FieldValueResolverFn } from "../action_to_http_request";
 import { problemResponseInterceptor } from "../axios_rfc7807_middleware";
 import { Action } from "./siren";
 import { CreateBtcDaiOrderPayload, GetInfoResponse } from "./payload";
@@ -18,7 +16,7 @@ export default class CndClient {
         });
         this.client.interceptors.response.use(
             (response) => response,
-            problemResponseInterceptor
+            problemResponseInterceptor,
         );
     }
 
@@ -77,7 +75,7 @@ export default class CndClient {
      */
     public async executeSirenAction(
         action: Action,
-        resolver?: FieldValueResolverFn
+        resolver?: FieldValueResolverFn,
     ): Promise<AxiosResponse> {
         const request = await actionToHttpRequest(action, resolver);
 
@@ -87,7 +85,7 @@ export default class CndClient {
     public async createBtcDaiOrder(order: CreateBtcDaiOrderPayload) {
         const response = await this.client.post(
             "/orders/BTC-DAI",
-            JSON.stringify(order, bigIntSerializer)
+            JSON.stringify(order, bigIntSerializer),
         );
 
         return response.headers.location;

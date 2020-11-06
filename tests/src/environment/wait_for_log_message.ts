@@ -9,7 +9,7 @@ import { waitUntilFileExists } from "./wait_until_file_exists";
  */
 export default async function waitForLogMessage(
     logFile: string,
-    message: string
+    message: string,
 ): Promise<string> {
     await pTimeout(waitUntilFileExists(logFile), 10_000);
 
@@ -30,7 +30,7 @@ export default async function waitForLogMessage(
     const line = await pTimeout(
         findTextInLog(tail, message),
         60000,
-        `failed to find message '${message}' in log file '${logFile}'`
+        `failed to find message '${message}' in log file '${logFile}'`,
     );
     tail.unwatch();
 

@@ -1,11 +1,11 @@
 import * as tmp from "tmp";
 import getPort from "get-port";
-import { BitcoinNode, EthereumNode, Environment } from "./index";
+import { BitcoinNode, Environment, EthereumNode } from "./index";
 import { merge } from "lodash";
 
 export async function newCndConfig(
     env: Environment,
-    overrides: Partial<CndConfig>
+    overrides: Partial<CndConfig>,
 ): Promise<CndConfig> {
     const httpApiPort = await getPort();
     const comitPort = await getPort();

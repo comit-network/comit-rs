@@ -30,7 +30,7 @@ it(
         await bob.assertBalancesAfterSwap();
         await bob.assertOrderClosed();
         await bob.assertSwapInactive();
-    })
+    }),
 );
 
 it(
@@ -57,5 +57,5 @@ it(
         await bob.assertBalancesAfterSwap();
         await bob.assertOrderClosed();
         await bob.assertSwapInactive();
-    })
+    }),
 );

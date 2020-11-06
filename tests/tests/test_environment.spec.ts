@@ -6,24 +6,23 @@ describe("extractCndConfigOverrides", () => {
         expect(
             extractCndConfigOverrides({
                 cndConfigOverride: null,
-            })
+            }),
         ).toStrictEqual({});
         expect(
             extractCndConfigOverrides({
                 cndConfigOverride: "",
-            })
+            }),
         ).toStrictEqual({});
         expect(
             extractCndConfigOverrides({
                 cndConfigOverride: ["", "", ""],
-            })
+            }),
         ).toStrictEqual({});
     });
 
     test("given overrides, sets nested key", () => {
         const overrides = {
-            cndConfigOverride:
-                "ethereum.tokens.dai = 0x0000000000000000000000000000000000000000",
+            cndConfigOverride: "ethereum.tokens.dai = 0x0000000000000000000000000000000000000000",
         };
 
         const config = extractCndConfigOverrides(overrides);

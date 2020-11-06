@@ -5,13 +5,7 @@
 /*
  * The payload for POST requests to create a swap on the cnd REST API.
  */
-import {
-    Action,
-    EmbeddedLinkSubEntity,
-    EmbeddedRepresentationSubEntity,
-    Entity,
-    Link,
-} from "./siren";
+import { Action, EmbeddedLinkSubEntity, EmbeddedRepresentationSubEntity, Entity, Link } from "./siren";
 
 export interface Peer {
     peer_id: string;

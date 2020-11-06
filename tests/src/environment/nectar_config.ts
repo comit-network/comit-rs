@@ -1,4 +1,4 @@
-import { BitcoinNode, EthereumNode, Environment } from "./index";
+import { BitcoinNode, Environment, EthereumNode } from "./index";
 import getPort from "get-port";
 import * as tmp from "tmp";
 import URI from "urijs";
@@ -24,7 +24,7 @@ export async function newNectarConfig(env: Environment): Promise<NectarConfig> {
 }
 
 function makeLedgerConfig(
-    env: Environment
+    env: Environment,
 ): Pick<NectarConfig, "bitcoin" | "ethereum"> {
     const ledgerConfig: { bitcoin?: Bitcoin; ethereum?: Ethereum } = {};
 

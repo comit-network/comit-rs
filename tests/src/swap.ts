@@ -11,7 +11,7 @@ export class WalletError extends Error {
     constructor(
         public readonly attemptedAction: string,
         public readonly source: Error,
-        public readonly callParams: any
+        public readonly callParams: any,
     ) {
         super(source.message);
     }
@@ -28,7 +28,7 @@ export class Swap {
     constructor(
         private readonly cnd: CndClient,
         readonly self: string,
-        wallets: AllWallets
+        wallets: AllWallets,
     ) {
         this.wallets = new Wallets(wallets);
     }
@@ -49,7 +49,7 @@ export class Swap {
 
         if (actions.length !== 1) {
             throw new Error(
-                "Several actions returned by cnd, be sure to use cnd version 0.8.0 or above."
+                "Several actions returned by cnd, be sure to use cnd version 0.8.0 or above.",
             );
         }
 
@@ -72,7 +72,7 @@ export class Swap {
                 try {
                     return await this.wallets.bitcoin.broadcastTransaction(
                         hex,
-                        network
+                        network,
                     );
                 } catch (error) {
                     throw new WalletError(ledgerAction.type, error, {
@@ -89,7 +89,7 @@ export class Swap {
                     return await this.wallets.bitcoin.sendToAddress(
                         to,
                         sats,
-                        network
+                        network,
                     );
                 } catch (error) {
                     throw new WalletError(ledgerAction.type, error, {
@@ -112,7 +112,7 @@ export class Swap {
                         data,
                         contract_address,
                         gas_limit,
-                        chain_id
+                        chain_id,
                     );
                     return transactionReceipt.transactionHash;
                 } catch (error) {
@@ -137,7 +137,7 @@ export class Swap {
                         data,
                         value,
                         gas_limit,
-                        chain_id
+                        chain_id,
                     );
                     return transactionId.transactionHash;
                 } catch (error) {
@@ -165,7 +165,7 @@ export class Swap {
     }
 
     private async fieldValueResolver(
-        field: Field
+        field: Field,
     ): Promise<string | undefined> {
         const classes: string[] = field.class;
 

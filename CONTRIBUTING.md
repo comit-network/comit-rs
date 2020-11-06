@@ -3,10 +3,10 @@
 Thank you for your interest in contributing to COMIT! Contributions are welcome in many forms, and we appreciate all of them.
 This document is a bit long, please find the link to the sections below:
 
-* [Bug Reports](#bug-reports)
-  * [Reporting a Security Issue](#reporting-a-security-issue)
-* [Feature Requests](#feature-requests)
-* [Pull Requests](#pull-requests)
+- [Bug Reports](#bug-reports)
+  - [Reporting a Security Issue](#reporting-a-security-issue)
+- [Feature Requests](#feature-requests)
+- [Pull Requests](#pull-requests)
 
 ## Bug Reports
 
@@ -24,7 +24,7 @@ Please try to provide as much information as possible by following the GitHub te
 
 If you think that you found a security vulnerability in the COMIT protocol, implementation or any of the smart contracts used, please send an encrypted email to [security@coblox.tech](mailto:security@coblox.tech).
 
-Please use PGP (Pretty Good Privacy) to encrypt the report. 
+Please use PGP (Pretty Good Privacy) to encrypt the report.
 The public key can be found on [coblox.tech](https://coblox.tech/security_coblox_tech_pubkey.gpg.asc), [SKS Keyservers](http://hkps.pool.sks-keyservers.net/pks/lookup?op=get&search=0xA3FE95C45DC90212) or at the end of this file.
 
 Thank you for taking the time to make COMIT safer!
@@ -32,7 +32,7 @@ Thank you for taking the time to make COMIT safer!
 ## Feature Requests
 
 To request a change on the way COMIT works, please head over to the [RFCs repository](https://github.com/comit-network/rfc) and checkout the [RFC contributing guidelines](https://github.com/comit-network/rfc/blob/master/CONTRIBUTING.md).
- 
+
 For changes related to our implementation, please [create a feature request](/issues/new/choose) and follow the GitHub template.
 
 ## Pull Requests
@@ -60,6 +60,7 @@ Finally, please update the changelog of the crate you are updating.
 You can find the CHANGELOG.md file within the respective crate directory.
 
 ## Public Key
+
 Public Key for [security@coblox.tech](mailto:security@coblox.tech)
 
 ```

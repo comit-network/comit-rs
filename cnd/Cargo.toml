@@ -1,7 +1,7 @@
 [package]
-authors = ["CoBloX <hello@coblox.tech>"]
 name = "cnd"
 version = "0.9.0"
+authors = [ "CoBloX <hello@coblox.tech>" ]
 edition = "2018"
 description = "Reference implementation of a COMIT network daemon."
 
@@ -9,15 +9,15 @@ description = "Reference implementation of a COMIT network daemon."
 anyhow = "1"
 async-trait = "0.1"
 atty = "0.2"
-backoff = { version = "0.2.1", features = ["tokio"] }
+backoff = { version = "0.2.1", features = [ "tokio" ] }
 base64 = "0.13.0"
-bitcoin = { version = "0.25", features = ["use-serde"] }
+bitcoin = { version = "0.25", features = [ "use-serde" ] }
 comit = { path = "../comit" }
-config = { version = "0.10", features = ["toml"], default-features = false }
+config = { version = "0.10", features = [ "toml" ], default-features = false }
 conquer-once = "0.2.1"
 data-encoding = "2.3"
 derivative = "2"
-diesel = { version = "1.4", features = ["sqlite"] }
+diesel = { version = "1.4", features = [ "sqlite" ] }
 diesel_migrations = "1.4.0"
 directories-next = "2"
 fs2 = "0.4.3"
@@ -25,17 +25,17 @@ futures = { version = "0.3", default-features = false }
 futures-timer = "3.0"
 get_if_addrs = "0.5"
 hex = "0.4"
-http-api-problem = { version = "0.15", features = ["with_warp"] }
+http-api-problem = { version = "0.15", features = [ "with_warp" ] }
 ipnet = "2.3"
-libp2p = { version = "0.29", default-features = false, features = ["tcp-tokio", "yamux", "mplex", "dns", "noise"] }
+libp2p = { version = "0.29", default-features = false, features = [ "tcp-tokio", "yamux", "mplex", "dns", "noise" ] }
 libp2p-tokio-socks5 = "0.4"
-libsqlite3-sys = { version = ">=0.8.0, <0.13.0", features = ["bundled"] }
-log = { version = "0.4", features = ["serde"] }
+libsqlite3-sys = { version = ">=0.8.0, <0.13.0", features = [ "bundled" ] }
+log = { version = "0.4", features = [ "serde" ] }
 num = "0.3"
 pem = "0.8"
 rand = "0.7"
-reqwest = { version = "0.10", default-features = false, features = ["json", "native-tls-vendored"] }
-serde = { version = "1", features = ["derive"] }
+reqwest = { version = "0.10", default-features = false, features = [ "json", "native-tls-vendored" ] }
+serde = { version = "1", features = [ "derive" ] }
 serde_derive = "1.0"
 serde_json = "1"
 serdebug = "1"
@@ -46,22 +46,22 @@ strum = "0.19"
 strum_macros = "0.19"
 thiserror = "1"
 time = "0.2.22"
-tokio = { version = "0.2", features = ["rt-threaded", "time", "macros", "sync"] }
+tokio = { version = "0.2", features = [ "rt-threaded", "time", "macros", "sync" ] }
 toml = "0.5"
-tracing = { version = "0.1", features = ["attributes"] }
+tracing = { version = "0.1", features = [ "attributes" ] }
 tracing-core = "0.1"
-tracing-futures = { version = "0.2", features = ["std-future", "futures-03"] }
+tracing-futures = { version = "0.2", features = [ "std-future", "futures-03" ] }
 tracing-log = "0.1"
-tracing-subscriber = { version = "0.2", default-features = false, features = ["fmt", "ansi", "env-filter"] }
-url = { version = "2", features = ["serde"] }
-uuid = { version = "0.8", features = ["serde", "v4"] }
+tracing-subscriber = { version = "0.2", default-features = false, features = [ "fmt", "ansi", "env-filter" ] }
+url = { version = "2", features = [ "serde" ] }
+uuid = { version = "0.8", features = [ "serde", "v4" ] }
 void = "1"
 warp = { version = "0.2", default-features = false }
 
 [dev-dependencies]
-bitcoin = { version = "0.25", features = ["rand"] }
+bitcoin = { version = "0.25", features = [ "rand" ] }
 bitcoincore-rpc = "0.12.0"
-comit = { path = "../comit", features = ["test"] }
+comit = { path = "../comit", features = [ "test" ] }
 proptest = "0.10.1"
 regex = "1.4"
 serde_urlencoded = "0.7"

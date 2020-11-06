@@ -35,10 +35,10 @@ export default class TestEnvironment extends NodeEnvironment {
 
         this.ledgers = extractLedgersToBeStarted(context.docblockPragmas);
         this.cndConfigOverrides = extractCndConfigOverrides(
-            context.docblockPragmas
+            context.docblockPragmas,
         );
         this.shouldStartFakeTreasuryService = extractFakeTreasuryService(
-            context.docblockPragmas
+            context.docblockPragmas,
         );
         assertNoUnhandledPargmas(context.docblockPragmas);
 
@@ -47,7 +47,7 @@ export default class TestEnvironment extends NodeEnvironment {
         this.nodeModulesBinDir = path.resolve(
             config.rootDir,
             "node_modules",
-            ".bin"
+            ".bin",
         );
         this.srcDir = path.resolve(config.rootDir, "src");
         this.testSuite = path.parse(context.testPath).name;
@@ -57,7 +57,7 @@ export default class TestEnvironment extends NodeEnvironment {
         await super.setup();
 
         const cargoTargetDir = await execAsync(
-            "cargo metadata --format-version=1 --no-deps"
+            "cargo metadata --format-version=1 --no-deps",
         )
             .then(({ stdout }) => JSON.parse(stdout))
             .then((metadata) => metadata.target_directory);
@@ -89,11 +89,10 @@ export default class TestEnvironment extends NodeEnvironment {
         const testLogDir = path.join(this.logDir, "tests", this.testSuite);
         await asyncFs.mkdir(testLogDir, { recursive: true });
 
-        this.global.getLogFile = (pathElements) =>
-            path.join(testLogDir, ...pathElements);
+        this.global.getLogFile = (pathElements) => path.join(testLogDir, ...pathElements);
         this.global.getLogger = (categories) => {
             return log4js.getLogger(
-                path.join("tests", this.testSuite, ...categories)
+                path.join("tests", this.testSuite, ...categories),
             );
         };
         this.logger = this.global.getLogger(["test_environment"]);
@@ -142,29 +141,29 @@ export default class TestEnvironment extends NodeEnvironment {
     private async startFakeTreasuryService() {
         if (this.shouldStartFakeTreasuryService) {
             const lockDir = await this.getLockDirectory(
-                "fake_treasury_service"
+                "fake_treasury_service",
             );
             const release = await lock(lockDir).catch(() =>
                 Promise.reject(
                     new Error(
-                        `Failed to acquire lock for starting FakeTreasuryService`
-                    )
+                        `Failed to acquire lock for starting FakeTreasuryService`,
+                    ),
                 )
             );
             const servicePidFile = path.join(
                 lockDir,
-                "fake_treasury_service.pid"
+                "fake_treasury_service.pid",
             );
 
             const tsNode = path.join(this.nodeModulesBinDir, "ts-node");
             const service = path.join(
                 this.srcDir,
                 "environment",
-                "fake_treasury_service.ts"
+                "fake_treasury_service.ts",
             );
 
             const dataDir = await this.global.getDataDir(
-                "fake_treasury_service"
+                "fake_treasury_service",
             );
             const instance = await FakeTreasuryServiceInstance.new(
                 tsNode,
@@ -172,14 +171,14 @@ export default class TestEnvironment extends NodeEnvironment {
                 9000,
                 servicePidFile,
                 path.join(dataDir, "service.log"),
-                this.logger
+                this.logger,
             );
             const config = await this.start(
                 lockDir,
                 instance,
                 async (instance) => ({
                     host: instance.host,
-                })
+                }),
             );
 
             this.global.environment.treasury = {
@@ -199,14 +198,14 @@ export default class TestEnvironment extends NodeEnvironment {
         const lockDir = await this.getLockDirectory("bitcoind");
         const release = await lock(lockDir).catch(() =>
             Promise.reject(
-                new Error(`Failed to acquire lock for starting bitcoind`)
+                new Error(`Failed to acquire lock for starting bitcoind`),
             )
         );
 
         const bitcoind = await BitcoindInstance.new(
             await this.global.getDataDir("bitcoind"),
             path.join(lockDir, "bitcoind.pid"),
-            this.logger
+            this.logger,
         );
         const config = await this.start(lockDir, bitcoind, async (bitcoind) => {
             const config = bitcoind.config;
@@ -236,7 +235,7 @@ export default class TestEnvironment extends NodeEnvironment {
             const minerProgram = path.join(
                 this.srcDir,
                 "environment",
-                "bitcoin_miner.ts"
+                "bitcoin_miner.ts",
             );
 
             await BitcoinMinerInstance.start(
@@ -244,7 +243,7 @@ export default class TestEnvironment extends NodeEnvironment {
                 minerProgram,
                 path.join(lockDir, "config.json"),
                 minerPidFile,
-                this.logger
+                this.logger,
             );
         }
 
@@ -262,14 +261,14 @@ export default class TestEnvironment extends NodeEnvironment {
         const lockDir = await this.getLockDirectory("geth");
         const release = await lock(lockDir).catch(() =>
             Promise.reject(
-                new Error(`Failed to acquire lock for starting geth`)
+                new Error(`Failed to acquire lock for starting geth`),
             )
         );
 
         const geth = await GethInstance.new(
             await this.global.getDataDir("geth"),
             path.join(lockDir, "geth.pid"),
-            this.logger
+            this.logger,
         );
         const config = await this.start(lockDir, geth, async (geth) => {
             const rpcUrl = geth.rpcUrl;
@@ -277,13 +276,13 @@ export default class TestEnvironment extends NodeEnvironment {
                 geth.devAccount,
                 this.logger,
                 rpcUrl,
-                geth.CHAIN_ID
+                geth.CHAIN_ID,
             );
             const erc20TokenContract = await faucet.deployErc20TokenContract();
 
             this.logger.info(
                 "ERC20 token contract deployed at",
-                erc20TokenContract
+                erc20TokenContract,
             );
 
             return {
@@ -303,7 +302,7 @@ export default class TestEnvironment extends NodeEnvironment {
     private async start<C, S extends Startable>(
         lockDir: string,
         instance: S,
-        makeConfig: (instance: S) => Promise<C>
+        makeConfig: (instance: S) => Promise<C>,
     ): Promise<C> {
         const configFile = path.join(lockDir, "config.json");
 
@@ -313,7 +312,7 @@ export default class TestEnvironment extends NodeEnvironment {
             await existsAsync(configFile);
 
             this.logger.info(
-                "Found config file, we'll be using that configuration instead of starting another instance"
+                "Found config file, we'll be using that configuration instead of starting another instance",
             );
 
             const config = await asyncFs.readFile(configFile, {
@@ -339,7 +338,7 @@ export default class TestEnvironment extends NodeEnvironment {
     }
 
     private async getLockDirectory(
-        process: "geth" | "bitcoind" | "fake_treasury_service"
+        process: "geth" | "bitcoind" | "fake_treasury_service",
     ): Promise<string> {
         const dir = path.join(this.locksDir, process);
 
@@ -352,7 +351,7 @@ export default class TestEnvironment extends NodeEnvironment {
 }
 
 function extractLedgersToBeStarted(
-    docblockPragmas: Record<string, string | string[]>
+    docblockPragmas: Record<string, string | string[]>,
 ): string[] {
     const ledgersToStart = docblockPragmas.ledger;
     delete docblockPragmas.ledger;
@@ -369,7 +368,7 @@ function extractLedgersToBeStarted(
 }
 
 export function extractCndConfigOverrides(
-    docblockPragmas: Record<string, string | string[]>
+    docblockPragmas: Record<string, string | string[]>,
 ): Partial<CndConfig> {
     let configOverrides = docblockPragmas.cndConfigOverride;
     delete docblockPragmas.cndConfigOverride;
@@ -394,7 +393,7 @@ export function extractCndConfigOverrides(
 }
 
 function extractFakeTreasuryService(
-    docblockPragmas: Record<string, string | string[]>
+    docblockPragmas: Record<string, string | string[]>,
 ): boolean {
     const fakeTreasuryService = docblockPragmas.fakeTreasuryService;
     delete docblockPragmas.fakeTreasuryService;
@@ -407,7 +406,7 @@ function extractFakeTreasuryService(
 }
 
 export function assertNoUnhandledPargmas(
-    docblockPragmas: Record<string, string | string[]>
+    docblockPragmas: Record<string, string | string[]>,
 ) {
     for (const [pragma] of Object.entries(docblockPragmas)) {
         throw new Error(`Unhandled pragma '${pragma}'! Typo?`);

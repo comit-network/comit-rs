@@ -30,22 +30,22 @@ export interface EthereumCallContractPayload {
 
 export type LedgerAction =
     | {
-          type: "bitcoin-send-amount-to-address";
-          payload: BitcoinSendAmountToAddressPayload;
-      }
+        type: "bitcoin-send-amount-to-address";
+        payload: BitcoinSendAmountToAddressPayload;
+    }
     | {
-          type: "bitcoin-broadcast-signed-transaction";
-          payload: BitcoinBroadcastSignedTransactionPayload;
-      }
+        type: "bitcoin-broadcast-signed-transaction";
+        payload: BitcoinBroadcastSignedTransactionPayload;
+    }
     | {
-          type: "ethereum-deploy-contract";
-          payload: EthereumDeployContractPayload;
-      }
+        type: "ethereum-deploy-contract";
+        payload: EthereumDeployContractPayload;
+    }
     | {
-          type: "ethereum-call-contract";
-          payload: EthereumCallContractPayload;
-      }
+        type: "ethereum-call-contract";
+        payload: EthereumCallContractPayload;
+    }
     | {
-          type: string;
-          payload: any;
-      };
+        type: string;
+        payload: any;
+    };

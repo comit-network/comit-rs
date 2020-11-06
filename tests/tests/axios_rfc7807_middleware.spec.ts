@@ -10,7 +10,7 @@ describe("problem message", () => {
         });
 
         expect(problem.message).toMatchInlineSnapshot(
-            `"Request failed with status code 400: Swap not supported. This combination of protocols is not supported. See https://comit.network/docs/errors/swap-not-supported for more information."`
+            `"Request failed with status code 400: Swap not supported. This combination of protocols is not supported. See https://comit.network/docs/errors/swap-not-supported for more information."`,
         );
     });
 
@@ -22,7 +22,7 @@ describe("problem message", () => {
         });
 
         expect(problem.message).toMatchInlineSnapshot(
-            `"Request failed with status code 400: Swap not supported. This combination of protocols is not supported."`
+            `"Request failed with status code 400: Swap not supported. This combination of protocols is not supported."`,
         );
     });
 
@@ -33,7 +33,7 @@ describe("problem message", () => {
         });
 
         expect(problem.message).toMatchInlineSnapshot(
-            `"Request failed: Swap not supported. This combination of protocols is not supported."`
+            `"Request failed: Swap not supported. This combination of protocols is not supported."`,
         );
     });
 
@@ -43,7 +43,7 @@ describe("problem message", () => {
         });
 
         expect(problem.message).toMatchInlineSnapshot(
-            `"Request failed: Swap not supported."`
+            `"Request failed: Swap not supported."`,
         );
     });
 });

@@ -1,7 +1,7 @@
 [package]
-authors = ["CoBloX <hello@coblox.tech>"]
 name = "comit"
 version = "0.1.0"
+authors = [ "CoBloX <hello@coblox.tech>" ]
 edition = "2018"
 description = "Core components of the COMIT protocol"
 
@@ -9,46 +9,44 @@ description = "Core components of the COMIT protocol"
 anyhow = "1"
 async-trait = "0.1"
 base64 = "0.13"
-bitcoin = { version = "0.25", features = ["rand", "use-serde"] }
+bitcoin = { version = "0.25", features = [ "rand", "use-serde" ] }
 blockchain_contracts = "0.4"
 byteorder = "1.3"
 conquer-once = "0.2"
 derivative = "2"
 ethbloom = "0.9"
 futures = { version = "0.3", default-features = false }
-genawaiter = { version = "0.99", default-features = false, features = ["futures03"] }
-hex = { version = "0.4", features = ["serde"] }
+genawaiter = { version = "0.99", default-features = false, features = [ "futures03" ] }
+hex = { version = "0.4", features = [ "serde" ] }
 levenshtein = "1"
-libp2p = { version = "0.29", default-features = false, features = ["gossipsub", "request-response"] }
+libp2p = { version = "0.29", default-features = false, features = [ "gossipsub", "request-response" ] }
 lru = "0.6"
 num = "0.3"
-primitive-types = { version = "0.7", features = ["serde"] }
+primitive-types = { version = "0.7", features = [ "serde" ] }
 quickcheck = { version = "0.9", optional = true }
 rand = "0.7"
-reqwest = { version = "0.10", default-features = false, features = ["json", "native-tls-vendored"] }
-serde = { version = "1", features = ["derive"] }
+reqwest = { version = "0.10", default-features = false, features = [ "json", "native-tls-vendored" ] }
+serde = { version = "1", features = [ "derive" ] }
 serde_derive = "1.0"
 serde_json = "1"
 serdebug = "1"
 strum = "0.19"
 strum_macros = "0.19"
-# In dependencies instead of dev-dependencies so it can be set as optional
-# Only used for test purposes
-testcontainers = { version = "0.10", optional = true }
+testcontainers = { version = "0.10", optional = true } # In dependencies instead of dev-dependencies so it can be set as optional
 thiserror = "1"
-time = { version = "0.2", features = ["serde"] }
-tokio = { version = "0.2", features = ["sync"] }
+time = { version = "0.2", features = [ "serde" ] }
+tokio = { version = "0.2", features = [ "sync" ] }
 tracing = "0.1.21"
 tracing-futures = { version = "0.2" }
-uuid = { version = "0.8", features = ["serde", "v4"] }
+uuid = { version = "0.8", features = [ "serde", "v4" ] }
 
 [dev-dependencies]
 bitcoincore-rpc = "0.12"
-libp2p = { version = "0.29", default-features = false, features = ["yamux", "noise"] }
+libp2p = { version = "0.29", default-features = false, features = [ "yamux", "noise" ] }
 proptest = "0.10"
 spectral = { version = "0.6", default-features = false }
-tokio = { version = "0.2", features = ["macros"] }
+tokio = { version = "0.2", features = [ "macros" ] }
 
 [features]
-default = []
-test = ["libp2p/yamux", "libp2p/noise"]
+default = [ ]
+test = [ "libp2p/yamux", "libp2p/noise" ]

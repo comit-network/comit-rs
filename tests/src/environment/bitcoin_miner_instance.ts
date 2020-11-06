@@ -9,7 +9,7 @@ export default class BitcoinMinerInstance {
         minerPath: string,
         bitcoindConfigFile: string,
         pidFile: string,
-        logger: Logger
+        logger: Logger,
     ) {
         await existsAsync(tsNode);
         await existsAsync(minerPath);

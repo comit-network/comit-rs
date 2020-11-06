@@ -35,12 +35,18 @@ jobs:
           # The registry cache is useful as long as we need the same dependencies as another job, regardless of the Rust version and operating system.
           key: cargo-registry-${{ hashFiles('Cargo.lock') }}-v2
 
+      - name: Cache dprint plugins
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/dprint/cache/plugins
+          key: dprint-plugins-${{ hashFiles('.dprintrc.json') }}
+
       - name: Cache cargo binaries
         uses: actions/cache@v2
         with:
           path: ~/.cargo/bin
           # The cargo binary cache is useful as long as we use the same Rust version but regardless of our dependencies.
-          key: ubuntu-latest-cargo-binaries-${{ steps.toolchain.outputs.rustc_hash }}-v2
+          key: ubuntu-latest-cargo-binaries-${{ steps.toolchain.outputs.rustc_hash }}-v3
 
       - name: Cache target directory
         uses: actions/cache@v2
@@ -49,11 +55,14 @@ jobs:
           # The target directory is only useful with the same Rust version, dependencies and operating system.
           key: ubuntu-latest-target-${{ steps.toolchain.outputs.rustc_hash }}-${{ hashFiles('Cargo.lock') }}-clippy-v2
 
+      - name: Install dprint
+        run: which dprint || cargo install dprint
+
       - name: Check formatting
-        run: make check_format
+        run: dprint check
 
       - name: Run linter
-        run: make clippy
+        run: make lint
 
   build:
     strategy:

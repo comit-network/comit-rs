@@ -26,7 +26,7 @@ test(
                 decimals: 18,
             },
         });
-    })
+    }),
 );
 
 test(
@@ -53,7 +53,7 @@ test(
                 open: "20000000",
             },
         });
-    })
+    }),
 );
 
 test(
@@ -67,7 +67,7 @@ test(
         await alice.executeSirenAction(order, "cancel");
 
         await expect(
-            alice.fetchOrder(href).then((r) => r.properties)
+            alice.fetchOrder(href).then((r) => r.properties),
         ).resolves.toMatchObject({
             state: {
                 open: "0",
@@ -75,9 +75,9 @@ test(
             },
         });
         await expect(
-            alice.fetchOrder(href).then((r) => r.actions)
+            alice.fetchOrder(href).then((r) => r.actions),
         ).resolves.toHaveLength(0);
-    })
+    }),
 );
 
 test(
@@ -89,9 +89,9 @@ test(
         await alice.executeSirenAction(order, "cancel");
 
         await expect(
-            alice.listOpenOrders().then((o) => o.entities)
+            alice.listOpenOrders().then((o) => o.entities),
         ).resolves.toHaveLength(0);
-    })
+    }),
 );
 
 test(
@@ -105,5 +105,5 @@ test(
 
         const btcDaiMarket2 = await alice.getBtcDaiMarket();
         expect(btcDaiMarket2.entities).toHaveLength(1);
-    })
+    }),
 );

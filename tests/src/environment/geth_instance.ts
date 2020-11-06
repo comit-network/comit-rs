@@ -24,7 +24,7 @@ export class GethInstance implements Startable {
             pidFile,
             logger,
             await getPort({ port: 8545 }),
-            await getPort()
+            await getPort(),
         );
     }
 
@@ -33,7 +33,7 @@ export class GethInstance implements Startable {
         private readonly pidFile: string,
         private readonly logger: Logger,
         public readonly rpcPort: number,
-        public readonly p2pPort: number
+        public readonly p2pPort: number,
     ) {}
 
     public async start() {
@@ -58,7 +58,6 @@ export class GethInstance implements Startable {
                 `--unlock=${this.devAccount}`,
                 `--password=${this.devAccountPasswordFile}`,
             ],
-
             {
                 cwd: this.dataDir,
                 stdio: [
@@ -66,12 +65,12 @@ export class GethInstance implements Startable {
                     logFile,
                     logFile,
                 ],
-            }
+            },
         );
 
         this.process.once(
             "exit",
-            crashListener(this.process.pid, "geth", this.logFilePath)
+            crashListener(this.process.pid, "geth", this.logFilePath),
         );
 
         await waitForLogMessage(this.logFilePath, "mined potential block");
@@ -86,7 +85,7 @@ export class GethInstance implements Startable {
     private async createConfigurationFiles() {
         await GethInstance.writeFile(
             this.devAccountKeyFile,
-            this.devAccountKey()
+            this.devAccountKey(),
         );
         await GethInstance.writeFile(this.devAccountPasswordFile, "");
     }
@@ -127,7 +126,7 @@ export class GethInstance implements Startable {
         if (envOverride) {
             this.logger.info(
                 "Overriding geth bin with GETH_BIN: ",
-                envOverride
+                envOverride,
             );
 
             return envOverride;
@@ -159,7 +158,7 @@ export class GethInstance implements Startable {
             " not found at ",
             binaryPath,
             ", downloading from ",
-            url
+            url,
         );
 
         await download(url, cacheDir(""), {
@@ -209,14 +208,12 @@ function unpackedFolderName(version: string) {
     }
 }
 
-const DEV_ACCOUNT_KEY_FILE_NAME =
-    "UTC--2020-04-19T11-50-29.037701000Z--0896f60d2a3f0487f293959a84cf1e9bc2597727";
+const DEV_ACCOUNT_KEY_FILE_NAME = "UTC--2020-04-19T11-50-29.037701000Z--0896f60d2a3f0487f293959a84cf1e9bc2597727";
 const DEV_ACCOUNT_KEY = {
     address: "0896f60d2a3f0487f293959a84cf1e9bc2597727",
     crypto: {
         cipher: "aes-128-ctr",
-        ciphertext:
-            "de7519a821dc32fb760977fa1c65ac42d83e3edc035f14d3f547731487385315",
+        ciphertext: "de7519a821dc32fb760977fa1c65ac42d83e3edc035f14d3f547731487385315",
         cipherparams: { iv: "d9f23be3332ba4002a1253f798169f09" },
         kdf: "scrypt",
         kdfparams: {
@@ -224,8 +221,7 @@ const DEV_ACCOUNT_KEY = {
             n: 262144,
             p: 1,
             r: 8,
-            salt:
-                "5d4b597f8d1373291571ba5223333c4c7fbbab5769b89f41aac4b8bf1c31978f",
+            salt: "5d4b597f8d1373291571ba5223333c4c7fbbab5769b89f41aac4b8bf1c31978f",
         },
         mac: "774472998174a8100a4eedf9c75b0bdc994d01029d35a862e1b40464c5e703cc",
     },

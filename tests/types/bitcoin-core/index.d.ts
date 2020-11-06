@@ -41,17 +41,17 @@ declare module "bitcoin-core" {
         public getRawTransaction(
             txId: string,
             verbose?: boolean,
-            blockHash?: string
+            blockHash?: string,
         ): Promise<GetRawTransactionResponse>;
 
         public sendToAddress(
             address: string,
-            amount: number | string
+            amount: number | string,
         ): Promise<string>;
 
         public generateToAddress(
             nblocks: number,
-            address: string
+            address: string,
         ): Promise<string[]>;
 
         public sendRawTransaction(hexString: string): Promise<string>;
