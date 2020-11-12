@@ -73,6 +73,7 @@ jobs:
 
           - target: x86_64-apple-darwin
             os: macos-latest
+            skip_e2e_tests: true
 
           - target: x86_64-pc-windows-gnu
             os: windows-latest
