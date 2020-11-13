@@ -3,7 +3,7 @@ pull_request_rules:
     conditions:
       - "author=dependabot[bot]"
       - "status-success=static_analysis"
-      - "status-success~=^build"
+      - "-status-failure~=^build"
       - label!=no-mergify
     actions:
       comment:
@@ -13,7 +13,7 @@ pull_request_rules:
       - "#approved-reviews-by>=2"
       - "#changes-requested-reviews-by=0"
       - "status-success=static_analysis"
-      - "status-success~=^build"
+      - "-status-failure~=^build"
       - -conflict
       - label!=work-in-progress
       - label!=blocked
