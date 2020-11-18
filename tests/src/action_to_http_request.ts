@@ -4,12 +4,12 @@ import URI from "urijs";
 import { Action, Field } from "./cnd_client/siren";
 
 export type FieldValueResolverFn = (
-    field: Field
+    field: Field,
 ) => Promise<string | undefined>;
 
 export default async function actionToHttpRequest(
     action: Action,
-    resolver?: FieldValueResolverFn
+    resolver?: FieldValueResolverFn,
 ): Promise<AxiosRequestConfig> {
     const fields = action.fields || [];
     const fieldValues = await resolveAllFieldValues(fields, resolver);
@@ -58,7 +58,7 @@ function jsonRequestTransformer(data: any, headers: any): any {
 function failIfNotBuffer(data: any, headers: any): any {
     if (data && !Buffer.isBuffer(data)) {
         throw new Error(
-            `Failed to serialize data for content-type ${headers["Content-Type"]}`
+            `Failed to serialize data for content-type ${headers["Content-Type"]}`,
         );
     }
 
@@ -67,7 +67,7 @@ function failIfNotBuffer(data: any, headers: any): any {
 
 async function resolveAllFieldValues(
     fields: Field[],
-    resolver?: FieldValueResolverFn
+    resolver?: FieldValueResolverFn,
 ): Promise<any> {
     const data: any = {};
 

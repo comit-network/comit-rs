@@ -12,7 +12,7 @@ test(
         await bob.saveBalancesBeforeSwap();
         await alice.pollCndUntil<MarketEntity>(
             "/markets/BTC-DAI",
-            (market) => market.entities.length > 0
+            (market) => market.entities.length > 0,
         );
 
         await alice.makeBtcDaiOrder(Position.Buy, "0.1", "9450"); // This matches what nectar publishes.
@@ -31,7 +31,7 @@ test(
             bitcoin: -(10_000_000n + 7650n), // nectar pays order quantity + the funding fee
             dai: 945_000_000_000_000_000_000n, // = 0.1 * 9450 * 10^18
         });
-    })
+    }),
 );
 
 test(
@@ -40,7 +40,7 @@ test(
         await bob.saveBalancesBeforeSwap();
         await alice.pollCndUntil<MarketEntity>(
             "/markets/BTC-DAI",
-            (market) => market.entities.length > 0
+            (market) => market.entities.length > 0,
         );
 
         await alice.makeBtcDaiOrder(Position.Sell, "0.1", "8550"); // This matches what nectar publishes.
@@ -58,5 +58,5 @@ test(
             bitcoin: 10000000n - 16200n, // nectar receives order quantity but pays the redeem fee
             dai: -855_000_000_000_000_000_000n, // = 0.1 * 8550 * 10^18
         });
-    })
+    }),
 );

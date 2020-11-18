@@ -6,8 +6,7 @@ Releases of comit-rs components are mostly automated based on the GitFlow branch
 
 For the release workflows to work, the repository needs to expose the following "secrets":
 
-- `BOTTY_GITHUB_TOKEN`: A personal access token of our GitHub bot user [
-COMIT Botty McBotface](https://github.com/comit-botty-mc-botface)
+- `BOTTY_GITHUB_TOKEN`: A personal access token of our GitHub bot user [COMIT Botty McBotface](https://github.com/comit-botty-mc-botface)
 - `DOCKER_REGISTRY_USERNAME`: The username to use for logging into DockerHub
 - `DOCKER_REGISTRY_PASSWORD`: The password of said user
 
@@ -39,7 +38,7 @@ We split the release into different workflows for several reasons.
 
 1. Building and attaching the binary needs to happen for several platforms whereas the actual release (and tag) only needs to be created once.
 2. It allows for multiple entry-points into the release process:
-Building binaries is triggered by a "release" event, which could in theory be created manually and doesn't necessarily have to be created through the release automation.
+   Building binaries is triggered by a "release" event, which could in theory be created manually and doesn't necessarily have to be created through the release automation.
 
 ## Releasing nectar
 

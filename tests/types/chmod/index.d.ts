@@ -4,6 +4,6 @@ declare module "chmod" {
         file: string,
         options: {
             execute?: boolean;
-        }
+        },
     );
 }

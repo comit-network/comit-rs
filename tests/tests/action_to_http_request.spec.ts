@@ -33,7 +33,7 @@ describe("actionToHttpRequest", () => {
                     },
                 ],
             },
-            () => Promise.resolve("some_value")
+            () => Promise.resolve("some_value"),
         );
 
         const response = await axios().request(request);
@@ -55,13 +55,13 @@ describe("actionToHttpRequest", () => {
                     },
                 ],
             },
-            () => Promise.resolve("some_value")
+            () => Promise.resolve("some_value"),
         );
 
         const response = axios().request(request);
 
         await expect(response).rejects.toThrowError(
-            "Failed to serialize data for content-type application/x-www-form-urlencoded"
+            "Failed to serialize data for content-type application/x-www-form-urlencoded",
         );
     });
 
@@ -80,7 +80,7 @@ describe("actionToHttpRequest", () => {
                     },
                 ],
             },
-            () => Promise.resolve("some_value")
+            () => Promise.resolve("some_value"),
         );
 
         const response = await axios().request(request);

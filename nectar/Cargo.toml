@@ -1,18 +1,18 @@
 [package]
 name = "nectar"
 version = "0.1.0"
-authors = ["CoBloX <hello@coblox.tech>"]
+authors = [ "CoBloX <hello@coblox.tech>" ]
 edition = "2018"
 
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
 atty = "0.2"
-backoff = { version = "0.2.1", features = ["tokio"] }
-bitcoin = { version = "0.25", features = ["rand", "use-serde"] }
+backoff = { version = "0.2.1", features = [ "tokio" ] }
+bitcoin = { version = "0.25", features = [ "rand", "use-serde" ] }
 clarity = "0.4"
 comit = { path = "../comit/" }
-config = { version = "0.10", default-features = false, features = ["toml"] }
+config = { version = "0.10", default-features = false, features = [ "toml" ] }
 conquer-once = "0.2"
 contract-address = "0.4.0"
 csv = "1.1"
@@ -22,16 +22,16 @@ ethabi = "12.0"
 ethereum-types = "0.9"
 futures = "0.3"
 futures-timer = "3.0"
-genawaiter = { version = "0.99", default-features = false, features = ["futures03"] }
+genawaiter = { version = "0.99", default-features = false, features = [ "futures03" ] }
 hex = "0.4"
-libp2p = { version = "0.29", default-features = false, features = ["tcp-tokio", "noise", "yamux", "mplex", "dns"] }
+libp2p = { version = "0.29", default-features = false, features = [ "tcp-tokio", "noise", "yamux", "mplex", "dns" ] }
 log = "0.4"
 num = "0.3"
 pem = "0.8"
-reqwest = { version = "0.10", default-features = false, features = ["json", "native-tls-vendored"] }
+reqwest = { version = "0.10", default-features = false, features = [ "json", "native-tls-vendored" ] }
 rust_decimal = "1.8"
-sentry = { version = "0.21.0", features = ["anyhow"] }
-serde = { version = "1", features = ["derive"] }
+sentry = { version = "0.21.0", features = [ "anyhow" ] }
+serde = { version = "1", features = [ "derive" ] }
 serde_cbor = "0.11"
 serde_json = "1.0"
 sled = "0.34"
@@ -39,19 +39,17 @@ spectral = "0.6"
 structopt = "0.3"
 strum = "0.19"
 strum_macros = "0.19"
-# In dependencies instead of dev-dependencies so it can be set as optional
-# Only used for test purposes
-testcontainers = { version = "0.10", optional = true }
+testcontainers = { version = "0.10", optional = true } # In dependencies instead of dev-dependencies so it can be set as optional
 thiserror = "1.0"
-time = { version = "0.2", features = ["serde"] }
-tokio = { version = "0.2", features = ["macros", "time"] }
+time = { version = "0.2", features = [ "serde" ] }
+tokio = { version = "0.2", features = [ "macros", "time" ] }
 toml = "0.5"
 tracing = "0.1"
-tracing-futures = { version = "0.2", features = ["futures-03"] }
+tracing-futures = { version = "0.2", features = [ "futures-03" ] }
 tracing-log = "0.1"
-tracing-subscriber = { version = "0.2", default-features = false, features = ["fmt", "ansi", "env-filter"] }
-url = { version = "2", features = ["serde"] }
-uuid = { version = "0.8", features = ["serde", "v4"] }
+tracing-subscriber = { version = "0.2", default-features = false, features = [ "fmt", "ansi", "env-filter" ] }
+url = { version = "2", features = [ "serde" ] }
+uuid = { version = "0.8", features = [ "serde", "v4" ] }
 
 [dependencies.rand]
 default-features = false
@@ -59,7 +57,7 @@ version = "0.6"
 
 [dev-dependencies]
 base64 = "0.13"
-comit = { path = "../comit/", features = ["quickcheck"] }
+comit = { path = "../comit/", features = [ "quickcheck" ] }
 proptest = "0.10"
 quickcheck = "0.9"
 quickcheck_async = "0.1"
@@ -67,4 +65,4 @@ tar = "0.4"
 tempfile = "3"
 
 [features]
-default = []
+default = [ ]

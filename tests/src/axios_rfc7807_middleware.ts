@@ -11,10 +11,9 @@ export class Problem extends Error {
         const statusPart = status
             ? `Request failed with status code ${status}: `
             : `Request failed: `;
-        const typePart =
-            type && type !== "about:blank"
-                ? ` See ${type} for more information.`
-                : ``;
+        const typePart = type && type !== "about:blank"
+            ? ` See ${type} for more information.`
+            : ``;
         const detailPart = detail ? ` ${detail}` : ``;
 
         return `${statusPart}${title}${detailPart}${typePart}`;
@@ -45,7 +44,7 @@ interface ProblemMembers {
 }
 
 export async function problemResponseInterceptor(
-    error: AxiosError
+    error: AxiosError,
 ): Promise<AxiosError | Problem> {
     const response = error.response;
 

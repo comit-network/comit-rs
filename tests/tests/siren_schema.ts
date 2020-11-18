@@ -29,10 +29,10 @@ describe("Siren Schema", () => {
 
             const swapsLink = links.find(
                 (link: siren.Link) =>
-                    link.rel.length === 1 &&
-                    link.rel.includes("collection") &&
-                    link.class.length === 1 &&
-                    link.class.includes("swaps")
+                    link.rel.length === 1
+                    && link.rel.includes("collection")
+                    && link.class.length === 1
+                    && link.class.includes("swaps"),
             );
 
             expect(swapsLink).toMatchObject({
@@ -40,6 +40,6 @@ describe("Siren Schema", () => {
                 class: ["swaps"],
                 href: "/swaps",
             });
-        })
+        }),
     );
 });

@@ -4,10 +4,9 @@ function validate(schema: object, data: object) {
     const ajv = new Ajv({ schemaId: "id", logger: false });
     ajv.addMetaSchema(require("ajv/lib/refs/json-schema-draft-04.json"));
     const valid = ajv.validate(schema, data);
-    const errorText =
-        ajv.errorsText() && ajv.errorsText().toLowerCase() !== "no errors"
-            ? ajv.errorsText()
-            : "";
+    const errorText = ajv.errorsText() && ajv.errorsText().toLowerCase() !== "no errors"
+        ? ajv.errorsText()
+        : "";
 
     return {
         errorText,

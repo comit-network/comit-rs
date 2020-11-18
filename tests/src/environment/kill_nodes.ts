@@ -20,7 +20,7 @@ export default async function killNodes(locksDir: any) {
 
         if (await processExists(pid)) {
             process.stderr.write(
-                `Found pid file ${pidFile}, sending SIGINT to process with PID ${pid}\n`
+                `Found pid file ${pidFile}, sending SIGINT to process with PID ${pid}\n`,
             );
             try {
                 process.kill(pid, "SIGTERM");

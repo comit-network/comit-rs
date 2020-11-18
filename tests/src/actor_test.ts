@@ -1,23 +1,11 @@
 import { DumpState, Role, Stoppable } from "./actors";
 import pTimeout from "p-timeout";
-import { HarnessGlobal, Environment } from "./environment";
+import { Environment, HarnessGlobal } from "./environment";
 import { CndActor } from "./actors/cnd_actor";
 import { Logger } from "log4js";
-import {
-    BitcoindWallet,
-    BitcoinFaucet,
-    BitcoinWallet,
-} from "./wallets/bitcoin";
-import {
-    newBitcoinStubWallet,
-    newEthereumStubWallet,
-    Wallets,
-} from "./wallets";
-import {
-    EthereumFaucet,
-    EthereumWallet,
-    Web3EthereumWallet,
-} from "./wallets/ethereum";
+import { BitcoindWallet, BitcoinFaucet, BitcoinWallet } from "./wallets/bitcoin";
+import { newBitcoinStubWallet, newEthereumStubWallet, Wallets } from "./wallets";
+import { EthereumFaucet, EthereumWallet, Web3EthereumWallet } from "./wallets/ethereum";
 import { newCndConfig } from "./environment/cnd_config";
 import { CndInstance } from "./environment/cnd_instance";
 import NectarActor from "./actors/nectar_actor";
@@ -32,7 +20,7 @@ declare var global: HarnessGlobal;
  * @param testFn
  */
 export function startAlice(
-    testFn: (alice: CndActor) => Promise<void>
+    testFn: (alice: CndActor) => Promise<void>,
 ): ProvidesCallback {
     return startCndActorTest(["Alice"], async ([alice]) => testFn(alice));
 }
@@ -43,11 +31,9 @@ export function startAlice(
  * @param testFn
  */
 export function createAliceAndBob(
-    testFn: ([alice, bob]: CndActor[]) => Promise<void>
+    testFn: ([alice, bob]: CndActor[]) => Promise<void>,
 ): ProvidesCallback {
-    return createCndActorTest(["Alice", "Bob"], async ([alice, bob]) =>
-        testFn([alice, bob])
-    );
+    return createCndActorTest(["Alice", "Bob"], async ([alice, bob]) => testFn([alice, bob]));
 }
 
 /**
@@ -57,7 +43,7 @@ export function createAliceAndBob(
  * @param testFn
  */
 export function startConnectedAliceAndBob(
-    testFn: ([alice, bob]: CndActor[]) => Promise<void>
+    testFn: ([alice, bob]: CndActor[]) => Promise<void>,
 ): ProvidesCallback {
     return startCndActorTest(["Alice", "Bob"], async ([alice, bob]) => {
         await alice.connect(bob);
@@ -72,7 +58,7 @@ export function startConnectedAliceAndBob(
  * @param testFn
  */
 export function startConnectedCndAndNectar(
-    testFn: (actors: { alice: CndActor; bob: NectarActor }) => Promise<void>
+    testFn: (actors: { alice: CndActor; bob: NectarActor }) => Promise<void>,
 ): ProvidesCallback {
     return async (done) => {
         const startingAlice = newCndActor("Alice", true);
@@ -84,7 +70,7 @@ export function startConnectedCndAndNectar(
         await alice.connect(bob);
 
         await runTest([alice, bob], async () => testFn({ alice, bob })).then(
-            done
+            done,
         );
     };
 }
@@ -96,13 +82,13 @@ export function startConnectedCndAndNectar(
  */
 export function startCndActorTest(
     roles: Role[],
-    testFn: (actors: CndActor[]) => Promise<void>
+    testFn: (actors: CndActor[]) => Promise<void>,
 ): ProvidesCallback {
     return async (done) => {
         const actors = await Promise.all(
             roles.map(async (role: Role) => {
                 return newCndActor(role, true);
-            })
+            }),
         );
 
         await runTest(actors, () => testFn(actors)).then(done);
@@ -119,13 +105,13 @@ export function startCndActorTest(
  */
 export function createCndActorTest(
     roles: Role[],
-    testFn: (actors: CndActor[]) => Promise<void>
+    testFn: (actors: CndActor[]) => Promise<void>,
 ): ProvidesCallback {
     return async (done) => {
         const actors = await Promise.all(
             roles.map(async (role: Role) => {
                 return newCndActor(role, false);
-            })
+            }),
         );
 
         await runTest(actors, () => testFn(actors)).then(done);
@@ -134,7 +120,7 @@ export function createCndActorTest(
 
 async function runTest<A extends Iterable<Stoppable & DumpState>>(
     actors: A,
-    testFn: () => Promise<void>
+    testFn: () => Promise<void>,
 ) {
     const logger = global.getLogger(["test_environment"]);
 
@@ -160,7 +146,7 @@ async function newCndActor(role: Role, startCnd: boolean) {
     if (!testName.match(/[A-z0-9\-]+/)) {
         // We use the test name as a file name for the log and hence need to restrict it.
         throw new Error(
-            `Testname '${testName}' is invalid. Only A-z, 0-9 and dashes are allowed.`
+            `Testname '${testName}' is invalid. Only A-z, 0-9 and dashes are allowed.`,
         );
     }
 
@@ -170,7 +156,7 @@ async function newCndActor(role: Role, startCnd: boolean) {
 
     const cndConfig = await newCndConfig(
         global.environment,
-        global.cndConfigOverrides
+        global.cndConfigOverrides,
     );
     const cndLogFile = global.getLogFile([testName, `cnd-${role}.log`]);
 
@@ -178,7 +164,7 @@ async function newCndActor(role: Role, startCnd: boolean) {
         global.cargoTargetDir,
         cndLogFile,
         logger,
-        cndConfig
+        cndConfig,
     );
 
     let cndStarting;
@@ -208,7 +194,7 @@ async function newNectarActor() {
     if (!testName.match(/[A-z0-9\-]+/)) {
         // We use the test name as a file name for the log and hence need to restrict it.
         throw new Error(
-            `Testname '${testName}' is invalid. Only A-z, 0-9 and dashes are allowed.`
+            `Testname '${testName}' is invalid. Only A-z, 0-9 and dashes are allowed.`,
         );
     }
 
@@ -223,7 +209,7 @@ async function newNectarActor() {
         global.cargoTargetDir,
         nectarLogFile,
         logger,
-        nectarConfig
+        nectarConfig,
     );
 
     const depositAddresses = await nectarInstance.deposit();
@@ -233,18 +219,18 @@ async function newNectarActor() {
         global.environment.ethereum.devAccount,
         logger,
         global.environment.ethereum.rpc_url,
-        global.environment.ethereum.chain_id
+        global.environment.ethereum.chain_id,
     );
 
     await bitcoinFaucet.mint(100_000_000n, depositAddresses.bitcoin);
     await ethereumFaucet.mintErc20(
         depositAddresses.ethereum,
         1_000_000_000_000_000_000_000_000n,
-        global.tokenContract
+        global.tokenContract,
     );
     await ethereumFaucet.mintEther(
         depositAddresses.ethereum,
-        10_000_000_000_000_000_000n
+        10_000_000_000_000_000_000n,
     );
     const peerId = await nectarInstance.trade();
 
@@ -253,7 +239,7 @@ async function newNectarActor() {
 
 async function newBitcoinWallet(
     env: Environment,
-    logger: Logger
+    logger: Logger,
 ): Promise<BitcoinWallet> {
     const bitcoinConfig = env.bitcoin;
     return bitcoinConfig
@@ -263,20 +249,20 @@ async function newBitcoinWallet(
 
 async function newEthereumWallet(
     env: Environment,
-    logger: Logger
+    logger: Logger,
 ): Promise<EthereumWallet> {
     const ethereumConfig = env.ethereum;
     return ethereumConfig
         ? Web3EthereumWallet.newInstance(
-              ethereumConfig.rpc_url,
-              logger,
-              new EthereumFaucet(
-                  ethereumConfig.devAccount,
-                  logger,
-                  ethereumConfig.rpc_url,
-                  ethereumConfig.chain_id
-              ),
-              ethereumConfig.chain_id
-          )
+            ethereumConfig.rpc_url,
+            logger,
+            new EthereumFaucet(
+                ethereumConfig.devAccount,
+                logger,
+                ethereumConfig.rpc_url,
+                ethereumConfig.chain_id,
+            ),
+            ethereumConfig.chain_id,
+        )
         : Promise.resolve(newEthereumStubWallet());
 }

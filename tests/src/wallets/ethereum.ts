@@ -7,13 +7,13 @@ export interface EthereumWallet {
         data: string,
         amount: BigNumber,
         gasLimit: string,
-        chainId: number
+        chainId: number,
     ): Promise<ethers.providers.TransactionReceipt>;
     callContract(
         data: string,
         contractAddress: string,
         gasLimit: string,
-        chainId: number
+        chainId: number,
     ): Promise<ethers.providers.TransactionReceipt>;
     assertNetwork(expectedChainId: number): Promise<void>;
     getErc20Balance(contractAddress: string): Promise<bigint>;
@@ -27,7 +27,7 @@ export class EthereumFaucet {
         private readonly devAccount: string,
         private readonly logger: Logger,
         rpcUrl: string,
-        public readonly chainId: number
+        public readonly chainId: number,
     ) {
         this.provider = new ethers.providers.JsonRpcProvider(rpcUrl);
     }
@@ -46,7 +46,7 @@ export class EthereumFaucet {
 
         const transactionReceipt = await this.provider.waitForTransaction(
             transactionResponse.transactionHash,
-            1
+            1,
         );
         return transactionReceipt.contractAddress;
     }
@@ -54,7 +54,7 @@ export class EthereumFaucet {
     public async mintErc20(
         toAddress: string,
         quantity: bigint,
-        tokenContract: string
+        tokenContract: string,
     ): Promise<void> {
         const functionIdentifier = "40c10f19";
         toAddress = toAddress.replace(/^0x/, "").padStart(64, "0");
@@ -81,7 +81,7 @@ export class EthereumFaucet {
             "erc20 tokens (",
             tokenContract,
             ") for",
-            toAddress
+            toAddress,
         );
     }
 
@@ -98,7 +98,7 @@ export class EthereumFaucet {
     }
 
     private async sendDevAccountTransaction(
-        tx: ethers.providers.TransactionRequest
+        tx: ethers.providers.TransactionRequest,
     ): Promise<ethers.providers.TransactionReceipt> {
         const signer = this.provider.getSigner(this.devAccount);
         const response = await signer.sendTransaction(tx);
@@ -113,27 +113,27 @@ export class Web3EthereumWallet implements EthereumWallet {
         private readonly logger: Logger,
         private readonly provider: ethers.providers.JsonRpcProvider,
         private readonly faucet: EthereumFaucet,
-        public readonly chainId: number
+        public readonly chainId: number,
     ) {}
 
     public static async newInstance(
         rpcUrl: string,
         logger: Logger,
         faucet: EthereumFaucet,
-        chainId: number
+        chainId: number,
     ) {
         return new Web3EthereumWallet(
             ethers.Wallet.createRandom(),
             logger,
             new ethers.providers.JsonRpcProvider(rpcUrl),
             faucet,
-            chainId
+            chainId,
         );
     }
 
     private async signAndSend(tx: ethers.providers.TransactionRequest) {
         const nonce = await this.provider.getTransactionCount(
-            this.wallet.address
+            this.wallet.address,
         );
         const signedTx = await this.wallet.signTransaction({
             ...tx,
@@ -151,7 +151,7 @@ export class Web3EthereumWallet implements EthereumWallet {
         const contract = new Contract(
             contractAddress,
             ["function balanceOf(address owner) view returns (uint256)"],
-            this.provider
+            this.provider,
         );
 
         const strBalance = await contract.balanceOf(this.getAccount());
@@ -164,7 +164,7 @@ export class Web3EthereumWallet implements EthereumWallet {
         data: string,
         amount: BigNumber,
         gasLimit: string,
-        chainId: number
+        chainId: number,
     ): Promise<ethers.providers.TransactionReceipt> {
         await this.assertNetwork(chainId);
         const value = BigNumber.from(amount.toString());
@@ -181,7 +181,7 @@ export class Web3EthereumWallet implements EthereumWallet {
         data: string,
         contractAddress: string,
         gasLimit: string,
-        chainId: number
+        chainId: number,
     ): Promise<ethers.providers.TransactionReceipt> {
         await this.assertNetwork(chainId);
         const response = await this.signAndSend({
@@ -198,7 +198,7 @@ export class Web3EthereumWallet implements EthereumWallet {
 
         if (actualNetwork.chainId !== expectedChainId) {
             return Promise.reject(
-                `This wallet is connected to the chain with chainId: ${expectedChainId}  and cannot perform actions on chain with chainId ${actualNetwork.chainId}`
+                `This wallet is connected to the chain with chainId: ${expectedChainId}  and cannot perform actions on chain with chainId ${actualNetwork.chainId}`,
             );
         }
     }
@@ -207,25 +207,25 @@ export class Web3EthereumWallet implements EthereumWallet {
         return this.faucet.mintErc20(
             this.getAccount(),
             quantity,
-            tokenContract
+            tokenContract,
         );
     }
 }
 
 async function assertSuccessful(
     transactionResponse: ethers.providers.TransactionResponse,
-    logger: Logger
+    logger: Logger,
 ) {
     logger.debug(
         "Transaction:",
         transactionResponse.hash,
-        "sent, waiting to be confirmed."
+        "sent, waiting to be confirmed.",
     );
 
     const transactionReceipt = await transactionResponse.wait(1);
     if (transactionReceipt.status === 0) {
         throw new Error(
-            `Transaction ${transactionReceipt.transactionHash} failed`
+            `Transaction ${transactionReceipt.transactionHash} failed`,
         );
     }
 
@@ -233,7 +233,7 @@ async function assertSuccessful(
         "Transaction:",
         transactionReceipt.transactionHash,
         "confirmed in block:",
-        transactionReceipt.blockHash
+        transactionReceipt.blockHash,
     );
 
     return transactionReceipt;

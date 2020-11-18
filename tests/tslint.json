@@ -1,29 +1,29 @@
 {
-    "defaultSeverity": "error",
-    "extends": [
-        "tslint:recommended",
-        "tslint-config-prettier",
-        "tslint-no-unused-expression-chai"
-    ],
-    "jsRules": {},
-    "rules": {
-        "interface-name": false,
-        "max-classes-per-file": false,
-        "no-console": false,
-        "no-shadowed-variable": false,
-        "object-literal-sort-keys": false,
-        "no-reference": false,
-        "no-namespace": false,
-        "only-arrow-functions": false,
-        "file-name-casing": [true, "snake-case"],
-        "promise-function-async": true,
-        "no-floating-promises": true,
-        "await-promise": true,
-        "no-promise-as-boolean": true,
-        "no-return-await": true,
-        "no-string-throw": true,
-        "radix": true,
-        "restrict-plus-operands": true
-    },
-    "rulesDirectory": []
+  "defaultSeverity": "error",
+  "extends": [
+    "tslint:recommended",
+    "tslint-config-prettier",
+    "tslint-no-unused-expression-chai"
+  ],
+  "jsRules": {},
+  "rules": {
+    "interface-name": false,
+    "max-classes-per-file": false,
+    "no-console": false,
+    "no-shadowed-variable": false,
+    "object-literal-sort-keys": false,
+    "no-reference": false,
+    "no-namespace": false,
+    "only-arrow-functions": false,
+    "file-name-casing": [true, "snake-case"],
+    "promise-function-async": true,
+    "no-floating-promises": true,
+    "await-promise": true,
+    "no-promise-as-boolean": true,
+    "no-return-await": true,
+    "no-string-throw": true,
+    "radix": true,
+    "restrict-plus-operands": true
+  },
+  "rulesDirectory": []
 }

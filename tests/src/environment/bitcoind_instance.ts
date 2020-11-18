@@ -19,7 +19,7 @@ export class BitcoindInstance implements Startable {
     public static async new(
         dataDir: string,
         pidFile: string,
-        logger: Logger
+        logger: Logger,
     ): Promise<BitcoindInstance> {
         return new BitcoindInstance(
             dataDir,
@@ -28,7 +28,7 @@ export class BitcoindInstance implements Startable {
             await getPort({ port: 18444 }),
             await getPort({ port: 18443 }),
             await getPort({ port: 28332 }),
-            await getPort({ port: 28333 })
+            await getPort({ port: 28333 }),
         );
     }
 
@@ -39,7 +39,7 @@ export class BitcoindInstance implements Startable {
         public readonly p2pPort: number,
         public readonly rpcPort: number,
         public readonly zmqPubRawBlockPort: number,
-        public readonly zmqPubRawTxPort: number
+        public readonly zmqPubRawTxPort: number,
     ) {}
 
     public async start() {
@@ -56,14 +56,14 @@ export class BitcoindInstance implements Startable {
 
         this.process.once(
             "exit",
-            crashListener(this.process.pid, "bitcoind", this.logPath())
+            crashListener(this.process.pid, "bitcoind", this.logPath()),
         );
 
         await waitForLogMessage(this.logPath(), "init message: Done loading");
 
         const result = await asyncFs.readFile(
             path.join(this.dataDir, "regtest", ".cookie"),
-            "utf8"
+            "utf8",
         );
         const [username, password] = result.split(":");
 
@@ -96,7 +96,7 @@ export class BitcoindInstance implements Startable {
         if (envOverride) {
             this.logger.info(
                 "Overriding bitcoind bin with BITCOIND_BIN: ",
-                envOverride
+                envOverride,
             );
 
             return envOverride;
@@ -128,7 +128,7 @@ export class BitcoindInstance implements Startable {
             " not found at ",
             binaryPath,
             ", downloading from ",
-            url
+            url,
         );
 
         const destination = cacheDir("");

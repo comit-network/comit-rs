@@ -3,7 +3,7 @@
  * @cndConfigOverride ethereum.tokens.dai = 0x0000000000000000000000000000000000000000
  */
 
-import { startAlice, createAliceAndBob } from "../src/actor_test";
+import { createAliceAndBob, startAlice } from "../src/actor_test";
 import { merge } from "lodash";
 
 // ******************************************** //
@@ -15,14 +15,14 @@ describe("Sanity", () => {
         "invalid-swap-yields-404",
         startAlice(async (alice) => {
             const promise = alice.cnd.fetch(
-                "/swaps/deadbeef-dead-beef-dead-deadbeefdead"
+                "/swaps/deadbeef-dead-beef-dead-deadbeefdead",
             );
 
             await expect(promise).rejects.toMatchObject({
                 status: 404,
                 title: "Swap not found.",
             });
-        })
+        }),
     );
 
     it(
@@ -34,7 +34,7 @@ describe("Sanity", () => {
                 status: 200,
                 data: { peers: [] },
             });
-        })
+        }),
     );
 
     it(
@@ -48,7 +48,7 @@ describe("Sanity", () => {
             expect(body.id).toBeTruthy();
             // At least 2 ipv4 addresses, lookup and external interface
             expect(body.listen_addresses.length).toBeGreaterThanOrEqual(2);
-        })
+        }),
     );
 
     it(
@@ -71,6 +71,6 @@ describe("Sanity", () => {
 
             const aliceId = await alice.cnd.getPeerId();
             await bob.pollUntilConnectedTo(aliceId);
-        })
+        }),
     );
 });

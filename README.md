@@ -25,7 +25,7 @@ This repository is a cargo workspace:
 
 - `cnd`: a non-custodial COMIT network daemon, designed to be driven by a client with wallets (f.e. [Ambrosia](https://github.com/comit-network/ambrosia/))
 - `nectar`: a custodial COMIT network daemon, designed for automated trades
-- `comit`: a library implementing primitives of the COMIT protocol like libp2p-protocols, the decentralized orderbook and locking- as well as swap-protocols 
+- `comit`: a library implementing primitives of the COMIT protocol like libp2p-protocols, the decentralized orderbook and locking- as well as swap-protocols
 
 `cnd` and `nectar` are [released](https://github.com/comit-network/comit-rs/releases) as binaries.
 
@@ -58,6 +58,7 @@ Run `cnd dump-config` or `nectar dump-config` for more information.
 - `make e2e` will run all the end-to-end tests
 
 To run individual end-to-end tests, use `yarn` inside the `tests` folder:
+
 - `yarn run test`: run all tests
 - `yarn run test <directory>`: run all tests in the directory
 - `yarn run test <path to test file>`: run all tests in this test file, supports shell glob on the path
@@ -68,15 +69,19 @@ To run individual end-to-end tests, use `yarn` inside the `tests` folder:
 
 If you would like to maintain anonymity while using `cnd` for atomic swaps we support running `cnd` over Tor.
 You will need to configure an onion service (previously hidden service), virtual port can be anything but `cnd` expects the local port to be 9939.
+
 ```
 HiddenServiceDir /var/lib/tor/hidden_service/
 HiddenServicePort 9939 127.0.0.1:9939
 ```
+
 After starting Tor for the first time get the onion service address from your local file system (e.g. `/var/lib/tor/hidden_service/hostname`) and add it to your cnd config file.
+
 ```
 [network]
 listen = ["/onion3/vww6ybal4bd7szmgncyruucpgfkqahzddi37ktceo3ah7ngmcopnpyyd:9939"]
 ```
+
 All `cnd` traffic will now be routed over the Tor network.
 
 ## Contributing

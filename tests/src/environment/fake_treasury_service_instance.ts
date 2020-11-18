@@ -13,7 +13,7 @@ export default class FakeTreasuryServiceInstance implements Startable {
         private port: number,
         private pidFile: string,
         private logFile: string,
-        private logger: Logger
+        private logger: Logger,
     ) {}
 
     public static async new(
@@ -22,7 +22,7 @@ export default class FakeTreasuryServiceInstance implements Startable {
         btcDaiPrice: number,
         pidFile: string,
         logFile: string,
-        logger: Logger
+        logger: Logger,
     ) {
         await existsAsync(tsNode);
         await existsAsync(servicePath);
@@ -35,7 +35,7 @@ export default class FakeTreasuryServiceInstance implements Startable {
             port,
             pidFile,
             logFile,
-            logger
+            logger,
         );
     }
 
@@ -54,7 +54,7 @@ export default class FakeTreasuryServiceInstance implements Startable {
             ],
             {
                 stdio: ["ignore", logFile, logFile],
-            }
+            },
         );
 
         await asyncFs.writeFile(this.pidFile, service.pid.toString(), {

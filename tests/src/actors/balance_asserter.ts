@@ -12,7 +12,7 @@ export class Erc20BalanceAsserter implements BalanceAsserter {
     public static async newInstance(
         wallet: EthereumWallet,
         swapAmount: bigint,
-        tokenContract: string
+        tokenContract: string,
     ) {
         await wallet.mintErc20(swapAmount, tokenContract);
 
@@ -22,7 +22,7 @@ export class Erc20BalanceAsserter implements BalanceAsserter {
             wallet,
             startingBalance,
             swapAmount,
-            tokenContract
+            tokenContract,
         );
     }
 
@@ -30,52 +30,52 @@ export class Erc20BalanceAsserter implements BalanceAsserter {
         private readonly wallet: EthereumWallet,
         private readonly startingBalance: bigint,
         private readonly swapAmount: bigint,
-        private readonly tokenContract: string
+        private readonly tokenContract: string,
     ) {}
 
     public async assertReceived() {
         const currentBalance = await this.wallet.getErc20Balance(
-            this.tokenContract
+            this.tokenContract,
         );
         const expectedBalance = this.startingBalance + this.swapAmount;
 
         if (currentBalance !== expectedBalance) {
             throw new Error(
-                `Expected ${expectedBalance} tokens in contract ${this.tokenContract} but got ${currentBalance}`
+                `Expected ${expectedBalance} tokens in contract ${this.tokenContract} but got ${currentBalance}`,
             );
         }
     }
 
     public async assertSpent() {
         const currentBalance = await this.wallet.getErc20Balance(
-            this.tokenContract
+            this.tokenContract,
         );
         const expectedBalance = this.startingBalance - this.swapAmount;
 
         if (currentBalance !== expectedBalance) {
             throw new Error(
-                `Expected ${expectedBalance} tokens in contract ${this.tokenContract} but got ${currentBalance}`
+                `Expected ${expectedBalance} tokens in contract ${this.tokenContract} but got ${currentBalance}`,
             );
         }
     }
 
     public async assertRefunded() {
         const currentBalance = await this.wallet.getErc20Balance(
-            this.tokenContract
+            this.tokenContract,
         );
 
         expect(currentBalance.toString(10)).toEqual(
-            this.startingBalance.toString(10)
+            this.startingBalance.toString(10),
         );
     }
 
     public async assertNothingReceived() {
         const currentBalance = await this.wallet.getErc20Balance(
-            this.tokenContract
+            this.tokenContract,
         );
 
         expect(currentBalance.toString(10)).toEqual(
-            this.startingBalance.toString(10)
+            this.startingBalance.toString(10),
         );
     }
 }
@@ -90,36 +90,34 @@ export class OnChainBitcoinBalanceAsserter implements BalanceAsserter {
         return new OnChainBitcoinBalanceAsserter(
             wallet,
             startingBalance,
-            swapAmount
+            swapAmount,
         );
     }
 
     constructor(
         private readonly wallet: BitcoinWallet,
         private readonly startingBalance: bigint,
-        private readonly swapAmount: bigint
+        private readonly swapAmount: bigint,
     ) {}
 
     public async assertReceived() {
         const currentBalance = await this.wallet.getBalance();
-        const expectedBalance =
-            this.startingBalance + this.swapAmount - this.wallet.MaximumFee;
+        const expectedBalance = this.startingBalance + this.swapAmount - this.wallet.MaximumFee;
 
         if (currentBalance < expectedBalance) {
             throw new Error(
-                `Expected at least ${expectedBalance} sats but got ${currentBalance}`
+                `Expected at least ${expectedBalance} sats but got ${currentBalance}`,
             );
         }
     }
 
     public async assertSpent() {
         const currentBalance = await this.wallet.getBalance();
-        const expectedBalance =
-            this.startingBalance - this.swapAmount - this.wallet.MaximumFee;
+        const expectedBalance = this.startingBalance - this.swapAmount - this.wallet.MaximumFee;
 
         if (currentBalance < expectedBalance) {
             throw new Error(
-                `Expected at least ${expectedBalance} sats but got ${currentBalance}`
+                `Expected at least ${expectedBalance} sats but got ${currentBalance}`,
             );
         }
     }
@@ -135,7 +133,7 @@ export class OnChainBitcoinBalanceAsserter implements BalanceAsserter {
         const currentBalance = await this.wallet.getBalance();
 
         expect(currentBalance.toString(10)).toEqual(
-            this.startingBalance.toString(10)
+            this.startingBalance.toString(10),
         );
     }
 }

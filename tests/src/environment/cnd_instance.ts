@@ -16,7 +16,7 @@ export class CndInstance {
         private readonly cargoTargetDirectory: string,
         private readonly logFile: string,
         private readonly logger: Logger,
-        private _config: CndConfig
+        private _config: CndConfig,
     ) {}
 
     public get config() {
@@ -37,7 +37,7 @@ export class CndInstance {
 
         const configFile = await tempWrite(
             stringify((this._config as unknown) as JsonMap),
-            "config.toml"
+            "config.toml",
         );
 
         const logFile = await openAsync(this.logFile, "w");
@@ -51,12 +51,12 @@ export class CndInstance {
                     logFile, // stdout
                     logFile, // stderr
                 ],
-            }
+            },
         );
 
         this.process.on(
             "exit",
-            crashListener(this.process.pid, "cnd", this.logFile)
+            crashListener(this.process.pid, "cnd", this.logFile),
         );
 
         await waitForLogMessage(this.logFile, "Starting HTTP server on");
@@ -73,7 +73,7 @@ export class CndInstance {
         }
 
         this.logger.debug(
-            "Path to `cnd` has not been provided, building from scratch"
+            "Path to `cnd` has not been provided, building from scratch",
         );
 
         await execAsync("cargo build -p cnd");

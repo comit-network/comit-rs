@@ -12,14 +12,14 @@ test(
         const aliceHref = await alice.makeBtcDaiOrder(
             Position.Buy,
             "0.2",
-            "9000"
+            "9000",
         );
         const bobHref = await bob.makeBtcDaiOrder(Position.Sell, "0.2", "9000");
 
         await Promise.all([alice.waitForSwap(), bob.waitForSwap()]);
 
         await expect(
-            alice.fetchOrder(aliceHref).then((r) => r.properties)
+            alice.fetchOrder(aliceHref).then((r) => r.properties),
         ).resolves.toMatchObject({
             state: {
                 open: "0",
@@ -27,14 +27,14 @@ test(
             },
         });
         await expect(
-            bob.fetchOrder(bobHref).then((r) => r.properties)
+            bob.fetchOrder(bobHref).then((r) => r.properties),
         ).resolves.toMatchObject({
             state: {
                 open: "0",
                 settling: "20000000",
             },
         });
-    })
+    }),
 );
 
 test(
@@ -48,7 +48,7 @@ test(
 
         expect(orders.entities).toHaveLength(1);
         expect(orders.entities[0].actions).toHaveLength(0);
-    })
+    }),
 );
 
 test(
@@ -62,7 +62,7 @@ test(
 
         expect(orders.entities).toHaveLength(1);
         expect(orders.entities[0].actions).toHaveLength(0);
-    })
+    }),
 );
 
 test(
@@ -74,16 +74,16 @@ test(
 
         const order = await alice.fetchOrder(href);
         const cancelAttempt = alice.cnd.client.delete(
-            `/orders/${order.properties.id}`
+            `/orders/${order.properties.id}`,
         );
 
         await expect(cancelAttempt).rejects.toEqual(
             new Problem({
                 status: 400,
                 title: "Order can no longer be cancelled.",
-            })
+            }),
         );
-    })
+    }),
 );
 
 test(
@@ -93,7 +93,7 @@ test(
         const href = await alice.makeBtcDaiOrder(Position.Buy, "0.2", "9000");
         await bob.pollCndUntil<MarketEntity>(
             "/markets/BTC-DAI",
-            (market) => market.entities.length > 0
+            (market) => market.entities.length > 0,
         );
 
         // cancel it
@@ -103,9 +103,9 @@ test(
         // assert that bob no longer sees the order
         await bob.pollCndUntil<MarketEntity>(
             "/markets/BTC-DAI",
-            (market) => market.entities.length === 0
+            (market) => market.entities.length === 0,
         );
-    })
+    }),
 );
 
 test(
@@ -118,7 +118,7 @@ test(
 
         await bob.pollCndUntil<MarketEntity>(
             "/markets/BTC-DAI",
-            (market) => market.entities.length === 0
+            (market) => market.entities.length === 0,
         );
-    })
+    }),
 );
