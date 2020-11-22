@@ -14,7 +14,7 @@ base64 = "0.13.0"
 bitcoin = { version = "0.25", features = [ "use-serde" ] }
 comit = { path = "../comit" }
 config = { version = "0.10", features = [ "toml" ], default-features = false }
-conquer-once = "0.2.1"
+conquer-once = "0.3.0"
 data-encoding = "2.3"
 derivative = "2"
 diesel = { version = "1.4", features = [ "sqlite" ] }
