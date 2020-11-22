@@ -13,7 +13,7 @@ bitcoin = { version = "0.25", features = [ "rand", "use-serde" ] }
 clarity = "0.4"
 comit = { path = "../comit/" }
 config = { version = "0.10", default-features = false, features = [ "toml" ] }
-conquer-once = "0.2"
+conquer-once = "0.3"
 contract-address = "0.4.0"
 csv = "1.1"
 derivative = "2.1"
