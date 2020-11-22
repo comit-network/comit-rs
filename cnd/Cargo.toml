@@ -42,7 +42,7 @@ serdebug = "1"
 siren = { version = "0.2.1", package = "siren-types" }
 socket2 = "0.3"
 structopt = "0.3"
-strum = "0.19"
+strum = "0.20"
 strum_macros = "0.19"
 thiserror = "1"
 time = "0.2.22"
