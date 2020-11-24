@@ -38,7 +38,7 @@ sled = "0.34"
 spectral = "0.6"
 structopt = "0.3"
 strum = "0.20"
-strum_macros = "0.19"
+strum_macros = "0.20"
 testcontainers = { version = "0.10", optional = true } # In dependencies instead of dev-dependencies so it can be set as optional
 thiserror = "1.0"
 time = { version = "0.2", features = [ "serde" ] }
