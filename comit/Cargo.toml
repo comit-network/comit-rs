@@ -36,7 +36,7 @@ testcontainers = { version = "0.10", optional = true } # In dependencies instead
 thiserror = "1"
 time = { version = "0.2", features = [ "serde" ] }
 tokio = { version = "0.2", features = [ "sync" ] }
-tracing = "0.1.21"
+tracing = "0.1.22"
 tracing-futures = { version = "0.2" }
 uuid = { version = "0.8", features = [ "serde", "v4" ] }
 
