@@ -429,6 +429,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "476e9cd489f9e121e02ffa6014a8ef220ecb15c05ed23fc34cca13925dc283fb"
 
 [[package]]
+name = "bs58"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "771fe0050b883fcc3ea2359b1a96bcfbc090b7116eae7c3c512c7a083fdf23d3"
+
+[[package]]
 name = "bstr"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -618,7 +624,7 @@ dependencies = [
  "hex 0.4.2",
  "http-api-problem",
  "ipnet",
- "libp2p",
+ "libp2p 0.29.1",
  "libp2p-tokio-socks5",
  "libsqlite3-sys",
  "log 0.4.11",
@@ -673,7 +679,7 @@ dependencies = [
  "genawaiter",
  "hex 0.4.2",
  "levenshtein",
- "libp2p",
+ "libp2p 0.29.1",
  "lru",
  "num 0.3.1",
  "primitive-types",
@@ -1885,16 +1891,37 @@ dependencies = [
  "bytes 0.5.6",
  "futures",
  "lazy_static",
- "libp2p-core",
+ "libp2p-core 0.23.1",
  "libp2p-core-derive",
  "libp2p-dns",
  "libp2p-gossipsub",
  "libp2p-mplex",
  "libp2p-noise",
  "libp2p-request-response",
- "libp2p-swarm",
+ "libp2p-swarm 0.23.0",
  "libp2p-tcp",
  "libp2p-yamux",
+ "multihash",
+ "parity-multiaddr",
+ "parking_lot",
+ "pin-project 1.0.1",
+ "smallvec",
+ "wasm-timer",
+]
+
+[[package]]
+name = "libp2p"
+version = "0.30.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3c2b4c99f8798be90746fc226acf95d3e6cff0655883634cc30dab1f64f438b"
+dependencies = [
+ "atomic",
+ "bytes 0.5.6",
+ "futures",
+ "lazy_static",
+ "libp2p-core 0.24.0",
+ "libp2p-core-derive",
+ "libp2p-swarm 0.24.0",
  "multihash",
  "parity-multiaddr",
  "parking_lot",
@@ -1910,7 +1937,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3960524389409633550567e8a9e0684d25a33f4f8408887ff897dd9fdfbdb771"
 dependencies = [
  "asn1_der",
- "bs58",
+ "bs58 0.3.1",
+ "ed25519-dalek",
+ "either",
+ "fnv",
+ "futures",
+ "futures-timer",
+ "lazy_static",
+ "libsecp256k1",
+ "log 0.4.11",
+ "multihash",
+ "multistream-select",
+ "parity-multiaddr",
+ "parking_lot",
+ "pin-project 1.0.1",
+ "prost",
+ "prost-build",
+ "rand 0.7.3",
+ "ring",
+ "rw-stream-sink",
+ "sha2 0.9.1",
+ "smallvec",
+ "thiserror",
+ "unsigned-varint",
+ "void",
+ "zeroize",
+]
+
+[[package]]
+name = "libp2p-core"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b8186060d6bd415e4e928e6cb44c4fe7e7a7dd53437bd936ce7e5f421e45a51"
+dependencies = [
+ "asn1_der",
+ "bs58 0.4.0",
  "ed25519-dalek",
  "either",
  "fnv",
@@ -1954,7 +2015,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "436280f5fe21a58fcaff82c2606945579241f32bc0eaf2d39321aa4624a66e7f"
 dependencies = [
  "futures",
- "libp2p-core",
+ "libp2p-core 0.23.1",
  "log 0.4.11",
 ]
 
@@ -1971,8 +2032,8 @@ dependencies = [
  "futures",
  "futures_codec",
  "hex_fmt",
- "libp2p-core",
- "libp2p-swarm",
+ "libp2p-core 0.23.1",
+ "libp2p-swarm 0.23.0",
  "log 0.4.11",
  "lru_time_cache",
  "prost",
@@ -1993,7 +2054,7 @@ dependencies = [
  "bytes 0.5.6",
  "futures",
  "futures_codec",
- "libp2p-core",
+ "libp2p-core 0.23.1",
  "log 0.4.11",
  "nohash-hasher",
  "parking_lot",
@@ -2012,7 +2073,7 @@ dependencies = [
  "curve25519-dalek",
  "futures",
  "lazy_static",
- "libp2p-core",
+ "libp2p-core 0.23.1",
  "log 0.4.11",
  "prost",
  "prost-build",
@@ -2033,8 +2094,8 @@ dependencies = [
  "async-trait",
  "bytes 0.5.6",
  "futures",
- "libp2p-core",
- "libp2p-swarm",
+ "libp2p-core 0.23.1",
+ "libp2p-swarm 0.23.0",
  "log 0.4.11",
  "lru",
  "minicbor",
@@ -2052,7 +2113,23 @@ checksum = "ffa6fa33b16956b8a58afbfebe1406866011a1ab8960765bd36868952d7be6a1"
 dependencies = [
  "either",
  "futures",
- "libp2p-core",
+ "libp2p-core 0.23.1",
+ "log 0.4.11",
+ "rand 0.7.3",
+ "smallvec",
+ "void",
+ "wasm-timer",
+]
+
+[[package]]
+name = "libp2p-swarm"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "565f0e06674b4033c978471e4083d5aaa8e03cef0719a0ec0905aaeaad39a919"
+dependencies = [
+ "either",
+ "futures",
+ "libp2p-core 0.24.0",
  "log 0.4.11",
  "rand 0.7.3",
  "smallvec",
@@ -2070,7 +2147,7 @@ dependencies = [
  "futures-timer",
  "if-addrs",
  "ipnet",
- "libp2p-core",
+ "libp2p-core 0.23.1",
  "log 0.4.11",
  "socket2",
  "tokio",
@@ -2078,16 +2155,16 @@ dependencies = [
 
 [[package]]
 name = "libp2p-tokio-socks5"
-version = "0.4.1"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0280d1cf7c88bca8862ae9d2d7d0a17d3230b3eee5d6cdcecc4b1a254ec94017"
+checksum = "93ca9286653add394589305c2bb45d54d43a95218df8add626d0d1179d642d44"
 dependencies = [
  "data-encoding",
  "futures",
  "futures-timer",
  "get_if_addrs",
  "ipnet",
- "libp2p",
+ "libp2p 0.30.1",
  "log 0.4.11",
  "socket2",
  "tokio",
@@ -2101,7 +2178,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07c0c9b6ef7a168c2ae854170b0b6b77550599afe06cc3ac390eb45c5d9c7110"
 dependencies = [
  "futures",
- "libp2p-core",
+ "libp2p-core 0.23.1",
  "parking_lot",
  "thiserror",
  "yamux",
@@ -2356,9 +2433,9 @@ checksum = "1255076139a83bb467426e7f8d0134968a8118844faa755985e077cf31850333"
 
 [[package]]
 name = "multistream-select"
-version = "0.8.4"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36a6aa6e32fbaf16795142335967214b8564a7a4661eb6dc846ef343a6e00ac1"
+checksum = "93faf2e41f9ee62fb01680ed48f3cc26652352327aa2e59869070358f6b7dd75"
 dependencies = [
  "bytes 0.5.6",
  "futures",
@@ -2410,7 +2487,7 @@ dependencies = [
  "futures-timer",
  "genawaiter",
  "hex 0.4.2",
- "libp2p",
+ "libp2p 0.29.1",
  "log 0.4.11",
  "num 0.3.1",
  "pem",
@@ -2748,12 +2825,12 @@ dependencies = [
 
 [[package]]
 name = "parity-multiaddr"
-version = "0.9.3"
+version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c7ad66970bbab360c97179b60906e2dc4aef1f7fca8ab4e5c5db8c97b16814a"
+checksum = "43244a26dc1ddd3097216bb12eaa6cf8a07b060c72718d9ebd60fd297d6401df"
 dependencies = [
  "arrayref",
- "bs58",
+ "bs58 0.4.0",
  "byteorder",
  "data-encoding",
  "multihash",
