@@ -27,7 +27,7 @@ get_if_addrs = "0.5"
 hex = "0.4"
 http-api-problem = { version = "0.15", features = [ "with_warp" ] }
 ipnet = "2.3"
-libp2p = { version = "0.29", default-features = false, features = [ "tcp-tokio", "yamux", "mplex", "dns", "noise" ] }
+libp2p = { version = "0.31", default-features = false, features = [ "tcp-tokio", "yamux", "mplex", "dns", "noise" ] }
 libp2p-tokio-socks5 = "0.4"
 libsqlite3-sys = { version = ">=0.8.0, <0.13.0", features = [ "bundled" ] }
 log = { version = "0.4", features = [ "serde" ] }
