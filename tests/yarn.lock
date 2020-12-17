@@ -381,10 +381,10 @@
     "@ethersproject/logger" "^5.0.5"
     "@ethersproject/properties" "^5.0.3"
 
-"@ethersproject/hash@5.0.8", "@ethersproject/hash@^5.0.4":
-  version "5.0.8"
-  resolved "https://registry.yarnpkg.com/@ethersproject/hash/-/hash-5.0.8.tgz#368a60addc3c5cd18e28f78c80dc94e1bacb82d8"
-  integrity sha512-Qay01tcFyFreYjSMt82rOQGMfQDmLm1sj3iNNO1BhrVf840xgBZuJ7gBATERzAjTuTCHUHw9BuGwxErJUS95yg==
+"@ethersproject/hash@5.0.9", "@ethersproject/hash@^5.0.4":
+  version "5.0.9"
+  resolved "https://registry.yarnpkg.com/@ethersproject/hash/-/hash-5.0.9.tgz#81252a848185b584aa600db4a1a68cad9229a4d4"
+  integrity sha512-e8/i2ZDeGSgCxXT0vocL54+pMbw5oX5fNjb2E3bAIvdkh5kH29M7zz1jHu1QDZnptIuvCZepIbhUH8lxKE2/SQ==
   dependencies:
     "@ethersproject/abstract-signer" "^5.0.6"
     "@ethersproject/address" "^5.0.5"
@@ -1013,9 +1013,9 @@
     "@types/node" "*"
 
 "@types/node@*", "@types/node@^14.14":
-  version "14.14.10"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.14.10.tgz#5958a82e41863cfc71f2307b3748e3491ba03785"
-  integrity sha512-J32dgx2hw8vXrSbu4ZlVhn1Nm3GbeCFNw2FWL8S5QKucHGY0cyNwjdQdO+KMBZ4wpmC7KhLCiNsdk1RFRIYUQQ==
+  version "14.14.14"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.14.14.tgz#f7fd5f3cc8521301119f63910f0fb965c7d761ae"
+  integrity sha512-UHnOPWVWV1z+VV8k6L1HhG7UbGBgIdghqF3l9Ny9ApPghbjICXkUJSd/b9gOgQfjM1r+37cipdw/HJ3F6ICEnQ==
 
 "@types/node@10.12.18":
   version "10.12.18"
@@ -2273,10 +2273,10 @@ etag@~1.8.1:
   resolved "https://registry.yarnpkg.com/etag/-/etag-1.8.1.tgz#41ae2eeb65efa62268aebfea83ac7d79299b0887"
   integrity sha1-Qa4u62XvpiJorr/qg6x9eSmbCIc=
 
-ethers@^5.0.23:
-  version "5.0.23"
-  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.23.tgz#461a6e63c4906d5ea64126d53975ddf2ca81a979"
-  integrity sha512-f3pTcgYpMhtmMTMG9KO6pWHYjrCiGz7yVnvMsTQgAYfAVAeUxKy2H1cxQJyqyghRjtAvgVYJlnXQo8mMCD63BA==
+ethers@^5.0.24:
+  version "5.0.24"
+  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.24.tgz#fbb8e4d35070d134f2eb846c07500b8c0eaef6d3"
+  integrity sha512-77CEtVC88fJGEhxGXRvQqAEH6e2A+ZFiv2FBT6ikXndlty5sw6vMatAhg1v+w3CaaGZOf1CP81jl4Mc8Zrj08A==
   dependencies:
     "@ethersproject/abi" "5.0.9"
     "@ethersproject/abstract-provider" "5.0.7"
@@ -2288,7 +2288,7 @@ ethers@^5.0.23:
     "@ethersproject/bytes" "5.0.8"
     "@ethersproject/constants" "5.0.7"
     "@ethersproject/contracts" "5.0.8"
-    "@ethersproject/hash" "5.0.8"
+    "@ethersproject/hash" "5.0.9"
     "@ethersproject/hdnode" "5.0.7"
     "@ethersproject/json-wallets" "5.0.9"
     "@ethersproject/keccak256" "5.0.6"
@@ -4341,12 +4341,10 @@ p-timeout@^2.0.1:
   dependencies:
     p-finally "^1.0.0"
 
-p-timeout@^3.2.0:
-  version "3.2.0"
-  resolved "https://registry.yarnpkg.com/p-timeout/-/p-timeout-3.2.0.tgz#c7e17abc971d2a7962ef83626b35d635acf23dfe"
-  integrity sha512-rhIwUycgwwKcP9yTOOFK/AKsAopjjCakVqLHePO3CC6Mir1Z99xT+R63jZxAT5lFZLa2inS5h+ZS2GvR99/FBg==
-  dependencies:
-    p-finally "^1.0.0"
+p-timeout@^4.0.1:
+  version "4.0.1"
+  resolved "https://registry.yarnpkg.com/p-timeout/-/p-timeout-4.0.1.tgz#a4c1d33f50fcae3a302e9a37c980ad360f3163ab"
+  integrity sha512-7GfpWa9RVtx27xhLJiICP4qwAk4MlY1/Q7AEfE1jWzoWQtowKzpm5Roo6ConYGxatwm7hJmT6EmInipN5RpG5Q==
 
 p-try@^2.0.0:
   version "2.2.0"
