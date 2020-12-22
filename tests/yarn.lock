@@ -1268,10 +1268,10 @@ aws4@^1.8.0:
   resolved "https://registry.yarnpkg.com/aws4/-/aws4-1.10.1.tgz#e1e82e4f3e999e2cfd61b161280d16a111f86428"
   integrity sha512-zg7Hz2k5lI8kb7U32998pRRFin7zJlkfezGJjUc2heaD4Pw2wObakCDVzkKztTm/Ln7eiVvYsjqak0Ed4LkMDA==
 
-axios@^0.21.0:
-  version "0.21.0"
-  resolved "https://registry.yarnpkg.com/axios/-/axios-0.21.0.tgz#26df088803a2350dff2c27f96fef99fe49442aca"
-  integrity sha512-fmkJBknJKoZwem3/IKSSLpkdNXZeBu5Q7GA/aRsr2btgrptmSCxi2oFjZHqGdK9DoTil9PIHlPIZw2EcRJXRvw==
+axios@^0.21.1:
+  version "0.21.1"
+  resolved "https://registry.yarnpkg.com/axios/-/axios-0.21.1.tgz#22563481962f4d6bde9a76d516ef0e5d3c09b2b8"
+  integrity sha512-dKQiRHxGD9PPRIUNIWvZhPTPpl1rf/OxTYKsqKUDjBwYylTvV7SjSHJb9ratfyzM6wCdLCOYLzs73qpg5c4iGA==
   dependencies:
     follow-redirects "^1.10.0"
 
@@ -5246,10 +5246,10 @@ symbol-tree@^3.2.4:
   resolved "https://registry.yarnpkg.com/symbol-tree/-/symbol-tree-3.2.4.tgz#430637d248ba77e078883951fb9aa0eed7c63fa2"
   integrity sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==
 
-tail@^2.0.4:
-  version "2.0.4"
-  resolved "https://registry.yarnpkg.com/tail/-/tail-2.0.4.tgz#4824de583004df17606d04854aa3cc3491b17010"
-  integrity sha512-xHkZdNWIzO++g+V/rHGqVoHd2LRxz+8t8bj6FGelfb8FHBjg5yjkX7Su/8sQSBo5alIspYkRp/fU0A2SM5h+5A==
+tail@^2.1.0:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/tail/-/tail-2.1.0.tgz#7e61885e59953f3c6b39adfa9b1984e4970abb8c"
+  integrity sha512-2Evooz7G1rpOfjVauh0S+9YEfa4VUUaZpQc5BDgYlhEcSBTmWB58wAaup6gd221mZ2c2BDvjLRpP5xvzcXP3qQ==
 
 tar-stream@^1.5.2:
   version "1.6.2"
