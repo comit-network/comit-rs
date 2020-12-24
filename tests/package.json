@@ -22,7 +22,7 @@
     "@types/find-cache-dir": "^3.2.0",
     "@types/glob": "^7.1.3",
     "@types/jest": "^26.0.19",
-    "@types/lodash": "^4.14.165",
+    "@types/lodash": "^4.14.166",
     "@types/morgan": "^1.9.2",
     "@types/node": "^14.14",
     "@types/proper-lockfile": "^4.1.1",
@@ -62,6 +62,6 @@
     "tslint": "^6.1.3",
     "tslint-no-unused-expression-chai": "^0.1.4",
     "typescript": "^4.1.3",
-    "urijs": "^1.19.3"
+    "urijs": "^1.19.4"
   }
 }
