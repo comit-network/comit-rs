@@ -104,9 +104,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.36"
+version = "1.0.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68803225a7b13e47191bab76f2687382b60d259e8cf37f6e1893658b84bb9479"
+checksum = "ee67c11feeac938fae061b232e38e0b6d94f97a9df10e6271319325ac4c56a86"
 
 [[package]]
 name = "arrayref"
@@ -3467,9 +3467,9 @@ dependencies = [
 
 [[package]]
 name = "rust_decimal"
-version = "1.8.1"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9e81662973c7a8d9663e64a0de4cd642b89a21d64966e3d99606efdc5fb0cc6"
+checksum = "a5c739ba050709eae138f053356d27ff818d71fe54ce5a8d9f4c7a660bfb6684"
 dependencies = [
  "num-traits",
  "serde",
