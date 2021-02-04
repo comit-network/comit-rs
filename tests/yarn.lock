@@ -278,10 +278,10 @@
     exec-sh "^0.3.2"
     minimist "^1.2.0"
 
-"@ethersproject/abi@5.0.11", "@ethersproject/abi@^5.0.10":
-  version "5.0.11"
-  resolved "https://registry.yarnpkg.com/@ethersproject/abi/-/abi-5.0.11.tgz#d3b6fd955d3172214603d4d123055b3b0b06376b"
-  integrity sha512-ibZswQsjdFuLSfY2lbRTZM2Uk+ci7tp+mjVK0kjxVol2V32cb7va1r6B4AJU/Ac/VTstCjxtn0KKMfbkPc002w==
+"@ethersproject/abi@5.0.12", "@ethersproject/abi@^5.0.10":
+  version "5.0.12"
+  resolved "https://registry.yarnpkg.com/@ethersproject/abi/-/abi-5.0.12.tgz#9aebe6aedc05ce45bb6c41b06d80bd195b7de77c"
+  integrity sha512-Ujr/3bwyYYjXLDQfebeiiTuvOw9XtUKM8av6YkoBeMXyGQM9GkjrQlwJMNwGTmqjATH/ZNbRgCh98GjOLiIB1Q==
   dependencies:
     "@ethersproject/address" "^5.0.9"
     "@ethersproject/bignumber" "^5.0.13"
@@ -1002,9 +1002,9 @@
     "@types/node" "*"
 
 "@types/node@*", "@types/node@^14.14":
-  version "14.14.22"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.14.22.tgz#0d29f382472c4ccf3bd96ff0ce47daf5b7b84b18"
-  integrity sha512-g+f/qj/cNcqKkc3tFqlXOYjrmZA+jNBiDzbP3kH+B+otKFqAdPgVTGP1IeKRdMml/aE69as5S4FqtxAbl+LaMw==
+  version "14.14.25"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-14.14.25.tgz#15967a7b577ff81383f9b888aa6705d43fbbae93"
+  integrity sha512-EPpXLOVqDvisVxtlbvzfyqSsFeQxltFbluZNRndIb8tr9KiBnYNLzrc1N3pyKUCww2RNrfHDViqDWWE1LCJQtQ==
 
 "@types/node@10.12.18":
   version "10.12.18"
@@ -2257,12 +2257,12 @@ etag@~1.8.1:
   resolved "https://registry.yarnpkg.com/etag/-/etag-1.8.1.tgz#41ae2eeb65efa62268aebfea83ac7d79299b0887"
   integrity sha1-Qa4u62XvpiJorr/qg6x9eSmbCIc=
 
-ethers@^5.0.28:
-  version "5.0.28"
-  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.28.tgz#3c2a3d41b3639a427a822814870990cfcdd5e0a8"
-  integrity sha512-prYYCmZMGbrhP2PEXA2re5BpNPjaCP2y5gO1dh1i+fPxdkldQOk+0c0l8KlnxwUztKq4E40xpB0gyURdcAOaAg==
+ethers@^5.0.29:
+  version "5.0.29"
+  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.0.29.tgz#37034758b31e6545926e400ffbe7222a39e39e7b"
+  integrity sha512-uNMOIbr9dXzBrHwcdelYlkvkPuL8chlPE8i++aNPCCAgI4agl0e9l/FRdToqu/cCQG8uNwmJlJp2eq4wU0oAMA==
   dependencies:
-    "@ethersproject/abi" "5.0.11"
+    "@ethersproject/abi" "5.0.12"
     "@ethersproject/abstract-provider" "5.0.9"
     "@ethersproject/abstract-signer" "5.0.12"
     "@ethersproject/address" "5.0.10"
