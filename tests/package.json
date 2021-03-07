@@ -30,7 +30,7 @@
     "@types/tail": "^2.0.0",
     "@types/tmp": "^0.2.0",
     "@types/urijs": "^1.19.14",
-    "ajv": "^6.12.6",
+    "ajv": "^7.2.0",
     "axios": "^0.21.1",
     "bitcoin-core": "^3.0.0",
     "bitcoinjs-lib": "^5.2.0",
