@@ -634,7 +634,7 @@ dependencies = [
  "serde_urlencoded 0.7.0",
  "serdebug",
  "siren-types",
- "socket2",
+ "socket2 0.4.0",
  "spectral",
  "structopt",
  "strum",
@@ -1649,7 +1649,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project 0.4.27",
- "socket2",
+ "socket2 0.3.19",
  "tokio",
  "tower-service",
  "tracing",
@@ -1882,9 +1882,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.80"
+version = "0.2.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d58d1b70b004888f764dfbf6a26a3b0342a1632d33968e4a179d8011c760614"
+checksum = "538c092e5586f4cdd7dd8078c4a79220e3e168880218124dcbce860f0ea938c6"
 
 [[package]]
 name = "libp2p"
@@ -2083,7 +2083,7 @@ dependencies = [
  "ipnet",
  "libp2p-core",
  "log 0.4.11",
- "socket2",
+ "socket2 0.3.19",
  "tokio",
 ]
 
@@ -2100,7 +2100,7 @@ dependencies = [
  "ipnet",
  "libp2p",
  "log 0.4.11",
- "socket2",
+ "socket2 0.3.19",
  "tokio",
  "tokio-socks",
 ]
@@ -3973,6 +3973,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "122e570113d28d773067fab24266b66753f6ea915758651696b6e35e49f88d6e"
 dependencies = [
  "cfg-if 1.0.0",
+ "libc",
+ "winapi 0.3.9",
+]
+
+[[package]]
+name = "socket2"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e3dfc207c526015c632472a77be09cf1b6e46866581aecae5cc38fb4235dea2"
+dependencies = [
  "libc",
  "winapi 0.3.9",
 ]
