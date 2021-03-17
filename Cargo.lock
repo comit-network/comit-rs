@@ -266,7 +266,19 @@ checksum = "aefc9be9f17185f4ebccae6575d342063f775924d57df0000edb1880c0fb7095"
 dependencies = [
  "bech32",
  "bitcoin_hashes",
- "secp256k1",
+ "secp256k1 0.19.0",
+ "serde",
+]
+
+[[package]]
+name = "bitcoin"
+version = "0.26.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ec5f88a446d66e7474a3b8fa2e348320b574463fb78d799d90ba68f79f48e0e"
+dependencies = [
+ "bech32",
+ "bitcoin_hashes",
+ "secp256k1 0.20.1",
  "serde",
 ]
 
@@ -298,7 +310,7 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76d488ec31e9cb6726c361be5160f7d2aaace89a0681acf1f476b8fada770b6e"
 dependencies = [
- "bitcoin",
+ "bitcoin 0.25.2",
  "hex 0.3.2",
  "serde",
  "serde_json",
@@ -416,7 +428,7 @@ version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc2452b20fe06584a09b40428e16000a72a8f241493577565b5e89505ba017e7"
 dependencies = [
- "bitcoin",
+ "bitcoin 0.25.2",
  "byteorder",
  "hex-literal",
  "regex",
@@ -566,7 +578,7 @@ dependencies = [
  "num-bigint 0.3.1",
  "num-traits",
  "num256",
- "secp256k1",
+ "secp256k1 0.19.0",
  "serde",
  "serde-rlp",
  "serde_bytes",
@@ -601,7 +613,7 @@ dependencies = [
  "atty",
  "backoff",
  "base64 0.13.0",
- "bitcoin",
+ "bitcoin 0.26.0",
  "bitcoincore-rpc",
  "comit",
  "config",
@@ -662,7 +674,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "base64 0.13.0",
- "bitcoin",
+ "bitcoin 0.26.0",
  "bitcoincore-rpc",
  "blockchain_contracts",
  "byteorder",
@@ -2406,7 +2418,7 @@ dependencies = [
  "atty",
  "backoff",
  "base64 0.13.0",
- "bitcoin",
+ "bitcoin 0.26.0",
  "clarity",
  "comit",
  "config",
@@ -3565,8 +3577,18 @@ version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c6179428c22c73ac0fbb7b5579a56353ce78ba29759b3b8575183336ea74cdfb"
 dependencies = [
+ "secp256k1-sys 0.3.0",
+ "serde",
+]
+
+[[package]]
+name = "secp256k1"
+version = "0.20.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "733b114f058f260c0af7591434eef4272ae1a8ec2751766d3cb89c6df8d5e450"
+dependencies = [
  "rand 0.6.5",
- "secp256k1-sys",
+ "secp256k1-sys 0.4.0",
  "serde",
 ]
 
@@ -3575,6 +3597,15 @@ name = "secp256k1-sys"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11553d210db090930f4432bea123b31f70bbf693ace14504ea2a35e796c28dd2"
+dependencies = [
+ "cc",
+]
+
+[[package]]
+name = "secp256k1-sys"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67e4b6455ee49f5901c8985b88f98fb0a0e1d90a6661f5a03f4888bd987dad29"
 dependencies = [
  "cc",
 ]
