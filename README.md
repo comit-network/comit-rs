@@ -88,7 +88,7 @@ All `cnd` traffic will now be routed over the Tor network.
 
 Contributions are welcome, please visit [CONTRIBUTING](CONTRIBUTING.md) for more details.
 
-If you have any question please [reach out to the team in our Gitter chat](https://gitter.im/comit-network/community)!
+If you have any question please [reach out to the team in our Matrix channel](https://app.element.io/#/room/#comit:matrix.org)!
 
 ## License
 
