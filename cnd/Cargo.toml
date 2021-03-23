@@ -45,7 +45,7 @@ structopt = "0.3"
 strum = "0.20"
 strum_macros = "0.20"
 thiserror = "1"
-time = "0.2.22"
+time = "0.2.26"
 tokio = { version = "0.2", features = [ "rt-threaded", "time", "macros", "sync" ] }
 toml = "0.5"
 tracing = { version = "0.1", features = [ "attributes" ] }
