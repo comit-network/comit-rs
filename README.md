@@ -1,3 +1,13 @@
+# Archive note
+
+This repository has been archived because it is not actively maintained.
+For more details about why, see the [blog post](https://comit.network/blog/2020/11/09/project-feast-closing-notes) about the project's closing.
+
+However, this doesn't mean that we've stopped on working on COMIT!
+To get on top of what is happening currently, join our [Matrix channel](https://matrix.to/#/#comit:matrix.org) or checkout some of our [other repositories](https://github.com/comit-network?q=&type=source&language=&sort=).
+
+# Old readme
+
 <a href="https://comit.network">
 <img src="https://comit.network/img/comit-logo-black.svg" height="120px" alt="COMIT logo" />
 </a>
